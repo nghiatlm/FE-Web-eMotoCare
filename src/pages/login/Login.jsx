@@ -2,15 +2,8 @@ import AuthLayout from "../../components/authlayout/AuthLayout";
 import { Link } from "react-router-dom";
 
 export default function Login() {
-  const handleGoogle = () => {
-    // Chỗ này sau sẽ redirect tới backend
-    console.log("Google sign-in");
-    // window.location.href = "https://your-backend.com/auth/google"
-  };
-
   return (
     <AuthLayout title='Đăng nhập vào hệ thống'>
-      {/* Email */}
       <div className='space-y-5'>
         <div>
           <label className='font-medium block mb-1'>Số điện thoại</label>
