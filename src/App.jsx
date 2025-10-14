@@ -17,6 +17,9 @@ import Index from "./pages/Index";
 import Branches from "./pages/Branches";
 import NotFound from "./pages/NotFound";
 
+// service staff
+import { StaffSidebar } from "./components/service-staff/StaffSidebar";
+import StaffBooking from "./pages/service-staff/StaffBooking";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -53,6 +56,31 @@ const App = () => (
                           element={<WarrantyClaims />}
                         />
                         <Route path='/vehicles' element={<Vehicles />} />
+                        <Route path='*' element={<NotFound />} />
+                      </Routes>
+                    </main>
+                  </div>
+                </div>
+              </SidebarProvider>
+            }
+          />
+          <Route
+            path='/staff/*'
+            element={
+              <SidebarProvider>
+                <div className='flex min-h-screen w-full'>
+                  <StaffSidebar />
+                  <div className='flex-1 flex flex-col'>
+                    <header className='h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10'>
+                      <SidebarTrigger className='text-foreground' />
+                    </header>
+                    <main className='flex-1'>
+                      <Routes>
+                        <Route
+                          path=''
+                          element={<Navigate to='booking' replace />}
+                        />
+                        <Route path='booking' element={<StaffBooking />} />
                         <Route path='*' element={<NotFound />} />
                       </Routes>
                     </main>
