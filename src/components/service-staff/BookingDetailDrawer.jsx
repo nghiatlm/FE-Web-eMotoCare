@@ -1,6 +1,10 @@
 import { Drawer, Table, Button, Tag, Divider, Select } from "antd";
 import { motion } from "framer-motion";
 import { useState } from "react";
+import MaintenanceContent from "./detail-content/MaintenanceContent";
+import RepairContent from "./detail-content/RepairContent";
+import WarrantyContent from "./detail-content/WarrantyContent";
+import RecallContent from "./detail-content/RecallContent";
 
 const statusColors = {
   Pending: "#faad14",
@@ -19,6 +23,27 @@ const mockTechnicians = [
   { id: 3, name: "Lê Văn C", phone: "0903456789", specialty: "Khung gầm" },
 ];
 
+// 👉 render phần nội dung khác nhau tùy loại dịch vụ
+const renderServiceContent = (serviceType, booking) => {
+  switch (serviceType) {
+    case "Bảo dưỡng":
+    case "Maintenance":
+      return <MaintenanceContent booking={booking} />;
+    case "Sửa chữa":
+    case "Repair":
+      return <RepairContent booking={booking} />;
+    case "Bảo hành":
+    case "Warranty":
+      return <WarrantyContent booking={booking} />;
+    case "Recall":
+      return <RecallContent booking={booking} />;
+    default:
+      return (
+        <div className='text-gray-500'>Không có dữ liệu dịch vụ phù hợp</div>
+      );
+  }
+};
+
 export default function BookingDetailDrawer({
   booking,
   open,
@@ -28,33 +53,6 @@ export default function BookingDetailDrawer({
   const [selectedTechnician, setSelectedTechnician] = useState(null);
 
   if (!booking) return null;
-
-  const columns = [
-    { title: "STT", render: (_, __, idx) => idx + 1, width: 60 },
-    { title: "Hạng mục", dataIndex: "item", key: "item" },
-    { title: "Ghi chú", dataIndex: "note", key: "note" },
-  ];
-
-  if (
-    ["CheckedIn", "Diagnosed", "Approved", "Completed"].includes(booking.status)
-  )
-    columns.push({
-      title: "Kết quả",
-      dataIndex: "result",
-      key: "result",
-      width: 140,
-      render: (r) => r || "—",
-    });
-
-  if (["Approved", "Completed"].includes(booking.status)) {
-    columns.push({ title: "Phụ tùng", dataIndex: "part", key: "part" });
-    columns.push({
-      title: "Giá tiền",
-      dataIndex: "price",
-      key: "price",
-      render: (p) => (p ? `${p.toLocaleString()} ₫` : "—"),
-    });
-  }
 
   const handleAssignTechnician = () => {
     if (!selectedTechnician) return;
@@ -75,7 +73,7 @@ export default function BookingDetailDrawer({
           </Tag>
         </div>
       }
-      width={780}
+      width={800}
       open={open}
       onClose={onClose}
       bodyStyle={{
@@ -87,7 +85,7 @@ export default function BookingDetailDrawer({
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}>
-        {/* Thông tin chung */}
+        {/* 🧾 Thông tin chung */}
         <section className='bg-white rounded-2xl shadow-md p-5 mb-6 border border-[#ffd9c2]'>
           <h3 className='font-semibold text-base mb-3 border-b pb-2 text-[#d4380d]'>
             🧾 Thông tin chung
@@ -114,7 +112,7 @@ export default function BookingDetailDrawer({
           </div>
         </section>
 
-        {/* Nếu đang ở Accepted => hiện Select chọn kỹ thuật viên */}
+        {/* 👨‍🔧 Chọn kỹ thuật viên */}
         {booking.status === "Accepted" && (
           <section className='bg-white rounded-2xl shadow-md p-5 mb-6 border border-[#ffd9c2]'>
             <h3 className='font-semibold text-base mb-3 border-b pb-2 text-[#d4380d]'>
@@ -158,7 +156,7 @@ export default function BookingDetailDrawer({
           </section>
         )}
 
-        {/* Hiển thị bảng kỹ thuật viên ở mọi trạng thái khác */}
+        {/* 👨‍🔧 Thông tin kỹ thuật viên */}
         {booking.technician && (
           <section className='bg-white rounded-2xl shadow-md p-5 mb-6 border border-[#ffd9c2]'>
             <h3 className='font-semibold text-base mb-3 border-b pb-2 text-[#d4380d]'>
@@ -178,24 +176,17 @@ export default function BookingDetailDrawer({
           </section>
         )}
 
-        {/* Danh sách kiểm tra */}
+        {/* 🔍 Nội dung công việc (tùy loại dịch vụ) */}
         <section className='bg-white rounded-2xl shadow-md p-5 mb-6 border border-[#ffd9c2]'>
           <h3 className='font-semibold text-base mb-3 border-b pb-2 text-[#d4380d]'>
-            Danh sách kiểm tra
+            📋 Nội dung công việc
           </h3>
-          <Table
-            dataSource={booking.details || []}
-            columns={columns}
-            pagination={false}
-            rowKey={(r, i) => `${booking.id}-d-${i}`}
-            size='small'
-            bordered
-          />
+          {renderServiceContent(booking.serviceType, booking)}
         </section>
 
         <Divider />
 
-        {/* Nút hành động */}
+        {/* ⚙️ Nút hành động */}
         <div className='flex gap-3 justify-end mt-6'>
           {booking.status === "Pending" && (
             <>
@@ -209,16 +200,6 @@ export default function BookingDetailDrawer({
                 Chấp nhận
               </Button>
             </>
-          )}
-
-          {booking.status === "Accepted" && (
-            <Button
-              type='primary'
-              className='bg-[#d4380d] hover:bg-[#b32005]'
-              onClick={handleAssignTechnician}
-              disabled={!selectedTechnician}>
-              Lưu và gán kỹ thuật viên
-            </Button>
           )}
 
           {booking.status === "Assigned" && (
