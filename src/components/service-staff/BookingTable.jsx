@@ -1,13 +1,11 @@
 import { Table, Tag, Button, Space } from "antd";
 import { QrcodeOutlined } from "@ant-design/icons";
-
-const statusColors = {
-  pending: "orange",
-  confirmed: "blue",
-  checkedin: "purple",
-  completed: "green",
-  canceled: "red",
-};
+import {
+  STATUS_COLORS,
+  STATUS_MAP,
+  SERVICE_TYPE_COLORS,
+  SERVICE_TYPE_MAP,
+} from "../../utils/constants";
 
 export default function BookingTable({
   data = [],
@@ -44,10 +42,14 @@ export default function BookingTable({
       dataIndex: "status",
       key: "status",
       width: 140,
-      render: (s) => {
-        if (!s) return <Tag>—</Tag>;
-        const key = String(s).toLowerCase();
-        return <Tag color={statusColors[key] || "default"}>{s}</Tag>;
+      render: (status) => {
+        if (!status) return <Tag>—</Tag>;
+        const key = String(status).toLowerCase();
+        return (
+          <Tag color={STATUS_COLORS[key] || "default"}>
+            {STATUS_MAP[key] || status}
+          </Tag>
+        );
       },
     },
     {
@@ -59,6 +61,16 @@ export default function BookingTable({
       title: "Loại dịch vụ",
       dataIndex: "serviceType",
       key: "serviceType",
+      width: 140,
+      render: (service) => {
+        if (!service) return <Tag>—</Tag>;
+        const key = String(service).toLowerCase();
+        return (
+          <Tag color={SERVICE_TYPE_COLORS[key] || "default"}>
+            {SERVICE_TYPE_MAP[key] || service}
+          </Tag>
+        );
+      },
     },
     {
       title: "Thời gian",

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 
 /**
  * Hook quản lý dữ liệu và flow trạng thái cho Booking (Service Staff)
+ * Dữ liệu đang là mock (giả lập fetch API)
  */
 export const useBookings = () => {
   const [data, setData] = useState([]);
@@ -32,26 +33,28 @@ export const useBookings = () => {
     },
   ];
 
-  // Định nghĩa flow chuyển trạng thái hợp lệ
+  // Flow trạng thái hợp lệ
   const STATUS_FLOW = {
-    Pending: ["Accepted", "Cancelled"], // Chờ xác nhận -> có thể nhận hoặc huỷ
-    Accepted: ["InProgress"], // Đã nhận -> chuyển sang đang làm
-    InProgress: ["Completed"], // Đang làm -> hoàn tất
-    Completed: [], // Xong rồi, hết flow
-    Cancelled: [], // Bị huỷ, dừng flow
+    Pending: ["Accepted", "Cancelled"],
+    Accepted: ["InProgress"],
+    InProgress: ["Completed"],
+    Completed: [],
+    Cancelled: [],
   };
 
-  // Kiểm tra trạng thái có thể cập nhật hợp lệ không
+  // Kiểm tra trạng thái hợp lệ
   const canUpdateStatus = (booking, newStatus) => {
     const nextList = STATUS_FLOW[booking.status] || [];
     return nextList.includes(newStatus);
   };
 
-  // Mock dữ liệu ban đầu
-  useEffect(() => {
+  // Giả lập fetch API
+  const fetchBookings = async () => {
     setLoading(true);
-    setTimeout(() => {
-      const fakeData = [
+    try {
+      await new Promise((res) => setTimeout(res, 600));
+
+      const mockData = [
         {
           id: "B001",
           code: "BK-2025-001",
@@ -59,13 +62,42 @@ export const useBookings = () => {
           phone: "0901234567",
           status: "Pending",
           vehicleType: "Evo 200Lite",
-          serviceType: "Bảo dưỡng",
+          serviceType: "Maintenance",
           time: "09:00 14/10/2025",
+          note: "Định kỳ 10.000km",
           qrCode: "BK-2025-001",
-          note: "Kiểm tra pin, phanh trước kêu nhẹ",
+
           details: [
-            { item: "Tay phanh", note: "Bôi trơn", result: "OK" },
-            { item: "Pin", note: "Yếu", result: "Replace soon" },
+            {
+              item: "Phanh trước",
+              check: "OK",
+              result: "Bôi trơn",
+              stage: "Cơ bản",
+            },
+            {
+              item: "Phanh sau",
+              check: "OK",
+              result: "Không cần thay",
+              stage: "Cơ bản",
+            },
+            {
+              item: "Pin",
+              check: "Yếu",
+              result: "Đề xuất thay mới",
+              stage: "Điện",
+            },
+            {
+              item: "Lốp",
+              check: "Mòn 60%",
+              result: "Theo dõi",
+              stage: "Cơ bản",
+            },
+            {
+              item: "Đèn pha",
+              check: "Sáng yếu",
+              result: "Thay bóng LED",
+              stage: "Điện",
+            },
           ],
         },
         {
@@ -75,16 +107,16 @@ export const useBookings = () => {
           phone: "0912345678",
           status: "Accepted",
           vehicleType: "Evo GrandLine",
-          serviceType: "Sửa chữa",
+          serviceType: "Repair",
           time: "10:30 14/10/2025",
-          qrCode: "BK-2025-002",
           note: "Đèn xe không sáng",
+          qrCode: "BK-2025-002",
           details: [
             {
-              issue: "Đèn pha",
-              part: "Bóng đèn LED",
+              item: "Đèn pha",
+              part: "Bóng LED",
+              action: "Thay mới",
               price: 250000,
-              done: false,
             },
           ],
         },
@@ -95,12 +127,17 @@ export const useBookings = () => {
           phone: "0934567890",
           status: "Accepted",
           vehicleType: "Klara S",
-          serviceType: "Bảo hành",
+          serviceType: "Warranty",
           time: "11:00 14/10/2025",
-          qrCode: "BK-2025-003",
           note: "Bảo hành pin mới thay",
+          qrCode: "BK-2025-003",
           details: [
             { item: "Pin", warranty: "12 tháng", result: "Đang kiểm tra" },
+            {
+              item: "Bộ sạc",
+              warranty: "6 tháng",
+              result: "Hoạt động bình thường",
+            },
           ],
         },
         {
@@ -111,33 +148,42 @@ export const useBookings = () => {
           status: "InProgress",
           vehicleType: "Klara S",
           serviceType: "Recall",
-          time: "11:00 14/10/2025",
+          time: "13:00 14/10/2025",
+          note: "Thay cell pin theo chương trình recall",
           qrCode: "BK-2025-004",
-          note: "Bảo hành pin mới thay",
           details: [
-            { item: "Pin", warranty: "12 tháng", result: "Đang kiểm tra" },
+            { item: "Cell pin module 1", status: "Đang thay" },
+            { item: "Cell pin module 2", status: "Đang thay" },
+            { item: "Bo mạch BMS", status: "Kiểm tra OK" },
           ],
         },
       ];
-      setData(fakeData);
+
+      setData(mockData);
+    } catch (error) {
+      console.error("Lỗi fetch booking:", error);
+    } finally {
       setLoading(false);
-    }, 300);
+    }
+  };
+
+  // Gọi fetch khi load trang
+  useEffect(() => {
+    fetchBookings();
   }, []);
 
-  // Cập nhật trạng thái booking (theo flow)
+  // Cập nhật trạng thái booking
   const updateStatus = (id, newStatus, selectedTechnician = null) => {
     setData((prev) =>
-      prev.map((b) => {
-        if (b.id !== id) return b;
-
-        // Kiểm tra trạng thái hợp lệ
-
-        return {
-          ...b,
-          status: newStatus,
-          technician: selectedTechnician || b.technician || null,
-        };
-      })
+      prev.map((b) =>
+        b.id === id
+          ? {
+              ...b,
+              status: newStatus,
+              technician: selectedTechnician || b.technician || null,
+            }
+          : b
+      )
     );
   };
 
