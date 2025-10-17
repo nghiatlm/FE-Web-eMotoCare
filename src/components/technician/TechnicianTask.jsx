@@ -44,7 +44,7 @@ export default function BookingTable({
       width: 140,
       render: (status) => {
         if (!status) return <Tag>—</Tag>;
-        const key = String(status).toUpperCase();
+        const key = String(status).toLowerCase();
         return (
           <Tag color={STATUS_COLORS[key] || "default"}>
             {STATUS_MAP[key] || status}

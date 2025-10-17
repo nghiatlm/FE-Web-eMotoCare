@@ -1,21 +1,11 @@
-import { Drawer, Table, Button, Tag, Divider, Select } from "antd";
+import { Drawer, Button, Tag, Divider, Select } from "antd";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import MaintenanceContent from "./detail-content/MaintenanceContent";
 import RepairContent from "./detail-content/RepairContent";
 import WarrantyContent from "./detail-content/WarrantyContent";
 import RecallContent from "./detail-content/RecallContent";
-
-const statusColors = {
-  Pending: "#faad14",
-  Accepted: "#1677ff",
-  Assigned: "#13c2c2",
-  CheckedIn: "#722ed1",
-  Diagnosed: "#fa541c",
-  Approved: "#2f54eb",
-  Completed: "#52c41a",
-  Rejected: "#f5222d",
-};
+import { STATUS_COLORS, STATUS_MAP } from "../../utils/constants";
 
 const mockTechnicians = [
   { id: 1, name: "Nguyễn Văn A", phone: "0901234567", specialty: "Điện" },
@@ -23,19 +13,18 @@ const mockTechnicians = [
   { id: 3, name: "Lê Văn C", phone: "0903456789", specialty: "Khung gầm" },
 ];
 
-// 👉 render phần nội dung khác nhau tùy loại dịch vụ
 const renderServiceContent = (serviceType, booking) => {
-  switch (serviceType) {
-    case "Bảo dưỡng":
-    case "Maintenance":
+  switch (serviceType?.toLowerCase()) {
+    case "bảo dưỡng":
+    case "maintenance":
       return <MaintenanceContent booking={booking} />;
-    case "Sửa chữa":
-    case "Repair":
+    case "sửa chữa":
+    case "repair":
       return <RepairContent booking={booking} />;
-    case "Bảo hành":
-    case "Warranty":
+    case "bảo hành":
+    case "warranty":
       return <WarrantyContent booking={booking} />;
-    case "Recall":
+    case "recall":
       return <RecallContent booking={booking} />;
     default:
       return (
@@ -51,12 +40,14 @@ export default function BookingDetailDrawer({
   onUpdateStatus,
 }) {
   const [selectedTechnician, setSelectedTechnician] = useState(null);
-
   if (!booking) return null;
+
+  // 🔧 Chuẩn hóa trạng thái
+  const status = booking.status?.toUpperCase();
 
   const handleAssignTechnician = () => {
     if (!selectedTechnician) return;
-    onUpdateStatus("Assigned", selectedTechnician);
+    onUpdateStatus("APPROVED", selectedTechnician);
   };
 
   return (
@@ -67,9 +58,9 @@ export default function BookingDetailDrawer({
             Chi tiết booking: {booking.code}
           </span>
           <Tag
-            color={statusColors[booking.status]}
-            className='text-sm px-3 py-1 rounded-full capitalize'>
-            {booking.status}
+            color={STATUS_COLORS[status]}
+            className='text-sm px-3 py-1 rounded-full uppercase'>
+            {STATUS_MAP[status] || status}
           </Tag>
         </div>
       }
@@ -113,7 +104,7 @@ export default function BookingDetailDrawer({
         </section>
 
         {/* 👨‍🔧 Chọn kỹ thuật viên */}
-        {booking.status === "Accepted" && (
+        {booking.status === "APPROVED" && (
           <section className='bg-white rounded-2xl shadow-md p-5 mb-6 border border-[#ffd9c2]'>
             <h3 className='font-semibold text-base mb-3 border-b pb-2 text-[#d4380d]'>
               👨‍🔧 Chọn kỹ thuật viên
@@ -157,26 +148,34 @@ export default function BookingDetailDrawer({
         )}
 
         {/* 👨‍🔧 Thông tin kỹ thuật viên */}
-        {booking.technician && (
-          <section className='bg-white rounded-2xl shadow-md p-5 mb-6 border border-[#ffd9c2]'>
-            <h3 className='font-semibold text-base mb-3 border-b pb-2 text-[#d4380d]'>
-              👨‍🔧 Kỹ thuật viên phụ trách
-            </h3>
-            <div className='grid grid-cols-2 gap-y-2 text-sm text-gray-700'>
-              <p>
-                <strong>Tên:</strong> {booking.technician.name}
-              </p>
-              <p>
-                <strong>SĐT:</strong> {booking.technician.phone}
-              </p>
-              <p>
-                <strong>Chuyên môn:</strong> {booking.technician.specialty}
-              </p>
-            </div>
-          </section>
-        )}
+        {[
+          "APPROVED",
+          "CHECKED_IN",
+          "QUOTE_APPROVED",
+          "REPAIR_COMPLETED",
+          "INPROGRESS",
+          "COMPLETED",
+        ].includes(status) &&
+          booking.technician && (
+            <section className='bg-white rounded-2xl shadow-md p-5 mb-6 border border-[#ffd9c2]'>
+              <h3 className='font-semibold text-base mb-3 border-b pb-2 text-[#d4380d]'>
+                👨‍🔧 Kỹ thuật viên phụ trách
+              </h3>
+              <div className='grid grid-cols-2 gap-y-2 text-sm text-gray-700'>
+                <p>
+                  <strong>Tên:</strong> {booking.technician.name}
+                </p>
+                <p>
+                  <strong>SĐT:</strong> {booking.technician.phone}
+                </p>
+                <p>
+                  <strong>Chuyên môn:</strong> {booking.technician.specialty}
+                </p>
+              </div>
+            </section>
+          )}
 
-        {/* 🔍 Nội dung công việc (tùy loại dịch vụ) */}
+        {/* 📋 Nội dung công việc */}
         <section className='bg-white rounded-2xl shadow-md p-5 mb-6 border border-[#ffd9c2]'>
           <h3 className='font-semibold text-base mb-3 border-b pb-2 text-[#d4380d]'>
             📋 Nội dung công việc
@@ -188,52 +187,41 @@ export default function BookingDetailDrawer({
 
         {/* ⚙️ Nút hành động */}
         <div className='flex gap-3 justify-end mt-6'>
-          {booking.status === "Pending" && (
+          {status === "PENDING" && (
             <>
-              <Button danger onClick={() => onUpdateStatus("Rejected")}>
+              <Button danger onClick={() => onUpdateStatus("CANCELED")}>
                 Từ chối
               </Button>
-              <Button
-                type='primary'
-                className='bg-[#d4380d] hover:bg-[#b32005]'
-                onClick={() => onUpdateStatus("Accepted")}>
+              <Button type='primary' onClick={() => onUpdateStatus("APPROVED")}>
                 Chấp nhận
               </Button>
             </>
           )}
 
-          {booking.status === "Assigned" && (
-            <Button
-              type='primary'
-              className='bg-[#d4380d] hover:bg-[#b32005]'
-              onClick={() => onUpdateStatus("CheckedIn")}>
+          {status === "APPROVED" && (
+            <Button type='primary' onClick={() => onUpdateStatus("CHECKED_IN")}>
               🔍 Check-in
             </Button>
           )}
 
-          {booking.status === "CheckedIn" && (
+          {status === "CHECKED_IN" && (
             <Button
               type='primary'
-              className='bg-[#d4380d] hover:bg-[#b32005]'
-              onClick={() => onUpdateStatus("Diagnosed")}>
+              onClick={() => onUpdateStatus("QUOTE_APPROVED")}>
               Nhập kết quả kiểm tra
             </Button>
           )}
 
-          {booking.status === "Diagnosed" && (
+          {status === "QUOTE_APPROVED" && (
             <Button
               type='primary'
-              className='bg-[#d4380d] hover:bg-[#b32005]'
-              onClick={() => onUpdateStatus("Approved")}>
+              onClick={() => onUpdateStatus("REPAIR_COMPLETED")}>
               Xác nhận sửa chữa
             </Button>
           )}
 
-          {booking.status === "Approved" && (
-            <Button
-              type='primary'
-              className='bg-[#d4380d] hover:bg-[#b32005]'
-              onClick={() => onUpdateStatus("Completed")}>
+          {status === "REPAIR_COMPLETED" && (
+            <Button type='primary' onClick={() => onUpdateStatus("COMPLETED")}>
               Hoàn tất / Xuất hóa đơn
             </Button>
           )}

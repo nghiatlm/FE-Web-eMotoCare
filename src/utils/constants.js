@@ -1,22 +1,29 @@
+// src/constants/statusConstants.js
 import { colorBase } from "../styles/colorBase";
 
 // --- STATUS ---
 export const STATUS_MAP = {
-  pending: "Đang chờ xử lý",
-  accepted: "Đã xác nhận",
-  checkedin: "Đã check-in",
-  inprogress: "Đang thực hiện",
-  completed: "Hoàn thành",
-  canceled: "Đã hủy",
+  PENDING: "Chờ xử lý",
+  APPROVED: "Đã phê duyệt",
+  CANCELED: "Đã hủy",
+  CHECKED_IN: "Đã check-in",
+  QUOTE_APPROVED: "Báo giá được duyệt",
+  REPAIR_COMPLETED: "Hoàn tất sửa chữa",
+  COMPLETED: "Đã hoàn thành",
+  REJECTED: "Bị từ chối",
+  ASSIGNED: "Đã phân công",
 };
 
+// 🎨 Màu trạng thái (theo flow bạn gửi)
 export const STATUS_COLORS = {
-  pending: colorBase.warning,
-  accepted: colorBase.info,
-  checkedin: "#a855f7", // tím nhạt
-  inprogress: "#06b6d4", // cyan
-  completed: colorBase.success,
-  canceled: colorBase.danger,
+  PENDING: colorBase.warning,
+  APPROVED: colorBase.info,
+  CHECKED_IN: "#a855f7",
+  INPROGRESS: "#06b6d4",
+  QUOTE_APPROVED: "#06b6d4",
+  REPAIR_COMPLETED: "#10b981",
+  COMPLETED: colorBase.success,
+  CANCELED: colorBase.danger,
 };
 
 // --- SERVICE TYPE ---
@@ -25,6 +32,7 @@ export const SERVICE_TYPE_MAP = {
   repair: "Sửa chữa",
   warranty: "Bảo hành",
   recall: "Triệu hồi",
+  rma: "RMA",
 };
 
 export const SERVICE_TYPE_COLORS = {
@@ -32,4 +40,5 @@ export const SERVICE_TYPE_COLORS = {
   repair: "volcano",
   warranty: "green",
   recall: "magenta",
+  rma: "gold",
 };

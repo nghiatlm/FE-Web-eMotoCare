@@ -22,6 +22,10 @@ import { StaffSidebar } from "./components/service-staff/StaffSidebar";
 import StaffBooking from "./pages/service-staff/StaffBooking";
 const queryClient = new QueryClient();
 
+// technician
+import { TechnicianSidebar } from "./components/technician/TechnicanSidebar";
+import TechnicianPage from "./pages/technician/TechnicianPage";
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -34,7 +38,6 @@ const App = () => (
           {/* ✅ Route login nằm riêng ngoài layout */}
           <Route path='/login' element={<Login />} />
           <Route path='/forgot-password' element={<ForgotPassword />} />
-
           {/* ✅ Các route admin giữ nguyên */}
           <Route
             path='/*'
@@ -89,6 +92,31 @@ const App = () => (
               </SidebarProvider>
             }
           />
+          <Route
+            path='/technician/*'
+            element={
+              <SidebarProvider>
+                <div className='flex min-h-screen w-full'>
+                  <TechnicianSidebar />
+                  <div className='flex-1 flex flex-col'>
+                    <header className='h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10'>
+                      <SidebarTrigger className='text-foreground' />
+                    </header>
+                    <main className='flex-1'>
+                      <Routes>
+                        <Route
+                          path=''
+                          element={<Navigate to='vehicles' replace />}
+                        />
+                        <Route path='vehicles' element={<TechnicianPage />} />
+                        <Route path='*' element={<NotFound />} />
+                      </Routes>
+                    </main>
+                  </div>
+                </div>
+              </SidebarProvider>
+            }
+          />{" "}
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

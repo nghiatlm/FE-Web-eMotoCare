@@ -1,9 +1,5 @@
 import { useState, useEffect } from "react";
 
-/**
- * Hook quản lý dữ liệu và flow trạng thái cho Booking (Service Staff)
- * Dữ liệu đang là mock (giả lập fetch API)
- */
 export const useBookings = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -33,19 +29,22 @@ export const useBookings = () => {
     },
   ];
 
-  // Flow trạng thái hợp lệ
+  // Flow trạng thái hợp lệ - CHUẨN HÓA VỀ UPPERCASE
   const STATUS_FLOW = {
-    Pending: ["Accepted", "Cancelled"],
-    Accepted: ["InProgress"],
-    InProgress: ["Completed"],
-    Completed: [],
-    Cancelled: [],
+    PENDING: ["APPROVED", "CANCELED"],
+    APPROVED: ["CHECKED_IN", "CANCELED"], // APPROVED chỉ chuyển sang CHECKED_IN
+    CHECKED_IN: ["QUOTE_APPROVED"], // Giả định flow theo các nút hành động
+    QUOTE_APPROVED: ["REPAIR_COMPLETED"],
+    REPAIR_COMPLETED: ["COMPLETED"],
+    COMPLETED: [],
+    CANCELED: [],
   };
 
-  // Kiểm tra trạng thái hợp lệ
+  // Kiểm tra trạng thái hợp lệ (Nếu cần dùng)
   const canUpdateStatus = (booking, newStatus) => {
-    const nextList = STATUS_FLOW[booking.status] || [];
-    return nextList.includes(newStatus);
+    const currentStatus = booking.status?.toUpperCase();
+    const nextList = STATUS_FLOW[currentStatus] || [];
+    return nextList.includes(newStatus.toUpperCase());
   };
 
   // Giả lập fetch API
@@ -54,19 +53,20 @@ export const useBookings = () => {
     try {
       await new Promise((res) => setTimeout(res, 600));
 
+      // DỮ LIỆU MOCK ĐÃ ĐƯỢC CHUẨN HÓA VÀ SỬA LỖI LOGIC
       const mockData = [
         {
           id: "B001",
           code: "BK-2025-001",
           customerName: "Nguyễn Văn A",
           phone: "0901234567",
-          status: "Pending",
+          status: "PENDING", // Trạng thái PENDING
           vehicleType: "Evo 200Lite",
           serviceType: "Maintenance",
           time: "09:00 14/10/2025",
           note: "Định kỳ 10.000km",
           qrCode: "BK-2025-001",
-
+          // Đã xóa technician: technicians[0] để booking PENDING chưa có kỹ thuật viên
           details: [
             {
               item: "Phanh trước",
@@ -105,12 +105,13 @@ export const useBookings = () => {
           code: "BK-2025-002",
           customerName: "Trần Thị B",
           phone: "0912345678",
-          status: "Accepted",
+          status: "APPROVED", // Đã duyệt, nhưng thiếu technician -> Sẽ hiển thị form Chọn Kỹ thuật viên
           vehicleType: "Evo GrandLine",
-          serviceType: "Repair",
+          serviceType: "Maintenance",
           time: "10:30 14/10/2025",
           note: "Đèn xe không sáng",
           qrCode: "BK-2025-002",
+          // technician: technicians[1], // Giữ trống để minh họa trạng thái chờ gán KTV sau khi duyệt
           details: [
             {
               item: "Đèn pha",
@@ -125,12 +126,13 @@ export const useBookings = () => {
           code: "BK-2025-003",
           customerName: "Phạm Văn C",
           phone: "0934567890",
-          status: "Accepted",
+          status: "CHECKED_IN", // Giả định đã CHECKED_IN
           vehicleType: "Klara S",
           serviceType: "Warranty",
           time: "11:00 14/10/2025",
           note: "Bảo hành pin mới thay",
           qrCode: "BK-2025-003",
+          technician: technicians[2], // Đã có KTV
           details: [
             { item: "Pin", warranty: "12 tháng", result: "Đang kiểm tra" },
             {
@@ -145,12 +147,13 @@ export const useBookings = () => {
           code: "BK-2025-004",
           customerName: "Nguyễn Văn D",
           phone: "0909876543",
-          status: "InProgress",
+          status: "REPAIR_COMPLETED", // Đã sửa chữa xong
           vehicleType: "Klara S",
           serviceType: "Recall",
           time: "13:00 14/10/2025",
           note: "Thay cell pin theo chương trình recall",
           qrCode: "BK-2025-004",
+          technician: technicians[1], // Đã có KTV
           details: [
             { item: "Cell pin module 1", status: "Đang thay" },
             { item: "Cell pin module 2", status: "Đang thay" },
@@ -174,12 +177,16 @@ export const useBookings = () => {
 
   // Cập nhật trạng thái booking
   const updateStatus = (id, newStatus, selectedTechnician = null) => {
+    // Đảm bảo trạng thái luôn được chuẩn hóa thành UPPERCASE
+    const normalizedNewStatus = newStatus.toUpperCase();
+
     setData((prev) =>
       prev.map((b) =>
         b.id === id
           ? {
               ...b,
-              status: newStatus,
+              status: normalizedNewStatus,
+              // Gán KTV nếu có hoặc giữ nguyên KTV cũ
               technician: selectedTechnician || b.technician || null,
             }
           : b
