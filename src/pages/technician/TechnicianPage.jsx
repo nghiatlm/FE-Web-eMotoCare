@@ -1,51 +1,48 @@
 import { useState, useMemo } from "react";
 import { Modal, Button, Tabs, Select, Space, Input } from "antd";
 import { QRCodeSVG } from "qrcode.react";
-import BookingDetailDrawer from "../../components/service-staff/BookingDetailDrawer";
+import TechnicianBookingDetailDrawer from "../../components/technician/TechnicanBookingDetailDrawer";
 import BookingTable from "../../components/service-staff/BookingTable";
 import { useBookings } from "../../hooks/useBookings";
 import { FilterIcon, RotateCcw } from "lucide-react";
 
 const { Option } = Select;
 
+const HARDCODED_TECHNICIAN_ID = "5868e728-e22e-4402-8a7a-810b6ceb5f54";
+
 const TechnicianPage = () => {
   const { data, loading, updateStatus } = useBookings();
-
-  // 👇 giả sử kỹ thuật viên đang đăng nhập có id = 2
-  const currentTechnicianId = 2;
-
-  // 🔧 Lọc các booking được gán cho technician hiện tại
-  const myBookings = useMemo(() => {
-    return data.filter(
-      (item) =>
-        item.technician?.id === currentTechnicianId ||
-        item.assignedTo === currentTechnicianId
-    );
-  }, [data]);
 
   const [selected, setSelected] = useState(null);
   const [openDrawer, setOpenDrawer] = useState(false);
   const [qrRecord, setQrRecord] = useState(null);
   const [openQRModal, setOpenQRModal] = useState(false);
 
-  // 🔍 Filter states
+  const [activeTab, setActiveTab] = useState("all");
+
   const [statusFilter, setStatusFilter] = useState("");
   const [serviceFilter, setServiceFilter] = useState("");
   const [phoneFilter, setPhoneFilter] = useState("");
 
-  // 👉 Hàm lọc tổng hợp (trên dữ liệu của technician)
-  const getFilteredData = (list) => {
-    return list.filter((d) => {
-      const matchStatus = statusFilter ? d.status === statusFilter : true;
-      const matchService = serviceFilter
-        ? d.serviceType === serviceFilter
-        : true;
+  const normalizeType = (type) => {
+    if (!type) return "";
+    let key = String(type).trim().replace(/[\s-]/g, "_").toUpperCase();
+    if (key === "MAINTENACE_TYPE") key = "MAINTENANCE_TYPE";
+    return key;
+  };
+
+  const getFilteredData = (list) =>
+    list.filter((d) => {
+      const typeKey = normalizeType(d.type);
+      const statusKey = String(d.status || "").toUpperCase();
+      const matchTab = activeTab === "all" ? true : typeKey === activeTab;
+      const matchStatus = statusFilter ? statusKey === statusFilter : true;
+      const matchService = serviceFilter ? typeKey === serviceFilter : true;
       const matchPhone = phoneFilter
         ? d.phone?.toLowerCase().includes(phoneFilter.toLowerCase())
         : true;
-      return matchStatus && matchService && matchPhone;
+      return matchTab && matchStatus && matchService && matchPhone;
     });
-  };
 
   const handleViewDetail = (record) => {
     setSelected(record);
@@ -67,87 +64,19 @@ const TechnicianPage = () => {
     setOpenQRModal(false);
   };
 
-  const handleUpdateStatus = (newStatus) => {
-    if (!selected) return;
-    updateStatus(selected.id, newStatus);
-    setSelected({ ...selected, status: newStatus });
+  const handleUpdateStatus = (id, newStatus, selectedTechnician = null) => {
+    updateStatus(id, newStatus, selectedTechnician);
+    if (selected?.id === id) {
+      setSelected({
+        ...selected,
+        status: newStatus,
+        technician: selectedTechnician || selected.technician || null,
+      });
+    }
   };
-
-  // 👉 Tabs theo loại dịch vụ
-  const tabItems = [
-    {
-      key: "all",
-      label: "Tất cả",
-      children: (
-        <BookingTable
-          data={getFilteredData(myBookings)}
-          loading={loading}
-          onViewDetail={handleViewDetail}
-          onShowQR={handleShowQR}
-        />
-      ),
-    },
-    {
-      key: "maintenance",
-      label: "Bảo dưỡng",
-      children: (
-        <BookingTable
-          data={getFilteredData(
-            myBookings.filter((d) => d.serviceType === "Maintenance")
-          )}
-          loading={loading}
-          onViewDetail={handleViewDetail}
-          onShowQR={handleShowQR}
-        />
-      ),
-    },
-    {
-      key: "repair",
-      label: "Sửa chữa",
-      children: (
-        <BookingTable
-          data={getFilteredData(
-            myBookings.filter((d) => d.serviceType === "Repair")
-          )}
-          loading={loading}
-          onViewDetail={handleViewDetail}
-          onShowQR={handleShowQR}
-        />
-      ),
-    },
-    {
-      key: "warranty",
-      label: "Bảo hành",
-      children: (
-        <BookingTable
-          data={getFilteredData(
-            myBookings.filter((d) => d.serviceType === "Warranty")
-          )}
-          loading={loading}
-          onViewDetail={handleViewDetail}
-          onShowQR={handleShowQR}
-        />
-      ),
-    },
-    {
-      key: "recall",
-      label: "Recall",
-      children: (
-        <BookingTable
-          data={getFilteredData(
-            myBookings.filter((d) => d.serviceType === "Recall")
-          )}
-          loading={loading}
-          onViewDetail={handleViewDetail}
-          onShowQR={handleShowQR}
-        />
-      ),
-    },
-  ];
 
   return (
     <div style={{ padding: 16 }}>
-      {/* Header + Bộ lọc */}
       <div
         style={{
           marginBottom: 16,
@@ -155,7 +84,7 @@ const TechnicianPage = () => {
           justifyContent: "space-between",
           alignItems: "center",
         }}>
-        <h2 style={{ margin: 0 }}>Công việc của tôi</h2>
+        <h2 style={{ margin: 0 }}>Danh sách phương tiện được phân công</h2>
 
         <Space align='center' size='middle' wrap>
           <FilterIcon style={{ fontSize: 18, color: "#555" }} />
@@ -166,11 +95,10 @@ const TechnicianPage = () => {
             allowClear
             style={{ width: 160 }}
             value={statusFilter || undefined}
-            onChange={(value) => setStatusFilter(value)}>
-            <Option value='Pending'>Chờ xử lý</Option>
-            <Option value='InProgress'>Đang thực hiện</Option>
-            <Option value='Completed'>Hoàn tất</Option>
-            <Option value='Cancelled'>Đã hủy</Option>
+            onChange={setStatusFilter}>
+            <Option value='IN_SERVICE'>Đang thực hiện</Option>
+            <Option value='COMPLETED'>Hoàn tất</Option>
+            <Option value='CANCELLED'>Đã hủy</Option>
           </Select>
 
           <Select
@@ -178,11 +106,11 @@ const TechnicianPage = () => {
             allowClear
             style={{ width: 160 }}
             value={serviceFilter || undefined}
-            onChange={(value) => setServiceFilter(value)}>
-            <Option value='Maintenance'>Bảo dưỡng</Option>
-            <Option value='Repair'>Sửa chữa</Option>
-            <Option value='Warranty'>Bảo hành</Option>
-            <Option value='Recall'>Recall</Option>
+            onChange={setServiceFilter}>
+            <Option value='MAINTENANCE_TYPE'>Bảo dưỡng</Option>
+            <Option value='REPAIR_TYPE'>Sửa chữa</Option>
+            <Option value='WARRANTY_TYPE'>Bảo hành</Option>
+            <Option value='RECALL_TYPE'>Recall</Option>
           </Select>
 
           <Input
@@ -197,12 +125,13 @@ const TechnicianPage = () => {
             style={{
               cursor: "pointer",
               color: "#555",
-              transition: "color 0.2s ease",
+              transition: "color 0.2s",
             }}
             onClick={() => {
               setStatusFilter("");
               setServiceFilter("");
               setPhoneFilter("");
+              setActiveTab("all");
             }}
             onMouseEnter={(e) => (e.currentTarget.style.color = "#1677ff")}
             onMouseLeave={(e) => (e.currentTarget.style.color = "#555")}
@@ -210,17 +139,36 @@ const TechnicianPage = () => {
         </Space>
       </div>
 
-      <Tabs defaultActiveKey='all' items={tabItems} />
+      {/* Tabs */}
+      <Tabs
+        activeKey={activeTab}
+        onChange={(key) => {
+          setActiveTab(key);
+          setServiceFilter("");
+        }}
+        items={[
+          { key: "all", label: "Tất cả" },
+          { key: "MAINTENANCE_TYPE", label: "Bảo dưỡng" },
+          { key: "REPAIR_TYPE", label: "Sửa chữa" },
+          { key: "WARRANTY_TYPE", label: "Bảo hành" },
+          { key: "RECALL_TYPE", label: "Recall" },
+        ]}
+      />
 
-      {/* Drawer chi tiết */}
-      <BookingDetailDrawer
+      <BookingTable
+        data={getFilteredData(data)}
+        loading={loading}
+        onViewDetail={handleViewDetail}
+        onShowQR={handleShowQR}
+      />
+
+      <TechnicianBookingDetailDrawer
         booking={selected}
         open={openDrawer}
         onClose={handleCloseDrawer}
         onUpdateStatus={handleUpdateStatus}
       />
 
-      {/* QR Modal */}
       <Modal
         title={qrRecord ? `QR Check-in — ${qrRecord.code}` : "QR Check-in"}
         open={openQRModal}

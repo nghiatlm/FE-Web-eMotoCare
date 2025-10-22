@@ -17,32 +17,38 @@ export default function BookingTable({
     {
       title: "STT",
       key: "index",
-      width: 70,
       render: (_, __, idx) => idx + 1,
     },
     {
-      title: "Mã",
+      title: "Mã đặt lịch",
       dataIndex: "code",
       key: "code",
-      width: 140,
     },
     {
       title: "Người đặt",
-      dataIndex: "customerName",
-      key: "customerName",
+      dataIndex: "customer",
+      key: "customer",
+      render: (customer) => {
+        if (!customer) return <Tag>—</Tag>;
+        const name = [customer.firstName, customer.lastName]
+          .filter(Boolean)
+          .join(" ");
+        return <div style={{ fontWeight: 500 }}>{name || "—"}</div>;
+      },
     },
+
     {
-      title: "SĐT",
-      dataIndex: "phone",
-      key: "phone",
-      width: 130,
+      title: "Trung tâm dịch vụ",
+      dataIndex: "serviceCenter",
+      key: "serviceCenter",
+      render: (center) => center?.name,
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      width: 140,
       render: (status) => {
+        console.log("STATUS VALUE:", status);
         if (!status) return <Tag>—</Tag>;
         const key = String(status).toUpperCase();
         return (
@@ -53,18 +59,18 @@ export default function BookingTable({
       },
     },
     {
-      title: "Loại xe",
-      dataIndex: "vehicleType",
-      key: "vehicleType",
+      title: "Giai đoạn xe",
+      dataIndex: "vehicleStageId",
+      key: "vehicleStageId",
     },
     {
       title: "Loại dịch vụ",
-      dataIndex: "serviceType",
-      key: "serviceType",
-      width: 140,
+      dataIndex: "type",
+      key: "type",
       render: (service) => {
         if (!service) return <Tag>—</Tag>;
-        const key = String(service).toLowerCase();
+        let key = String(service).replace(/[\s-]/g, "_").toUpperCase();
+        if (key === "MAINTENACE_TYPE") key = "MAINTENANCE_TYPE"; // ✅ fix chính tả
         return (
           <Tag color={SERVICE_TYPE_COLORS[key] || "default"}>
             {SERVICE_TYPE_MAP[key] || service}
@@ -72,17 +78,30 @@ export default function BookingTable({
         );
       },
     },
+
+    {
+      title: "Ngày hẹn",
+      dataIndex: "appointmentDate",
+      key: "appointmentDate",
+      render: (date) => {
+        if (!date) return "—";
+        const d = new Date(date);
+        return d.toLocaleString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+      },
+    },
     {
       title: "Thời gian",
-      dataIndex: "time",
-      key: "time",
-      width: 170,
+      dataIndex: "timeSlot",
+      key: "timeSlot",
     },
     {
       title: "QR",
-      dataIndex: "qrCode",
-      key: "qrCode",
-      width: 90,
+      dataIndex: "checkinCode",
+      key: "checkinCode",
       render: (q, record) =>
         q ? (
           <Button
@@ -98,7 +117,6 @@ export default function BookingTable({
     {
       title: "Hành động",
       key: "action",
-      width: 140,
       render: (_, record) => (
         <Space>
           <Button type='link' onClick={() => onViewDetail(record)}>

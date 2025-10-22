@@ -4,8 +4,7 @@ import { QRCodeSVG } from "qrcode.react";
 import BookingDetailDrawer from "../../components/service-staff/BookingDetailDrawer";
 import BookingTable from "../../components/service-staff/BookingTable";
 import { useBookings } from "../../hooks/useBookings";
-import { FilterIcon } from "lucide-react";
-import { RotateCcw } from "lucide-react";
+import { FilterIcon, RotateCcw } from "lucide-react";
 
 const { Option } = Select;
 
@@ -17,24 +16,31 @@ const StaffBooking = () => {
   const [qrRecord, setQrRecord] = useState(null);
   const [openQRModal, setOpenQRModal] = useState(false);
 
-  // 🔍 Filter states
+  const [activeTab, setActiveTab] = useState("all");
+
   const [statusFilter, setStatusFilter] = useState("");
   const [serviceFilter, setServiceFilter] = useState("");
   const [phoneFilter, setPhoneFilter] = useState("");
 
-  // 👉 Hàm lọc tổng hợp
-  const getFilteredData = (list) => {
-    return list.filter((d) => {
-      const matchStatus = statusFilter ? d.status === statusFilter : true;
-      const matchService = serviceFilter
-        ? d.serviceType === serviceFilter
-        : true;
+  const normalizeType = (type) => {
+    if (!type) return "";
+    let key = String(type).trim().replace(/[\s-]/g, "_").toUpperCase();
+    if (key === "MAINTENACE_TYPE") key = "MAINTENANCE_TYPE";
+    return key;
+  };
+
+  const getFilteredData = (list) =>
+    list.filter((d) => {
+      const typeKey = normalizeType(d.type);
+      const statusKey = String(d.status || "").toUpperCase();
+      const matchTab = activeTab === "all" ? true : typeKey === activeTab;
+      const matchStatus = statusFilter ? statusKey === statusFilter : true;
+      const matchService = serviceFilter ? typeKey === serviceFilter : true;
       const matchPhone = phoneFilter
         ? d.phone?.toLowerCase().includes(phoneFilter.toLowerCase())
         : true;
-      return matchStatus && matchService && matchPhone;
+      return matchTab && matchStatus && matchService && matchPhone;
     });
-  };
 
   const handleViewDetail = (record) => {
     setSelected(record);
@@ -56,87 +62,21 @@ const StaffBooking = () => {
     setOpenQRModal(false);
   };
 
-  const handleUpdateStatus = (newStatus, selectedTechnician = null) => {
-    if (!selected) return;
-    updateStatus(selected.id, newStatus, selectedTechnician);
-    setSelected({
-      ...selected,
-      status: newStatus,
-      technician: selectedTechnician || selected.technician || null,
-    });
+  // ✅ Đồng bộ với Drawer: prop onUpdateStatus
+  const handleUpdateStatus = (id, newStatus, selectedTechnician = null) => {
+    updateStatus(id, newStatus, selectedTechnician);
+    if (selected?.id === id) {
+      setSelected({
+        ...selected,
+        status: newStatus,
+        technician: selectedTechnician || selected.technician || null,
+      });
+    }
   };
-
-  // 👉 Tabs dữ liệu theo loại dịch vụ
-  const tabItems = [
-    {
-      key: "all",
-      label: "Tất cả",
-      children: (
-        <BookingTable
-          data={getFilteredData(data)}
-          loading={loading}
-          onViewDetail={handleViewDetail}
-          onShowQR={handleShowQR}
-        />
-      ),
-    },
-    {
-      key: "maintenance",
-      label: "Bảo dưỡng",
-      children: (
-        <BookingTable
-          data={getFilteredData(
-            data.filter((d) => d.serviceType === "Maintenance")
-          )}
-          loading={loading}
-          onViewDetail={handleViewDetail}
-          onShowQR={handleShowQR}
-        />
-      ),
-    },
-    {
-      key: "repair",
-      label: "Sửa chữa",
-      children: (
-        <BookingTable
-          data={getFilteredData(data.filter((d) => d.serviceType === "Repair"))}
-          loading={loading}
-          onViewDetail={handleViewDetail}
-          onShowQR={handleShowQR}
-        />
-      ),
-    },
-    {
-      key: "warranty",
-      label: "Bảo hành",
-      children: (
-        <BookingTable
-          data={getFilteredData(
-            data.filter((d) => d.serviceType === "Warranty")
-          )}
-          loading={loading}
-          onViewDetail={handleViewDetail}
-          onShowQR={handleShowQR}
-        />
-      ),
-    },
-    {
-      key: "recall",
-      label: "Recall",
-      children: (
-        <BookingTable
-          data={getFilteredData(data.filter((d) => d.serviceType === "Recall"))}
-          loading={loading}
-          onViewDetail={handleViewDetail}
-          onShowQR={handleShowQR}
-        />
-      ),
-    },
-  ];
 
   return (
     <div style={{ padding: 16 }}>
-      {/* Header + Bộ lọc */}
+      {/* Header + Filter */}
       <div
         style={{
           marginBottom: 16,
@@ -146,22 +86,19 @@ const StaffBooking = () => {
         }}>
         <h2 style={{ margin: 0 }}>Danh sách Booking</h2>
 
-        {/* Filter bar */}
         <Space align='center' size='middle' wrap>
           <FilterIcon style={{ fontSize: 18, color: "#555" }} />
           <span style={{ fontWeight: 500 }}>Bộ lọc:</span>
 
-          {/* Trạng thái */}
           <Select
             placeholder='Trạng thái'
             allowClear
             style={{ width: 160 }}
-            value={statusFilter || undefined} // ✅ Dòng này quan trọng
-            onChange={(value) => setStatusFilter(value)}>
-            <Option value='Chờ xử lý'>Chờ xử lý</Option>
-            <Option value='Đang thực hiện'>Đang thực hiện</Option>
-            <Option value='Hoàn tất'>Hoàn tất</Option>
-            <Option value='Đã hủy'>Đã hủy</Option>
+            value={statusFilter || undefined}
+            onChange={setStatusFilter}>
+            <Option value='IN_SERVICE'>Đang thực hiện</Option>
+            <Option value='COMPLETED'>Hoàn tất</Option>
+            <Option value='CANCELLED'>Đã hủy</Option>
           </Select>
 
           <Select
@@ -169,14 +106,13 @@ const StaffBooking = () => {
             allowClear
             style={{ width: 160 }}
             value={serviceFilter || undefined}
-            onChange={(value) => setServiceFilter(value)}>
-            <Option value='Bảo dưỡng'>Bảo dưỡng</Option>
-            <Option value='Sửa chữa'>Sửa chữa</Option>
-            <Option value='Bảo hành'>Bảo hành</Option>
-            <Option value='Recall'>Recall</Option>
+            onChange={setServiceFilter}>
+            <Option value='MAINTENANCE_TYPE'>Bảo dưỡng</Option>
+            <Option value='REPAIR_TYPE'>Sửa chữa</Option>
+            <Option value='WARRANTY_TYPE'>Bảo hành</Option>
+            <Option value='RECALL_TYPE'>Recall</Option>
           </Select>
 
-          {/* Số điện thoại */}
           <Input
             placeholder='Nhập số điện thoại'
             value={phoneFilter}
@@ -184,18 +120,18 @@ const StaffBooking = () => {
             style={{ width: 180 }}
           />
 
-          {/* Reset */}
           <RotateCcw
             size={20}
             style={{
               cursor: "pointer",
               color: "#555",
-              transition: "color 0.2s ease",
+              transition: "color 0.2s",
             }}
             onClick={() => {
               setStatusFilter("");
               setServiceFilter("");
               setPhoneFilter("");
+              setActiveTab("all");
             }}
             onMouseEnter={(e) => (e.currentTarget.style.color = "#1677ff")}
             onMouseLeave={(e) => (e.currentTarget.style.color = "#555")}
@@ -204,9 +140,30 @@ const StaffBooking = () => {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultActiveKey='all' items={tabItems} />
+      <Tabs
+        activeKey={activeTab}
+        onChange={(key) => {
+          setActiveTab(key);
+          setServiceFilter("");
+        }}
+        items={[
+          { key: "all", label: "Tất cả" },
+          { key: "MAINTENANCE_TYPE", label: "Bảo dưỡng" },
+          { key: "REPAIR_TYPE", label: "Sửa chữa" },
+          { key: "WARRANTY_TYPE", label: "Bảo hành" },
+          { key: "RECALL_TYPE", label: "Recall" },
+        ]}
+      />
 
-      {/* Drawer chi tiết */}
+      {/* Table */}
+      <BookingTable
+        data={getFilteredData(data)}
+        loading={loading}
+        onViewDetail={handleViewDetail}
+        onShowQR={handleShowQR}
+      />
+
+      {/* Drawer */}
       <BookingDetailDrawer
         booking={selected}
         open={openDrawer}

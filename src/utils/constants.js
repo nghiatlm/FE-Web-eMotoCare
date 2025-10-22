@@ -12,6 +12,7 @@ export const STATUS_MAP = {
   COMPLETED: "Đã hoàn thành",
   REJECTED: "Bị từ chối",
   ASSIGNED: "Đã phân công",
+  IN_SERVICE: "Đang thực hiện",
 };
 
 // 🎨 Màu trạng thái (theo flow bạn gửi)
@@ -24,21 +25,22 @@ export const STATUS_COLORS = {
   REPAIR_COMPLETED: "#10b981",
   COMPLETED: colorBase.success,
   CANCELED: colorBase.danger,
+  IN_SERVICE: "#f59e0b",
 };
 
 // --- SERVICE TYPE ---
 export const SERVICE_TYPE_MAP = {
-  maintenance: "Bảo dưỡng",
-  repair: "Sửa chữa",
-  warranty: "Bảo hành",
-  recall: "Triệu hồi",
-  rma: "RMA",
+  MAINTENANCE_TYPE: "Bảo dưỡng",
+  REPAIR_TYPE: "Sửa chữa",
+  WARRANTY_TYPE: "Bảo hành",
+  RECALL_TYPE: "Triệu hồi",
+  RMA_TYPE: "RMA",
 };
 
 export const SERVICE_TYPE_COLORS = {
-  maintenance: "geekblue",
-  repair: "volcano",
-  warranty: "green",
-  recall: "magenta",
-  rma: "gold",
+  MAINTENANCE_TYPE: "geekblue",
+  REPAIR_TYPE: "volcano",
+  WARRANTY_TYPE: "green",
+  RECALL_TYPE: "magenta",
+  RMA_TYPE: "gold",
 };
