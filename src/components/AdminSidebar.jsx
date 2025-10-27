@@ -1,4 +1,4 @@
-import { LayoutDashboard, Bike, FileText, Users, BarChart3, Settings, Store } from "lucide-react";
+import { LayoutDashboard, Bike, FileText, Users, BarChart3, Settings, Store, Package } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar, } from "@/components/ui/sidebar";
 const menuItems = [
@@ -6,6 +6,7 @@ const menuItems = [
     { title: "Vehicles", icon: Bike, url: "/admin/vehicles" },
     { title: "Warranty Claims", icon: FileText, url: "/admin/warranty-claims" },
     { title: "Branches", icon: Store, url: "/admin/branches" },
+    { title: "Service Packages", icon: Package, url: "/admin/service-packages" },
     { title: "Users", icon: Users, url: "/admin/users" },
     { title: "Reports", icon: BarChart3, url: "/admin/reports" },
     { title: "Settings", icon: Settings, url: "/admin/settings" },

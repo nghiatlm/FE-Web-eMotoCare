@@ -104,23 +104,22 @@ export default function Branches() {
               </SelectContent>
             </Select>
 
-          <Select value={manager} onValueChange={setManager}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Manager" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="Dũng">Dũng</SelectItem>
-              <SelectItem value="Dung">Dung</SelectItem>
-              <SelectItem value="Thuận">Thuận</SelectItem>
-              <SelectItem value="Alex">Alex</SelectItem>
-              <SelectItem value="Linh">Linh</SelectItem>
-              <SelectItem value="Việt">Việt</SelectItem>
-              <SelectItem value="Tâm">Tâm</SelectItem>
-              <SelectItem value="Hoàng">Hoàng</SelectItem>
-              <SelectItem value="Vương">Vương</SelectItem>
-            </SelectContent>
-          </Select>
+            <Select value={manager} onValueChange={setManager}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Manager" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="Dung">Dung</SelectItem>
+                <SelectItem value="Thuận">Thuận</SelectItem>
+                <SelectItem value="Alex">Alex</SelectItem>
+                <SelectItem value="Linh">Linh</SelectItem>
+                <SelectItem value="Việt">Việt</SelectItem>
+                <SelectItem value="Tâm">Tâm</SelectItem>
+                <SelectItem value="Hoàng">Hoàng</SelectItem>
+                <SelectItem value="Vương">Vương</SelectItem>
+              </SelectContent>
+            </Select>
 
             {(status || manager || search) && (
               <Button
@@ -174,7 +173,6 @@ export default function Branches() {
                       <SelectValue placeholder="Chọn quản lý" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Dũng">Dũng</SelectItem>
                       <SelectItem value="Dung">Dung</SelectItem>
                       <SelectItem value="Thuận">Thuận</SelectItem>
                       <SelectItem value="Alex">Alex</SelectItem>
@@ -242,7 +240,6 @@ export default function Branches() {
                       <SelectValue placeholder="Chọn quản lý" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Dũng">Dũng</SelectItem>
                       <SelectItem value="Dung">Dung</SelectItem>
                       <SelectItem value="Thuận">Thuận</SelectItem>
                       <SelectItem value="Alex">Alex</SelectItem>
