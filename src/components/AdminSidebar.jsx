@@ -2,13 +2,13 @@ import { LayoutDashboard, Bike, FileText, Users, BarChart3, Settings, Store } fr
 import { NavLink } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar, } from "@/components/ui/sidebar";
 const menuItems = [
-    { title: "Dashboard", icon: LayoutDashboard, url: "/" },
-    { title: "Vehicles", icon: Bike, url: "/vehicles" },
-    { title: "Warranty Claims", icon: FileText, url: "/warranty-claims" },
-    { title: "Branches", icon: Store, url: "/branches" },
-    { title: "Users", icon: Users, url: "/users" },
-    { title: "Reports", icon: BarChart3, url: "/reports" },
-    { title: "Settings", icon: Settings, url: "/settings" },
+    { title: "Dashboard", icon: LayoutDashboard, url: "/admin" },
+    { title: "Vehicles", icon: Bike, url: "/admin/vehicles" },
+    { title: "Warranty Claims", icon: FileText, url: "/admin/warranty-claims" },
+    { title: "Branches", icon: Store, url: "/admin/branches" },
+    { title: "Users", icon: Users, url: "/admin/users" },
+    { title: "Reports", icon: BarChart3, url: "/admin/reports" },
+    { title: "Settings", icon: Settings, url: "/admin/settings" },
 ];
 export function AdminSidebar() {
     const { state } = useSidebar();

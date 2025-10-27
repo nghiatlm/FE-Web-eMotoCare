@@ -93,10 +93,6 @@ export default function Vehicles() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
             <Button className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setIsAddOpen(true)}>
               <Plus className="h-4 w-4" />
               Add new device

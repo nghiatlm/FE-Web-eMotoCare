@@ -79,46 +79,30 @@ export default function Branches() {
           <p className="text-muted-foreground">Quản lý chi nhánh</p>
         </div>
 
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Tìm kiếm chi nhánh"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+        <div className="mb-6 p-4 bg-card rounded-lg border border-border">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="relative w-[350px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Tìm kiếm chi nhánh"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
 
-          <div className="flex items-center gap-3">
-            <Button variant="outline" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
-            <Button className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setIsAddOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Thêm chi nhánh
-            </Button>
-          </div>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-card rounded-lg border border-border">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium text-foreground">Filters:</span>
-          </div>
-
-          <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-              <SelectItem value="suspended">Suspended</SelectItem>
-            </SelectContent>
-          </Select>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="suspended">Suspended</SelectItem>
+              </SelectContent>
+            </Select>
 
           <Select value={manager} onValueChange={setManager}>
             <SelectTrigger className="w-[200px]">
@@ -126,6 +110,7 @@ export default function Branches() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
+              <SelectItem value="Dũng">Dũng</SelectItem>
               <SelectItem value="Dung">Dung</SelectItem>
               <SelectItem value="Thuận">Thuận</SelectItem>
               <SelectItem value="Alex">Alex</SelectItem>
@@ -137,20 +122,28 @@ export default function Branches() {
             </SelectContent>
           </Select>
 
-          {(status || manager || search) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setStatus("");
-                setManager("");
-                setSearch("");
-              }}
-              className="text-primary hover:text-primary/90"
-            >
-              Clear Filters
-            </Button>
-          )}
+            {(status || manager || search) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setStatus("");
+                  setManager("");
+                  setSearch("");
+                }}
+                className="text-primary hover:text-primary/90"
+              >
+                Clear Filters
+              </Button>
+            )}
+
+            <div className="flex items-center gap-3 ml-auto">
+              <Button className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setIsAddOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Thêm chi nhánh
+              </Button>
+            </div>
+          </div>
         </div>
 
         <BranchesTable search={search} status={status} manager={manager} />
@@ -181,6 +174,7 @@ export default function Branches() {
                       <SelectValue placeholder="Chọn quản lý" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="Dũng">Dũng</SelectItem>
                       <SelectItem value="Dung">Dung</SelectItem>
                       <SelectItem value="Thuận">Thuận</SelectItem>
                       <SelectItem value="Alex">Alex</SelectItem>
@@ -248,6 +242,7 @@ export default function Branches() {
                       <SelectValue placeholder="Chọn quản lý" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="Dũng">Dũng</SelectItem>
                       <SelectItem value="Dung">Dung</SelectItem>
                       <SelectItem value="Thuận">Thuận</SelectItem>
                       <SelectItem value="Alex">Alex</SelectItem>

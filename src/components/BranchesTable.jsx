@@ -108,7 +108,7 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Branch Name</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Location</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Phone Number</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Manager in Charge</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Manager</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Operating Hours</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Status</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Action</th>
