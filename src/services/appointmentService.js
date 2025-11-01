@@ -4,6 +4,7 @@ import {
   checkinAppointmentByCode,
   assignTechnician,
   getCheckinCode,
+  postAppointment,
 } from "../api/appointmentsApi";
 import { fetchServiceStaff } from "./staffsService";
 
@@ -15,6 +16,11 @@ export const fetchAppointments = async () => {
     console.error("Lỗi lấy danh sách lịch hẹn:", error);
     throw error;
   }
+};
+
+export const createAppointmentService = async (data) => {
+  const res = await postAppointment(data);
+  return res.data;
 };
 
 // Duyệt lịch hẹn

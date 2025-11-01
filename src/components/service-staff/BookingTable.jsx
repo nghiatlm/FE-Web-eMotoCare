@@ -60,8 +60,8 @@ export default function BookingTable({
     },
     {
       title: "Giai đoạn xe",
-      dataIndex: "vehicleStageId",
-      key: "vehicleStageId",
+      dataIndex: "",
+      key: "",
     },
     {
       title: "Loại dịch vụ",
@@ -70,7 +70,7 @@ export default function BookingTable({
       render: (service) => {
         if (!service) return <Tag>—</Tag>;
         let key = String(service).replace(/[\s-]/g, "_").toUpperCase();
-        if (key === "MAINTENACE_TYPE") key = "MAINTENANCE_TYPE"; // ✅ fix chính tả
+        if (key === "MAINTENACE_TYPE") key = "MAINTENANCE_TYPE";
         return (
           <Tag color={SERVICE_TYPE_COLORS[key] || "default"}>
             {SERVICE_TYPE_MAP[key] || service}

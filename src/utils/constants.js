@@ -13,6 +13,7 @@ export const STATUS_MAP = {
   REJECTED: "Bị từ chối",
   ASSIGNED: "Đã phân công",
   IN_SERVICE: "Đang thực hiện",
+  IN_PROGRESS: "Đang sửa chữa",
 };
 
 // 🎨 Màu trạng thái (theo flow bạn gửi)
@@ -20,7 +21,7 @@ export const STATUS_COLORS = {
   PENDING: colorBase.warning,
   APPROVED: colorBase.info,
   CHECKED_IN: "#a855f7",
-  INPROGRESS: "#06b6d4",
+  IN_PROGRESS: "#06b6d4",
   QUOTE_APPROVED: "#06b6d4",
   REPAIR_COMPLETED: "#10b981",
   COMPLETED: colorBase.success,

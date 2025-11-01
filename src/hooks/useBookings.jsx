@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { fetchAppointments } from "../services/appointmentService";
+import {
+  fetchAppointments,
+  createAppointmentService,
+} from "../services/appointmentService";
 
 export const useBookings = () => {
   const [data, setData] = useState([]); // danh sách booking
@@ -35,7 +38,15 @@ export const useBookings = () => {
       setLoading(false);
     }
   };
-
+  const createBooking = async (payload) => {
+    try {
+      await createAppointmentService(payload);
+      await loadBookings();
+    } catch (err) {
+      console.error("Lỗi tạo booking:", err);
+      throw err;
+    }
+  };
   useEffect(() => {
     fetchBookings();
   }, []);

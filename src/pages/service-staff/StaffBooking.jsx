@@ -3,6 +3,7 @@ import { Modal, Button, Tabs, Select, Space, Input } from "antd";
 import { QRCodeSVG } from "qrcode.react";
 import BookingDetailDrawer from "../../components/service-staff/BookingDetailDrawer";
 import BookingTable from "../../components/service-staff/BookingTable";
+import BookingForm from "../../components/service-staff/BookingForm"; // 🆕 import form tạo
 import { useBookings } from "../../hooks/useBookings";
 import { FilterIcon, RotateCcw } from "lucide-react";
 
@@ -16,8 +17,10 @@ const StaffBooking = () => {
   const [qrRecord, setQrRecord] = useState(null);
   const [openQRModal, setOpenQRModal] = useState(false);
 
-  const [activeTab, setActiveTab] = useState("all");
+  // 🆕 modal tạo lịch hẹn
+  const [openCreateModal, setOpenCreateModal] = useState(false);
 
+  const [activeTab, setActiveTab] = useState("all");
   const [statusFilter, setStatusFilter] = useState("");
   const [serviceFilter, setServiceFilter] = useState("");
   const [phoneFilter, setPhoneFilter] = useState("");
@@ -62,7 +65,7 @@ const StaffBooking = () => {
     setOpenQRModal(false);
   };
 
-  // ✅ Đồng bộ với Drawer: prop onUpdateStatus
+  // ✅ Cập nhật trạng thái
   const handleUpdateStatus = (id, newStatus, selectedTechnician = null) => {
     updateStatus(id, newStatus, selectedTechnician);
     if (selected?.id === id) {
@@ -76,6 +79,15 @@ const StaffBooking = () => {
 
   return (
     <div style={{ padding: 16 }}>
+      {/* 🆕 Nút mở modal tạo lịch hẹn */}
+      <div className='flex justify-end pb-5 pr-10'>
+        <Button
+          className='bg-blue-600 hover:bg-blue-1000 text-white font-medium px-4 py-2 rounded-lg'
+          onClick={() => setOpenCreateModal(true)}>
+          Tạo lịch hẹn
+        </Button>
+      </div>
+
       {/* Header + Filter */}
       <div
         style={{
@@ -163,7 +175,7 @@ const StaffBooking = () => {
         onShowQR={handleShowQR}
       />
 
-      {/* Drawer */}
+      {/* Drawer chi tiết */}
       <BookingDetailDrawer
         booking={selected}
         open={openDrawer}
@@ -190,6 +202,21 @@ const StaffBooking = () => {
         ) : (
           <div style={{ textAlign: "center", padding: 24 }}>Không có QR</div>
         )}
+      </Modal>
+
+      {/* 🆕 Modal tạo lịch hẹn */}
+      <Modal
+        title='Tạo lịch hẹn mới'
+        open={openCreateModal}
+        onCancel={() => setOpenCreateModal(false)}
+        footer={null}
+        centered>
+        <BookingForm
+          onSuccess={() => {
+            setOpenCreateModal(false);
+            // Có thể refetch danh sách sau khi tạo
+          }}
+        />
       </Modal>
     </div>
   );

@@ -4,6 +4,7 @@ const BASE_URL = "/v1/appointments";
 
 // Lấy danh sách lịch hẹn
 export const getAppointments = () => api.get(BASE_URL);
+export const postAppointment = (data) => api.post(BASE_URL, data);
 
 // Lấy chi tiết 1 lịch hẹn
 export const getAppointmentById = (id) => api.get(`${BASE_URL}/${id}`);
@@ -16,7 +17,7 @@ export const approveAppointment = (appointmentId, staffId) => {
 
 // Lấy mã check-in từ appointmentId
 export const getCheckinCode = (appointmentId) =>
-  api.get(`${BASE_URL}/${appointmentId}/checkin`);
+  api.get(`${BASE_URL}/${appointmentId}/getcode`);
 
 // Check-in theo code
 export const checkinAppointmentByCode = (code) =>
