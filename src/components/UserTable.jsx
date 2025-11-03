@@ -2,28 +2,74 @@ import { useState, useMemo, useEffect } from "react";
 import { Pencil, Ban, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
-const mockUsers = [
-    { id: "1", avatar: "", phoneNumber: "0376212391", email: "nguyen@gmail.com", fullName: "Alex Nguyen", role: "Customer", status: "active" },
-    { id: "2", avatar: "", phoneNumber: "0376 212 3911", email: "johnson@gmail.com", fullName: "Sarah Johnson", role: "Customer", status: "blocked" },
-    { id: "3", avatar: "", phoneNumber: "0376 212 3912", email: "smith@gmail.com", fullName: "John Smith", role: "Customer", status: "active" },
-    { id: "4", avatar: "", phoneNumber: "0376 212 3912", email: "chen@gmail.com", fullName: "Mike Chen", role: "Customer", status: "active" },
-    { id: "5", avatar: "", phoneNumber: "0376 212 3912", email: "davis@gmail.com", fullName: "John Smith", role: "Customer", status: "active" },
-    { id: "6", avatar: "", phoneNumber: "0376 212 3912", email: "wilson@gmail.com", fullName: "Emily Davis", role: "Customer", status: "active" },
-    { id: "7", avatar: "", phoneNumber: "0376 212 3912", email: "tran@gmail.com", fullName: "John Smith", role: "Staff-technical", status: "active" },
-    { id: "8", avatar: "", phoneNumber: "0376 212 3912", email: "pham@gmail.com", fullName: "David Wilson", role: "Admin", status: "active" },
-    { id: "9", avatar: "", phoneNumber: "0376 212 3912", email: "le@gmail.com", fullName: "Daniel Dang", role: "Manager", status: "active" },
-];
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { getUsers } from "@/api/usersApi";
 
 export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }) {
-    const [users, setUsers] = useState(mockUsers);
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [pageSize] = useState(10);
+    const [total, setTotal] = useState(0);
+    const [error, setError] = useState(null);
+
+    const transformRoleName = (roleName) => {
+        switch (roleName) {
+            case "ROLE_CUSTOMER":
+                return "Customer";
+            case "ROLE_STAFF":
+                return "Staff-technical";
+            case "ROLE_TECHNICIAN":
+                return "Staff-technical";
+            case "ROLE_ADMIN":
+                return "Admin";
+            default:
+                return roleName;
+        }
+    };
+
+    const fetchUsers = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const response = await getUsers(page, pageSize);
+            
+            if (response.success && response.data) {
+                const transformedUsers = response.data.rowDatas.map(user => ({
+                    id: user.id,
+                    phoneNumber: user.phone || "N/A",
+                    email: user.email || "N/A",
+                    fullName: user.customer 
+                        ? `${user.customer.firstName} ${user.customer.lastName}`
+                        : user.staff
+                        ? `${user.staff.firstName} ${user.staff.lastName}`
+                        : "N/A",
+                    role: transformRoleName(user.roleName),
+                    status: user.stattus === "ACTIVE" ? "active" : "blocked",
+                    avatar: user.customer?.avatarUrl || user.staff?.avatarUrl || "",
+                    rawData: user
+                }));
+                
+                setUsers(transformedUsers);
+                setTotal(response.data.total || 0);
+            }
+        } catch (err) {
+            console.error("Error fetching users:", err);
+            setError(err.message || "Failed to fetch users");
+            setUsers([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchUsers();
+    }, [page, pageSize]);
     
-    // Function to add new user (can be called from parent)
     const addUser = (newUser) => {
         setUsers(prevUsers => [newUser, ...prevUsers]);
     };
     
-    // Function to update user (can be called from parent)
     const updateUser = (updatedUser) => {
         setUsers(prevUsers => 
             prevUsers.map(user => 
@@ -36,24 +82,21 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
     useEffect(() => {
         window.addUserToTable = addUser;
         window.updateUserInTable = updateUser;
-    }, []);
+        window.refreshUserList = fetchUsers;
+    }, [fetchUsers]);
     
-    // Filter users based on search and filter criteria
     const filteredUsers = useMemo(() => {
         return users.filter(user => {
-            // Search filter - search in name, email, phone, and id
             const matchesSearch = !searchQuery || 
                 user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 user.phoneNumber.includes(searchQuery) ||
                 user.id.includes(searchQuery);
             
-            // Name filter (A-M, N-Z)
             const matchesNameFilter = !nameFilter || nameFilter === "all" ||
                 (nameFilter === "a-m" && user.fullName.charAt(0).toLowerCase() >= 'a' && user.fullName.charAt(0).toLowerCase() <= 'm') ||
                 (nameFilter === "n-z" && user.fullName.charAt(0).toLowerCase() >= 'n' && user.fullName.charAt(0).toLowerCase() <= 'z');
             
-            // Role filter
             const matchesRoleFilter = !roleFilter || roleFilter === "all" ||
                 (roleFilter === "admin" && user.role.toLowerCase() === "admin") ||
                 (roleFilter === "manager" && user.role.toLowerCase() === "manager") ||
@@ -64,7 +107,6 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
         });
     }, [users, searchQuery, nameFilter, roleFilter]);
     
-    // Check if any filters are active
     const hasActiveFilters = searchQuery || (nameFilter && nameFilter !== "all") || (roleFilter && roleFilter !== "all");
     const getInitials = (name) => {
         return name
@@ -97,12 +139,34 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
                 return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400";
         }
     };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+                    <p className="text-muted-foreground text-sm">Loading users...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                    <p className="text-red-600 dark:text-red-400 mb-2">Error loading users</p>
+                    <p className="text-muted-foreground text-sm">{error}</p>
+                </div>
+            </div>
+        );
+    }
+
     return (<div>
-      {/* Results Count */}
       <p className="text-sm text-muted-foreground mb-4">
         {hasActiveFilters 
-          ? `Showing ${filteredUsers.length} of ${users.length} users`
-          : `Showing ${users.length} users`
+          ? `Showing ${filteredUsers.length} of ${users.length} filtered users`
+          : `Showing ${users.length} of ${total} total users`
         }
       </p>
       
@@ -111,7 +175,6 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
         <table className="w-full">
           <thead>
             <tr className="bg-muted/50 border-b border-border">
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">ID</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Avatar</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Phone Number</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Email</th>
@@ -133,7 +196,6 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
               </tr>
             ) : (
               filteredUsers.map((user, index) => (<tr key={user.id} className={`border-b border-border hover:bg-muted/30 transition-colors ${index % 2 === 0 ? "bg-card" : "bg-muted/10"}`}>
-                <td className="py-4 px-6 text-sm font-medium text-muted-foreground">{user.id}</td>
                 <td className="py-4 px-6">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={user.avatar} alt={user.fullName}/>
@@ -206,5 +268,40 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
         </table>
       </div>
       </div>
+
+      {/* Pagination */}
+      {total > pageSize && (
+        <div className="mt-6 flex justify-center">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                  className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              
+              {Array.from({ length: Math.ceil(total / pageSize) }, (_, i) => i + 1).map(pageNum => (
+                <PaginationItem key={pageNum}>
+                  <PaginationLink
+                    onClick={() => setPage(pageNum)}
+                    isActive={page === pageNum}
+                    className="cursor-pointer"
+                  >
+                    {pageNum}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+              
+              <PaginationItem>
+                <PaginationNext 
+                  onClick={() => setPage(prev => Math.min(Math.ceil(total / pageSize), prev + 1))}
+                  className={page >= Math.ceil(total / pageSize) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
     </div>);
 }

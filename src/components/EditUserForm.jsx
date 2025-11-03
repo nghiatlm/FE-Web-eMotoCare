@@ -6,30 +6,62 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { updateUser } from "@/api/usersApi";
 
 export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
   const [formData, setFormData] = useState({
-    fullName: "",
+    phone: "",
     email: "",
-    phoneNumber: "",
-    role: "",
-    avatar: "",
-    status: "active"
+    password: "",
+    roleName: "",
+    status: "ACTIVE"
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const { toast } = useToast();
 
+  // Helper function to transform role name
+  const transformRoleName = (roleName) => {
+    switch (roleName) {
+      case "ROLE_CUSTOMER":
+        return "Customer";
+      case "ROLE_STAFF":
+        return "Staff-technical";
+      case "ROLE_TECHNICIAN":
+        return "Staff-technical";
+      case "ROLE_ADMIN":
+        return "Admin";
+      default:
+        return roleName;
+    }
+  };
+
+  const transformRoleToApi = (role) => {
+    switch (role) {
+      case "Customer":
+        return "ROLE_CUSTOMER";
+      case "Staff-technical":
+        return "ROLE_STAFF";
+      case "Technician":
+        return "ROLE_TECHNICIAN";
+      case "Admin":
+        return "ROLE_ADMIN";
+      default:
+        return role;
+    }
+  };
+
   // Update form data when user prop changes
   useEffect(() => {
     if (user) {
+      // Use rawData if available (API data), otherwise use transformed data
+      const rawUser = user.rawData || user;
       setFormData({
-        fullName: user.fullName || "",
-        email: user.email || "",
-        phoneNumber: user.phoneNumber || "",
-        role: user.role || "",
-        avatar: user.avatar || "",
-        status: user.status || "active"
+        phone: rawUser.phone || user.phoneNumber || "",
+        email: rawUser.email || user.email || "",
+        password: "", // Don't pre-fill password
+        roleName: rawUser.roleName || transformRoleToApi(user.role) || "",
+        status: rawUser.stattus || (user.status === "active" ? "ACTIVE" : "IN_ACTIVE") || "ACTIVE"
       });
       setErrors({});
     }
@@ -38,8 +70,10 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = "Full name is required";
+    if (!formData.phone.trim()) {
+      newErrors.phone = "Phone number is required";
+    } else if (!/^[0-9\s+\-()]+$/.test(formData.phone)) {
+      newErrors.phone = "Phone number is invalid";
     }
     
     if (!formData.email.trim()) {
@@ -48,14 +82,13 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
       newErrors.email = "Email is invalid";
     }
     
-    if (!formData.phoneNumber.trim()) {
-      newErrors.phoneNumber = "Phone number is required";
-    } else if (!/^[0-9\s+\-()]+$/.test(formData.phoneNumber)) {
-      newErrors.phoneNumber = "Phone number is invalid";
+    // Password is optional for updates
+    if (formData.password && formData.password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
     }
     
-    if (!formData.role) {
-      newErrors.role = "Role is required";
+    if (!formData.roleName) {
+      newErrors.roleName = "Role is required";
     }
     
     setErrors(newErrors);
@@ -72,25 +105,34 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Call API to update user
+      const userId = user?.id || user?.rawData?.id;
+      const response = await updateUser(userId, formData);
       
-      const updatedUser = {
-        ...user,
-        ...formData
-      };
-      
-      onUserUpdated(updatedUser);
-      onOpenChange(false);
-      
-      toast({
-        title: "Success",
-        description: "User has been updated successfully!",
-      });
+      if (response.success) {
+        onOpenChange(false);
+        
+        toast({
+          title: "Success",
+          description: response.message || "User has been updated successfully!",
+        });
+        
+        // Refresh user list after a delay to show toast
+        setTimeout(() => {
+          if (window.refreshUserList) {
+            window.refreshUserList();
+          } else if (onUserUpdated) {
+            onUserUpdated();
+          }
+        }, 1500);
+      } else {
+        throw new Error(response.message || "Failed to update user");
+      }
     } catch (error) {
+      console.error("Error updating user:", error);
       toast({
         title: "Error",
-        description: "Failed to update user. Please try again.",
+        description: error.message || "Failed to update user. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -107,18 +149,21 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
   };
 
   const roleOptions = [
-    { value: "Customer", label: "Customer" },
-    { value: "Staff-technical", label: "Staff-technical" },
-    { value: "Manager", label: "Manager" },
-    { value: "Admin", label: "Admin" }
+    { value: "ROLE_CUSTOMER", label: "Customer" },
+    { value: "ROLE_STAFF", label: "Staff-technical" },
+    { value: "ROLE_TECHNICIAN", label: "Technician" },
+    { value: "ROLE_ADMIN", label: "Admin" }
   ];
 
   const statusOptions = [
-    { value: "active", label: "Active", icon: Unlock },
-    { value: "blocked", label: "Blocked", icon: Ban }
+    { value: "ACTIVE", label: "Active", icon: Unlock },
+    { value: "IN_ACTIVE", label: "Inactive", icon: Ban }
   ];
 
   if (!user) return null;
+
+  // Get display name for title
+  const displayName = user.fullName || user.rawData?.phone || "User";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -126,7 +171,7 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
-            Edit User: {user.fullName}
+            Edit User: {displayName}
           </DialogTitle>
           <DialogDescription>
             Update user information and status.
@@ -135,19 +180,19 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="fullName" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              Full Name
+            <Label htmlFor="phone" className="flex items-center gap-2">
+              <Phone className="h-4 w-4" />
+              Phone Number
             </Label>
             <Input
-              id="fullName"
-              placeholder="Enter full name"
-              value={formData.fullName}
-              onChange={(e) => handleInputChange("fullName", e.target.value)}
-              className={errors.fullName ? "border-destructive" : ""}
+              id="phone"
+              placeholder="Enter phone number"
+              value={formData.phone}
+              onChange={(e) => handleInputChange("phone", e.target.value)}
+              className={errors.phone ? "border-destructive" : ""}
             />
-            {errors.fullName && (
-              <p className="text-sm text-destructive">{errors.fullName}</p>
+            {errors.phone && (
+              <p className="text-sm text-destructive">{errors.phone}</p>
             )}
           </div>
 
@@ -170,32 +215,33 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phoneNumber" className="flex items-center gap-2">
-              <Phone className="h-4 w-4" />
-              Phone Number
+            <Label htmlFor="password" className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Password (Optional)
             </Label>
             <Input
-              id="phoneNumber"
-              placeholder="Enter phone number"
-              value={formData.phoneNumber}
-              onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
-              className={errors.phoneNumber ? "border-destructive" : ""}
+              id="password"
+              type="password"
+              placeholder="Leave blank to keep current password"
+              value={formData.password}
+              onChange={(e) => handleInputChange("password", e.target.value)}
+              className={errors.password ? "border-destructive" : ""}
             />
-            {errors.phoneNumber && (
-              <p className="text-sm text-destructive">{errors.phoneNumber}</p>
+            {errors.password && (
+              <p className="text-sm text-destructive">{errors.password}</p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="role" className="flex items-center gap-2">
+            <Label htmlFor="roleName" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Role
             </Label>
             <Select 
-              value={formData.role} 
-              onValueChange={(value) => handleInputChange("role", value)}
+              value={formData.roleName} 
+              onValueChange={(value) => handleInputChange("roleName", value)}
             >
-              <SelectTrigger className={errors.role ? "border-destructive" : ""}>
+              <SelectTrigger className={errors.roleName ? "border-destructive" : ""}>
                 <SelectValue placeholder="Select user role" />
               </SelectTrigger>
               <SelectContent>
@@ -206,8 +252,8 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
                 ))}
               </SelectContent>
             </Select>
-            {errors.role && (
-              <p className="text-sm text-destructive">{errors.role}</p>
+            {errors.roleName && (
+              <p className="text-sm text-destructive">{errors.roleName}</p>
             )}
           </div>
 
@@ -237,17 +283,6 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
                 })}
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="avatar">Avatar URL (Optional)</Label>
-            <Input
-              id="avatar"
-              type="url"
-              placeholder="Enter avatar image URL"
-              value={formData.avatar}
-              onChange={(e) => handleInputChange("avatar", e.target.value)}
-            />
           </div>
 
           <DialogFooter className="gap-2">

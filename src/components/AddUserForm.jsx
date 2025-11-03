@@ -6,14 +6,15 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { createUser } from "@/api/usersApi";
 
 export function AddUserForm({ open, onOpenChange, onUserAdded }) {
   const [formData, setFormData] = useState({
-    fullName: "",
+    phone: "",
     email: "",
-    phoneNumber: "",
-    role: "",
-    avatar: ""
+    password: "",
+    roleName: "",
+    status: "ACTIVE"
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -22,8 +23,10 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = "Full name is required";
+    if (!formData.phone.trim()) {
+      newErrors.phone = "Phone number is required";
+    } else if (!/^[0-9\s+\-()]+$/.test(formData.phone)) {
+      newErrors.phone = "Phone number is invalid";
     }
     
     if (!formData.email.trim()) {
@@ -32,14 +35,14 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
       newErrors.email = "Email is invalid";
     }
     
-    if (!formData.phoneNumber.trim()) {
-      newErrors.phoneNumber = "Phone number is required";
-    } else if (!/^[0-9\s+\-()]+$/.test(formData.phoneNumber)) {
-      newErrors.phoneNumber = "Phone number is invalid";
+    if (!formData.password.trim()) {
+      newErrors.password = "Password is required";
+    } else if (formData.password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
     }
     
-    if (!formData.role) {
-      newErrors.role = "Role is required";
+    if (!formData.roleName) {
+      newErrors.roleName = "Role is required";
     }
     
     setErrors(newErrors);
@@ -56,41 +59,44 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Call API to create user
+      const response = await createUser(formData);
       
-      // Generate new user ID
-      const newUser = {
-        id: Date.now().toString(),
-        ...formData,
-        avatar: formData.avatar || "",
-        status: "active"
-      };
-      
-      // Add user to table
-      if (window.addUserToTable) {
-        window.addUserToTable(newUser);
+      if (response.success) {
+        // Reset form
+        setFormData({
+          phone: "",
+          email: "",
+          password: "",
+          roleName: "",
+          status: "ACTIVE"
+        });
+        setErrors({});
+        onOpenChange(false);
+        
+        toast({
+          title: "Success",
+          description: response.message || "User has been added successfully!",
+        });
+        
+        // Refresh user list after a delay to show toast
+        setTimeout(() => {
+          if (onUserAdded) {
+            onUserAdded();
+          } else if (window.refreshUserList) {
+            window.refreshUserList();
+          } else {
+            window.location.reload();
+          }
+        }, 1500);
+      } else {
+        throw new Error(response.message || "Failed to create user");
       }
-      
-      // Reset form
-      setFormData({
-        fullName: "",
-        email: "",
-        phoneNumber: "",
-        role: "",
-        avatar: ""
-      });
-      setErrors({});
-      onOpenChange(false);
-      
-      toast({
-        title: "Success",
-        description: "User has been added successfully!",
-      });
     } catch (error) {
+      console.error("Error creating user:", error);
       toast({
         title: "Error",
-        description: "Failed to add user. Please try again.",
+        description: error.message || "Failed to add user. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -100,17 +106,16 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: "" }));
     }
   };
 
   const roleOptions = [
-    { value: "Customer", label: "Customer" },
-    { value: "Staff-technical", label: "Staff-technical" },
-    { value: "Manager", label: "Manager" },
-    { value: "Admin", label: "Admin" }
+    { value: "ROLE_CUSTOMER", label: "Customer" },
+    { value: "ROLE_STAFF", label: "Staff-technical" },
+    { value: "ROLE_TECHNICIAN", label: "Technician" },
+    { value: "ROLE_ADMIN", label: "Admin" }
   ];
 
   return (
@@ -128,19 +133,19 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="fullName" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              Full Name
+            <Label htmlFor="phone" className="flex items-center gap-2">
+              <Phone className="h-4 w-4" />
+              Phone Number
             </Label>
             <Input
-              id="fullName"
-              placeholder="Enter full name"
-              value={formData.fullName}
-              onChange={(e) => handleInputChange("fullName", e.target.value)}
-              className={errors.fullName ? "border-destructive" : ""}
+              id="phone"
+              placeholder="Enter phone number"
+              value={formData.phone}
+              onChange={(e) => handleInputChange("phone", e.target.value)}
+              className={errors.phone ? "border-destructive" : ""}
             />
-            {errors.fullName && (
-              <p className="text-sm text-destructive">{errors.fullName}</p>
+            {errors.phone && (
+              <p className="text-sm text-destructive">{errors.phone}</p>
             )}
           </div>
 
@@ -163,32 +168,33 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phoneNumber" className="flex items-center gap-2">
-              <Phone className="h-4 w-4" />
-              Phone Number
+            <Label htmlFor="password" className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Password
             </Label>
             <Input
-              id="phoneNumber"
-              placeholder="Enter phone number"
-              value={formData.phoneNumber}
-              onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
-              className={errors.phoneNumber ? "border-destructive" : ""}
+              id="password"
+              type="password"
+              placeholder="Enter password (min 6 characters)"
+              value={formData.password}
+              onChange={(e) => handleInputChange("password", e.target.value)}
+              className={errors.password ? "border-destructive" : ""}
             />
-            {errors.phoneNumber && (
-              <p className="text-sm text-destructive">{errors.phoneNumber}</p>
+            {errors.password && (
+              <p className="text-sm text-destructive">{errors.password}</p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="role" className="flex items-center gap-2">
+            <Label htmlFor="roleName" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Role
             </Label>
             <Select 
-              value={formData.role} 
-              onValueChange={(value) => handleInputChange("role", value)}
+              value={formData.roleName} 
+              onValueChange={(value) => handleInputChange("roleName", value)}
             >
-              <SelectTrigger className={errors.role ? "border-destructive" : ""}>
+              <SelectTrigger className={errors.roleName ? "border-destructive" : ""}>
                 <SelectValue placeholder="Select user role" />
               </SelectTrigger>
               <SelectContent>
@@ -199,20 +205,9 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
                 ))}
               </SelectContent>
             </Select>
-            {errors.role && (
-              <p className="text-sm text-destructive">{errors.role}</p>
+            {errors.roleName && (
+              <p className="text-sm text-destructive">{errors.roleName}</p>
             )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="avatar">Avatar URL (Optional)</Label>
-            <Input
-              id="avatar"
-              type="url"
-              placeholder="Enter avatar image URL"
-              value={formData.avatar}
-              onChange={(e) => handleInputChange("avatar", e.target.value)}
-            />
           </div>
 
           <DialogFooter className="gap-2">

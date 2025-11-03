@@ -19,6 +19,13 @@ import Branches from "./pages/Branches";
 import ServicePackages from "./pages/ServicePackages";
 import NotFound from "./pages/NotFound";
 
+// storekeeper
+import { StoreKeeperSidebar } from "./components/StoreKeeperSidebar";
+import AccessoryInventory from "./pages/storekeeper/AccessoryInventory";
+import AccessoryDetail from "./pages/storekeeper/AccessoryDetail";
+import ImportSlipsPage from "./pages/storekeeper/ImportSlipsPage";
+import ExportSlipsPage from "./pages/storekeeper/ExportSlipsPage";
+
 // service staff
 import { StaffSidebar } from "./components/service-staff/StaffSidebar";
 import StaffBooking from "./pages/service-staff/StaffBooking";
@@ -36,14 +43,10 @@ const App = () => (
       <Sonner />
 
       <Routes>
-        {/* ✅ Mở web vào thẳng màn login */}
         <Route path='/' element={<Navigate to='/login' replace />} />
-
-        {/* ✅ Auth routes */}
         <Route path='/login' element={<Login />} />
         <Route path='/forgot-password' element={<ForgotPassword />} />
 
-        {/* ✅ Admin routes */}
         <Route
           path='/admin/*'
           element={
@@ -74,7 +77,6 @@ const App = () => (
           }
         />
 
-        {/* ✅ Staff routes */}
         <Route
           path='/staff/*'
           element={
@@ -101,7 +103,6 @@ const App = () => (
           }
         />
 
-        {/* ✅ Technician routes */}
         <Route
           path='/technician/*'
           element={
@@ -128,7 +129,33 @@ const App = () => (
           }
         />
 
-        {/* ✅ Not found */}
+        <Route
+          path='/storekeeper/*'
+          element={
+            <SidebarProvider>
+              <div className='flex min-h-screen w-full'>
+                <StoreKeeperSidebar />
+                <div className='flex-1 flex flex-col'>
+                  <header className='h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10'>
+                    <SidebarTrigger className='text-foreground' />
+                  </header>
+                  <main className='flex-1'>
+                    <Routes>
+                      <Route path='' element={<AccessoryInventory />} />
+                      <Route path='accessories' element={<AccessoryInventory />} />
+                      <Route path='accessories/:id' element={<AccessoryDetail />} />
+                      <Route path='import-slips' element={<ImportSlipsPage />} />
+                      <Route path='export-slips' element={<ExportSlipsPage />} />
+                      <Route path='reports' element={<NotFound />} />
+                      <Route path='*' element={<NotFound />} />
+                    </Routes>
+                  </main>
+                </div>
+              </div>
+            </SidebarProvider>
+          }
+        />
+
         <Route path='*' element={<NotFound />} />
       </Routes>
     </TooltipProvider>
