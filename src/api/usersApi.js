@@ -1,34 +1,42 @@
 import api from "./api";
 
-const BASE_URL = "/v1/admin/users";
-
-// 🟢 Lấy danh sách người dùng với phân trang
+const BASE_URL = "/v1/users";
+const user = JSON.parse(localStorage.getItem("user"));
+const token = user?.token;
 export const getUsers = (page = 1, pageSize = 10) => {
-  return api.get(`${BASE_URL}?page=${page}&pageSize=${pageSize}`);
+  return api.get(`${BASE_URL}?page=${page}&pageSize=${pageSize}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 };
 
-// 🟢 Lấy thông tin chi tiết người dùng
 export const getUserById = (userId) => {
-  return api.get(`${BASE_URL}/${userId}`);
+  return api.get(`${BASE_URL}/${userId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 };
 
-// 🟢 Cập nhật trạng thái người dùng (block/unblock)
 export const updateUserStatus = (userId, status) => {
-  return api.put(`${BASE_URL}/${userId}/status`, { status });
+  return api.put(
+    `${BASE_URL}/${userId}/status`,
+    { status },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
 };
 
-// 🟢 Tạo người dùng mới
 export const createUser = (userData) => {
-  return api.post(BASE_URL, userData);
+  return api.post(BASE_URL, userData, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 };
 
-// 🟢 Cập nhật thông tin người dùng
 export const updateUser = (userId, userData) => {
-  return api.put(`${BASE_URL}/${userId}`, userData);
+  return api.put(`${BASE_URL}/${userId}`, userData, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 };
 
-// 🟢 Xóa người dùng
 export const deleteUser = (userId) => {
-  return api.delete(`${BASE_URL}/${userId}`);
+  return api.delete(`${BASE_URL}/${userId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 };
-

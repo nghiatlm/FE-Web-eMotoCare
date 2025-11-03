@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, RotateCcw, PackagePlus, MapPin, Building2, Image as ImageIcon, Eye, Edit, Check, X, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
+import { getParts } from "@/api/partsApi";
 
 export default function AccessoryInventory() {
   const navigate = useNavigate();
@@ -20,7 +21,6 @@ export default function AccessoryInventory() {
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [requestNote, setRequestNote] = useState("");
 
-  // StoreKeeper chỉ quản lý 1 chi nhánh duy nhất
   const currentBranch = {
     id: "BR-001",
     name: "GreenWheel - Chi nhánh Hồ Chí Minh",
@@ -28,64 +28,41 @@ export default function AccessoryInventory() {
     manager: "Dũng"
   };
 
-  // Mock data cho phụ kiện
-  const accessories = [
-    {
-      id: "P001",
-      name: "Lọc gió động cơ",
-      image: "",
-      unit: "Cái",
-      availableStock: 45,
-      totalStock: 47,
-      minStock: 10,
-      status: "sufficient",
-      branch: "Chi nhánh Quận 1"
-    },
-    {
-      id: "P002",
-      name: "Dầu phanh DOT4",
-      image: "",
-      unit: "Lít",
-      availableStock: 15,
-      totalStock: 18,
-      minStock: 20,
-      status: "low",
-      branch: "Chi nhánh Quận 1"
-    },
-    {
-      id: "OIL002",
-      name: "Dầu nhớt Castrol 10W40",
-      image: "",
-      unit: "Thùng",
-      availableStock: 0,
-      totalStock: 0,
-      minStock: 5,
-      status: "out",
-      branch: "Chi nhánh Quận 1"
-    },
-    {
-      id: "P004",
-      name: "Bộ điều khiển ECU",
-      image: "",
-      unit: "Bộ",
-      availableStock: 7,
-      totalStock: 8,
-      minStock: 3,
-      status: "sufficient",
-      branch: "Chi nhánh Quận 1"
-    },
-    {
-      id: "P005",
-      name: "Lốp xe 18 inch",
-      image: "",
-      unit: "Cái",
-      availableStock: 12,
-      totalStock: 15,
-      minStock: 20,
-      status: "low",
-      branch: "Chi nhánh Quận 1"
-    }
-  ];
+  const [accessories, setAccessories] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    const fetchParts = async () => {
+      try {
+        setLoading(true);
+        const res = await getParts({ page, pageSize });
+        const list = res?.data?.rowDatas || res?.rowDatas || [];
+        const mapped = list.map((p) => {
+          const minStock = 5;
+          const alert = p?.quantity === 0 ? "out" : p?.quantity < minStock ? "low" : "sufficient";
+          return {
+            id: p?.id || p?.code,
+            name: p?.name,
+            image: p?.image || "",
+            //unit: "Cái",
+            quantity: p?.quantity,
+            status: p?.status,
+            alert: alert,
+          };
+        });
+        setAccessories(mapped);
+      } catch (e) {
+        console.error("Lỗi lấy danh sách parts:", e);
+        setAccessories([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchParts();
+  }, [page, pageSize]);
 
   const getStockStatusBadge = (status) => {
     const base = "inline-flex px-3 py-1 rounded-full text-xs font-medium";
@@ -98,6 +75,30 @@ export default function AccessoryInventory() {
         return `${base} bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400`;
       default:
         return `${base} bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400`;
+    }
+  };
+
+  const getBackendStatusBadge = (status) => {
+    const base = "inline-flex px-3 py-1 rounded-full text-xs font-medium";
+    switch ((status || "").toUpperCase()) {
+      case "ACTIVE":
+        return `${base} bg-green-50 text-green-700 ring-1 ring-green-200`;
+      case "IN_ACTIVE":
+      case "INACTIVE":
+        return `${base} bg-rose-50 text-rose-700 ring-1 ring-rose-200`;
+      default:
+        return `${base} bg-gray-50 text-gray-700 ring-1 ring-gray-200`;
+    }
+  };
+
+  const getAlertTextColor = (alert) => {
+    switch (alert) {
+      case "out":
+        return "text-rose-600"; // đỏ
+      case "low":
+        return "text-amber-600"; // vàng
+      default:
+        return "text-green-600"; // xanh lá
     }
   };
 
@@ -237,10 +238,10 @@ export default function AccessoryInventory() {
                   <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Hình ảnh</th>
                   <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Mã phụ tùng</th>
                   <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Tên phụ tùng</th>
-                  <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">ĐVT</th>
-                  <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Tồn khả dụng</th>
+                  <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Loại</th>
+                  <th className="text-center py-4 px-6 text-sm font-medium text-muted-foreground">Số lượng</th>
                   <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Mức cảnh báo</th>
-                  <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Trạng thái tồn</th>
+                  <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Trạng thái</th>
                   {!isSelectMode && <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Thao tác</th>}
                 </tr>
               </thead>
@@ -286,22 +287,36 @@ export default function AccessoryInventory() {
                           <ImageIcon className="h-6 w-6 text-muted-foreground" />
                         </div>
                       </td>
-                      <td className="py-4 px-6 text-sm font-medium text-foreground">{item.id}</td>
+                      <td className="py-4 px-6 text-sm font-medium text-foreground">{item.code || item.id}</td>
                       <td className="py-4 px-6 text-sm text-foreground">{item.name}</td>
-                      <td className="py-4 px-6 text-sm text-muted-foreground">{item.unit}</td>
-                      <td className="py-4 px-6 text-sm text-foreground">{item.availableStock} / {item.totalStock}</td>
+                      <td className="py-4 px-6 text-sm text-muted-foreground">{item.partType || "—"}</td>
+                      <td className="py-4 px-6 text-sm text-center">{item.quantity}</td>
                       <td className="py-4 px-6">
-                        <div className="w-32 space-y-1">
+                        <div className="w-36 space-y-1">
                           <Progress 
-                            value={(item.availableStock / item.minStock) * 100} 
+                            value={Math.max(0, Math.min(100, (item.quantity / item.minStock) * 100))} 
                             className="h-2"
                           />
-                          <span className="text-xs text-muted-foreground">Min: {item.minStock}</span>
+                          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                            <span>Min: {item.minStock}</span>
+                            <span className={getAlertTextColor(item.alert)}>
+                              {item.alert === "out"
+                                ? `Thiếu: ${Math.max(0, item.minStock - item.quantity)}`
+                                : item.alert === "low"
+                                ? `Sắp thiếu: ${Math.max(0, item.minStock - item.quantity)}`
+                                : "Đủ"}
+                            </span>
+                          </div>
                         </div>
                       </td>
                       <td className="py-4 px-6">
-                        <span className={getStockStatusBadge(item.status)}>
-                          {getStockStatusText(item.status)}
+                        <span className={getStockStatusBadge(item.alert)}>
+                          {getStockStatusText(item.alert)}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className={getBackendStatusBadge(item.status)}>
+                          {item.status}
                         </span>
                       </td>
                       {!isSelectMode && (
@@ -406,7 +421,7 @@ export default function AccessoryInventory() {
                     </tr>
                   </thead>
                   <tbody>
-                    {accessories
+                    {(loading ? [] : accessories)
                       .filter(item => selectedItems.includes(item.id))
                       .map((item, index) => {
                         const needQuantity = Math.max(0, item.minStock - item.availableStock);

@@ -1,18 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EllipsisVertical, Pencil, Eye, Pause, Play } from "lucide-react";
+import { getServiceCenters } from "@/api/serviceCentersApi";
 
-const mockBranches = [
-  { id: "BR-001", name: "GreenWheel", location: "123 Đường Lê Lợi", phone: "033231321", manager: "Dũng", hours: "08:00 – 17:00 (T2 – T7)", status: "active" },
-  { id: "BR-002", name: "GreenWheel", location: "456 Đường Trần Phú", phone: "098323123", manager: "Dung", hours: "09:00 – 18:00 (T2 – CN)", status: "inactive" },
-  { id: "BR-003", name: "EcoDrive", location: "789 Đường Nguyễn Huệ", phone: "0982152367", manager: "Thuận", hours: "09:00 – 18:00 (T2 – CN)", status: "inactive" },
-  { id: "BR-004", name: "MotoZen", location: "202 Đường Lý Thường Kiệt", phone: "075243721", manager: "Alex", hours: "09:00 – 18:00 (T2 – CN)", status: "active" },
-  { id: "BR-005", name: "UrbanCharge", location: "77 Đường Hùng Vương", phone: "0982152367", manager: "Linh", hours: "07:30 – 16:30 (T2 – T6)", status: "inactive" },
-  { id: "BR-006", name: "UrbanCharge", location: "77 Đường Hùng Vương", phone: "098323123", manager: "Việt", hours: "07:30 – 16:30 (T2 – T6)", status: "suspended" },
-  { id: "BR-007", name: "E-Moto", location: "202 Đường Lý Thường Kiệt", phone: "0982152367", manager: "Tâm", hours: "08:00 – 12:00 (T7)", status: "active" },
-  { id: "BR-008", name: "SparkFlow", location: "202 Đường Lý Thường Kiệt", phone: "098323123", manager: "Hoàng", hours: "08:00 – 12:00 (T7)", status: "active" },
-  { id: "BR-009", name: "UrbanCharge", location: "77 Đường Hùng Vương", phone: "098323123", manager: "Vương", hours: "07:30 – 16:30 (T2 – T6)", status: "suspended" },
-];
+const initialBranches = [];
 
 const statusBadge = (status) => {
   const base = "inline-flex px-3 py-1 rounded-full text-xs font-medium";
@@ -29,10 +20,53 @@ const statusBadge = (status) => {
 };
 
 export function BranchesTable({ search = "", status = "", manager = "" }) {
-  const [rows, setRows] = useState(mockBranches);
+  const [rows, setRows] = useState(initialBranches);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
-    // Expose mutators so the parent page can apply add/edit from dialogs
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const res = await getServiceCenters({
+          search: search || undefined,
+          status: status && status !== "all" ? status : undefined,
+          page,
+          pageSize,
+        });
+
+        const payload = res; // axios interceptor returns response.data
+        const list =
+          payload?.rowDatas ||
+          payload?.data?.rowDatas ||
+          payload?.items ||
+          payload?.data ||
+          [];
+
+        const mapped = list.map((item, idx) => ({
+          id: item?.id || item?.code || `BR-${String(idx + 1).padStart(3, "0")}`,
+          name: item?.name || item?.serviceCenterName || "N/A",
+          location: item?.address || item?.location || "",
+          phone: item?.phone || item?.phoneNumber || "",
+          manager: item?.managerName || item?.manager || "",
+          hours: item?.hours || item?.operatingHours || "",
+          status: String(item?.status || "active").toLowerCase(),
+        }));
+
+        setRows(mapped);
+      } catch (e) {
+        console.error("Lỗi tải danh sách chi nhánh:", e);
+        setRows([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [search, status, page, pageSize]);
+
+  useEffect(() => {
     const applyAdd = (branch) => {
       setRows((prev) => {
         const exists = prev.some((r) => r.id === branch.id);
@@ -115,7 +149,11 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan="8" className="py-12 px-6 text-center text-sm text-muted-foreground">Loading...</td>
+              </tr>
+            ) : filtered.length === 0 ? (
               <tr>
                 <td colSpan="8" className="py-12 px-6 text-center text-sm text-muted-foreground">No branches found</td>
               </tr>

@@ -10,13 +10,6 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  console.log("🔹 [Axios Request Config]:", {
-    baseURL: config.baseURL,
-    url: config.url,
-    fullURL: `${config.baseURL}${config.url}`,
-    headers: config.headers,
-  });
-
   const user = JSON.parse(localStorage.getItem("user"));
   if (user?.token) {
     config.headers.Authorization = `Bearer ${user.token}`;

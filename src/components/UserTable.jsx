@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { getUsers } from "@/api/usersApi";
+import { updateUserStatus } from "@/api/usersApi";
+import { useToast } from "@/hooks/use-toast";
 
 export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }) {
     const [users, setUsers] = useState([]);
@@ -12,17 +14,22 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
     const [pageSize] = useState(10);
     const [total, setTotal] = useState(0);
     const [error, setError] = useState(null);
+    const { toast } = useToast();
 
     const transformRoleName = (roleName) => {
         switch (roleName) {
-            case "ROLE_CUSTOMER":
-                return "Customer";
-            case "ROLE_STAFF":
-                return "Staff-technical";
-            case "ROLE_TECHNICIAN":
-                return "Staff-technical";
             case "ROLE_ADMIN":
                 return "Admin";
+            case "ROLE_MANAGER":
+                return "Manager";
+            case "ROLE_STAFF":
+                return "Staff";
+            case "ROLE_TECHNICIAN":
+                return "Technician";
+            case "ROLE_CUSTOMER":
+                return "Customer";
+            case "ROLE_STOREKEEPER":
+                return "Storekeeper";
             default:
                 return roleName;
         }
@@ -100,8 +107,10 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
             const matchesRoleFilter = !roleFilter || roleFilter === "all" ||
                 (roleFilter === "admin" && user.role.toLowerCase() === "admin") ||
                 (roleFilter === "manager" && user.role.toLowerCase() === "manager") ||
-                (roleFilter === "staff" && user.role.toLowerCase() === "staff-technical") ||
-                (roleFilter === "customer" && user.role.toLowerCase() === "customer");
+                (roleFilter === "staff" && user.role.toLowerCase() === "staff") ||
+                (roleFilter === "technician" && user.role.toLowerCase() === "technician") ||
+                (roleFilter === "customer" && user.role.toLowerCase() === "customer") ||
+                (roleFilter === "storekeeper" && user.role.toLowerCase() === "storekeeper");  
             
             return matchesSearch && matchesNameFilter && matchesRoleFilter;
         });
@@ -119,11 +128,17 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
     const getRoleBadgeColor = (role) => {
         switch (role.toLowerCase()) {
             case "admin":
-                return "bg-primary/10 text-primary";
+                return "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300";
             case "manager":
-                return "bg-accent text-accent-foreground";
-            case "staff-technical":
-                return "bg-muted text-muted-foreground";
+                return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300";
+            case "staff":
+                return "bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-300";
+            case "technician":
+                return "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/20 dark:text-cyan-300";
+            case "customer":
+                return "bg-slate-100 text-slate-800 dark:bg-slate-900/20 dark:text-slate-300";
+            case "storekeeper":
+                return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300";
             default:
                 return "bg-secondary text-secondary-foreground";
         }
@@ -236,9 +251,24 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
                         variant="ghost" 
                         size="icon" 
                         className="h-8 w-8 text-red-600 hover:text-red-700"
-                        onClick={() => {
-                          if (window.updateUserInTable) {
-                            window.updateUserInTable({...user, status: "blocked"});
+                        onClick={async () => {
+                          try {
+                            await updateUserStatus(user.id, "IN_ACTIVE");
+                            if (window.updateUserInTable) {
+                              window.updateUserInTable({ ...user, status: "blocked" });
+                            }
+                            toast({
+                              title: "User blocked",
+                              description: `${user.fullName} has been blocked`,
+                              className: "bg-amber-50 border-amber-400 text-amber-900",
+                            });
+                          } catch (e) {
+                            toast({
+                              title: "Block failed",
+                              description: e?.message || "Cannot block user",
+                              variant: "destructive",
+                              className: "bg-red-50 border-red-400 text-red-900",
+                            });
                           }
                         }}
                         title="Block User"
@@ -250,9 +280,24 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
                         variant="ghost" 
                         size="icon" 
                         className="h-8 w-8 text-green-600 hover:text-green-700"
-                        onClick={() => {
-                          if (window.updateUserInTable) {
-                            window.updateUserInTable({...user, status: "active"});
+                        onClick={async () => {
+                          try {
+                            await updateUserStatus(user.id, "ACTIVE");
+                            if (window.updateUserInTable) {
+                              window.updateUserInTable({ ...user, status: "active" });
+                            }
+                            toast({
+                              title: "User unblocked",
+                              description: `${user.fullName} is active again`,
+                              className: "bg-green-50 border-green-400 text-green-900",
+                            });
+                          } catch (e) {
+                            toast({
+                              title: "Unblock failed",
+                              description: e?.message || "Cannot unblock user",
+                              variant: "destructive",
+                              className: "bg-red-50 border-red-400 text-red-900",
+                            });
                           }
                         }}
                         title="Unblock User"

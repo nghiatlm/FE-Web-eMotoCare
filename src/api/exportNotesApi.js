@@ -1,6 +1,7 @@
 import api from "./api";
-const BASE_URL = "https://arabia-broad-celebrities-silicon.trycloudflare.com/api/v1/export-notes";
-const token = localStorage.getItem("user").token;
+const BASE_URL = "/v1/export-notes";
+const user = JSON.parse(localStorage.getItem("user"));
+const token = user?.token;
 export const getExportNotes = (page = 1, pageSize = 10) => {
   return api.get(`${BASE_URL}?page=${page}&pageSize=${pageSize}`, {
     headers: {

@@ -23,9 +23,11 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.phone.trim()) {
+    const phone = formData.phone.trim();
+    const vnPhoneRegex = /^(0\d{9}|\+84\d{9,10})$/;
+    if (!phone) {
       newErrors.phone = "Phone number is required";
-    } else if (!/^[0-9\s+\-()]+$/.test(formData.phone)) {
+    } else if (!vnPhoneRegex.test(phone)) {
       newErrors.phone = "Phone number is invalid";
     }
     
@@ -35,11 +37,14 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
       newErrors.email = "Email is invalid";
     }
     
-    if (!formData.password.trim()) {
-      newErrors.password = "Password is required";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
-    }
+    // const pwd = formData.password;
+    // if (!pwd.trim()) {
+    //   newErrors.password = "Password is required";
+    // } else if (pwd.length < 6) {
+    //   newErrors.password = "Password must be at least 6 characters";
+    // } else if (!/(?=.*[A-Za-z])(?=.*\d)/.test(pwd)) {
+    //   newErrors.password = "Password must include letters and numbers";
+    // }
     
     if (!formData.roleName) {
       newErrors.roleName = "Role is required";
@@ -61,8 +66,15 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
     try {
       // Call API to create user
       const response = await createUser(formData);
-      
-      if (response.success) {
+
+      if (response?.success !== false) {
+        // Update list immediately for smooth UX
+        if (onUserAdded) {
+          onUserAdded(response?.data || null);
+        } else if (window.refreshUserList) {
+          window.refreshUserList();
+        }
+
         // Reset form
         setFormData({
           phone: "",
@@ -72,32 +84,25 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
           status: "ACTIVE"
         });
         setErrors({});
-        onOpenChange(false);
-        
+
+        // Success toast with green styling
         toast({
-          title: "Success",
-          description: response.message || "User has been added successfully!",
+          title: "User created",
+          description: response?.message || "User has been added successfully!",
+          className: "bg-green-50 border-green-400 text-green-900",
         });
-        
-        // Refresh user list after a delay to show toast
-        setTimeout(() => {
-          if (onUserAdded) {
-            onUserAdded();
-          } else if (window.refreshUserList) {
-            window.refreshUserList();
-          } else {
-            window.location.reload();
-          }
-        }, 1500);
+
+        onOpenChange(false);
       } else {
         throw new Error(response.message || "Failed to create user");
       }
     } catch (error) {
       console.error("Error creating user:", error);
       toast({
-        title: "Error",
+        title: "Create user failed",
         description: error.message || "Failed to add user. Please try again.",
         variant: "destructive",
+        className: "bg-red-50 border-red-400 text-red-900",
       });
     } finally {
       setIsLoading(false);
@@ -112,10 +117,12 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
   };
 
   const roleOptions = [
-    { value: "ROLE_CUSTOMER", label: "Customer" },
-    { value: "ROLE_STAFF", label: "Staff-technical" },
+    { value: "ROLE_ADMIN", label: "Admin" },
+    { value: "ROLE_MANAGER", label: "Manager" },
+    { value: "ROLE_STAFF", label: "Staff" },
     { value: "ROLE_TECHNICIAN", label: "Technician" },
-    { value: "ROLE_ADMIN", label: "Admin" }
+    { value: "ROLE_CUSTOMER", label: "Customer" },
+    { value: "ROLE_STOREKEEPER", label: "Storekeeper" },
   ];
 
   return (
@@ -143,6 +150,9 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
               value={formData.phone}
               onChange={(e) => handleInputChange("phone", e.target.value)}
               className={errors.phone ? "border-destructive" : ""}
+              inputMode="tel"
+              autoComplete="tel"
+              maxLength={13}
             />
             {errors.phone && (
               <p className="text-sm text-destructive">{errors.phone}</p>
@@ -161,6 +171,7 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
               value={formData.email}
               onChange={(e) => handleInputChange("email", e.target.value)}
               className={errors.email ? "border-destructive" : ""}
+              autoComplete="email"
             />
             {errors.email && (
               <p className="text-sm text-destructive">{errors.email}</p>
@@ -179,6 +190,8 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
               value={formData.password}
               onChange={(e) => handleInputChange("password", e.target.value)}
               className={errors.password ? "border-destructive" : ""}
+              autoComplete="new-password"
+              minLength={6}
             />
             {errors.password && (
               <p className="text-sm text-destructive">{errors.password}</p>

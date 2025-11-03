@@ -1,6 +1,7 @@
-import { LayoutDashboard, Bike, FileText, Users, BarChart3, Settings, Store, Package } from "lucide-react";
+import { LayoutDashboard, Bike, FileText, Users, BarChart3, Settings, Store, Package, LogOut } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar, } from "@/components/ui/sidebar";
+import { authService } from "@/services/authService";
 const menuItems = [
     { title: "Dashboard", icon: LayoutDashboard, url: "/admin" },
     { title: "Vehicles", icon: Bike, url: "/admin/vehicles" },
@@ -29,6 +30,18 @@ export function AdminSidebar() {
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>))}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => {
+                    authService.logout();
+                    window.location.href = "/login";
+                  }}
+                  tooltip="Logout"
+                >
+                  <LogOut className="h-5 w-5 flex-shrink-0" />
+                  {!isCollapsed && <span>Logout</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -1,6 +1,7 @@
-import { FileText, Package, FileDown, FileUp } from "lucide-react";
+import { FileText, Package, FileDown, FileUp, LogOut } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar, } from "@/components/ui/sidebar";
+import { authService } from "@/services/authService";
 
 const menuItems = [
     { title: "Tồn kho phụ tùng", icon: Package, url: "/storekeeper" },
@@ -36,6 +37,18 @@ export function StoreKeeperSidebar() {
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>
                             ))}
+                            <SidebarMenuItem>
+                                <SidebarMenuButton
+                                    onClick={() => {
+                                        authService.logout();
+                                        window.location.href = "/login";
+                                    }}
+                                    tooltip="Logout"
+                                >
+                                    <LogOut className="h-5 w-5 flex-shrink-0"/>
+                                    {!isCollapsed && <span>Logout</span>}
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>

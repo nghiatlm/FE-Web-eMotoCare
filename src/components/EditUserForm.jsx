@@ -23,14 +23,18 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
   // Helper function to transform role name
   const transformRoleName = (roleName) => {
     switch (roleName) {
-      case "ROLE_CUSTOMER":
-        return "Customer";
-      case "ROLE_STAFF":
-        return "Staff-technical";
-      case "ROLE_TECHNICIAN":
-        return "Staff-technical";
       case "ROLE_ADMIN":
         return "Admin";
+      case "ROLE_MANAGER":
+        return "Manager";
+      case "ROLE_STAFF":
+        return "Staff";
+      case "ROLE_TECHNICIAN":
+        return "Technician";
+      case "ROLE_CUSTOMER":
+        return "Customer";
+      case "ROLE_STOREKEEPER":
+        return "Storekeeper";
       default:
         return roleName;
     }
@@ -38,14 +42,18 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
 
   const transformRoleToApi = (role) => {
     switch (role) {
-      case "Customer":
-        return "ROLE_CUSTOMER";
-      case "Staff-technical":
+      case "Admin":
+        return "ROLE_ADMIN";
+      case "Manager":
+        return "ROLE_MANAGER";
+      case "Staff":
         return "ROLE_STAFF";
       case "Technician":
         return "ROLE_TECHNICIAN";
-      case "Admin":
-        return "ROLE_ADMIN";
+      case "Customer":
+        return "ROLE_CUSTOMER";
+      case "Storekeeper":
+        return "ROLE_STOREKEEPER";
       default:
         return role;
     }
@@ -108,32 +116,32 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
       // Call API to update user
       const userId = user?.id || user?.rawData?.id;
       const response = await updateUser(userId, formData);
-      
-      if (response.success) {
-        onOpenChange(false);
-        
+
+      if (response?.success !== false) {
+        // Update list immediately
+        if (window.refreshUserList) {
+          window.refreshUserList();
+        } else if (onUserUpdated) {
+          onUserUpdated(response?.data || null);
+        }
+
         toast({
-          title: "Success",
+          title: "User updated",
           description: response.message || "User has been updated successfully!",
+          className: "bg-green-50 border-green-400 text-green-900",
         });
-        
-        // Refresh user list after a delay to show toast
-        setTimeout(() => {
-          if (window.refreshUserList) {
-            window.refreshUserList();
-          } else if (onUserUpdated) {
-            onUserUpdated();
-          }
-        }, 1500);
+
+        onOpenChange(false);
       } else {
         throw new Error(response.message || "Failed to update user");
       }
     } catch (error) {
       console.error("Error updating user:", error);
       toast({
-        title: "Error",
+        title: "Update user failed",
         description: error.message || "Failed to update user. Please try again.",
         variant: "destructive",
+        className: "bg-red-50 border-red-400 text-red-900",
       });
     } finally {
       setIsLoading(false);
@@ -149,10 +157,12 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
   };
 
   const roleOptions = [
-    { value: "ROLE_CUSTOMER", label: "Customer" },
-    { value: "ROLE_STAFF", label: "Staff-technical" },
+    { value: "ROLE_ADMIN", label: "Admin" },
+    { value: "ROLE_MANAGER", label: "Manager" },
+    { value: "ROLE_STAFF", label: "Staff" },
     { value: "ROLE_TECHNICIAN", label: "Technician" },
-    { value: "ROLE_ADMIN", label: "Admin" }
+    { value: "ROLE_CUSTOMER", label: "Customer" },
+    { value: "ROLE_STOREKEEPER", label: "Storekeeper" },
   ];
 
   const statusOptions = [
