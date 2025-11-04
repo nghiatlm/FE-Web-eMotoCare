@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
-import { Search, Plus, Download, Filter } from "lucide-react";
+import { Search, Plus, Download, Filter, Building2, MapPin, Mail, Phone, Hash, Info, Clock, Calendar, Users, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+import { vi } from "date-fns/locale";
 import BranchesTable from "@/components/BranchesTable";
-import { createServiceCenter, updateServiceCenter } from "@/api/serviceCentersApi";
+import { createServiceCenter, updateServiceCenter, getServiceCenterById } from "@/api/serviceCentersApi";
 
 export default function Branches() {
   const [search, setSearch] = useState("");
@@ -17,6 +21,8 @@ export default function Branches() {
   const [isViewOpen, setIsViewOpen] = useState(false);
 
   const [selected, setSelected] = useState(null);
+  const [branchDetail, setBranchDetail] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   const [form, setForm] = useState({
     code: "",
@@ -35,6 +41,34 @@ export default function Branches() {
   const resetForm = () => {
     setForm({ code: "", name: "", description: "", email: "", location: "", phone: "", manager: "", hours: "", status: "active", latitude: "", longitude: "" });
   };
+
+  // Fetch branch detail when viewing
+  useEffect(() => {
+    const fetchBranchDetail = async () => {
+      if (selected?.id && isViewOpen) {
+        try {
+          setLoadingDetail(true);
+          const response = await getServiceCenterById(selected.id);
+          if (response.success && response.data) {
+            setBranchDetail(response.data);
+          } else {
+            // Fallback to selected data if API fails
+            setBranchDetail(selected);
+          }
+        } catch (error) {
+          console.error("Error fetching branch detail:", error);
+          // Fallback to selected data
+          setBranchDetail(selected);
+        } finally {
+          setLoadingDetail(false);
+        }
+      } else if (!isViewOpen) {
+        setBranchDetail(null);
+      }
+    };
+
+    fetchBranchDetail();
+  }, [selected, isViewOpen]);
 
   useEffect(() => {
     // Handlers called from table action buttons
@@ -262,24 +296,6 @@ export default function Branches() {
                   <Label>Số điện thoại</Label>
                   <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="VD: 098xxxxxxx" required/>
                 </div>
-                <div className="space-y-2">
-                  <Label>Quản lý</Label>
-                  <Select value={form.manager} onValueChange={(v) => setForm((f) => ({ ...f, manager: v }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn quản lý" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Dung">Dung</SelectItem>
-                      <SelectItem value="Thuận">Thuận</SelectItem>
-                      <SelectItem value="Alex">Alex</SelectItem>
-                      <SelectItem value="Linh">Linh</SelectItem>
-                      <SelectItem value="Việt">Việt</SelectItem>
-                      <SelectItem value="Tâm">Tâm</SelectItem>
-                      <SelectItem value="Hoàng">Hoàng</SelectItem>
-                      <SelectItem value="Vương">Vương</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -343,24 +359,6 @@ export default function Branches() {
                   <Label>Số điện thoại</Label>
                   <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} required/>
                 </div>
-                <div className="space-y-2">
-                  <Label>Quản lý</Label>
-                  <Select value={form.manager} onValueChange={(v) => setForm((f) => ({ ...f, manager: v }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn quản lý" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Dung">Dung</SelectItem>
-                      <SelectItem value="Thuận">Thuận</SelectItem>
-                      <SelectItem value="Alex">Alex</SelectItem>
-                      <SelectItem value="Linh">Linh</SelectItem>
-                      <SelectItem value="Việt">Việt</SelectItem>
-                      <SelectItem value="Tâm">Tâm</SelectItem>
-                      <SelectItem value="Hoàng">Hoàng</SelectItem>
-                      <SelectItem value="Vương">Vương</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -389,47 +387,280 @@ export default function Branches() {
           </DialogContent>
         </Dialog>
 
-        <Dialog open={isViewOpen} onOpenChange={(o) => { setIsViewOpen(o); if (!o) setSelected(null); }}>
-          <DialogContent>
+        <Dialog open={isViewOpen} onOpenChange={(o) => { 
+          setIsViewOpen(o); 
+          if (!o) {
+            setSelected(null);
+            setBranchDetail(null);
+          }
+        }}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Chi tiết chi nhánh</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3 text-sm">
-              <div><span className="text-muted-foreground">Mã chi nhánh:</span> <span className="font-medium">{selected?.code || selected?.id}</span></div>
-              <div><span className="text-muted-foreground">Tên:</span> <span className="font-medium">{selected?.name}</span></div>
-              <div><span className="text-muted-foreground">Mô tả:</span> <span className="font-medium">{selected?.description}</span></div>
-              <div><span className="text-muted-foreground">Địa chỉ:</span> <span className="font-medium">{selected?.location}</span></div>
-              <div><span className="text-muted-foreground">Email:</span> <span className="font-medium">{selected?.email}</span></div>
-              <div><span className="text-muted-foreground">SĐT:</span> <span className="font-medium">{selected?.phone}</span></div>
-              <div><span className="text-muted-foreground">Quản lý:</span> <span className="font-medium">{selected?.manager}</span></div>
-              <div><span className="text-muted-foreground">Giờ hoạt động:</span> <span className="font-medium">{selected?.hours}</span></div>
-              <div><span className="text-muted-foreground">Trạng thái:</span> <span className="font-medium">{selected?.status === 'active' ? 'Hoạt động' : selected?.status === 'inactive' ? 'Ngưng hoạt động' : selected?.status === 'suspended' ? 'Tạm dừng' : selected?.status}</span></div>
-              <div className="pt-2">
-                <div className="text-muted-foreground mb-2">Bản đồ:</div>
-                <div className="rounded-md overflow-hidden border border-border">
-                  {(() => {
-                    const lat = selected?.latitude;
-                    const lng = selected?.longitude;
-                    const hasCoords = lat && lng;
-                    const q = hasCoords ? `${lat},${lng}` : encodeURIComponent(selected?.location || "");
-                    const src = `https://www.google.com/maps?q=${q}&z=16&output=embed`;
-                    return (
-                      <iframe
-                        title="branch-map"
-                        src={src}
-                        style={{ width: "100%", height: 320, border: 0 }}
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        allowFullScreen
-                      />
-                    );
-                  })()}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">Dấu ghim đỏ thể hiện vị trí chi nhánh trên bản đồ.</div>
+              <div className="flex items-center justify-between">
+                <DialogTitle className="text-2xl flex items-center gap-2">
+                  <Building2 className="h-6 w-6 text-primary" />
+                  Chi tiết chi nhánh
+                </DialogTitle>
+                {branchDetail?.status && (
+                  <Badge 
+                    variant={branchDetail.status === 'ACTIVE' ? 'default' : 'secondary'}
+                    className={branchDetail.status === 'ACTIVE' 
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                      : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+                    }
+                  >
+                    {branchDetail.status === 'ACTIVE' ? 'Hoạt động' : 'Ngưng hoạt động'}
+                  </Badge>
+                )}
               </div>
-            </div>
+            </DialogHeader>
+
+            {loadingDetail ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+                  <p className="text-muted-foreground text-sm">Đang tải chi tiết chi nhánh...</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Thông tin cơ bản */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Info className="h-5 w-5 text-primary" />
+                      Thông tin cơ bản
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Hash className="h-4 w-4" />
+                          <span>Mã chi nhánh</span>
+                        </div>
+                        <p className="text-base font-semibold text-foreground">
+                          {branchDetail?.code || selected?.code || "—"}
+                        </p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Building2 className="h-4 w-4" />
+                          <span>Tên chi nhánh</span>
+                        </div>
+                        <p className="text-base font-semibold text-foreground">
+                          {branchDetail?.name || selected?.name || "—"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Info className="h-4 w-4" />
+                        <span>Mô tả</span>
+                      </div>
+                      <p className="text-sm text-foreground leading-relaxed bg-muted/50 p-3 rounded-md">
+                        {branchDetail?.description || selected?.description || "Không có mô tả"}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Thông tin liên hệ */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Phone className="h-5 w-5 text-primary" />
+                      Thông tin liên hệ
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Mail className="h-4 w-4" />
+                          <span>Email</span>
+                        </div>
+                        <p className="text-base font-medium text-foreground">
+                          {branchDetail?.email || selected?.email || "—"}
+                        </p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Phone className="h-4 w-4" />
+                          <span>Số điện thoại</span>
+                        </div>
+                        <p className="text-base font-medium text-foreground">
+                          {branchDetail?.phone || selected?.phone || "—"}
+                        </p>
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <MapPin className="h-4 w-4" />
+                          <span>Địa chỉ</span>
+                        </div>
+                        <p className="text-base font-medium text-foreground">
+                          {branchDetail?.address || selected?.location || selected?.address || "—"}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Bản đồ */}
+                {(branchDetail?.latitude || branchDetail?.longitude || selected?.latitude || selected?.longitude || branchDetail?.address || selected?.location || selected?.address) && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <MapPin className="h-5 w-5 text-primary" />
+                        Vị trí trên bản đồ
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="rounded-md overflow-hidden border border-border">
+                        {(() => {
+                          const lat = branchDetail?.latitude || selected?.latitude;
+                          const lng = branchDetail?.longitude || selected?.longitude;
+                          const address = branchDetail?.address || selected?.location || selected?.address;
+                          const hasCoords = lat && lng;
+                          const q = hasCoords ? `${lat},${lng}` : encodeURIComponent(address || "");
+                          const src = `https://www.google.com/maps?q=${q}&z=16&output=embed`;
+                          return (
+                            <iframe
+                              title="branch-map"
+                              src={src}
+                              style={{ width: "100%", height: 320, border: 0 }}
+                              loading="lazy"
+                              referrerPolicy="no-referrer-when-downgrade"
+                              allowFullScreen
+                            />
+                          );
+                        })()}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Dấu ghim đỏ thể hiện vị trí chi nhánh trên bản đồ.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Lịch làm việc */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Calendar className="h-5 w-5 text-primary" />
+                      Lịch làm việc
+                      {branchDetail?.serviceCenterSlots && branchDetail.serviceCenterSlots.length > 0 && (
+                        <Badge variant="secondary" className="ml-2">
+                          {branchDetail.serviceCenterSlots.length} slot
+                        </Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {branchDetail?.serviceCenterSlots && branchDetail.serviceCenterSlots.length > 0 ? (
+                      <div className="space-y-4">
+                        {(() => {
+                          // Group slots by date
+                          const groupedByDate = branchDetail.serviceCenterSlots.reduce((acc, slot) => {
+                            const date = slot.date;
+                            if (!acc[date]) {
+                              acc[date] = [];
+                            }
+                            acc[date].push(slot);
+                            return acc;
+                          }, {});
+
+                          // Sort dates
+                          const sortedDates = Object.keys(groupedByDate).sort();
+
+                          return sortedDates.map((date) => {
+                            const slots = groupedByDate[date];
+                            const firstSlot = slots[0];
+                            const vietnameseDay = firstSlot.dayOfWeek === 'Saturday' ? 'Thứ Bảy' : 
+                                                 firstSlot.dayOfWeek === 'Sunday' ? 'Chủ Nhật' :
+                                                 firstSlot.dayOfWeek === 'Monday' ? 'Thứ Hai' :
+                                                 firstSlot.dayOfWeek === 'Tuesday' ? 'Thứ Ba' :
+                                                 firstSlot.dayOfWeek === 'Wednesday' ? 'Thứ Tư' :
+                                                 firstSlot.dayOfWeek === 'Thursday' ? 'Thứ Năm' :
+                                                 firstSlot.dayOfWeek === 'Friday' ? 'Thứ Sáu' : firstSlot.dayOfWeek;
+
+                            return (
+                              <div key={date} className="border border-border rounded-lg p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <Calendar className="h-4 w-4 text-primary" />
+                                    <h4 className="font-semibold text-foreground">
+                                      {vietnameseDay}, {format(new Date(date), "dd/MM/yyyy", { locale: vi })}
+                                    </h4>
+                                  </div>
+                                  <Badge variant="outline" className="text-xs">
+                                    {slots.length} khung giờ
+                                  </Badge>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                                  {slots.map((slot) => (
+                                    <div
+                                      key={slot.id}
+                                      className={`p-3 rounded-md border transition-colors ${
+                                        slot.isActive
+                                          ? 'bg-green-50 border-green-200 dark:bg-green-900/10 dark:border-green-800 hover:bg-green-100'
+                                          : 'bg-gray-50 border-gray-200 dark:bg-gray-900/10 dark:border-gray-800 hover:bg-gray-100'
+                                      }`}
+                                    >
+                                      <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                                          <span className="text-sm font-medium text-foreground">
+                                            {slot.startTime?.slice(0, 5)} - {slot.endTime?.slice(0, 5)}
+                                          </span>
+                                        </div>
+                                        {slot.isActive ? (
+                                          <CheckCircle className="h-4 w-4 text-green-600" />
+                                        ) : (
+                                          <XCircle className="h-4 w-4 text-gray-400" />
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                                        <Users className="h-3.5 w-3.5" />
+                                        <span>Sức chứa: {slot.capacity}</span>
+                                      </div>
+                                      {slot.note && (
+                                        <p className="text-xs text-muted-foreground mt-1 italic">
+                                          {slot.note}
+                                        </p>
+                                      )}
+                                      <div className="mt-2 pt-2 border-t border-border/50">
+                                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                          slot.isActive 
+                                            ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                                            : 'bg-gray-100 text-gray-600 dark:bg-gray-900/20 dark:text-gray-400'
+                                        }`}>
+                                          {slot.isActive ? 'Đang hoạt động' : 'Không hoạt động'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                        <p className="text-sm">Chưa có lịch làm việc nào được thiết lập</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsViewOpen(false)}>Đóng</Button>
+              <Button type="button" variant="outline" onClick={() => setIsViewOpen(false)}>
+                Đóng
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

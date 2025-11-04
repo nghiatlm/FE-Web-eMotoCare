@@ -148,8 +148,8 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Tên chi nhánh</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Địa chỉ</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Số điện thoại</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Quản lý</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Giờ hoạt động</th>
+              {/* <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Quản lý</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Giờ hoạt động</th> */}
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Trạng thái</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Thao tác</th>
             </tr>
@@ -170,8 +170,8 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
                   <td className="py-4 px-6 text-sm font-medium text-foreground">{b.name}</td>
                   <td className="py-4 px-6 text-sm text-foreground">{b.location}</td>
                   <td className="py-4 px-6 text-sm text-foreground">{formatPhoneNumber(b.phone)}</td>
-                  <td className="py-4 px-6 text-sm text-foreground">{b.manager}</td>
-                  <td className="py-4 px-6 text-sm text-foreground">{b.hours}</td>
+                  {/* <td className="py-4 px-6 text-sm text-foreground">{b.manager}</td>
+                  <td className="py-4 px-6 text-sm text-foreground">{b.hours}</td> */}
                   <td className="py-4 px-6"><span className={statusBadge(b.status)}>{b.status === "active" ? "Hoạt động" : b.status === "inactive" ? "Ngưng hoạt động" : b.status === "suspended" ? "Tạm dừng" : b.status}</span></td>
                   <td className="py-4 px-6">
                     <div className="flex items-center gap-2">
