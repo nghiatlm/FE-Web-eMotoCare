@@ -6,28 +6,28 @@ export default function MaintenanceContent({ booking, onUpdateItem }) {
 
   useEffect(() => {
     // Dữ liệu demo / hoặc từ booking.details
-    const details =
-      booking?.details?.length > 0
-        ? booking.details
-        : [
-            { item: "Thay dầu động cơ", cycle: "Mỗi 1000km", done: false },
-            { item: "Kiểm tra lốp", cycle: "Mỗi 2000km", done: false },
-            { item: "Vệ sinh phanh", cycle: "Mỗi 3000km", done: false },
-            { item: "Kiểm tra ắc quy", cycle: "Mỗi 5000km", done: false },
-            { item: "Thay má phanh", cycle: "Mỗi 7000km", done: false },
-
-            { item: "Kiểm tra hệ thống đèn", cycle: "Mỗi 1000km", done: false },
-            {
-              item: "Kiểm tra hệ thống điện",
-              cycle: "Mỗi 2000km",
-              done: false,
-            },
-            { item: "Vệ sinh lọc gió", cycle: "Mỗi 3000km", done: false },
-            { item: "Kiểm tra hệ thống lái", cycle: "Mỗi 5000km", done: false },
-            { item: "Bảo dưỡng phanh", cycle: "Mỗi 7000km", done: false },
-          ];
-    setRows(details);
-  }, [booking]);
+    // const details =
+    //   booking?.details?.length > 0
+    //     ? booking.details
+    //     : [
+    //         { item: "Thay dầu động cơ", cycle: "Mỗi 1000km", done: false },
+    //         { item: "Kiểm tra lốp", cycle: "Mỗi 2000km", done: false },
+    //         { item: "Vệ sinh phanh", cycle: "Mỗi 3000km", done: false },
+    //         { item: "Kiểm tra ắc quy", cycle: "Mỗi 5000km", done: false },
+    //         { item: "Thay má phanh", cycle: "Mỗi 7000km", done: false },
+    //         { item: "Kiểm tra hệ thống đèn", cycle: "Mỗi 1000km", done: false },
+    //         {
+    //           item: "Kiểm tra hệ thống điện",
+    //           cycle: "Mỗi 2000km",
+    //           done: false,
+    //         },
+    //         { item: "Vệ sinh lọc gió", cycle: "Mỗi 3000km", done: false },
+    //         { item: "Kiểm tra hệ thống lái", cycle: "Mỗi 5000km", done: false },
+    //         { item: "Bảo dưỡng phanh", cycle: "Mỗi 7000km", done: false },
+    //       ];
+    // setRows(details);
+  });
+  // [booking];
 
   const columns = [
     { title: "STT", render: (_, __, i) => i + 1, width: 60 },

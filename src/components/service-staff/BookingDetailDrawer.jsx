@@ -17,6 +17,13 @@ import {
 import { createEVCheckService } from "../../services/evcheckService";
 
 const renderServiceContent = (serviceType, booking) => {
+  if (!booking.technician) {
+    return (
+      <div className='text-center py-8 text-gray-500 italic'>
+        <p> Kỹ thuật viên chưa thực hiện kiểm tra.</p>
+      </div>
+    );
+  }
   switch (serviceType?.toUpperCase()) {
     case "MAINTENANCE_TYPE":
       return <MaintenanceContent booking={booking} />;
@@ -46,12 +53,15 @@ export default function BookingDetailDrawer({
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const [qrValue, setQrValue] = useState(null);
   const [checkedIn, setCheckedIn] = useState(false);
+  // Thêm state trong component cha
+  const [showTechnicianDrawer, setShowTechnicianDrawer] = useState(false);
+  const [currentEVCheckId, setCurrentEVCheckId] = useState(null);
 
   const status = booking?.status?.toUpperCase();
 
   useEffect(() => {
     const loadTechnicians = async () => {
-      if (status !== "IN_SERVICE") return; // chỉ load khi check-in xong
+      if (status !== "CHECKED_IN") return;
       try {
         setLoadingTechs(true);
         const list = await fetchTechnicians();
@@ -86,12 +96,17 @@ export default function BookingDetailDrawer({
         taskExecutorId: selectedTechnician.id,
       };
 
-      await createEVCheckService(payload);
+      const newEVCheck = await createEVCheckService(payload);
 
-      message.success("Đã gán kỹ thuật viên thành công!");
-      onUpdateStatus?.(booking.id, booking.status, selectedTechnician);
+      message.success("Đã gán kỹ thuật viên và tạo EVCheck!");
+
+      onUpdateStatus?.(booking.id, "CHECKED_IN", selectedTechnician);
+
+      // BƯỚC 3: MỞ DRAWER NHẬP KM NGAY
+      setCurrentEVCheckId(newEVCheck.id); // Lưu ID để drawer dùng
+      setShowTechnicianDrawer(true); // Mở drawer
     } catch (error) {
-      console.error(error);
+      console.error("Lỗi gán kỹ thuật viên:", error);
       message.error(error.message || "Không thể gán kỹ thuật viên!");
     }
   };
@@ -117,8 +132,7 @@ export default function BookingDetailDrawer({
       await checkinByCodeService(qrValue);
       message.success("Check-in thành công!");
 
-      // Cập nhật trạng thái booking về IN_SERVICE nhưng chưa có technician
-      onUpdateStatus?.(booking.id, "IN_SERVICE", null);
+      onUpdateStatus?.(booking.id, "CHECKED_IN", null);
       setIsQRModalOpen(false);
       setQrValue(null);
     } catch (error) {
@@ -211,12 +225,12 @@ export default function BookingDetailDrawer({
                   className={`
                         inline-block px-3 py-1 text-xs font-semibold rounded-full 
                         ${
-                          booking.type === "MAINTENACE_TYPE"
+                          booking.type === "MAINTENANCE_TYPE"
                             ? "bg-blue-100 text-blue-800 border border-blue-300" // Màu xanh cho Bảo dưỡng
                             : "bg-purple-100 text-purple-800 border border-purple-300" // Màu tím cho các loại khác
                         }
                     `}>
-                  {booking.type === "MAINTENACE_TYPE"
+                  {booking.type === "MAINTENANCE_TYPE"
                     ? "Bảo dưỡng"
                     : booking.type}
                 </span>
@@ -263,7 +277,7 @@ export default function BookingDetailDrawer({
           )}
 
           {/* Gán kỹ thuật viên sau khi check-in */}
-          {status === "IN_SERVICE" && !booking.technician && (
+          {status === "CHECKED_IN" && !booking.technician && (
             <section className='bg-white rounded-2xl shadow-md p-5 mb-6 border border-[#ffd9c2]'>
               <h3 className='font-semibold text-base mb-3 border-b pb-2 text-[#d4380d]'>
                 👨‍🔧 Chọn kỹ thuật viên
@@ -298,7 +312,7 @@ export default function BookingDetailDrawer({
               )}
               <Button
                 type='primary'
-                className='mt-4 bg-[#d4380d] hover:bg-[#b32005]'
+                className='mt-4 bg-[#d4380d]]'
                 disabled={!selectedTechnician || loadingTechs}
                 onClick={handleAssignTechnician}>
                 Xác nhận gán kỹ thuật viên
@@ -352,7 +366,7 @@ export default function BookingDetailDrawer({
                 </Button>
               </>
             )}
-            {status === "IN_SERVICE" && (
+            {status === "CHECKED_IN" && (
               <Button
                 type='primary'
                 onClick={() => handleChangeStatus("QUOTE_APPROVED")}>

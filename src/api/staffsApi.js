@@ -1,6 +1,6 @@
 import api from "./api";
 
-const BASE_URL = "/v1/admin/staffs";
+const BASE_URL = "/v1/staffs";
 
 // 🟢 Lấy danh sách kỹ thuật viên (lọc theo position)
 export const getStaffByPosition = (position) => {

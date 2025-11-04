@@ -16,6 +16,7 @@ const TechnicianPage = () => {
   const [qrRecord, setQrRecord] = useState(null);
   const [openQRModal, setOpenQRModal] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
+  const [currentEVCheckId, setCurrentEVCheckId] = useState(null);
 
   const [statusFilter, setStatusFilter] = useState("");
   const [serviceFilter, setServiceFilter] = useState("");
@@ -180,6 +181,7 @@ const TechnicianPage = () => {
         onClose={() => setOpenDrawer(false)} // 🔹 Đóng Drawer
         onUpdateStatus={handleUpdateStatus} // ✅ Hàm cập nhật trạng thái booking
         staffId={staffId} // ✅ ID của kỹ thuật viên hiện tại
+        initialEVCheckId={currentEVCheckId} // ← TRUYỀN ID EVCheck
       />
 
       {/* QR Modal */}
