@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EllipsisVertical, Pencil, Eye, Pause, Play } from "lucide-react";
 import { getServiceCenters } from "@/api/serviceCentersApi";
+import { formatPhoneNumber } from "@/utils/formatters";
 
 const initialBranches = [];
 
@@ -46,12 +47,17 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
 
         const mapped = list.map((item, idx) => ({
           id: item?.id || item?.code || `BR-${String(idx + 1).padStart(3, "0")}`,
+          code: item?.code || "",
           name: item?.name || item?.serviceCenterName || "N/A",
+          description: item?.description || "",
+          email: item?.email || "",
           location: item?.address || item?.location || "",
           phone: item?.phone || item?.phoneNumber || "",
           manager: item?.managerName || item?.manager || "",
           hours: item?.hours || item?.operatingHours || "",
           status: String(item?.status || "active").toLowerCase(),
+          latitude: item?.latitude || item?.lat || item?.geo?.lat || "",
+          longitude: item?.longitude || item?.lng || item?.geo?.lng || "",
         }));
 
         setRows(mapped);
@@ -138,35 +144,35 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
         <table className="w-full">
           <thead>
             <tr className="bg-muted/50 border-b border-border">
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Branch ID</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Branch Name</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Location</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Phone Number</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Manager</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Operating Hours</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Status</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Action</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">STT</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Tên chi nhánh</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Địa chỉ</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Số điện thoại</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Quản lý</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Giờ hoạt động</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Trạng thái</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="8" className="py-12 px-6 text-center text-sm text-muted-foreground">Loading...</td>
+                <td colSpan="8" className="py-12 px-6 text-center text-sm text-muted-foreground">Đang tải...</td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan="8" className="py-12 px-6 text-center text-sm text-muted-foreground">No branches found</td>
+                <td colSpan="8" className="py-12 px-6 text-center text-sm text-muted-foreground">Không tìm thấy chi nhánh</td>
               </tr>
             ) : (
               filtered.map((b, i) => (
                 <tr key={b.id} className={`border-b border-border hover:bg-muted/30 transition-colors ${i % 2 === 0 ? "bg-card" : "bg-muted/10"}`}>
-                  <td className="py-4 px-6 text-sm text-muted-foreground">{b.id}</td>
+                  <td className="py-4 px-6 text-sm text-muted-foreground">{i + 1}</td>
                   <td className="py-4 px-6 text-sm font-medium text-foreground">{b.name}</td>
                   <td className="py-4 px-6 text-sm text-foreground">{b.location}</td>
-                  <td className="py-4 px-6 text-sm text-foreground">{b.phone}</td>
+                  <td className="py-4 px-6 text-sm text-foreground">{formatPhoneNumber(b.phone)}</td>
                   <td className="py-4 px-6 text-sm text-foreground">{b.manager}</td>
                   <td className="py-4 px-6 text-sm text-foreground">{b.hours}</td>
-                  <td className="py-4 px-6"><span className={statusBadge(b.status)}>{b.status.charAt(0).toUpperCase() + b.status.slice(1)}</span></td>
+                  <td className="py-4 px-6"><span className={statusBadge(b.status)}>{b.status === "active" ? "Hoạt động" : b.status === "inactive" ? "Ngưng hoạt động" : b.status === "suspended" ? "Tạm dừng" : b.status}</span></td>
                   <td className="py-4 px-6">
                     <div className="flex items-center gap-2">
                       <Button
@@ -174,7 +180,7 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-foreground"
                         onClick={() => window?.openEditBranch?.(b)}
-                        title="Edit"
+                        title="Sửa"
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -183,7 +189,7 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-foreground"
                         onClick={() => window?.openViewBranch?.(b)}
-                        title="View details"
+                        title="Xem chi tiết"
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
@@ -192,7 +198,7 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
                         size="icon"
                         className={`h-8 w-8 ${b.status === "active" ? "text-amber-600 hover:text-amber-700" : "text-green-600 hover:text-green-700"}`}
                         onClick={() => toggleStatus(b)}
-                        title={b.status === "active" ? "Suspend" : "Activate"}
+                        title={b.status === "active" ? "Tạm dừng" : "Kích hoạt"}
                       >
                         {b.status === "active" ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                       </Button>

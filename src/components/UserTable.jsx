@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Pencil, Ban, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { formatPhoneNumber } from "@/utils/formatters";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { getUsers } from "@/api/usersApi";
 import { updateUserStatus } from "@/api/usersApi";
@@ -190,13 +191,13 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
         <table className="w-full">
           <thead>
             <tr className="bg-muted/50 border-b border-border">
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Avatar</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Phone Number</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Ảnh đại diện</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Số điện thoại</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Email</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Full Name</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Role</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Status</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Action</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Họ tên</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Vai trò</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Trạng thái</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -204,8 +205,8 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
               <tr>
                 <td colSpan="8" className="py-12 px-6 text-center">
                   <div className="flex flex-col items-center gap-2">
-                    <p className="text-muted-foreground text-sm">No users found</p>
-                    <p className="text-xs text-muted-foreground">Try adjusting your search or filter criteria</p>
+                    <p className="text-muted-foreground text-sm">Không tìm thấy người dùng</p>
+                    <p className="text-xs text-muted-foreground">Hãy thay đổi từ khóa hoặc bộ lọc</p>
                   </div>
                 </td>
               </tr>
@@ -219,7 +220,7 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
                     </AvatarFallback>
                   </Avatar>
                 </td>
-                <td className="py-4 px-6 text-sm text-foreground">{user.phoneNumber}</td>
+                <td className="py-4 px-6 text-sm text-foreground">{formatPhoneNumber(user.phoneNumber)}</td>
                 <td className="py-4 px-6 text-sm text-muted-foreground">{user.email}</td>
                 <td className="py-4 px-6 text-sm font-medium text-foreground">{user.fullName}</td>
                 <td className="py-4 px-6">

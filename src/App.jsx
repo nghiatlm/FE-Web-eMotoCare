@@ -25,6 +25,7 @@ import AccessoryInventory from "./pages/storekeeper/AccessoryInventory";
 import AccessoryDetail from "./pages/storekeeper/AccessoryDetail";
 import ImportSlipsPage from "./pages/storekeeper/ImportSlipsPage";
 import ExportSlipsPage from "./pages/storekeeper/ExportSlipsPage";
+import ExportNoteDetail from "./pages/storekeeper/ExportNoteDetail";
 
 // service staff
 import { StaffSidebar } from "./components/service-staff/StaffSidebar";
@@ -146,6 +147,7 @@ const App = () => (
                       <Route path='accessories/:id' element={<AccessoryDetail />} />
                       <Route path='import-slips' element={<ImportSlipsPage />} />
                       <Route path='export-slips' element={<ExportSlipsPage />} />
+                      <Route path='export-slips/:id' element={<ExportNoteDetail />} />
                       <Route path='reports' element={<NotFound />} />
                       <Route path='*' element={<NotFound />} />
                     </Routes>

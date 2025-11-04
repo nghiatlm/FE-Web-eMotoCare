@@ -26,9 +26,9 @@ export default function WarrantyClaims() {
                 <div className="mb-8">
                     <div className="flex items-center gap-2 mb-2">
                         <FileText className="h-6 w-6 text-primary" />
-                        <h1 className="text-3xl font-bold text-foreground">Warranty Claims</h1>
+                        <h1 className="text-3xl font-bold text-foreground">Khiếu nại bảo hành</h1>
                     </div>
-                    <p className="text-muted-foreground">Warranty Claims</p>
+                    <p className="text-muted-foreground">Quản lý khiếu nại bảo hành</p>
                 </div>
 
                 {/* Filters */}
@@ -73,7 +73,7 @@ export default function WarrantyClaims() {
                             }} 
                             className="text-primary hover:text-primary/90"
                         >
-                            Clear Filters
+                            Xóa lọc
                         </Button>
                     )}
                 </div>

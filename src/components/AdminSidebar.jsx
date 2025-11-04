@@ -3,14 +3,14 @@ import { NavLink } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar, } from "@/components/ui/sidebar";
 import { authService } from "@/services/authService";
 const menuItems = [
-    { title: "Dashboard", icon: LayoutDashboard, url: "/admin" },
-    { title: "Vehicles", icon: Bike, url: "/admin/vehicles" },
-    { title: "Warranty Claims", icon: FileText, url: "/admin/warranty-claims" },
-    { title: "Branches", icon: Store, url: "/admin/branches" },
-    { title: "Service Packages", icon: Package, url: "/admin/service-packages" },
-    { title: "Users", icon: Users, url: "/admin/users" },
-    { title: "Reports", icon: BarChart3, url: "/admin/reports" },
-    { title: "Settings", icon: Settings, url: "/admin/settings" },
+    { title: "Tổng quan", icon: LayoutDashboard, url: "/admin" },
+    { title: "Xe", icon: Bike, url: "/admin/vehicles" },
+    { title: "Khiếu nại bảo hành", icon: FileText, url: "/admin/warranty-claims" },
+    { title: "Chi nhánh", icon: Store, url: "/admin/branches" },
+    { title: "Gói dịch vụ", icon: Package, url: "/admin/service-packages" },
+    { title: "Người dùng", icon: Users, url: "/admin/users" },
+    { title: "Báo cáo", icon: BarChart3, url: "/admin/reports" },
+    { title: "Cài đặt", icon: Settings, url: "/admin/settings" },
 ];
 export function AdminSidebar() {
     const { state } = useSidebar();
@@ -36,10 +36,10 @@ export function AdminSidebar() {
                     authService.logout();
                     window.location.href = "/login";
                   }}
-                  tooltip="Logout"
+                  tooltip="Đăng xuất"
                 >
                   <LogOut className="h-5 w-5 flex-shrink-0" />
-                  {!isCollapsed && <span>Logout</span>}
+                  {!isCollapsed && <span>Đăng xuất</span>}
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const menuItems = [
-  { title: "Booking", icon: CalendarCheck, url: "/staff/booking" },
+  { title: "Lịch hẹn", icon: CalendarCheck, url: "/staff/booking" },
   // Sau này chỉ cần thêm:
   // { title: "Vehicles", icon: Bike, url: "/staff/vehicles" },
   // { title: "Reports", icon: BarChart3, url: "/staff/reports" },

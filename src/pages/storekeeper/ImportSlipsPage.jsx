@@ -711,11 +711,11 @@ export default function ImportSlipsPage() {
             </Button>
             <Button
               onClick={async () => {
-                // Validate required fields
-                if (!createFormData.code || !createFormData.importFrom || !createFormData.supplier) {
+                // Validate required fields (the API requires these fields)
+                if (!createFormData.importFrom || !createFormData.supplier) {
                   toast({
                     title: "Lỗi",
-                    description: "Vui lòng điền đầy đủ các trường bắt buộc (Mã phiếu, Nguồn nhập, Nhà cung cấp)",
+                    description: "Vui lòng điền đầy đủ các trường bắt buộc (Nguồn nhập, Nhà cung cấp)",
                     variant: "destructive"
                   });
                   return;
@@ -725,7 +725,6 @@ export default function ImportSlipsPage() {
                   setCreating(true);
                   
                   const createData = {
-                    code: createFormData.code,
                     importFrom: createFormData.importFrom,
                     supplier: createFormData.supplier,
                     type: createFormData.type,

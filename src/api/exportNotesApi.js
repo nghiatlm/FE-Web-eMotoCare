@@ -42,3 +42,11 @@ export const deleteExportNote = (exportNoteId) => {
   });
 };
 
+export const getExportNotePartItems = (exportNoteId) => {
+  return api.get(`${BASE_URL}/${exportNoteId}/part-items`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+};
+

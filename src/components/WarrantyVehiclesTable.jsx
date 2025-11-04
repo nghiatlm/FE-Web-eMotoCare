@@ -88,27 +88,27 @@ export function WarrantyVehiclesTable({
   return (
     <div>
       <p className="text-sm text-muted-foreground mb-4">
-        {hasActiveFilters ? `Showing ${filtered.length} of ${data.length} devices` : `Showing ${data.length} devices`}
+        {hasActiveFilters ? `Hiển thị ${filtered.length}/${data.length} thiết bị` : `Tổng ${data.length} thiết bị`}
       </p>
       <div className="bg-card rounded-lg border border-border overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="bg-muted/50 border-b border-border">
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Device ID</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Serial Number</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Model</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Owner</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Warranty Start</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Warranty Expiry</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Status</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Action</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Mã thiết bị</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Số serial</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Mẫu</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Chủ sở hữu</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Bắt đầu BH</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Hết hạn BH</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Trạng thái</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan="8" className="py-12 px-6 text-center text-sm text-muted-foreground">No devices found</td>
+                <td colSpan="8" className="py-12 px-6 text-center text-sm text-muted-foreground">Không tìm thấy thiết bị</td>
               </tr>
             ) : (
               filtered.map((v, i) => {
@@ -121,13 +121,13 @@ export function WarrantyVehiclesTable({
                     <td className="py-4 px-6 text-sm text-foreground">{v.owner}</td>
                     <td className="py-4 px-6 text-sm text-muted-foreground">{v.start}</td>
                     <td className="py-4 px-6 text-sm text-muted-foreground">{v.expiry}</td>
-                    <td className="py-4 px-6"><span className={statusBadge(active ? "Active" : "Expired")}>{active ? "Active" : "Expired"}</span></td>
+                    <td className="py-4 px-6"><span className={statusBadge(active ? "Active" : "Expired")}>{active ? "Còn hạn" : "Hết hạn"}</span></td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" title="Edit" onClick={() => window?.openEditWarrantyVehicle?.(v)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" title="Sửa" onClick={() => window?.openEditWarrantyVehicle?.(v)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" title="View details" onClick={() => window?.openViewWarrantyVehicle?.(v)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" title="Xem chi tiết" onClick={() => window?.openViewWarrantyVehicle?.(v)}>
                           <Eye className="h-4 w-4" />
                         </Button>
                       </div>

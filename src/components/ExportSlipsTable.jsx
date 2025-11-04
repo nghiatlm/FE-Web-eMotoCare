@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Eye, Printer, Edit } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Eye, Printer, Edit, FileUp } from "lucide-react";
 import { getExportNotes } from "@/api/exportNotesApi";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
@@ -25,6 +26,7 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
           exportTo: item.exportTo || "N/A",
           date: item.exportDate || item.createdAt || "",
           totalQuantity: item.totalQuantity || 0,
+          status: item.exportNoteStatus || item.status || "PENDING",
           rawData: item
         }));
         
@@ -86,11 +88,11 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
   // Loading state
   if (loading) {
     return (
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-            <p className="text-muted-foreground text-sm">Đang tải phiếu xuất...</p>
+      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center space-y-4">
+            <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-red-200 border-t-red-500 dark:border-red-900 dark:border-t-red-600"></div>
+            <p className="text-muted-foreground text-sm font-medium">Đang tải phiếu xuất...</p>
           </div>
         </div>
       </div>
@@ -100,78 +102,150 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
   // Error state
   if (error) {
     return (
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <p className="text-red-600 dark:text-red-400 mb-2">Lỗi khi tải phiếu xuất</p>
-            <p className="text-muted-foreground text-sm">{error}</p>
+      <div className="bg-card rounded-xl border border-red-200 dark:border-red-900/50 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center space-y-3">
+            <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto">
+              <FileUp className="h-8 w-8 text-red-600 dark:text-red-400" />
+            </div>
+            <p className="text-red-600 dark:text-red-400 font-semibold">Lỗi khi tải phiếu xuất</p>
+            <p className="text-muted-foreground text-sm max-w-md">{error}</p>
           </div>
         </div>
       </div>
     );
   }
 
+  // Helper function to format status
+  const getStatusLabel = (status) => {
+    const statusMap = {
+      PENDING: "Chờ duyệt",
+      APPROVED: "Đã duyệt",
+      EXPORTING: "Đang xuất",
+      COMPLETED: "Hoàn thành",
+      CANCELLED: "Đã hủy"
+    };
+    return statusMap[status] || status;
+  };
+
+  const getStatusBadgeClass = (status) => {
+    const classMap = {
+      PENDING: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700",
+      APPROVED: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-300 dark:border-blue-700",
+      EXPORTING: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-300 dark:border-purple-700",
+      COMPLETED: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-300 dark:border-green-700",
+      CANCELLED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-300 dark:border-red-700"
+    };
+    return classMap[status] || "bg-muted text-muted-foreground border-border";
+  };
+
   return (
-    <div className="bg-card rounded-lg border border-border overflow-hidden">
+    <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full table-fixed">
           <thead>
-            <tr className="bg-muted/50 border-b border-border">
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Mã phiếu</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Người nhận</th>
-              <th className="text-center py-4 px-6 text-sm font-medium text-muted-foreground">Tổng SL</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Ngày xuất</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Thao tác</th>
+            <tr className="bg-gradient-to-r from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-b-2 border-red-200/50 dark:border-red-800/30">
+              <th className="text-left py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[18%]">
+                Mã phiếu
+              </th>
+              <th className="text-left py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[15%]">
+                Người nhận
+              </th>
+              <th className="text-center py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[12%]">
+                Tổng SL
+              </th>
+              <th className="text-left py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[12%]">
+                Ngày xuất
+              </th>
+              <th className="text-left py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[13%]">
+                Trạng thái
+              </th>
+              <th className="text-left py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[30%]">
+                Thao tác
+              </th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && !loading ? (
               <tr>
-                <td colSpan="5" className="py-12 px-6 text-center text-sm text-muted-foreground">
-                  {search || status ? "Không tìm thấy phiếu xuất phù hợp" : "Chưa có phiếu xuất nào"}
+                <td colSpan="6" className="py-16 px-6 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
+                      <FileUp className="h-8 w-8 text-muted-foreground/50" />
+                    </div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {search || status ? "Không tìm thấy phiếu xuất phù hợp" : "Chưa có phiếu xuất nào"}
+                    </p>
+                  </div>
                 </td>
               </tr>
             ) : (
               filtered.map((slip, i) => (
                 <tr
                   key={`${slip.id}-${i}`}
-                  className={`border-b border-border hover:bg-muted/30 transition-colors ${
-                    i % 2 === 0 ? "bg-card" : "bg-muted/10"
+                  className={`border-b border-border/50 hover:bg-red-50/50 dark:hover:bg-red-950/10 transition-all duration-200 ${
+                    i % 2 === 0 ? "bg-card" : "bg-muted/30"
                   }`}
                 >
-                  <td className="py-4 px-6 text-sm font-medium text-foreground">{slip.id}</td>
-                  <td className="py-4 px-6 text-sm text-foreground">{slip.exportTo}</td>
-                  <td className="py-4 px-6 text-sm text-center text-foreground">{slip.totalQuantity}</td>
-                  <td className="py-4 px-6 text-sm text-foreground">
-                    {new Date(slip.date).toLocaleDateString('vi-VN')}
+                  <td className="py-4 px-6">
+                    <span className="text-sm font-semibold text-foreground inline-flex items-center gap-2">
+                      {slip.id}
+                    </span>
                   </td>
                   <td className="py-4 px-6">
-                    <div className="flex items-center gap-2">
+                    <span className="text-sm text-foreground/90">{slip.exportTo}</span>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="flex items-center justify-center">
+                      <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-semibold bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800">
+                        {slip.totalQuantity}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-4 px-6">
+                    <span className="text-sm text-foreground/90">
+                      {slip.date ? new Date(slip.date).toLocaleDateString('vi-VN', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                      }) : 'N/A'}
+                    </span>
+                  </td>
+                  <td className="py-4 px-6">
+                    <Badge
+                      variant="secondary"
+                      className={`border ${getStatusBadgeClass(slip.status)}`}
+                    >
+                      {getStatusLabel(slip.status)}
+                    </Badge>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="gap-1"
+                        className="gap-1.5 h-8 px-3 text-xs font-medium hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                         onClick={() => window?.openViewExportSlip?.(slip)}
                       >
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-3.5 w-3.5" />
                         Chi tiết
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-primary/10 dark:hover:bg-primary/20 transition-colors"
                         onClick={() => window?.openEditExportSlip?.(slip)}
-                        title="Edit"
+                        title="Chỉnh sửa"
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="gap-1"
+                        className="gap-1.5 h-8 px-3 text-xs font-medium hover:bg-green-50 dark:hover:bg-green-950/30 hover:text-green-600 dark:hover:text-green-400 transition-colors"
                         onClick={() => window?.printExportSlip?.(slip)}
                       >
-                        <Printer className="h-4 w-4" />
+                        <Printer className="h-3.5 w-3.5" />
                         In phiếu
                       </Button>
                     </div>
@@ -185,16 +259,20 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
 
       {/* Pagination */}
       {total > pageSize && (
-      <div className="flex items-center justify-between p-4 border-t border-border">
-        <div className="text-sm text-muted-foreground">
-            Hiển thị {filtered.length} / {total} phiếu
+      <div className="flex items-center justify-between p-5 bg-gradient-to-r from-muted/30 to-muted/50 border-t border-border/50">
+        <div className="text-sm font-medium text-foreground/80">
+          Hiển thị <span className="font-semibold text-foreground">{filtered.length}</span> / <span className="font-semibold text-foreground">{total}</span> phiếu
         </div>
           <Pagination>
-            <PaginationContent>
+            <PaginationContent className="gap-1">
               <PaginationItem>
                 <PaginationPrevious 
                   onClick={() => setPage(prev => Math.max(1, prev - 1))}
-                  className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  className={`cursor-pointer transition-all ${
+                    page === 1 
+                      ? "pointer-events-none opacity-50" 
+                      : "hover:bg-red-100 dark:hover:bg-red-900/30"
+                  }`}
                 />
               </PaginationItem>
               
@@ -203,7 +281,11 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
                   <PaginationLink
                     onClick={() => setPage(pageNum)}
                     isActive={page === pageNum}
-                    className="cursor-pointer"
+                    className={`cursor-pointer transition-all ${
+                      page === pageNum
+                        ? "bg-red-500 text-white hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700"
+                        : "hover:bg-red-100 dark:hover:bg-red-900/30"
+                    }`}
                   >
                     {pageNum}
                   </PaginationLink>
@@ -213,7 +295,11 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
               <PaginationItem>
                 <PaginationNext 
                   onClick={() => setPage(prev => Math.min(Math.ceil(total / pageSize), prev + 1))}
-                  className={page >= Math.ceil(total / pageSize) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  className={`cursor-pointer transition-all ${
+                    page >= Math.ceil(total / pageSize)
+                      ? "pointer-events-none opacity-50"
+                      : "hover:bg-red-100 dark:hover:bg-red-900/30"
+                  }`}
                 />
               </PaginationItem>
             </PaginationContent>

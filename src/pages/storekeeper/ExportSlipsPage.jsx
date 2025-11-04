@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search, MapPin, Building2, FileUp, Plus, Eye, Printer, Trash2, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import ExportSlipsTable from "@/components/ExportSlipsTable";
 import { createExportNote, getExportNoteById, updateExportNote } from "@/api/exportNotesApi";
 
 export default function ExportSlipsPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -27,7 +29,7 @@ export default function ExportSlipsPage() {
   // Form state cho tạo phiếu xuất
   const [formData, setFormData] = useState({
     code: "",
-    type: 0,
+    type: "REPLACEMENT",
     exportTo: "",
     totalQuantity: 0,
     totalValue: 0,
@@ -41,7 +43,7 @@ export default function ExportSlipsPage() {
   const [editFormData, setEditFormData] = useState({
     code: "",
     exportDate: "",
-    type: 0,
+    type: "REPLACEMENT",
     exportTo: "",
     totalQuantity: 0,
     totalValue: 0,
@@ -60,28 +62,15 @@ export default function ExportSlipsPage() {
 
   useEffect(() => {
     window.openViewExportSlip = async (slip) => {
-      setSelectedSlip(slip);
-      setIsViewDialogOpen(true);
-      
-      // Fetch detail from API using the UUID from rawData
+      // Navigate to detail page instead of opening dialog
       if (slip?.rawData?.id) {
-        try {
-          setLoadingDetail(true);
-          const response = await getExportNoteById(slip.rawData.id);
-          if (response.success && response.data) {
-            setExportNoteDetail(response.data);
-          }
-        } catch (error) {
-          console.error("Error fetching export note detail:", error);
-          setExportNoteDetail(null);
-          toast({
-            title: "Lỗi",
-            description: "Không thể tải chi tiết phiếu xuất",
-            variant: "destructive"
-          });
-        } finally {
-          setLoadingDetail(false);
-        }
+        navigate(`/storekeeper/export-slips/${slip.rawData.id}`);
+      } else {
+        toast({
+          title: "Lỗi",
+          description: "Không tìm thấy ID phiếu xuất",
+          variant: "destructive"
+        });
       }
     };
 
@@ -254,14 +243,18 @@ export default function ExportSlipsPage() {
               
               <div className="space-y-2">
                 <Label htmlFor="type" className="text-sm font-semibold">Loại *</Label>
-                <Input
-                  id="type"
-                  type="number"
-                  min="0"
-                  placeholder="0"
+                <Select
                   value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: parseInt(e.target.value) || 0 })}
-                />
+                  onValueChange={(value) => setFormData({ ...formData, type: value })}
+                >
+                  <SelectTrigger id="type">
+                    <SelectValue placeholder="Chọn loại" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="REPLACEMENT">REPLACEMENT</SelectItem>
+                    <SelectItem value="TRANSFER_TO">TRANSFER_TO</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -361,7 +354,7 @@ export default function ExportSlipsPage() {
                 setIsCreateDialogOpen(false);
                 setFormData({
                   code: "",
-                  type: 0,
+                  type: "REPLACEMENT",
                   exportTo: "",
                   totalQuantity: 0,
                   totalValue: 0,
@@ -422,7 +415,7 @@ export default function ExportSlipsPage() {
                     // Reset form
                     setFormData({
                       code: "",
-                      type: 0,
+                      type: "REPLACEMENT",
                       exportTo: "",
                       totalQuantity: 0,
                       totalValue: 0,
@@ -680,14 +673,18 @@ export default function ExportSlipsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-type">Loại *</Label>
-                  <Input
-                    id="edit-type"
-                    type="number"
-                    min="0"
-                    placeholder="0"
+                  <Select
                     value={editFormData.type}
-                    onChange={(e) => setEditFormData({ ...editFormData, type: parseInt(e.target.value) || 0 })}
-                  />
+                    onValueChange={(value) => setEditFormData({ ...editFormData, type: value })}
+                  >
+                    <SelectTrigger id="edit-type">
+                      <SelectValue placeholder="Chọn loại" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="REPLACEMENT">REPLACEMENT</SelectItem>
+                      <SelectItem value="TRANSFER_TO">TRANSFER_TO</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-exportTo">Người nhận *</Label>
