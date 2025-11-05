@@ -1,35 +1,94 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Check, MapPin, Building2, Image as ImageIcon, AlertTriangle, Package, TrendingUp, Calendar, User, Plus, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+
 import { useNavigate, useParams } from "react-router-dom";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
+import { getPartById } from "@/api/partsApi";
+import { useToast } from "@/hooks/use-toast";
+import * as ProgressPrimitive from "@radix-ui/react-progress";
+import { cn } from "@/lib/utils";
+
+// Custom Progress component với màu động
+const ColoredProgress = ({ value, colorClass, className, ...props }) => {
+  return (
+    <ProgressPrimitive.Root 
+      className={cn("relative h-4 w-full overflow-hidden rounded-full bg-secondary", className)} 
+      {...props}
+    >
+      <ProgressPrimitive.Indicator 
+        className={cn("h-full w-full flex-1 transition-all", colorClass || "bg-primary")} 
+        style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
+      />
+    </ProgressPrimitive.Root>
+  );
+};
 
 export default function AccessoryDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { toast } = useToast();
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [accessory, setAccessory] = useState(null);
 
-  // Mock data
-  const accessory = {
-    id: "OIL002",
-    name: "Dầu nhớt Castrol 10W40",
-    image: "",
-    unit: "Chai",
-    availableStock: 7,
-    minStock: 8,
-    totalStock: 7,
-    branch: "Chi nhánh Quận 1",
-    shelfLocation: "",
-    warningThreshold: "",
-    status: "low",
-    lastUpdated: "20:09 23/09/2025"
-  };
+  useEffect(() => {
+    const fetchPartDetail = async () => {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        const response = await getPartById(id);
+        
+        if (response.success && response.data) {
+          const data = response.data;
+          const minStock = 5; // Default min stock
+          const alert = data.quantity === 0 ? "out" : data.quantity < minStock ? "low" : "sufficient";
+          
+          setAccessory({
+            id: data.id || data.code,
+            code: data.code || "",
+            name: data.name || "",
+            image: data.image || "",
+            unit: "Cái",
+            availableStock: data.quantity || 0,
+            minStock: minStock,
+            totalStock: data.quantity || 0,
+            branch: "Chi nhánh Quận 1",
+            shelfLocation: "B2-05",
+            warningThreshold: "",
+            status: alert,
+            partType: data.partType?.name || "",
+            statusBackend: data.status || "ACTIVE",
+            lastUpdated: new Date().toLocaleString('vi-VN')
+          });
+        } else {
+          toast({
+            title: "Lỗi",
+            description: "Không tìm thấy thông tin phụ tùng",
+            variant: "destructive"
+          });
+          navigate('/storekeeper/accessories');
+        }
+      } catch (error) {
+        console.error("Lỗi lấy chi tiết phụ tùng:", error);
+        toast({
+          title: "Lỗi",
+          description: error?.message || "Không thể tải thông tin phụ tùng",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPartDetail();
+  }, [id, navigate, toast]);
 
   const adjustmentHistory = [
     {
@@ -67,7 +126,49 @@ export default function AccessoryDetail() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+          <p className="text-muted-foreground">Đang tải thông tin phụ tùng...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!accessory) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground mb-4">Không tìm thấy phụ tùng</p>
+          <Button onClick={() => navigate('/storekeeper/accessories')}>
+            Quay lại danh sách
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const progressPercentage = (accessory.availableStock / accessory.minStock) * 100;
+
+  // Tính toán màu progress bar dựa trên tồn kho
+  const getProgressColor = () => {
+    const stock = accessory.availableStock;
+    const minStock = accessory.minStock;
+    const ratio = stock / minStock;
+
+    // Nếu hết hoặc thiếu nhiều (ít hơn 50% minStock) -> đỏ
+    if (stock === 0 || ratio < 0.5) {
+      return "bg-red-500";
+    }
+    // Nếu vừa (từ 50% đến 110% minStock) -> vàng
+    if (ratio >= 0.5 && ratio <= 1.1) {
+      return "bg-yellow-500";
+    }
+    // Nếu dư nhiều (nhiều hơn 110% minStock) -> xanh lá
+    return "bg-green-500";
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
@@ -89,8 +190,13 @@ export default function AccessoryDetail() {
                 {accessory.name}
               </h1>
               <p className="text-lg text-muted-foreground">
-                Mã sản phẩm: <span className="font-semibold text-primary">{accessory.id}</span>
+                Mã sản phẩm: <span className="font-semibold text-primary">{accessory.code || accessory.id}</span>
               </p>
+              {accessory.partType && (
+                <p className="text-sm text-muted-foreground">
+                  Loại: <span className="font-medium">{accessory.partType}</span>
+                </p>
+              )}
             </div>
             <Button 
               size="lg" 
@@ -133,8 +239,22 @@ export default function AccessoryDetail() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* Product Image Card */}
           <Card className="p-6 bg-gradient-to-br from-card to-muted/30">
-            <div className="aspect-square flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl mb-4">
-              <ImageIcon className="h-32 w-32 text-primary/40" />
+            <div className="aspect-square relative flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl mb-4 overflow-hidden">
+              {accessory.image ? (
+                <img 
+                  src={accessory.image} 
+                  alt={accessory.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    const fallback = e.target.parentElement.querySelector('.image-fallback');
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+              ) : null}
+              <div className={`image-fallback absolute inset-0 flex items-center justify-center ${accessory.image ? 'hidden' : 'flex'}`}>
+                <ImageIcon className="h-32 w-32 text-primary/40" />
+              </div>
             </div>
             <Badge className={getStockStatusBadge(accessory.status)}>
               {getStockStatusText(accessory.status)}
@@ -157,12 +277,25 @@ export default function AccessoryDetail() {
                 <p className="text-sm text-muted-foreground">Tồn kho hiện tại</p>
                 <h2 className="text-4xl font-bold text-orange-700">{accessory.availableStock}</h2>
                 <p className="text-sm text-muted-foreground">/ {accessory.minStock} {accessory.unit} (Ngưỡng tối thiểu)</p>
-                <div className="mt-4">
-                  <Progress 
-                    value={progressPercentage > 100 ? 100 : progressPercentage} 
-                    className="h-2" 
-                  />
-                </div>
+                                 <div className="mt-4 space-y-2">
+                   <ColoredProgress 
+                     value={progressPercentage > 100 ? 100 : progressPercentage} 
+                     colorClass={getProgressColor()}
+                     className="h-2" 
+                   />
+                   <div className="flex items-center justify-between text-xs">
+                     <span className="text-muted-foreground">Min: {accessory.minStock}</span>
+                     {accessory.availableStock < accessory.minStock ? (
+                       <span className="text-orange-600 font-medium">
+                         Sắp thiếu: {accessory.minStock - accessory.availableStock}
+                       </span>
+                     ) : accessory.availableStock > accessory.minStock * 1.1 ? (
+                       <span className="text-green-600 font-medium">
+                         Dư: {accessory.availableStock - accessory.minStock}
+                       </span>
+                     ) : null}
+                   </div>
+                 </div>
               </div>
             </Card>
 
@@ -189,8 +322,14 @@ export default function AccessoryDetail() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between pb-2 border-b border-border">
                   <span className="text-sm text-muted-foreground">Mã phụ tùng:</span>
-                  <span className="text-sm font-semibold text-primary">{accessory.id}</span>
+                  <span className="text-sm font-semibold text-primary">{accessory.code || accessory.id}</span>
                 </div>
+                {accessory.partType && (
+                  <div className="flex items-center justify-between pb-2 border-b border-border">
+                    <span className="text-sm text-muted-foreground">Loại phụ tùng:</span>
+                    <span className="text-sm font-medium">{accessory.partType}</span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between pb-2 border-b border-border">
                   <span className="text-sm text-muted-foreground">Đơn vị:</span>
                   <span className="text-sm font-medium">{accessory.unit}</span>

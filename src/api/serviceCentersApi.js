@@ -1,6 +1,6 @@
 import api from "./api";
 
-const BASE_URL = "https://ef518f64eb02.ngrok-free.app/api/v1/service-centers";
+const BASE_URL = "/v1/service-centers";
 const token = JSON.parse(localStorage.getItem("user"));
 export const getServiceCenters = ({
   search,

@@ -1,7 +1,7 @@
 import api from "./api";
 
 const BASE_URL = "/v1/parts";
-const PART_TYPES_BASE_URL = "https://ef518f64eb02.ngrok-free.app/api/v1/part-types";
+const PART_TYPES_BASE_URL = "/v1/part-types";
 const user = JSON.parse(localStorage.getItem("user"));
 const token = user?.token;
 
@@ -13,19 +13,27 @@ export const getParts = ({ page = 1, pageSize = 10, search, status } = {}) => {
 };
 
 export const getPartTypeById = (partTypeId) => {
-  return api.get(`${PART_TYPES_BASE_URL}/${partTypeId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
+  return api.get(`${PART_TYPES_BASE_URL}/${partTypeId}`);
 };
 
 export const getPartTypes = (page = 1, pageSize = 100) => {
-  return api.get(`${PART_TYPES_BASE_URL}?page=${page}&pageSize=${pageSize}`, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
+  const params = { page, pageSize };
+  return api.get(PART_TYPES_BASE_URL, { params });
 };
 
+export const createPart = (partData) => {
+  return api.post(BASE_URL, partData);
+};
+
+export const getPartById = (partId) => {
+  return api.get(`${BASE_URL}/${partId}`);
+};
+
+export const updatePart = (partId, partData) => {
+  return api.put(`${BASE_URL}/${partId}`, partData);
+};
+
+export const deletePart = (partId) => {
+  return api.delete(`${BASE_URL}/${partId}`);
+};
 

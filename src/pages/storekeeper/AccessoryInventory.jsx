@@ -4,13 +4,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
-import { getParts } from "@/api/partsApi";
+import { getParts, createPart, getPartTypes, updatePart, getPartById } from "@/api/partsApi";
+import { useToast } from "@/hooks/use-toast";
+import { Plus } from "lucide-react";
+import * as ProgressPrimitive from "@radix-ui/react-progress";
+import { cn } from "@/lib/utils";
+
+// Custom Progress component với màu động
+const ColoredProgress = ({ value, colorClass, className, ...props }) => {
+  return (
+    <ProgressPrimitive.Root 
+      className={cn("relative h-4 w-full overflow-hidden rounded-full bg-secondary", className)} 
+      {...props}
+    >
+      <ProgressPrimitive.Indicator 
+        className={cn("h-full w-full flex-1 transition-all", colorClass || "bg-primary")} 
+        style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
+      />
+    </ProgressPrimitive.Root>
+  );
+};
 
 export default function AccessoryInventory() {
   const navigate = useNavigate();
@@ -20,6 +38,32 @@ export default function AccessoryInventory() {
   const [selectedItems, setSelectedItems] = useState([]);
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [requestNote, setRequestNote] = useState("");
+  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState({ url: "", name: "" });
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [loadingEditDetail, setLoadingEditDetail] = useState(false);
+  const [selectedPartId, setSelectedPartId] = useState(null);
+  const [partTypes, setPartTypes] = useState([]);
+  const { toast } = useToast();
+
+  const [createFormData, setCreateFormData] = useState({
+    partTypeId: "",
+    name: "",
+    quantity: 0,
+    image: ""
+  });
+
+  const [editFormData, setEditFormData] = useState({
+    partTypeId: "",
+    code: "",
+    name: "",
+    quantity: 0,
+    image: "",
+    status: "ACTIVE"
+  });
 
   const currentBranch = {
     id: "BR-001",
@@ -32,27 +76,41 @@ export default function AccessoryInventory() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     const fetchParts = async () => {
       try {
         setLoading(true);
-        const res = await getParts({ page, pageSize });
-        const list = res?.data?.rowDatas || res?.rowDatas || [];
+        // Note: API doesn't filter by alert status, so we filter client-side for alert
+        const res = await getParts({ 
+          page, 
+          pageSize,
+          search: search || undefined,
+          // status filter is for backend status (ACTIVE/INACTIVE), not alert
+        });
+        const payload = res?.data || res;
+        const list = payload?.rowDatas || [];
+        const totalCount = payload?.total || 0;
+        
         const mapped = list.map((p) => {
-          const minStock = 5;
+          const minStock = 10;
           const alert = p?.quantity === 0 ? "out" : p?.quantity < minStock ? "low" : "sufficient";
           return {
             id: p?.id || p?.code,
-            name: p?.name,
+            code: p?.code || "",
+            name: p?.name || "",
             image: p?.image || "",
-            //unit: "Cái",
-            quantity: p?.quantity,
-            status: p?.status,
+            partType: p?.partType?.name || "",
+            partTypeId: p?.partType?.id || "",
+            quantity: p?.quantity || 0,
+            status: p?.status || "",
             alert: alert,
+            minStock: minStock,
           };
         });
         setAccessories(mapped);
+        setTotal(totalCount);
       } catch (e) {
         console.error("Lỗi lấy danh sách parts:", e);
         setAccessories([]);
@@ -62,7 +120,80 @@ export default function AccessoryInventory() {
     };
 
     fetchParts();
-  }, [page, pageSize]);
+  }, [page, pageSize, search, status]);
+
+  // Fetch part types when create or edit dialog opens
+  useEffect(() => {
+    const fetchPartTypes = async () => {
+      if (isCreateDialogOpen || isEditDialogOpen) {
+        try {
+          const res = await getPartTypes(1, 100);
+          const list = res?.data?.rowDatas || res?.rowDatas || [];
+          setPartTypes(list);
+        } catch (e) {
+          console.error("Lỗi lấy danh sách loại phụ tùng:", e);
+        }
+      } else {
+        // Reset when dialogs close
+        setPartTypes([]);
+      }
+    };
+    fetchPartTypes();
+  }, [isCreateDialogOpen, isEditDialogOpen]);
+
+  // Fetch part detail when edit dialog opens and partTypes are loaded
+  useEffect(() => {
+    const fetchPartDetail = async () => {
+      if (isEditDialogOpen && selectedPartId) {
+        // Wait for partTypes to be loaded first
+        if (partTypes.length === 0) {
+          return;
+        }
+
+        try {
+          setLoadingEditDetail(true);
+          const response = await getPartById(selectedPartId);
+          
+          // Handle different response structures
+          const data = response?.data || response;
+          
+          if (data) {
+            // Get partTypeId - handle both nested and direct structure
+            let partTypeId = "";
+            if (data.partType?.id) {
+              partTypeId = data.partType.id;
+            } else if (data.partTypeId) {
+              partTypeId = data.partTypeId;
+            }
+            
+            console.log("Part detail data:", data);
+            console.log("Extracted partTypeId:", partTypeId);
+            console.log("Available partTypes:", partTypes.map(t => ({ id: t.id, name: t.name })));
+            
+            setEditFormData({
+              partTypeId: partTypeId,
+              code: data.code || "",
+              name: data.name || "",
+              quantity: data.quantity || 0,
+              image: data.image || "",
+              status: data.status || "ACTIVE"
+            });
+          }
+        } catch (error) {
+          console.error("Lỗi lấy chi tiết phụ tùng:", error);
+          toast({
+            title: "Lỗi",
+            description: "Không thể tải thông tin phụ tùng",
+            variant: "destructive"
+          });
+          setIsEditDialogOpen(false);
+        } finally {
+          setLoadingEditDetail(false);
+        }
+      }
+    };
+    fetchPartDetail();
+  }, [isEditDialogOpen, selectedPartId, partTypes, toast]);
 
   const getStockStatusBadge = (status) => {
     const base = "inline-flex px-3 py-1 rounded-full text-xs font-medium";
@@ -115,22 +246,28 @@ export default function AccessoryInventory() {
     }
   };
 
-  const getProgressBarColor = (stock, minStock, status) => {
-    if (status === "out") return "bg-gray-400";
-    const percentage = (stock / minStock) * 100;
-    if (percentage >= 100) return "bg-green-500";
-    if (percentage >= 50) return "bg-amber-500";
-    return "bg-red-500";
+  // Tính toán màu progress bar dựa trên tồn kho (giống AccessoryDetail)
+  const getProgressColor = (stock, minStock) => {
+    const ratio = stock / minStock;
+
+    // Nếu hết hoặc thiếu nhiều (ít hơn 50% minStock) -> đỏ
+    if (stock === 0 || ratio < 0.5) {
+      return "bg-red-500";
+    }
+    // Nếu vừa (từ 50% đến 110% minStock) -> vàng
+    if (ratio >= 0.5 && ratio <= 1.1) {
+      return "bg-yellow-500";
+    }
+    // Nếu dư nhiều (nhiều hơn 110% minStock) -> xanh lá
+    return "bg-green-500";
   };
 
+  // Filter by alert status (sufficient/low/out) client-side since API doesn't support it
   const filteredAccessories = accessories.filter(item => {
-    const matchesSearch = !search || 
-      item.id.toLowerCase().includes(search.toLowerCase()) || 
-      item.name.toLowerCase().includes(search.toLowerCase());
-    
-    const matchesStatus = !status || status === "all" || item.status === status;
-    
-    return matchesSearch && matchesStatus;
+    if (status && status !== "all") {
+      return item.alert === status;
+    }
+    return true;
   });
 
   return (
@@ -183,7 +320,7 @@ export default function AccessoryInventory() {
 
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Trạng thái" />
+                <SelectValue placeholder="Mức cảnh báo" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả</SelectItem>
@@ -193,7 +330,15 @@ export default function AccessoryInventory() {
               </SelectContent>
             </Select>
 
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => {
+                setPage(1);
+                // Trigger refetch by changing a dependency
+              }}
+            >
               <RotateCcw className="h-4 w-4" />
               Làm mới
             </Button>
@@ -219,10 +364,10 @@ export default function AccessoryInventory() {
             ) : (
               <Button 
                 className="gap-2 bg-amber-600 hover:bg-amber-700 text-white ml-auto"
-                onClick={() => setIsSelectMode(true)}
+                onClick={() => setIsCreateDialogOpen(true)}
               >
-                <PackagePlus className="h-4 w-4" />
-                Chọn phụ tùng
+                <Plus className="h-4 w-4" />
+                Tạo phụ tùng
               </Button>
             )}
           </div>
@@ -283,29 +428,51 @@ export default function AccessoryInventory() {
                           </td>
                         )}
                         <td className="py-4 px-6">
-                        <div className="h-12 w-12 bg-muted rounded flex items-center justify-center">
-                          <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                        </div>
-                      </td>
-                      <td className="py-4 px-6 text-sm font-medium text-foreground">{item.code || item.id}</td>
-                      <td className="py-4 px-6 text-sm text-foreground">{item.name}</td>
-                      <td className="py-4 px-6 text-sm text-muted-foreground">{item.partType || "—"}</td>
+                          <div className="relative h-12 w-12">
+                            {item.image ? (
+                              <img 
+                                src={item.image} 
+                                alt={item.name}
+                                className="h-12 w-12 object-cover rounded border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => {
+                                  setSelectedImage({ url: item.image, name: item.name });
+                                  setIsImageDialogOpen(true);
+                                }}
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  const fallback = e.target.parentElement.querySelector('.image-fallback');
+                                  if (fallback) fallback.style.display = 'flex';
+                                }}
+                              />
+                            ) : (
+                              <div className={`image-fallback h-12 w-12 bg-muted rounded flex items-center justify-center ${item.image ? 'hidden' : 'flex'}`}>
+                                <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-4 px-6 text-sm font-medium text-foreground">{item.code || item.id}</td>
+                        <td className="py-4 px-6 text-sm text-foreground">{item.name}</td>
+                        <td className="py-4 px-6 text-sm text-muted-foreground">{item.partType || "—"}</td>
                       <td className="py-4 px-6 text-sm text-center">{item.quantity}</td>
                       <td className="py-4 px-6">
                         <div className="w-36 space-y-1">
-                          <Progress 
+                          <ColoredProgress 
                             value={Math.max(0, Math.min(100, (item.quantity / item.minStock) * 100))} 
+                            colorClass={getProgressColor(item.quantity, item.minStock)}
                             className="h-2"
                           />
-                          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                            <span>Min: {item.minStock}</span>
-                            <span className={getAlertTextColor(item.alert)}>
-                              {item.alert === "out"
-                                ? `Thiếu: ${Math.max(0, item.minStock - item.quantity)}`
-                                : item.alert === "low"
-                                ? `Sắp thiếu: ${Math.max(0, item.minStock - item.quantity)}`
-                                : "Đủ"}
-                            </span>
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-muted-foreground">Min: {item.minStock}</span>
+                            {item.quantity < item.minStock ? (
+                              <span className="text-orange-600 font-medium">
+                                Sắp thiếu: {item.minStock - item.quantity}
+                              </span>
+                            ) : item.quantity > item.minStock * 1.1 ? (
+                              <span className="text-green-600 font-medium">
+                                Dư: {item.quantity - item.minStock}
+                              </span>
+                            ) : null}
                           </div>
                         </div>
                       </td>
@@ -335,6 +502,10 @@ export default function AccessoryInventory() {
                               variant="ghost" 
                               size="sm" 
                               className="gap-1 text-primary"
+                              onClick={() => {
+                                setSelectedPartId(item.id);
+                                setIsEditDialogOpen(true);
+                              }}
                             >
                               <Edit className="h-4 w-4" />
                               Điều chỉnh
@@ -354,13 +525,35 @@ export default function AccessoryInventory() {
         {/* Pagination */}
         <div className="flex items-center justify-between mt-4">
           <div className="text-sm text-muted-foreground">
-            Hiển thị {filteredAccessories.length} phụ tùng
+            Hiển thị {filteredAccessories.length} / {total} phụ tùng
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled>‹</Button>
-            <Button variant="outline" size="sm" className="bg-primary text-white">1</Button>
-            <Button variant="outline" size="sm">›</Button>
-            <Select defaultValue="10">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              disabled={page <= 1}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+            >
+              ‹
+            </Button>
+            <Button variant="outline" size="sm" className="bg-primary text-white">
+              {page}
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              disabled={page * pageSize >= total}
+              onClick={() => setPage(p => p + 1)}
+            >
+              ›
+            </Button>
+            <Select 
+              value={String(pageSize)} 
+              onValueChange={(value) => {
+                setPageSize(Number(value));
+                setPage(1);
+              }}
+            >
               <SelectTrigger className="w-[100px]">
                 <SelectValue />
               </SelectTrigger>
@@ -373,6 +566,448 @@ export default function AccessoryInventory() {
           </div>
         </div>
       </div>
+
+      {/* Create Part Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+        setIsCreateDialogOpen(open);
+        if (!open) {
+          setCreateFormData({
+            partTypeId: "",
+            name: "",
+            quantity: 0,
+            image: ""
+          });
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <div className="bg-amber-100 p-2 rounded-lg">
+                <Plus className="h-5 w-5 text-amber-600" />
+              </div>
+              <DialogTitle className="text-2xl">Tạo phụ tùng mới</DialogTitle>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="partTypeId">Loại phụ tùng *</Label>
+              <Select 
+                value={createFormData.partTypeId} 
+                onValueChange={(value) => setCreateFormData({ ...createFormData, partTypeId: value })}
+              >
+                <SelectTrigger id="partTypeId">
+                  <SelectValue placeholder="Chọn loại phụ tùng" />
+                </SelectTrigger>
+                <SelectContent>
+                  {partTypes.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="name">Tên phụ tùng *</Label>
+              <Input
+                id="name"
+                value={createFormData.name}
+                onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
+                placeholder="Nhập tên phụ tùng"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="quantity">Số lượng *</Label>
+              <Input
+                id="quantity"
+                type="number"
+                min="0"
+                value={createFormData.quantity}
+                onChange={(e) => setCreateFormData({ ...createFormData, quantity: parseInt(e.target.value) || 0 })}
+                placeholder="Nhập số lượng"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="image">URL hình ảnh</Label>
+              <Input
+                id="image"
+                value={createFormData.image}
+                onChange={(e) => setCreateFormData({ ...createFormData, image: e.target.value })}
+                placeholder="https://example.com/image.jpg"
+              />
+              {createFormData.image && (
+                <div className="mt-2">
+                  <img 
+                    src={createFormData.image} 
+                    alt="Preview"
+                    className="h-24 w-24 object-cover rounded border border-border"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsCreateDialogOpen(false);
+                setCreateFormData({
+                  partTypeId: "",
+                  name: "",
+                  quantity: 0,
+                  image: ""
+                });
+              }}
+            >
+              Hủy
+            </Button>
+            <Button 
+              className="gap-2 bg-amber-600 hover:bg-amber-700"
+              onClick={async () => {
+                if (!createFormData.partTypeId || !createFormData.name || createFormData.quantity < 0) {
+                  toast({
+                    title: "Lỗi",
+                    description: "Vui lòng điền đầy đủ thông tin bắt buộc",
+                    variant: "destructive"
+                  });
+                  return;
+                }
+
+                try {
+                  setCreating(true);
+                  const response = await createPart({
+                    partTypeId: createFormData.partTypeId,
+                    name: createFormData.name,
+                    quantity: createFormData.quantity,
+                    image: createFormData.image || null
+                  });
+
+                  toast({
+                    title: "Thành công",
+                    description: "Tạo phụ tùng mới thành công",
+                  });
+
+                  setIsCreateDialogOpen(false);
+                  setCreateFormData({
+                    partTypeId: "",
+                    name: "",
+                    quantity: 0,
+                    image: ""
+                  });
+
+                  // Refresh the list
+                  const res = await getParts({ page, pageSize, search: search || undefined });
+                  const payload = res?.data || res;
+                  const list = payload?.rowDatas || [];
+                  const totalCount = payload?.total || 0;
+                  
+                  const mapped = list.map((p) => {
+                    const minStock = 10;
+                    const alert = p?.quantity === 0 ? "out" : p?.quantity < minStock ? "low" : "sufficient";
+                    return {
+                      id: p?.id || p?.code,
+                      code: p?.code || "",
+                      name: p?.name || "",
+                      image: p?.image || "",
+                      partType: p?.partType?.name || "",
+                      partTypeId: p?.partType?.id || "",
+                      quantity: p?.quantity || 0,
+                      status: p?.status || "",
+                      alert: alert,
+                      minStock: minStock,
+                    };
+                  });
+                  setAccessories(mapped);
+                  setTotal(totalCount);
+                } catch (error) {
+                  console.error("Lỗi tạo phụ tùng:", error);
+                  toast({
+                    title: "Lỗi",
+                    description: error?.message || "Không thể tạo phụ tùng mới",
+                    variant: "destructive"
+                  });
+                } finally {
+                  setCreating(false);
+                }
+              }}
+              disabled={creating}
+            >
+              {creating ? "Đang tạo..." : "Tạo mới"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Part Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+        setIsEditDialogOpen(open);
+        if (!open) {
+          setSelectedPartId(null);
+          setEditFormData({
+            partTypeId: "",
+            code: "",
+            name: "",
+            quantity: 0,
+            image: "",
+            status: "ACTIVE"
+          });
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <div className="bg-primary/10 p-2 rounded-lg">
+                <Edit className="h-5 w-5 text-primary" />
+              </div>
+              <DialogTitle className="text-2xl">Chỉnh sửa phụ tùng</DialogTitle>
+            </div>
+          </DialogHeader>
+
+          {loadingEditDetail ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
+                <p className="text-sm text-muted-foreground">Đang tải thông tin...</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-4 py-4">
+                                 <div className="space-y-2">
+                   <Label htmlFor="edit-partTypeId">Loại phụ tùng *</Label>
+                   <Select 
+                     key={`part-type-${editFormData.partTypeId || 'empty'}`}
+                     value={editFormData.partTypeId || ""} 
+                     onValueChange={(value) => setEditFormData({ ...editFormData, partTypeId: value })}
+                   >
+                     <SelectTrigger id="edit-partTypeId">
+                       <SelectValue placeholder="Chọn loại phụ tùng">
+                         {editFormData.partTypeId && partTypes.find(t => t.id === editFormData.partTypeId)?.name}
+                       </SelectValue>
+                     </SelectTrigger>
+                     <SelectContent>
+                       {partTypes.map((type) => (
+                         <SelectItem key={type.id} value={type.id}>
+                           {type.name}
+                         </SelectItem>
+                       ))}
+                     </SelectContent>
+                   </Select>
+                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-code">Mã phụ tùng *</Label>
+                  <Input
+                    id="edit-code"
+                    value={editFormData.code}
+                    onChange={(e) => setEditFormData({ ...editFormData, code: e.target.value })}
+                    placeholder="Nhập mã phụ tùng"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-name">Tên phụ tùng *</Label>
+                  <Input
+                    id="edit-name"
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                    placeholder="Nhập tên phụ tùng"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-quantity">Số lượng *</Label>
+                  <Input
+                    id="edit-quantity"
+                    type="number"
+                    min="0"
+                    value={editFormData.quantity}
+                    onChange={(e) => setEditFormData({ ...editFormData, quantity: parseInt(e.target.value) || 0 })}
+                    placeholder="Nhập số lượng"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-image">URL hình ảnh</Label>
+                  <Input
+                    id="edit-image"
+                    value={editFormData.image}
+                    onChange={(e) => setEditFormData({ ...editFormData, image: e.target.value })}
+                    placeholder="https://example.com/image.jpg"
+                  />
+                  {editFormData.image && (
+                    <div className="mt-2">
+                      <img 
+                        src={editFormData.image} 
+                        alt="Preview"
+                        className="h-24 w-24 object-cover rounded border border-border"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-status">Trạng thái *</Label>
+                  <Select 
+                    value={editFormData.status} 
+                    onValueChange={(value) => setEditFormData({ ...editFormData, status: value })}
+                  >
+                    <SelectTrigger id="edit-status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ACTIVE">ACTIVE</SelectItem>
+                      <SelectItem value="INACTIVE">INACTIVE</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsEditDialogOpen(false);
+                    setSelectedPartId(null);
+                    setEditFormData({
+                      partTypeId: "",
+                      code: "",
+                      name: "",
+                      quantity: 0,
+                      image: "",
+                      status: "ACTIVE"
+                    });
+                  }}
+                  disabled={editing}
+                >
+                  Hủy
+                </Button>
+                <Button 
+                  className="gap-2 bg-primary hover:bg-primary/90"
+                  onClick={async () => {
+                    if (!editFormData.partTypeId || !editFormData.code || !editFormData.name || editFormData.quantity < 0) {
+                      toast({
+                        title: "Lỗi",
+                        description: "Vui lòng điền đầy đủ thông tin bắt buộc",
+                        variant: "destructive"
+                      });
+                      return;
+                    }
+
+                    try {
+                      setEditing(true);
+                      const response = await updatePart(selectedPartId, {
+                        partTypeId: editFormData.partTypeId,
+                        code: editFormData.code,
+                        name: editFormData.name,
+                        quantity: editFormData.quantity,
+                        image: editFormData.image || null,
+                        status: editFormData.status
+                      });
+
+                      toast({
+                        title: "Thành công",
+                        description: "Cập nhật phụ tùng thành công",
+                      });
+
+                      setIsEditDialogOpen(false);
+                      setSelectedPartId(null);
+                      setEditFormData({
+                        partTypeId: "",
+                        code: "",
+                        name: "",
+                        quantity: 0,
+                        image: "",
+                        status: "ACTIVE"
+                      });
+
+                      // Refresh the list
+                      const res = await getParts({ page, pageSize, search: search || undefined });
+                      const payload = res?.data || res;
+                      const list = payload?.rowDatas || [];
+                      const totalCount = payload?.total || 0;
+                      
+                      const mapped = list.map((p) => {
+                        const minStock = 10;
+                        const alert = p?.quantity === 0 ? "out" : p?.quantity < minStock ? "low" : "sufficient";
+                        return {
+                          id: p?.id || p?.code,
+                          code: p?.code || "",
+                          name: p?.name || "",
+                          image: p?.image || "",
+                          partType: p?.partType?.name || "",
+                          partTypeId: p?.partType?.id || "",
+                          quantity: p?.quantity || 0,
+                          status: p?.status || "",
+                          alert: alert,
+                          minStock: minStock,
+                        };
+                      });
+                      setAccessories(mapped);
+                      setTotal(totalCount);
+                    } catch (error) {
+                      console.error("Lỗi cập nhật phụ tùng:", error);
+                      toast({
+                        title: "Lỗi",
+                        description: error?.message || "Không thể cập nhật phụ tùng",
+                        variant: "destructive"
+                      });
+                    } finally {
+                      setEditing(false);
+                    }
+                  }}
+                  disabled={editing}
+                >
+                  {editing ? "Đang cập nhật..." : "Cập nhật"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Image View Dialog */}
+      <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="text-xl">{selectedImage.name}</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center p-4 bg-muted/30 rounded-lg">
+            {selectedImage.url ? (
+              <img 
+                src={selectedImage.url} 
+                alt={selectedImage.name}
+                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                onError={(e) => {
+                  e.target.src = '';
+                  e.target.alt = 'Không thể tải hình ảnh';
+                }}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12">
+                <ImageIcon className="h-16 w-16 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">Không có hình ảnh</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsImageDialogOpen(false)}>
+              Đóng
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Transfer Request Dialog */}
       <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
