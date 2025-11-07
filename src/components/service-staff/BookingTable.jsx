@@ -60,9 +60,11 @@ export default function BookingTable({
     },
     {
       title: "Giai đoạn xe",
-      dataIndex: "",
-      key: "",
+      dataIndex: "maintenanceStage",
+      key: "maintenanceStage",
+      render: (stage) => stage?.name || "-",
     },
+
     {
       title: "Loại dịch vụ",
       dataIndex: "type",
@@ -95,8 +97,14 @@ export default function BookingTable({
     },
     {
       title: "Thời gian",
-      dataIndex: "timeSlot",
-      key: "timeSlot",
+      dataIndex: "slotTime",
+      key: "slotTime",
+      render: (slot) => {
+        if (!slot) return "-";
+        // Loại bỏ 'H' và tách theo dấu '_'
+        const [start, end] = slot.replace("H", "").split("_");
+        return `${start}:00-${end}:00`;
+      },
     },
     {
       title: "QR",

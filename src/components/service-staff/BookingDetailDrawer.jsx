@@ -8,19 +8,23 @@ import RepairContent from "./detail-content/RepairContent";
 import WarrantyContent from "./detail-content/WarrantyContent";
 import RecallContent from "./detail-content/RecallContent";
 import QRModal from "./QRModal";
+import TechnicianBookingDetailDrawer from "../technician/TechnicanBookingDetailDrawer";
 import {
-  assignAppointmentTechnicianService,
   fetchCheckinCodeService,
   checkinByCodeService,
   changeAppointmentStatusService,
+  approveAppointmentService,
 } from "../../services/appointmentService";
-import { createEVCheckService } from "../../services/evcheckService";
+import {
+  createEVCheckService,
+  fetchEVCheckByAppointmentService, // ✅ Thêm dòng này
+} from "../../services/evcheckService";
 
 const renderServiceContent = (serviceType, booking) => {
   if (!booking.technician) {
     return (
       <div className='text-center py-8 text-gray-500 italic'>
-        <p> Kỹ thuật viên chưa thực hiện kiểm tra.</p>
+        <p>Kỹ thuật viên chưa thực hiện kiểm tra.</p>
       </div>
     );
   }
@@ -53,7 +57,6 @@ export default function BookingDetailDrawer({
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const [qrValue, setQrValue] = useState(null);
   const [checkedIn, setCheckedIn] = useState(false);
-  // Thêm state trong component cha
   const [showTechnicianDrawer, setShowTechnicianDrawer] = useState(false);
   const [currentEVCheckId, setCurrentEVCheckId] = useState(null);
 
@@ -82,6 +85,39 @@ export default function BookingDetailDrawer({
     }
   }, [open, status]);
 
+  // ✅ Thêm đoạn này: tự động load technician từ EVCheck nếu có
+  useEffect(() => {
+    const loadTechnicianFromEVCheck = async () => {
+      if (!booking?.id || booking?.technician) return;
+
+      try {
+        const evCheck = await fetchEVCheckByAppointmentService(booking.id);
+        console.log("📋 EVCheck fetched:", evCheck);
+
+        if (evCheck) {
+          // taskExecutor là object kỹ thuật viên mà backend trả về
+          const tech =
+            evCheck.taskExecutor ||
+            evCheck.technician ||
+            evCheck.taskExecutorId ||
+            null;
+
+          if (tech) {
+            booking.technician = tech; // gán tạm vào booking
+            setCurrentEVCheckId(evCheck.id);
+          }
+        }
+      } catch (err) {
+        console.warn("⚠️ Không tìm thấy EVCheck cho booking:", booking.id, err);
+      }
+    };
+
+    if (open) {
+      loadTechnicianFromEVCheck();
+    }
+  }, [open, booking]);
+  // ✅ Hết phần mới thêm
+
   if (!booking) return null;
 
   const handleAssignTechnician = async () => {
@@ -89,22 +125,24 @@ export default function BookingDetailDrawer({
       message.warning("Vui lòng chọn kỹ thuật viên");
       return;
     }
-
     try {
       const payload = {
         appointmentId: booking.id,
         taskExecutorId: selectedTechnician.id,
       };
 
-      const newEVCheck = await createEVCheckService(payload);
+      const res = await createEVCheckService(payload);
+      const newId = res?.id || res?.data?.id || res?.data?.rowDatas?.[0]?.id;
+      if (newId) setCurrentEVCheckId(newId);
+
+      if ((booking.status || "").toUpperCase() === "APPROVED") {
+        await changeAppointmentStatusService(booking.id, "CHECKED_IN");
+        onUpdateStatus?.(booking.id, "CHECKED_IN", selectedTechnician);
+      } else {
+        onUpdateStatus?.(booking.id, booking.status, selectedTechnician);
+      }
 
       message.success("Đã gán kỹ thuật viên và tạo EVCheck!");
-
-      onUpdateStatus?.(booking.id, "CHECKED_IN", selectedTechnician);
-
-      // BƯỚC 3: MỞ DRAWER NHẬP KM NGAY
-      setCurrentEVCheckId(newEVCheck.id); // Lưu ID để drawer dùng
-      setShowTechnicianDrawer(true); // Mở drawer
     } catch (error) {
       console.error("Lỗi gán kỹ thuật viên:", error);
       message.error(error.message || "Không thể gán kỹ thuật viên!");
@@ -140,18 +178,21 @@ export default function BookingDetailDrawer({
       message.error(error.message || "Check-in thất bại!");
     }
   };
-
   const handleChangeStatus = async (newStatus) => {
     try {
-      await changeAppointmentStatusService(booking.id, newStatus);
+      if (newStatus === "APPROVED") {
+        await approveAppointmentService(booking.id); // ✅ tạo QR + upload + gọi BE
+      } else {
+        await changeAppointmentStatusService(booking.id, newStatus);
+      }
       message.success(
         `Cập nhật trạng thái: ${STATUS_MAP[newStatus] || newStatus}`
       );
       onUpdateStatus?.(booking.id, newStatus, booking.technician);
       onClose();
-    } catch (error) {
-      console.error(error);
-      message.error(error.message || "Không thể cập nhật trạng thái!");
+    } catch (e) {
+      console.error(e);
+      message.error(e.message || "Không thể cập nhật trạng thái!");
     }
   };
 
@@ -161,7 +202,7 @@ export default function BookingDetailDrawer({
         title={
           <div className='flex justify-between items-center'>
             <span className='font-semibold text-lg text-[#c41e0e]'>
-              Chi tiết booking: {booking.code}
+              Chi tiết lịch hẹn: {booking.code}
             </span>
             <Tag
               color={STATUS_COLORS[status]}
@@ -226,8 +267,8 @@ export default function BookingDetailDrawer({
                         inline-block px-3 py-1 text-xs font-semibold rounded-full 
                         ${
                           booking.type === "MAINTENANCE_TYPE"
-                            ? "bg-blue-100 text-blue-800 border border-blue-300" // Màu xanh cho Bảo dưỡng
-                            : "bg-purple-100 text-purple-800 border border-purple-300" // Màu tím cho các loại khác
+                            ? "bg-blue-100 text-blue-800 border border-blue-300"
+                            : "bg-purple-100 text-purple-800 border border-purple-300"
                         }
                     `}>
                   {booking.type === "MAINTENANCE_TYPE"
@@ -276,7 +317,7 @@ export default function BookingDetailDrawer({
             </section>
           )}
 
-          {/* Gán kỹ thuật viên sau khi check-in */}
+          {/* Gán kỹ thuật viên */}
           {status === "CHECKED_IN" && !booking.technician && (
             <section className='bg-white rounded-2xl shadow-md p-5 mb-6 border border-[#ffd9c2]'>
               <h3 className='font-semibold text-base mb-3 border-b pb-2 text-[#d4380d]'>
@@ -320,7 +361,7 @@ export default function BookingDetailDrawer({
             </section>
           )}
 
-          {/* Thông tin technician nếu đã gán */}
+          {/* Kỹ thuật viên đã gán */}
           {booking.technician && (
             <section className='bg-white rounded-2xl shadow-md p-5 mb-6 border border-[#ffd9c2]'>
               <h3 className='font-semibold text-base mb-3 border-b pb-2 text-[#d4380d]'>
@@ -333,26 +374,38 @@ export default function BookingDetailDrawer({
                     `${booking.technician.firstName} ${booking.technician.lastName}`}
                 </p>
                 <p>
-                  <strong>SĐT:</strong> {booking.technician.phone}
+                  <strong>SĐT:</strong> {booking.technician.phone || "—"}
                 </p>
                 <p>
-                  <strong>Chuyên môn:</strong> {booking.technician.specialty}
+                  <strong>Chuyên môn:</strong>{" "}
+                  {booking.technician.specialty || "Không rõ"}
                 </p>
               </div>
             </section>
           )}
 
-          {/* Nội dung công việc */}
           <section className='bg-white rounded-2xl shadow-md p-5 mb-6 border border-[#ffd9c2]'>
             <h3 className='font-semibold text-base mb-3 border-b pb-2 text-[#d4380d]'>
-              📋 Nội dung công việc
+              Nội dung công việc
             </h3>
-            {renderServiceContent(booking.type, booking)}
+
+            {!booking.technician ? (
+              <div className='text-center py-8 text-gray-500 italic'>
+                <p>Kỹ thuật viên chưa thực hiện kiểm tra.</p>
+              </div>
+            ) : (
+              <div className='flex justify-end'>
+                <Button
+                  type='primary'
+                  onClick={() => setShowTechnicianDrawer(true)}>
+                  Xem kết quả EVCheck
+                </Button>
+              </div>
+            )}
           </section>
 
           <Divider />
 
-          {/* Nút thay đổi trạng thái */}
           <div className='flex gap-3 justify-end mt-6'>
             {status === "PENDING" && (
               <>
@@ -391,7 +444,14 @@ export default function BookingDetailDrawer({
         </motion.div>
       </Drawer>
 
-      {/* QR Modal */}
+      <TechnicianBookingDetailDrawer
+        booking={booking}
+        open={showTechnicianDrawer}
+        onClose={() => setShowTechnicianDrawer(false)}
+        initialEVCheckId={currentEVCheckId}
+        readOnly={true}
+      />
+
       <QRModal
         record={{ code: booking.code, qrCode: qrValue }}
         open={isQRModalOpen}
