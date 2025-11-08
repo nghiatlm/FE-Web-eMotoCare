@@ -21,8 +21,7 @@ export const AuthProvider = ({ children }) => {
 
       if (roleName === "ROLE_ADMIN") navigate("/admin");
       else if (roleName === "ROLE_STAFF") navigate("/staff");
-      else if (roleName === "ROLE_TECHINICIAN") navigate("/technician");
-      else if (roleName === "ROLE_STOREKEEPER") navigate("/storekeeper");
+      else if (roleName === "ROLE_TECHNICIAN") navigate("/technician");
       else navigate("/");
     } catch (error) {
       console.error("Login failed:", error);

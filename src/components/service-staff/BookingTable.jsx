@@ -60,9 +60,11 @@ export default function BookingTable({
     },
     {
       title: "Giai đoạn xe",
-      dataIndex: "vehicleStageId",
-      key: "vehicleStageId",
+      dataIndex: "maintenanceStage",
+      key: "maintenanceStage",
+      render: (stage) => stage?.name || "-",
     },
+
     {
       title: "Loại dịch vụ",
       dataIndex: "type",
@@ -70,7 +72,7 @@ export default function BookingTable({
       render: (service) => {
         if (!service) return <Tag>—</Tag>;
         let key = String(service).replace(/[\s-]/g, "_").toUpperCase();
-        if (key === "MAINTENACE_TYPE") key = "MAINTENANCE_TYPE"; // ✅ fix chính tả
+        if (key === "MAINTENACE_TYPE") key = "MAINTENANCE_TYPE";
         return (
           <Tag color={SERVICE_TYPE_COLORS[key] || "default"}>
             {SERVICE_TYPE_MAP[key] || service}
@@ -95,8 +97,14 @@ export default function BookingTable({
     },
     {
       title: "Thời gian",
-      dataIndex: "timeSlot",
-      key: "timeSlot",
+      dataIndex: "slotTime",
+      key: "slotTime",
+      render: (slot) => {
+        if (!slot) return "-";
+        // Loại bỏ 'H' và tách theo dấu '_'
+        const [start, end] = slot.replace("H", "").split("_");
+        return `${start}:00-${end}:00`;
+      },
     },
     {
       title: "QR",

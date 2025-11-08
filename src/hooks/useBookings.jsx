@@ -1,14 +1,17 @@
+// src/hooks/useBookings.js
 import { useState, useEffect } from "react";
-import { fetchAppointments } from "../services/appointmentService";
+import {
+  fetchAppointments,
+  createAppointmentService,
+} from "../services/appointmentService";
 
 export const useBookings = () => {
-  const [data, setData] = useState([]); // danh sách booking
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Flow trạng thái hợp lệ
   const STATUS_FLOW = {
     PENDING: ["APPROVED", "CANCELED"],
-    APPROVED: ["CHECKED_IN", "CANCELED"],
+    APPROVED: ["CHECKED_IN"],
     CHECKED_IN: ["QUOTE_APPROVED"],
     QUOTE_APPROVED: ["REPAIR_COMPLETED"],
     REPAIR_COMPLETED: ["COMPLETED"],
@@ -22,13 +25,13 @@ export const useBookings = () => {
     return nextList.includes(newStatus.toUpperCase());
   };
 
-  // Fetch booking từ API
   const fetchBookings = async () => {
     setLoading(true);
     try {
-      const res = await fetchAppointments();
+      const res = await fetchAppointments({ page: 1, pageSize: 20 });
       const list = res?.data?.rowDatas || [];
       setData(list);
+      console.log("Fetched bookings:", list.length);
     } catch (error) {
       console.error("Lỗi fetch bookings:", error);
     } finally {
@@ -36,24 +39,44 @@ export const useBookings = () => {
     }
   };
 
+  const createBooking = async (payload) => {
+    try {
+      await createAppointmentService(payload);
+      await fetchBookings();
+    } catch (err) {
+      console.error("Lỗi tạo booking:", err);
+      throw err;
+    }
+  };
+
   useEffect(() => {
     fetchBookings();
   }, []);
 
-  // Cập nhật trạng thái / technician trong local state
+  // CẬP NHẬT TRẠNG THÁI – LUÔN FETCH LẠI KHI GÁN KỸ THUẬT VIÊN
   const updateStatus = (id, newStatus, selectedTechnician = null) => {
-    setData((prev) =>
-      prev.map((b) =>
+    setData(prev =>
+      prev.map(b =>
         b.id === id
           ? {
               ...b,
-              status: newStatus.toUpperCase(),
+              status: (newStatus || b.status).toUpperCase(),
               technician: selectedTechnician || b.technician || null,
             }
           : b
       )
     );
+    // luôn refetch để đồng bộ từ BE (nhất là quan hệ technician)
+    fetchBookings();
   };
+  
 
-  return { data, loading, fetchBookings, updateStatus, canUpdateStatus };
+  return {
+    data,
+    loading,
+    fetchBookings,
+    updateStatus,
+    canUpdateStatus,
+    createBooking,
+  };
 };
