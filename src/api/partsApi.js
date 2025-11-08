@@ -1,0 +1,39 @@
+import api from "./api";
+
+const BASE_URL = "/v1/parts";
+const PART_TYPES_BASE_URL = "/v1/part-types";
+const user = JSON.parse(localStorage.getItem("user"));
+const token = user?.token;
+
+export const getParts = ({ page = 1, pageSize = 10, search, status } = {}) => {
+  const params = { page, pageSize };
+  if (search) params.search = search;
+  if (status) params.status = status;
+  return api.get(BASE_URL, { params });
+};
+
+export const getPartTypeById = (partTypeId) => {
+  return api.get(`${PART_TYPES_BASE_URL}/${partTypeId}`);
+};
+
+export const getPartTypes = (page = 1, pageSize = 100) => {
+  const params = { page, pageSize };
+  return api.get(PART_TYPES_BASE_URL, { params });
+};
+
+export const createPart = (partData) => {
+  return api.post(BASE_URL, partData);
+};
+
+export const getPartById = (partId) => {
+  return api.get(`${BASE_URL}/${partId}`);
+};
+
+export const updatePart = (partId, partData) => {
+  return api.put(`${BASE_URL}/${partId}`, partData);
+};
+
+export const deletePart = (partId) => {
+  return api.delete(`${BASE_URL}/${partId}`);
+};
+

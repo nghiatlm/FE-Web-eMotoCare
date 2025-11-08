@@ -1,35 +1,139 @@
 import { useState, useEffect } from "react";
-import { User, Mail, Phone, Shield, Ban, Unlock } from "lucide-react";
+import { User, Mail, Phone, Shield, Ban, Unlock, UserCircle, MapPin, Calendar, IdCard, Image as ImageIcon, Briefcase, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { vi } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { updateUser } from "@/api/usersApi";
+import { getServiceCenters } from "@/api/serviceCentersApi";
 
 export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
   const [formData, setFormData] = useState({
-    fullName: "",
+    phone: "",
     email: "",
-    phoneNumber: "",
-    role: "",
-    avatar: "",
-    status: "active"
+    password: "",
+    roleName: "",
+    status: "ACTIVE",
+    // Staff fields
+    staffCode: "",
+    firstName: "",
+    lastName: "",
+    address: "",
+    citizenId: "",
+    dateOfBirth: null,
+    gender: "",
+    avatarUrl: "",
+    position: "",
+    serviceCenterId: ""
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [serviceCenters, setServiceCenters] = useState([]);
+  const [loadingCenters, setLoadingCenters] = useState(false);
   const { toast } = useToast();
+
+  // Fetch service centers
+  useEffect(() => {
+    const fetchServiceCenters = async () => {
+      try {
+        setLoadingCenters(true);
+        const response = await getServiceCenters({ page: 1, pageSize: 100 });
+        if (response.success && response.data) {
+          const centers = response.data.rowDatas || response.data || [];
+          setServiceCenters(centers);
+        }
+      } catch (error) {
+        console.error("Error fetching service centers:", error);
+      } finally {
+        setLoadingCenters(false);
+      }
+    };
+
+    if (open) {
+      fetchServiceCenters();
+    }
+  }, [open]);
+
+  // Helper function to transform role name
+  const transformRoleName = (roleName) => {
+    switch (roleName) {
+      case "ROLE_ADMIN":
+        return "Admin";
+      case "ROLE_MANAGER":
+        return "Manager";
+      case "ROLE_STAFF":
+        return "Staff";
+      case "ROLE_TECHNICIAN":
+        return "Technician";
+      case "ROLE_CUSTOMER":
+        return "Customer";
+      case "ROLE_STOREKEEPER":
+        return "Storekeeper";
+      default:
+        return roleName;
+    }
+  };
+
+  const transformRoleToApi = (role) => {
+    switch (role) {
+      case "Admin":
+        return "ROLE_ADMIN";
+      case "Manager":
+        return "ROLE_MANAGER";
+      case "Staff":
+        return "ROLE_STAFF";
+      case "Technician":
+        return "ROLE_TECHNICIAN";
+      case "Customer":
+        return "ROLE_CUSTOMER";
+      case "Storekeeper":
+        return "ROLE_STOREKEEPER";
+      default:
+        return role;
+    }
+  };
 
   // Update form data when user prop changes
   useEffect(() => {
     if (user) {
+      // Use rawData if available (API data), otherwise use transformed data
+      const rawUser = user.rawData || user;
+      const staff = rawUser.staff || user.staff || {};
+      
+      // Parse dateOfBirth if it exists
+      let dateOfBirth = null;
+      if (staff.dateOfBirth) {
+        try {
+          dateOfBirth = new Date(staff.dateOfBirth);
+        } catch (e) {
+          console.error("Error parsing dateOfBirth:", e);
+        }
+      }
+
       setFormData({
-        fullName: user.fullName || "",
-        email: user.email || "",
-        phoneNumber: user.phoneNumber || "",
-        role: user.role || "",
-        avatar: user.avatar || "",
-        status: user.status || "active"
+        phone: rawUser.phone || user.phoneNumber || "",
+        email: rawUser.email || user.email || "",
+        password: "", // Don't pre-fill password
+        roleName: rawUser.roleName || transformRoleToApi(user.role) || "",
+        status: rawUser.status || (user.status === "active" ? "ACTIVE" : "INACTIVE") || "ACTIVE",
+        // Staff fields
+        staffCode: staff.staffCode || "",
+        firstName: staff.firstName || "",
+        lastName: staff.lastName || "",
+        address: staff.address || "",
+        citizenId: staff.citizenId || "",
+        dateOfBirth: dateOfBirth,
+        gender: staff.gender || "",
+        avatarUrl: staff.avatarUrl || "",
+        position: staff.position || "",
+        serviceCenterId: staff.serviceCenterId || ""
       });
       setErrors({});
     }
@@ -38,24 +142,64 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = "Full name is required";
+    const phone = formData.phone.trim();
+    const vnPhoneRegex = /^(0\d{9}|\+84\d{9,10})$/;
+    if (!phone) {
+      newErrors.phone = "Số điện thoại là bắt buộc";
+    } else if (!vnPhoneRegex.test(phone)) {
+      newErrors.phone = "Số điện thoại không hợp lệ";
     }
     
     if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = "Email là bắt buộc";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid";
+      newErrors.email = "Email không hợp lệ";
     }
     
-    if (!formData.phoneNumber.trim()) {
-      newErrors.phoneNumber = "Phone number is required";
-    } else if (!/^[0-9\s+\-()]+$/.test(formData.phoneNumber)) {
-      newErrors.phoneNumber = "Phone number is invalid";
+    // Password is optional for updates
+    if (formData.password && formData.password.length < 6) {
+      newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự";
     }
     
-    if (!formData.role) {
-      newErrors.role = "Role is required";
+    if (!formData.roleName) {
+      newErrors.roleName = "Vai trò là bắt buộc";
+    }
+
+    // Staff validation
+    if (!formData.staffCode.trim()) {
+      newErrors.staffCode = "Mã nhân viên là bắt buộc";
+    }
+
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = "Tên là bắt buộc";
+    }
+
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = "Họ là bắt buộc";
+    }
+
+    if (!formData.address.trim()) {
+      newErrors.address = "Địa chỉ là bắt buộc";
+    }
+
+    if (!formData.citizenId.trim()) {
+      newErrors.citizenId = "CMND/CCCD là bắt buộc";
+    }
+
+    if (!formData.dateOfBirth) {
+      newErrors.dateOfBirth = "Ngày sinh là bắt buộc";
+    }
+
+    if (!formData.gender) {
+      newErrors.gender = "Giới tính là bắt buộc";
+    }
+
+    if (!formData.position) {
+      newErrors.position = "Chức vụ là bắt buộc";
+    }
+
+    if (formData.roleName !== "ROLE_ADMIN" && !formData.serviceCenterId) {
+      newErrors.serviceCenterId = "Chi nhánh là bắt buộc";
     }
     
     setErrors(newErrors);
@@ -72,25 +216,72 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const updatedUser = {
-        ...user,
-        ...formData
+      // Format payload with nested staff object
+      const payload = {
+        phone: formData.phone.trim(),
+        email: formData.email.trim(),
+        roleName: formData.roleName,
+        status: formData.status,
+        staff: {
+          staffCode: formData.staffCode.trim(),
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
+          address: formData.address.trim(),
+          citizenId: formData.citizenId.trim(),
+          dateOfBirth: formData.dateOfBirth ? (() => {
+            const date = new Date(formData.dateOfBirth);
+            date.setHours(0, 0, 0, 0);
+            return date.toISOString();
+          })() : null,
+          gender: formData.gender,
+          position: formData.position,
+          serviceCenterId: formData.serviceCenterId || undefined,
+        }
       };
-      
-      onUserUpdated(updatedUser);
-      onOpenChange(false);
-      
-      toast({
-        title: "Success",
-        description: "User has been updated successfully!",
-      });
+
+      // Only include password if provided
+      if (formData.password && formData.password.trim()) {
+        payload.password = formData.password;
+      }
+
+      // Only include avatarUrl if provided
+      if (formData.avatarUrl.trim()) {
+        payload.staff.avatarUrl = formData.avatarUrl.trim();
+      }
+
+      // Include accountId if available (from existing user)
+      const rawUser = user?.rawData || user;
+      const staff = rawUser.staff || user.staff || {};
+      if (staff.accountId) {
+        payload.staff.accountId = staff.accountId;
+      }
+
+      // Call API to update user
+      const userId = user?.id || user?.rawData?.id;
+      const response = await updateUser(userId, payload);
+
+      if (response?.success !== false) {
+        // Update list immediately
+        if (window.refreshUserList) {
+          window.refreshUserList();
+        } else if (onUserUpdated) {
+          onUserUpdated(response?.data || null);
+        }
+
+        toast({
+          title: "Cập nhật người dùng thành công",
+          description: response.message || "Đã cập nhật thông tin người dùng thành công!",
+        });
+
+        onOpenChange(false);
+      } else {
+        throw new Error(response.message || "Cập nhật người dùng thất bại");
+      }
     } catch (error) {
+      console.error("Error updating user:", error);
       toast({
-        title: "Error",
-        description: "Failed to update user. Please try again.",
+        title: "Cập nhật người dùng thất bại",
+        description: error.message || "Không thể cập nhật người dùng. Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {
@@ -107,147 +298,380 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
   };
 
   const roleOptions = [
-    { value: "Customer", label: "Customer" },
-    { value: "Staff-technical", label: "Staff-technical" },
-    { value: "Manager", label: "Manager" },
-    { value: "Admin", label: "Admin" }
+    { value: "ROLE_ADMIN", label: "Admin" },
+    { value: "ROLE_MANAGER", label: "Manager" },
+    { value: "ROLE_STAFF", label: "Staff" },
+    { value: "ROLE_TECHNICIAN", label: "Technician" },
+    { value: "ROLE_CUSTOMER", label: "Customer" },
+    { value: "ROLE_STOREKEEPER", label: "Storekeeper" },
+  ];
+
+  const positionOptions = [
+    { value: "SERVICE_STAFF", label: "Nhân viên dịch vụ" },
+    { value: "TECHNICIAN_STAFF", label: "Nhân viên kỹ thuật" },
+    { value: "STORE_KEEPER", label: "Thủ kho" },
+    { value: "MANAGER_BRANCH", label: "Quản lý chi nhánh" },
   ];
 
   const statusOptions = [
-    { value: "active", label: "Active", icon: Unlock },
-    { value: "blocked", label: "Blocked", icon: Ban }
+    { value: "ACTIVE", label: "Active", icon: Unlock },
+    { value: "IN_ACTIVE", label: "Inactive", icon: Ban }
   ];
 
   if (!user) return null;
 
+  // Get display name for title
+  const displayName = user.fullName || user.rawData?.phone || "User";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
-            Edit User: {user.fullName}
+            Chỉnh sửa người dùng: {displayName}
           </DialogTitle>
           <DialogDescription>
-            Update user information and status.
+            Cập nhật thông tin người dùng và nhân viên.
           </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="fullName" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              Full Name
-            </Label>
-            <Input
-              id="fullName"
-              placeholder="Enter full name"
-              value={formData.fullName}
-              onChange={(e) => handleInputChange("fullName", e.target.value)}
-              className={errors.fullName ? "border-destructive" : ""}
-            />
-            {errors.fullName && (
-              <p className="text-sm text-destructive">{errors.fullName}</p>
-            )}
-          </div>
+          {/* Thông tin tài khoản */}
+          <div className="space-y-4 pb-4 border-b">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Thông tin tài khoản
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  Số điện thoại <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="phone"
+                  placeholder="VD: 0987654321"
+                  value={formData.phone}
+                  onChange={(e) => handleInputChange("phone", e.target.value)}
+                  className={errors.phone ? "border-destructive" : ""}
+                />
+                {errors.phone && (
+                  <p className="text-sm text-destructive">{errors.phone}</p>
+                )}
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email" className="flex items-center gap-2">
-              <Mail className="h-4 w-4" />
-              Email
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="Enter email address"
-              value={formData.email}
-              onChange={(e) => handleInputChange("email", e.target.value)}
-              className={errors.email ? "border-destructive" : ""}
-            />
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email}</p>
-            )}
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="email" className="flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  Email <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="VD: user@example.com"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  className={errors.email ? "border-destructive" : ""}
+                />
+                {errors.email && (
+                  <p className="text-sm text-destructive">{errors.email}</p>
+                )}
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="phoneNumber" className="flex items-center gap-2">
-              <Phone className="h-4 w-4" />
-              Phone Number
-            </Label>
-            <Input
-              id="phoneNumber"
-              placeholder="Enter phone number"
-              value={formData.phoneNumber}
-              onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
-              className={errors.phoneNumber ? "border-destructive" : ""}
-            />
-            {errors.phoneNumber && (
-              <p className="text-sm text-destructive">{errors.phoneNumber}</p>
-            )}
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Mật khẩu (tùy chọn)
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Để trống để giữ mật khẩu hiện tại"
+                  value={formData.password}
+                  onChange={(e) => handleInputChange("password", e.target.value)}
+                  className={errors.password ? "border-destructive" : ""}
+                />
+                {errors.password && (
+                  <p className="text-sm text-destructive">{errors.password}</p>
+                )}
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="role" className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              Role
-            </Label>
-            <Select 
-              value={formData.role} 
-              onValueChange={(value) => handleInputChange("role", value)}
-            >
-              <SelectTrigger className={errors.role ? "border-destructive" : ""}>
-                <SelectValue placeholder="Select user role" />
-              </SelectTrigger>
-              <SelectContent>
-                {roleOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.role && (
-              <p className="text-sm text-destructive">{errors.role}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="status" className="flex items-center gap-2">
-              <Ban className="h-4 w-4" />
-              Status
-            </Label>
-            <Select 
-              value={formData.status} 
-              onValueChange={(value) => handleInputChange("status", value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select user status" />
-              </SelectTrigger>
-              <SelectContent>
-                {statusOptions.map((option) => {
-                  const IconComponent = option.icon;
-                  return (
-                    <SelectItem key={option.value} value={option.value}>
-                      <div className="flex items-center gap-2">
-                        <IconComponent className="h-4 w-4" />
+              <div className="space-y-2">
+                <Label htmlFor="roleName" className="flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Vai trò <span className="text-red-500">*</span>
+                </Label>
+                <Select 
+                  value={formData.roleName} 
+                  onValueChange={(value) => handleInputChange("roleName", value)}
+                >
+                  <SelectTrigger className={errors.roleName ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Chọn vai trò" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roleOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
                         {option.label}
-                      </div>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.roleName && (
+                  <p className="text-sm text-destructive">{errors.roleName}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status" className="flex items-center gap-2">
+                  <Ban className="h-4 w-4" />
+                  Trạng thái
+                </Label>
+                <Select 
+                  value={formData.status} 
+                  onValueChange={(value) => handleInputChange("status", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn trạng thái" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map((option) => {
+                      const IconComponent = option.icon;
+                      return (
+                        <SelectItem key={option.value} value={option.value}>
+                          <div className="flex items-center gap-2">
+                            <IconComponent className="h-4 w-4" />
+                            {option.label}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="avatar">Avatar URL (Optional)</Label>
-            <Input
-              id="avatar"
-              type="url"
-              placeholder="Enter avatar image URL"
-              value={formData.avatar}
-              onChange={(e) => handleInputChange("avatar", e.target.value)}
-            />
+          {/* Thông tin nhân viên */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <UserCircle className="h-5 w-5" />
+              Thông tin nhân viên
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="staffCode" className="flex items-center gap-2">
+                  <IdCard className="h-4 w-4" />
+                  Mã nhân viên <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="staffCode"
+                  placeholder="VD: ST000123"
+                  value={formData.staffCode}
+                  onChange={(e) => handleInputChange("staffCode", e.target.value)}
+                  className={errors.staffCode ? "border-destructive" : ""}
+                />
+                {errors.staffCode && (
+                  <p className="text-sm text-destructive">{errors.staffCode}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="citizenId" className="flex items-center gap-2">
+                  <IdCard className="h-4 w-4" />
+                  CMND/CCCD <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="citizenId"
+                  placeholder="VD: 123456789012"
+                  value={formData.citizenId}
+                  onChange={(e) => handleInputChange("citizenId", e.target.value)}
+                  className={errors.citizenId ? "border-destructive" : ""}
+                />
+                {errors.citizenId && (
+                  <p className="text-sm text-destructive">{errors.citizenId}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="firstName" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Tên <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="firstName"
+                  placeholder="VD: Nam"
+                  value={formData.firstName}
+                  onChange={(e) => handleInputChange("firstName", e.target.value)}
+                  className={errors.firstName ? "border-destructive" : ""}
+                />
+                {errors.firstName && (
+                  <p className="text-sm text-destructive">{errors.firstName}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="lastName" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Họ <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="lastName"
+                  placeholder="VD: Nguyễn Văn"
+                  value={formData.lastName}
+                  onChange={(e) => handleInputChange("lastName", e.target.value)}
+                  className={errors.lastName ? "border-destructive" : ""}
+                />
+                {errors.lastName && (
+                  <p className="text-sm text-destructive">{errors.lastName}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dateOfBirth" className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Ngày sinh <span className="text-red-500">*</span>
+                </Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !formData.dateOfBirth && "text-muted-foreground",
+                        errors.dateOfBirth && "border-destructive"
+                      )}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {formData.dateOfBirth ? (
+                        format(formData.dateOfBirth, "dd/MM/yyyy", { locale: vi })
+                      ) : (
+                        <span>Chọn ngày sinh</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={formData.dateOfBirth}
+                      onSelect={(date) => handleInputChange("dateOfBirth", date)}
+                      initialFocus
+                      locale={vi}
+                      maxDate={new Date()}
+                    />
+                  </PopoverContent>
+                </Popover>
+                {errors.dateOfBirth && (
+                  <p className="text-sm text-destructive">{errors.dateOfBirth}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="gender" className="flex items-center gap-2">
+                  <UserCircle className="h-4 w-4" />
+                  Giới tính <span className="text-red-500">*</span>
+                </Label>
+                <Select 
+                  value={formData.gender} 
+                  onValueChange={(value) => handleInputChange("gender", value)}
+                >
+                  <SelectTrigger className={errors.gender ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Chọn giới tính" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MALE">Nam</SelectItem>
+                    <SelectItem value="FEMALE">Nữ</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.gender && (
+                  <p className="text-sm text-destructive">{errors.gender}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="position" className="flex items-center gap-2">
+                  <Briefcase className="h-4 w-4" />
+                  Chức vụ <span className="text-red-500">*</span>
+                </Label>
+                <Select 
+                  value={formData.position} 
+                  onValueChange={(value) => handleInputChange("position", value)}
+                >
+                  <SelectTrigger className={errors.position ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Chọn chức vụ" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {positionOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.position && (
+                  <p className="text-sm text-destructive">{errors.position}</p>
+                )}
+              </div>
+
+              {formData.roleName !== "ROLE_ADMIN" && (
+                <div className="space-y-2">
+                  <Label htmlFor="serviceCenterId" className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    Chi nhánh <span className="text-red-500">*</span>
+                  </Label>
+                  <Select 
+                    value={formData.serviceCenterId} 
+                    onValueChange={(value) => handleInputChange("serviceCenterId", value)}
+                    disabled={loadingCenters}
+                  >
+                    <SelectTrigger className={errors.serviceCenterId ? "border-destructive" : ""}>
+                      <SelectValue placeholder={loadingCenters ? "Đang tải..." : "Chọn chi nhánh"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {serviceCenters.map((center) => (
+                        <SelectItem key={center.id} value={center.id}>
+                          {center.name} ({center.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.serviceCenterId && (
+                    <p className="text-sm text-destructive">{errors.serviceCenterId}</p>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="address" className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Địa chỉ <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="address"
+                  placeholder="VD: 123 Đường ABC, Quận 1, TPHCM"
+                  value={formData.address}
+                  onChange={(e) => handleInputChange("address", e.target.value)}
+                  className={errors.address ? "border-destructive" : ""}
+                />
+                {errors.address && (
+                  <p className="text-sm text-destructive">{errors.address}</p>
+                )}
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="avatarUrl" className="flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4" />
+                  URL Ảnh đại diện (tùy chọn)
+                </Label>
+                <Input
+                  id="avatarUrl"
+                  type="url"
+                  placeholder="VD: https://example.com/avatar.jpg"
+                  value={formData.avatarUrl}
+                  onChange={(e) => handleInputChange("avatarUrl", e.target.value)}
+                />
+              </div>
+            </div>
           </div>
 
           <DialogFooter className="gap-2">
@@ -257,10 +681,10 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
             >
-              Cancel
+              Hủy
             </Button>
             <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90">
-              {isLoading ? "Updating..." : "Update User"}
+              {isLoading ? "Đang cập nhật..." : "Cập nhật"}
             </Button>
           </DialogFooter>
         </form>

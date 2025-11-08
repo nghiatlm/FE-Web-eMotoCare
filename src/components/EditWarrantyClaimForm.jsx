@@ -43,27 +43,27 @@ export function EditWarrantyClaimForm({ open, onOpenChange, claim, onClaimUpdate
     const newErrors = {};
     
     if (!formData.deviceModel.trim()) {
-      newErrors.deviceModel = "Device model is required";
+      newErrors.deviceModel = "Vui lòng chọn mẫu thiết bị";
     }
     
     if (!formData.serialNumber.trim()) {
-      newErrors.serialNumber = "Serial number is required";
+      newErrors.serialNumber = "Vui lòng nhập số serial";
     }
     
     if (!formData.issueDescription.trim()) {
-      newErrors.issueDescription = "Issue description is required";
+      newErrors.issueDescription = "Vui lòng mô tả vấn đề";
     }
     
     if (!formData.submittedDate) {
-      newErrors.submittedDate = "Submitted date is required";
+      newErrors.submittedDate = "Vui lòng chọn ngày gửi";
     }
     
     if (!formData.ownerName.trim()) {
-      newErrors.ownerName = "Owner name is required";
+      newErrors.ownerName = "Vui lòng nhập tên chủ sở hữu";
     }
     
     if (!formData.status) {
-      newErrors.status = "Status is required";
+      newErrors.status = "Vui lòng chọn trạng thái";
     }
     
     setErrors(newErrors);
@@ -93,13 +93,13 @@ export function EditWarrantyClaimForm({ open, onOpenChange, claim, onClaimUpdate
       onOpenChange(false);
       
       toast({
-        title: "Success",
-        description: "Warranty claim has been updated successfully!",
+        title: "Thành công",
+        description: "Cập nhật khiếu nại bảo hành thành công!",
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to update warranty claim. Please try again.",
+        title: "Lỗi",
+        description: "Cập nhật thất bại. Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {
@@ -136,10 +136,10 @@ export function EditWarrantyClaimForm({ open, onOpenChange, claim, onClaimUpdate
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Edit Warranty Claim: {claim.id}
+            Sửa khiếu nại bảo hành: {claim.id}
           </DialogTitle>
           <DialogDescription>
-            Update warranty claim information and status.
+            Cập nhật thông tin và trạng thái khiếu nại.
           </DialogDescription>
         </DialogHeader>
         
@@ -148,14 +148,14 @@ export function EditWarrantyClaimForm({ open, onOpenChange, claim, onClaimUpdate
             <div className="space-y-2">
               <Label htmlFor="deviceModel" className="flex items-center gap-2">
                 <Smartphone className="h-4 w-4" />
-                Device Model
+                Mẫu thiết bị
               </Label>
               <Select 
                 value={formData.deviceModel} 
                 onValueChange={(value) => handleInputChange("deviceModel", value)}
               >
                 <SelectTrigger className={errors.deviceModel ? "border-destructive" : ""}>
-                  <SelectValue placeholder="Select device model" />
+                  <SelectValue placeholder="Chọn mẫu thiết bị" />
                 </SelectTrigger>
                 <SelectContent>
                   {deviceModels.map((model) => (
@@ -173,11 +173,11 @@ export function EditWarrantyClaimForm({ open, onOpenChange, claim, onClaimUpdate
             <div className="space-y-2">
               <Label htmlFor="serialNumber" className="flex items-center gap-2">
                 <Hash className="h-4 w-4" />
-                Serial Number
+                Số serial
               </Label>
               <Input
                 id="serialNumber"
-                placeholder="Enter serial number"
+                placeholder="Nhập số serial"
                 value={formData.serialNumber}
                 onChange={(e) => handleInputChange("serialNumber", e.target.value)}
                 className={errors.serialNumber ? "border-destructive" : ""}
@@ -189,13 +189,13 @@ export function EditWarrantyClaimForm({ open, onOpenChange, claim, onClaimUpdate
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="issueDescription" className="flex items-center gap-2">
+              <Label htmlFor="issueDescription" className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
-              Issue Description
+              Mô tả vấn đề
             </Label>
             <Textarea
               id="issueDescription"
-              placeholder="Describe the issue in detail..."
+              placeholder="Mô tả chi tiết vấn đề..."
               value={formData.issueDescription}
               onChange={(e) => handleInputChange("issueDescription", e.target.value)}
               className={errors.issueDescription ? "border-destructive" : ""}
@@ -210,7 +210,7 @@ export function EditWarrantyClaimForm({ open, onOpenChange, claim, onClaimUpdate
             <div className="space-y-2">
               <Label htmlFor="submittedDate" className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                Submitted Date
+                Ngày gửi
               </Label>
               <Popover>
                 <PopoverTrigger asChild>
@@ -219,7 +219,7 @@ export function EditWarrantyClaimForm({ open, onOpenChange, claim, onClaimUpdate
                     className={`w-full justify-start text-left font-normal ${!formData.submittedDate ? "text-muted-foreground" : ""} ${errors.submittedDate ? "border-destructive" : ""}`}
                   >
                     <Calendar className="mr-2 h-4 w-4" />
-                    {formData.submittedDate ? format(formData.submittedDate, "PPP") : "Pick a date"}
+                    {formData.submittedDate ? format(formData.submittedDate, "PPP") : "Chọn ngày"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -239,11 +239,11 @@ export function EditWarrantyClaimForm({ open, onOpenChange, claim, onClaimUpdate
             <div className="space-y-2">
               <Label htmlFor="ownerName" className="flex items-center gap-2">
                 <User className="h-4 w-4" />
-                Owner Name
+                Tên chủ sở hữu
               </Label>
               <Input
                 id="ownerName"
-                placeholder="Enter owner name"
+                placeholder="Nhập tên chủ sở hữu"
                 value={formData.ownerName}
                 onChange={(e) => handleInputChange("ownerName", e.target.value)}
                 className={errors.ownerName ? "border-destructive" : ""}
@@ -257,14 +257,14 @@ export function EditWarrantyClaimForm({ open, onOpenChange, claim, onClaimUpdate
           <div className="space-y-2">
             <Label htmlFor="status" className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4" />
-              Status
+              Trạng thái
             </Label>
             <Select 
               value={formData.status} 
               onValueChange={(value) => handleInputChange("status", value)}
             >
               <SelectTrigger className={errors.status ? "border-destructive" : ""}>
-                <SelectValue placeholder="Select claim status" />
+                <SelectValue placeholder="Chọn trạng thái" />
               </SelectTrigger>
               <SelectContent>
                 {statusOptions.map((option) => {
@@ -292,10 +292,10 @@ export function EditWarrantyClaimForm({ open, onOpenChange, claim, onClaimUpdate
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
             >
-              Cancel
+              Hủy
             </Button>
             <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90">
-              {isLoading ? "Updating..." : "Update Claim"}
+              {isLoading ? "Đang cập nhật..." : "Cập nhật"}
             </Button>
           </DialogFooter>
         </form>

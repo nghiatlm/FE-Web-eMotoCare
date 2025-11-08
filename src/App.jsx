@@ -16,6 +16,7 @@ import Vehicles from "./pages/Vehicles";
 import UserManagement from "./pages/UserManagement";
 import Index from "./pages/Index";
 import Branches from "./pages/Branches";
+import ServicePackages from "./pages/ServicePackages";
 import NotFound from "./pages/NotFound";
 
 // service staff

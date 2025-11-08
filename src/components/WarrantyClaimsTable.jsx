@@ -150,8 +150,8 @@ export function WarrantyClaimsTable({ deviceModelFilter = "", claimStatusFilter 
             {/* Results Count */}
             <p className="text-sm text-muted-foreground mb-4">
                 {hasActiveFilters 
-                    ? `Showing ${filteredClaims.length} of ${claims.length} devices`
-                    : `Showing ${claims.length} devices`
+                    ? `Hiển thị ${filteredClaims.length}/${claims.length} khiếu nại`
+                    : `Tổng ${claims.length} khiếu nại`
                 }
             </p>
             
@@ -160,14 +160,14 @@ export function WarrantyClaimsTable({ deviceModelFilter = "", claimStatusFilter 
                     <table className="w-full">
                         <thead>
                             <tr className="bg-muted/50 border-b border-border">
-                                <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Claim ID</th>
-                                <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Device Model</th>
-                                <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Serial Number</th>
-                                <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Issue Description</th>
-                                <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Submitted Date</th>
-                                <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Owner Name</th>
-                                <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Status</th>
-                                <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Action</th>
+                                <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Mã khiếu nại</th>
+                                <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Mẫu thiết bị</th>
+                                <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Số serial</th>
+                                <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Mô tả vấn đề</th>
+                                <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Ngày gửi</th>
+                                <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Tên chủ sở hữu</th>
+                                <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Trạng thái</th>
+                                <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -175,8 +175,8 @@ export function WarrantyClaimsTable({ deviceModelFilter = "", claimStatusFilter 
                                 <tr>
                                     <td colSpan="8" className="py-12 px-6 text-center">
                                         <div className="flex flex-col items-center gap-2">
-                                            <p className="text-muted-foreground text-sm">No warranty claims found</p>
-                                            <p className="text-xs text-muted-foreground">Try adjusting your filter criteria</p>
+                                            <p className="text-muted-foreground text-sm">Không tìm thấy khiếu nại nào</p>
+                                            <p className="text-xs text-muted-foreground">Hãy thay đổi bộ lọc để thử lại</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -210,7 +210,7 @@ export function WarrantyClaimsTable({ deviceModelFilter = "", claimStatusFilter 
                                         </td>
                                         <td className="py-4 px-6">
                                             <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(claim.status)}`}>
-                                                {claim.status}
+                                                {claim.status === 'Check-in' ? 'Đã tiếp nhận' : claim.status === 'In Progress' ? 'Đang xử lý' : claim.status === 'Complete' ? 'Hoàn tất' : claim.status}
                                             </span>
                                         </td>
                                         <td className="py-4 px-6">
@@ -219,7 +219,7 @@ export function WarrantyClaimsTable({ deviceModelFilter = "", claimStatusFilter 
                                                     variant="ghost" 
                                                     size="icon" 
                                                     className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                                    title="Edit Claim"
+                                                    title="Sửa khiếu nại"
                                                     onClick={() => {
                                                         if (window.openEditWarrantyDialog) {
                                                             window.openEditWarrantyDialog(claim);
@@ -232,10 +232,10 @@ export function WarrantyClaimsTable({ deviceModelFilter = "", claimStatusFilter 
                                                     variant="ghost" 
                                                     size="icon" 
                                                     className="h-8 w-8 text-destructive hover:text-destructive"
-                                                    title="Delete Claim"
+                                                    title="Xóa khiếu nại"
                                                     onClick={() => {
                                                         if (window.deleteWarrantyClaim) {
-                                                            if (confirm(`Are you sure you want to delete warranty claim ${claim.id}?`)) {
+                                                            if (confirm(`Bạn có chắc muốn xóa khiếu nại ${claim.id}?`)) {
                                                                 window.deleteWarrantyClaim(claim.id);
                                                             }
                                                         }
