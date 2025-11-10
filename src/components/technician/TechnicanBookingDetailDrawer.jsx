@@ -10,6 +10,7 @@ import {
   Tag,
   Spin,
   message,
+  Image,
 } from "antd";
 import {
   fetchEVCheckByAppointmentService,
@@ -17,11 +18,11 @@ import {
   updateEVCheckService,
   updateEVCheckDetailService,
 } from "../../services/evcheckService.js";
-import { STATUS_COLORS, STATUS_MAP } from "../../utils/constants";
 import {
-  searchPartItemsService,
   getPartItemByIdService,
+  getSuggestedPartItemsByEvCheckDetailId,
 } from "../../services/partitemsService.js";
+import { getLaborCostByRemediesService } from "../../services/priceserviceService"; // ✅ thêm import
 
 const { Option } = Select;
 
@@ -44,14 +45,12 @@ export default function TechnicianBookingDetailDrawer({
   const [evCheckDetails, setEvCheckDetails] = useState([]);
   const [evCheckStatus, setEvCheckStatus] = useState(null);
   const [statusChanges, setStatusChanges] = useState({});
-  const [partOptions, setPartOptions] = useState([]);
+  const [partOptionsMap, setPartOptionsMap] = useState({}); // { [detailId]: PartItem[] }
   const [partLoading, setPartLoading] = useState(false);
-  const [totalAmount, setTotalAmount] = useState(0);
 
-  const status = booking?.status?.toUpperCase();
   const hasDetails = evCheckDetails.length > 0;
 
-  // ---------- Helpers ----------
+  // -------- Helpers --------
   const loadEVCheckDetails = async (checkId) => {
     try {
       setLoading(true);
@@ -73,85 +72,32 @@ export default function TechnicianBookingDetailDrawer({
         statusValue = res.data?.status || null;
       }
 
-      // B1: Lấy tất cả partItemId từ evCheckDetails (nếu có)
-      // Bao gồm cả replacePartId (nếu BE trả về) và partItem.id
-      const uniquePartItemIds = Array.from(
-        new Set(
-          rawDetails
-            .map(
-              (item) =>
-                item?.replacePartId || // Nếu có replacePartId trực tiếp
-                item?.replacePart?.id || // Hoặc từ replacePart object
-                item?.partItem?.id // Hoặc từ partItem relation
-            )
-            .filter(Boolean)
-        )
-      );
-
-      // B2: Fetch chi tiết PartItem từ API để load vào dropdown
-      const partItemDetails = {};
-      if (uniquePartItemIds.length > 0) {
-        const results = await Promise.all(
-          uniquePartItemIds.map((id) =>
-            getPartItemByIdService(id)
-              .then((res) => {
-                const data = res?.data?.data || res?.data || res;
-                return { id, data };
-              })
-              .catch(() => null)
-          )
-        );
-        results.filter(Boolean).forEach(({ id, data }) => {
-          partItemDetails[id] = data;
-        });
-      }
-
-      // B3: Map chi tiết với thông tin từ PartItem API
       const mapped = rawDetails.map((item) => {
-        // Lấy partItemId từ nhiều nguồn (ưu tiên theo thứ tự):
-        // 1. replacePartId (nếu BE trả về trực tiếp)
-        // 2. replacePart.id (nếu có replacePart object với id)
-        // 3. partItem.id (từ relation partItem)
         const partItemId =
-          item?.replacePartId || // Nếu BE trả về replacePartId trực tiếp (string/UUID)
-          item?.replacePart?.id || // Nếu có replacePart object với id
-          item?.partItem?.id || // Hoặc từ partItem relation
+          item?.replacePartId ||
+          item?.replacePart?.id ||
+          item?.partItem?.id ||
           null;
-        const partItemData = partItemId ? partItemDetails[partItemId] : null;
 
-        // Lấy thông tin từ PartItem API response
         const partItemName =
-          partItemData?.part?.name ||
-          partItemData?.name ||
           item?.partItem?.part?.name ||
           item?.partName ||
+          item?.maintenanceStageDetail?.part?.name ||
           "";
-        const serialNumber =
-          partItemData?.serialNumber || item?.partItem?.serialNumber || "";
-        const displayLabel = partItemName || serialNumber || partItemId || "";
 
-        // Giá từ PartItem API hoặc fallback
-        const pricePart = Number(
-          partItemData?.price ?? item?.partItem?.price ?? item?.pricePart ?? 0
-        );
+        const pricePart = Number(item?.partItem?.price ?? item?.pricePart ?? 0);
 
-        // Status hợp lệ: PENDING, IN_PROGRESS, COMPLETED
-        const validStatus = item.status || "PENDING";
+        const currentStatus = item.status || "PENDING";
         const normalizedStatus =
-          validStatus === "INPROGRESS" ? "IN_PROGRESS" : validStatus;
+          currentStatus === "INPROGRESS" ? "IN_PROGRESS" : currentStatus;
 
         return {
           ...item,
-          // ReplacePart cho Select component (value là partItemId)
           replacePart: partItemId
-            ? {
-                value: partItemId,
-                label: displayLabel,
-              }
+            ? { value: partItemId, label: partItemName || partItemId }
             : null,
-          replacePartId: partItemId, // ✅ ID PartItem để submit - Đảm bảo luôn có giá trị nếu có partItem
-          partItemId, // Giữ lại để dùng
-          partName: displayLabel, // Chỉ để hiển thị
+          replacePartId: partItemId,
+          partName: partItemName,
           result: item.result ?? "",
           remedies: item.remedies ?? item.solution ?? "",
           warranty: item.warranty ?? false,
@@ -162,38 +108,21 @@ export default function TechnicianBookingDetailDrawer({
           totalAmount:
             (item.remedies === "REPLACE" ? pricePart : 0) +
             Number(item.priceService || 0),
-          status: normalizedStatus, // ✅ Đảm bảo status hợp lệ
+          status: normalizedStatus,
         };
       });
 
       setEvCheckDetails(mapped);
 
-      // Seed options để dropdown hiển thị mượt từ PartItem đã fetch
-      const seededOptions = Object.values(partItemDetails).map((p) => ({
-        id: p.id,
-        name: p.part?.name || p.name || p.serialNumber || p.id,
-        price: Number(p.price || 0),
-        serialNumber: p.serialNumber || "",
-      }));
-
-      // Thêm các partItem từ mapped data (nếu chưa có trong seededOptions)
-      mapped
-        .filter((x) => x.replacePart?.value && x.replacePart?.label)
-        .forEach((x) => {
-          const existing = seededOptions.find(
-            (opt) => opt.id === x.replacePart.value
-          );
-          if (!existing) {
-            seededOptions.push({
-              id: x.replacePart.value,
-              name: x.replacePart.label,
-              price: x.pricePart ?? 0,
-              serialNumber: x.partName || "",
-            });
-          }
-        });
-
-      setPartOptions(seededOptions);
+      // ✅ Auto-fill laborCost cho các dòng chưa có priceService theo remedies hiện có
+      mapped.forEach((row, idx) => {
+        if (
+          (!row.priceService || Number(row.priceService) === 0) &&
+          row.remedies
+        ) {
+          updateLaborCostForRow(idx, row.remedies);
+        }
+      });
 
       setKm(odometerValue ?? "");
       if (statusValue) setEvCheckStatus(statusValue);
@@ -207,7 +136,48 @@ export default function TechnicianBookingDetailDrawer({
     }
   };
 
-  // ---------- Effects ----------
+  const loadSuggestedParts = async (detailId) => {
+    if (!detailId || partOptionsMap[detailId]?.length > 0) return;
+
+    try {
+      setPartLoading(true);
+      const items = await getSuggestedPartItemsByEvCheckDetailId(detailId);
+      const normalized = (items || []).map((p) => ({
+        id: p.id || p.partItemId,
+        name: p.part?.name || p.name || p.serialNumber || p.id,
+        price: Number(p.price ?? p.unitPrice ?? 0),
+      }));
+      setPartOptionsMap((prev) => ({ ...prev, [detailId]: normalized }));
+    } catch (e) {
+      message.error("Không tải được danh sách phụ tùng đề xuất");
+    } finally {
+      setPartLoading(false);
+    }
+  };
+
+  // ✅ Helper: cập nhật priceService theo remedies cho một dòng
+  const updateLaborCostForRow = async (rowIndex, remedies) => {
+    try {
+      const labor = await getLaborCostByRemediesService(remedies);
+      setEvCheckDetails((prev) =>
+        prev.map((row, i) => {
+          if (i !== rowIndex) return row;
+          const priceService = Number(labor || 0);
+          const pricePart = Number(row.pricePart || 0);
+          const validPart = row.remedies === "REPLACE" ? pricePart : 0;
+          return {
+            ...row,
+            priceService,
+            totalAmount: validPart + priceService,
+          };
+        })
+      );
+    } catch (e) {
+      console.error("updateLaborCostForRow error:", e);
+    }
+  };
+
+  // -------- Effects --------
   useEffect(() => {
     if (!open) {
       setKm("");
@@ -215,6 +185,7 @@ export default function TechnicianBookingDetailDrawer({
       setEvCheckId(null);
       setEvCheckStatus(null);
       setStatusChanges({});
+      setPartOptionsMap({});
       setLoading(false);
       return;
     }
@@ -275,7 +246,7 @@ export default function TechnicianBookingDetailDrawer({
     }
   }, [open, booking?.id, initialEVCheckId]);
 
-  // ---------- Actions ----------
+  // -------- Actions --------
   const handleSendKm = async () => {
     if (!km && km !== 0) return message.error("Vui lòng nhập số KM!");
     const odometerNumber = Number(km);
@@ -340,11 +311,14 @@ export default function TechnicianBookingDetailDrawer({
             value === "REPLACE" ? Number(updated.pricePart || 0) : 0;
           updated.totalAmount =
             validPricePart + Number(updated.priceService || 0);
+
+          // ✅ gọi async cập nhật laborCost theo remedies mới
+          updateLaborCostForRow(i, value);
           return updated;
         }
 
         if (field === "replacePart") {
-          updated.replacePart = value; // {value,label}
+          updated.replacePart = value; // { value, label }
           return updated;
         }
 
@@ -355,13 +329,9 @@ export default function TechnicianBookingDetailDrawer({
 
     if (field === "status") {
       const detailId = evCheckDetails[index]?.id;
-      if (detailId) {
+      if (detailId)
         setStatusChanges((prev) => ({ ...prev, [detailId]: value }));
-      }
     }
-
-    // Không cập nhật replacePart lên BE ngay khi chọn dropdown
-    // Sẽ cập nhật khi submit (handleConfirmQuote)
   };
 
   const handleConfirmQuote = async () => {
@@ -376,17 +346,14 @@ export default function TechnicianBookingDetailDrawer({
       message.loading("Đang gửi dữ liệu kiểm tra...", 0);
 
       for (const item of evCheckDetails) {
-        // Đảm bảo status hợp lệ (PENDING, IN_PROGRESS, COMPLETED)
         const currentStatus = item.status || "PENDING";
         const normalizedStatus =
           currentStatus === "INPROGRESS" ? "IN_PROGRESS" : currentStatus;
 
-        // Lấy replacePartId từ item (ưu tiên replacePartId, sau đó replacePart.value)
-        // replacePart.value là id PartItem được chọn từ dropdown
         const replacePartIdValue =
-          item.replacePartId || // Từ state khi chọn dropdown
-          item.replacePart?.value || // Từ replacePart object (value là partItemId)
-          item.replacePart?.id || // Nếu replacePart có id trực tiếp
+          item.replacePartId ||
+          item.replacePart?.value ||
+          item.replacePart?.id ||
           null;
 
         const payload = {
@@ -398,22 +365,13 @@ export default function TechnicianBookingDetailDrawer({
           pricePart: Number(item.pricePart) || null,
           priceService: Number(item.priceService) || null,
           totalAmount: Number(item.totalAmount) || 0,
-          status: normalizedStatus, // ✅ Đảm bảo status hợp lệ
+          status: normalizedStatus,
         };
 
-        // Chỉ gửi replacePartId nếu remedies là REPLACE và có giá trị
         if (item.remedies === "REPLACE" && replacePartIdValue) {
           payload.replacePartId = replacePartIdValue;
         }
 
-        console.log("Submitting payload:", payload); // Debug log
-        console.log("Item data:", {
-          replacePartId: item.replacePartId,
-          replacePart: item.replacePart,
-          replacePartValue: item.replacePart?.value,
-          remedies: item.remedies,
-          finalReplacePartId: replacePartIdValue,
-        }); // Debug item data
         await updateEVCheckDetailService(item.id, payload);
       }
       await updateEVCheckService(evCheckId, { status: "INSPECTION_COMPLETED" });
@@ -454,25 +412,6 @@ export default function TechnicianBookingDetailDrawer({
     }
   };
 
-  const handleSearchParts = async (keyword) => {
-    const k = (keyword || "").trim();
-    if (k.length < 2) return; // tránh spam BE & lỗi search rỗng
-    try {
-      setPartLoading(true);
-      const items = await searchPartItemsService(k);
-      setPartOptions(items);
-    } catch (e) {
-      console.error("search part-items failed", e);
-      message.warning(
-        "Không tìm được phụ tùng. Thử gõ cụ thể hơn hoặc nhập serial."
-      );
-      // giữ lại options cũ để user vẫn chọn được
-    } finally {
-      setPartLoading(false);
-    }
-  };
-
-  // ---------- UI rules ----------
   const canEditFields =
     !readOnly &&
     !(
@@ -482,38 +421,82 @@ export default function TechnicianBookingDetailDrawer({
   const canUpdateItemStatus =
     !readOnly && evCheckStatus === "REPAIR_IN_PROGRESS";
 
-  // ---------- Columns ----------
   const baseColumns = [
     { title: "STT", render: (_, __, idx) => idx + 1, width: 50 },
     {
       title: "Hạng mục",
-      width: 180,
+      width: 160, // Giảm từ 180
       render: (_, r) =>
         r.maintenanceStageDetail?.part?.name || r.partName || "—",
     },
     {
+      title: "Hình ảnh",
+      width: 90, // Giảm mạnh
+      align: "center",
+      render: (_, r) => {
+        const imageUrl = r.partItem?.part?.image || r.partItem?.image;
+
+        if (!imageUrl) {
+          return (
+            <div className='w-12 h-12 flex items-center justify-center bg-gray-100 rounded border border-dashed text-xs text-gray-400'>
+              NA
+            </div>
+          );
+        }
+
+        return (
+          <Image
+            src={imageUrl}
+            alt='PT'
+            width={48}
+            height={48}
+            className='object-cover rounded border border-gray-200 shadow-sm cursor-pointer'
+            preview={{ src: imageUrl }}
+            fallback='https://via.placeholder.com/48?text=No'
+          />
+        );
+      },
+    },
+    {
       title: "Nội dung",
-      width: 150,
-      render: (_, r) => r.maintenanceStageDetail?.actionType || "—",
+      width: 80, // Giảm từ 150
+      render: (_, r) => {
+        const actionTypes = r.maintenanceStageDetail?.actionType || [];
+        const types = Array.isArray(actionTypes) ? actionTypes : [actionTypes];
+
+        const labels = types.map((type) => {
+          if (type === "INSPECTION") return "KT";
+          if (type === "LUBRICATION") return "BT";
+          return type;
+        });
+
+        return labels.length > 0 ? labels.join("/") : "—";
+      },
     },
     {
       title: "Kết quả",
-      width: 600,
+      width: 700, // Tăng lên 700px, chiếm gần hết
       render: (_, r, i) => (
-        <Input
-          placeholder='Nhập kết quả'
+        <Input.TextArea
+          placeholder='Nhập kết quả kiểm tra...'
           value={r.result || ""}
           onChange={(e) => handleChange(i, "result", e.target.value)}
           disabled={!canEditFields}
+          autoSize={{ minRows: 2, maxRows: 8 }}
+          style={{
+            resize: "none",
+            fontSize: 14,
+            lineHeight: 1.5,
+          }}
         />
       ),
     },
     {
       title: "Biện pháp",
-      width: 150,
+      width: 110, // Giảm
       render: (_, r, i) => (
         <Select
-          placeholder='Chọn biện pháp'
+          placeholder='Chọn'
           value={r.remedies}
           style={{ width: 100 }}
           onChange={(v) => handleChange(i, "remedies", v)}
@@ -526,111 +509,75 @@ export default function TechnicianBookingDetailDrawer({
       ),
     },
     {
-      title: "Phụ tùng đề xuất",
-      width: 150,
+      title: "Phụ tùng thay thế",
+      width: 180, // Giảm từ 220
       render: (_, r, i) => (
         <Select
-          showSearch
-          labelInValue
-          optionLabelProp='label'
-          placeholder='Tìm phụ tùng...'
-          value={r.replacePart || undefined} // { value: id, label: name hoặc serial }
+          placeholder='Chọn'
+          value={r.replacePart || undefined}
           disabled={!canEditFields || r.remedies !== "REPLACE"}
-          filterOption={false}
-          onSearch={handleSearchParts}
+          labelInValue
           loading={partLoading}
-          style={{ width: "80%" }}
+          style={{ width: "100%" }}
+          onDropdownVisibleChange={(open) => open && loadSuggestedParts(r.id)}
           onChange={async (opt) => {
             const partItemId = opt?.value;
-            const selectedLabel = opt?.label || "";
+            const list = partOptionsMap[r.id] || [];
+            const selected = list.find((p) => p.id === partItemId);
+            const price = selected?.price || 0;
 
-            // Tìm partItem trong partOptions để lấy giá
-            const selectedPartItem = partOptions.find(
-              (p) => p.id === partItemId
-            );
-            const price = selectedPartItem?.price || 0;
-
-            // Cập nhật ngay để UI phản hồi nhanh
             setEvCheckDetails((prev) =>
               prev.map((row, idx) => {
                 if (idx !== i) return row;
-                const updated = { ...row };
-                updated.replacePartId = partItemId;
-                updated.replacePart = {
-                  value: partItemId,
-                  label: selectedLabel,
+                return {
+                  ...row,
+                  replacePartId: partItemId,
+                  replacePart: opt,
+                  partName: opt?.label || "",
+                  pricePart: price,
+                  totalAmount:
+                    (row.remedies === "REPLACE" ? price : 0) +
+                    Number(row.priceService || 0),
                 };
-                updated.partName = selectedLabel;
-                updated.pricePart = price;
-
-                // Tính lại totalAmount
-                const validPart = updated.remedies === "REPLACE" ? price : 0;
-                updated.totalAmount =
-                  validPart + Number(updated.priceService || 0);
-
-                return updated;
               })
             );
 
-            // Nếu chưa có trong partOptions, gọi API để lấy chi tiết
-            if (!selectedPartItem && partItemId) {
+            if (!selected && partItemId) {
               try {
-                const res = await getPartItemByIdService(partItemId);
-                const data = res?.data?.data || res?.data || res;
+                const data = await getPartItemByIdService(partItemId);
                 const apiPrice = Number(data.price || 0);
                 const apiLabel =
-                  data.part?.name ||
-                  data.name ||
-                  data.serialNumber ||
-                  partItemId;
+                  data.part?.name || data.serialNumber || partItemId;
 
-                // Cập nhật lại với giá từ API (giữ lại replacePartId và replacePart)
                 setEvCheckDetails((prev) =>
                   prev.map((row, idx) => {
                     if (idx !== i) return row;
-                    const updated = { ...row };
-                    updated.pricePart = apiPrice;
-                    // ✅ Giữ lại replacePartId và replacePart đã set trước đó
-                    updated.replacePartId = partItemId;
-                    updated.replacePart = {
-                      value: partItemId,
-                      label: apiLabel,
+                    return {
+                      ...row,
+                      pricePart: apiPrice,
+                      replacePartId: partItemId,
+                      replacePart: { value: partItemId, label: apiLabel },
+                      partName: apiLabel,
+                      totalAmount:
+                        (row.remedies === "REPLACE" ? apiPrice : 0) +
+                        Number(row.priceService || 0),
                     };
-                    updated.partName = apiLabel;
-                    const validPart =
-                      updated.remedies === "REPLACE" ? apiPrice : 0;
-                    updated.totalAmount =
-                      validPart + Number(updated.priceService || 0);
-                    return updated;
                   })
                 );
 
-                // Thêm vào partOptions để lần sau không cần gọi API
-                setPartOptions((prev) => {
-                  const exists = prev.find((p) => p.id === partItemId);
-                  if (!exists) {
-                    return [
-                      ...prev,
-                      {
-                        id: partItemId,
-                        name: apiLabel,
-                        price: apiPrice,
-                        serialNumber: data.serialNumber || "",
-                      },
-                    ];
-                  }
-                  return prev;
-                });
+                setPartOptionsMap((prev) => ({
+                  ...prev,
+                  [r.id]: [
+                    ...(prev[r.id] || []),
+                    { id: partItemId, name: apiLabel, price: apiPrice },
+                  ],
+                }));
               } catch (e) {
-                console.error("Lỗi lấy PartItem:", e);
-                message.error("Không lấy được chi tiết phụ tùng!");
+                message.error("Lỗi tải phụ tùng");
               }
             }
-
-            // Không cập nhật lên BE ngay khi chọn dropdown
-            // Sẽ cập nhật khi submit (handleConfirmQuote) để tránh lỗi 400 do thiếu field bắt buộc
           }}
-          options={partOptions.map((p) => ({
+          options={(partOptionsMap[r.id] || []).map((p) => ({
             value: p.id,
             label: p.name || p.serialNumber || p.id,
           }))}
@@ -638,51 +585,52 @@ export default function TechnicianBookingDetailDrawer({
       ),
     },
     {
-      title: "Số lượng",
-      width: 100,
+      title: "SL",
+      width: 70, // Giảm
       render: (_, r, i) => (
         <Input
           type='number'
           value={r.quantity}
           onChange={(e) => handleChange(i, "quantity", e.target.value)}
           disabled={!canEditFields}
+          style={{ width: 60 }}
         />
       ),
     },
-    { title: "Đơn vị", width: 50, render: (_, r) => r.unit || "-" },
+    { title: "ĐV", width: 50, render: (_, r) => r.unit || "-" }, // Rút gọn
     {
-      title: "Giá phụ tùng",
-      width: 120,
+      title: "Giá PT",
+      width: 110,
       render: (_, r, i) => {
         if (r.remedies !== "REPLACE")
           return <span className='text-gray-400'>—</span>;
         return (
           <Input
-            placeholder='Nhập giá tiền'
             value={r.pricePart}
             onChange={(e) => handleChange(i, "pricePart", e.target.value)}
             disabled={!canEditFields}
+            style={{ fontSize: 12 }}
           />
         );
       },
     },
     {
-      title: "Giá dịch vụ",
-      width: 120,
+      title: "Giá DV",
+      width: 110,
       render: (_, r, i) => (
         <Input
-          placeholder='Nhập giá tiền'
           value={r.priceService}
           onChange={(e) => handleChange(i, "priceService", e.target.value)}
           disabled={!canEditFields}
+          style={{ fontSize: 12 }}
         />
       ),
     },
     {
-      title: "Tổng tiền",
-      width: 120,
+      title: "Tổng",
+      width: 110,
       render: (_, r) =>
-        r.totalAmount ? `${Number(r.totalAmount).toLocaleString()} đ` : "-",
+        r.totalAmount ? `${Number(r.totalAmount).toLocaleString()}đ` : "-",
     },
   ];
 
@@ -710,9 +658,10 @@ export default function TechnicianBookingDetailDrawer({
     },
   };
 
-  const columns = canUpdateItemStatus
-    ? [...baseColumns, statusColumnForRepair]
-    : baseColumns;
+  const columns =
+    !readOnly && evCheckStatus === "REPAIR_IN_PROGRESS"
+      ? [...baseColumns, statusColumnForRepair]
+      : baseColumns;
 
   if (!booking) return null;
 
@@ -749,11 +698,14 @@ export default function TechnicianBookingDetailDrawer({
           <p>
             <strong>Loại dịch vụ:</strong>{" "}
             <span
-              className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${
-                booking.type === "MAINTENANCE_TYPE"
-                  ? "bg-blue-100 text-blue-800 border border-blue-300"
-                  : "bg-purple-100 text-purple-800 border border-purple-300"
-              }`}>
+              className={`
+                        inline-block px-3 py-1 text-xs font-semibold rounded-full 
+                        ${
+                          booking.type === "MAINTENANCE_TYPE"
+                            ? "bg-blue-100 text-blue-800 border border-blue-300"
+                            : "bg-purple-100 text-purple-800 border border-purple-300"
+                        }
+                    `}>
               {booking.type === "MAINTENANCE_TYPE" ? "Bảo dưỡng" : booking.type}
             </span>
           </p>
