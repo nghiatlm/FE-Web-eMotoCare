@@ -1,8 +1,8 @@
 import api from "../api/api";
 
 export const authService = {
-  async login(phone, password) {
-    const res = await api.post("/v1/auths/login", { phone, password });
+  async login(email, password) {
+    const res = await api.post("/v1/auths/login/staff", { email, password });
     console.log("Response login:", res);
 
     const user = res.data;
@@ -13,6 +13,7 @@ export const authService = {
 
   logout() {
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
   },
 
   getCurrentUser() {

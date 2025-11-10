@@ -6,20 +6,20 @@ import AuthLayout from "../../components/authlayout/AuthLayout";
 
 export default function Login() {
   const { login, loading } = useAuth();
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
-    if (!phone || !password) {
+    if (!email || !password) {
       setError("Vui lòng nhập đầy đủ thông tin");
       return;
     }
 
     try {
-      const res = await login(phone, password);
+      const res = await login(email, password);
       console.log("Đăng nhập thành công:", res);
     } catch {
       setError("Sai số điện thoại hoặc mật khẩu");
@@ -30,11 +30,11 @@ export default function Login() {
     <AuthLayout title='Đăng nhập vào hệ thống'>
       <form onSubmit={handleLogin} className='space-y-5'>
         <div>
-          <label className='font-medium block mb-1'>Số điện thoại</label>
+          <label className='font-medium block mb-1'>Email</label>
           <input
             type='tel'
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className='w-full mt-2 px-3 py-2 text-gray-700 bg-transparent outline-none border rounded-lg shadow-sm focus:border-red-600 border-gray-200'
             placeholder='Nhập số điện thoại của bạn'
           />

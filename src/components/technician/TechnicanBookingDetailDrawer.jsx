@@ -46,6 +46,7 @@ export default function TechnicianBookingDetailDrawer({
   const [statusChanges, setStatusChanges] = useState({});
   const [partOptions, setPartOptions] = useState([]);
   const [partLoading, setPartLoading] = useState(false);
+  const [totalAmount, setTotalAmount] = useState(0);
 
   const status = booking?.status?.toUpperCase();
   const hasDetails = evCheckDetails.length > 0;
@@ -475,10 +476,11 @@ export default function TechnicianBookingDetailDrawer({
   const canEditFields =
     !readOnly &&
     !(
-      evCheckStatus === "WAITING_FOR_QUOTE" ||
-      evCheckStatus === "QUOTE_APPROVED"
+      evCheckStatus === "QUOTE_APPROVED" ||
+      evCheckStatus === "REPAIR_IN_PROGRESS"
     );
-  const canUpdateItemStatus = !readOnly && evCheckStatus === "QUOTE_APPROVED";
+  const canUpdateItemStatus =
+    !readOnly && evCheckStatus === "REPAIR_IN_PROGRESS";
 
   // ---------- Columns ----------
   const baseColumns = [
@@ -792,7 +794,7 @@ export default function TechnicianBookingDetailDrawer({
       ) : hasDetails ? (
         <section className='bg-white rounded-xl shadow p-5 border border-orange-200'>
           <h3 className='font-semibold text-base mb-3 border-b pb-2 text-orange-600'>
-            {evCheckStatus === "QUOTE_APPROVED"
+            {evCheckStatus === "REPAIR_IN_PROGRESS"
               ? "Tiến hành sửa chữa"
               : "Kết quả kiểm tra EVCheck"}
           </h3>
@@ -815,7 +817,7 @@ export default function TechnicianBookingDetailDrawer({
             }}>
             {!readOnly &&
               evCheckStatus !== "INSPECTION_COMPLETED" &&
-              evCheckStatus !== "QUOTE_APPROVED" && (
+              evCheckStatus !== "REPAIR_IN_PROGRESS" && (
                 <Button
                   type='primary'
                   onClick={handleConfirmQuote}
@@ -824,7 +826,7 @@ export default function TechnicianBookingDetailDrawer({
                 </Button>
               )}
 
-            {!readOnly && evCheckStatus === "QUOTE_APPROVED" && (
+            {!readOnly && evCheckStatus === "REPAIR_IN_PROGRESS" && (
               <Button
                 type='primary'
                 onClick={handleConfirmRepair}

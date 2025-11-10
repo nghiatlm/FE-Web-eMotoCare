@@ -1,5 +1,5 @@
 // src/contexts/AuthContext.jsx
-import React, { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
 
@@ -10,10 +10,10 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const login = async (phone, password) => {
+  const login = async (email, password) => {
     setLoading(true);
     try {
-      const user = await authService.login(phone, password);
+      const user = await authService.login(email, password);
       setUser(user);
 
       const roleName = user.accountResponse?.roleName;
@@ -34,6 +34,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     authService.logout();
     setUser(null);
+    localStorage.removeItem("token");
     navigate("/login");
   };
 

@@ -9,7 +9,8 @@ export const updateEVCheck = (id, data) => api.put(`${BASE_CHECK}/${id}`, data);
 export const getEVCheckByAppointmentId = (appointmentId) =>
   api.get(BASE_CHECK, { params: { appointmentId } });
 // EV CHECK DETAIL
-export const getEVCheckDetails = (data) => api.get(BASE_DETAIL, data);
+export const getEVCheckDetails = (params = {}) =>
+  api.get(BASE_DETAIL, { params: { pageSize: 20, ...params } });
 export const getEVCheckDetailById = (id) => api.get(`${BASE_DETAIL}/${id}`);
 export const updateEVCheckDetail = (id, data) =>
   api.put(`${BASE_DETAIL}/${id}`, data);
