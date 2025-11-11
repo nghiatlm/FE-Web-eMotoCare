@@ -19,14 +19,6 @@ import Branches from "./pages/Branches";
 import ServicePackages from "./pages/ServicePackages";
 import NotFound from "./pages/NotFound";
 
-// storekeeper
-import { StoreKeeperSidebar } from "./components/StoreKeeperSidebar";
-import AccessoryInventory from "./pages/storekeeper/AccessoryInventory";
-import AccessoryDetail from "./pages/storekeeper/AccessoryDetail";
-import ImportSlipsPage from "./pages/storekeeper/ImportSlipsPage";
-import ExportSlipsPage from "./pages/storekeeper/ExportSlipsPage";
-import ExportNoteDetail from "./pages/storekeeper/ExportNoteDetail";
-
 // service staff
 import { StaffSidebar } from "./components/service-staff/StaffSidebar";
 import StaffBooking from "./pages/service-staff/StaffBooking";
@@ -34,6 +26,17 @@ import StaffBooking from "./pages/service-staff/StaffBooking";
 // technician
 import { TechnicianSidebar } from "./components/technician/TechnicanSidebar";
 import TechnicianPage from "./pages/technician/TechnicianPage";
+
+// manager
+import { ManagerSidebar } from "./components/ManagerSidebar";
+import Dashboard from "./pages/manager/Dashboard";
+import InformationDetail from "./pages/manager/InformationDetail";
+import AppointmentsList from "./pages/manager/AppointmentsList";
+import StaffList from "./pages/manager/StaffList";
+import StaffDetail from "./pages/manager/StaffDetail";
+import WarrantyList from "./pages/manager/WarrantyList";
+import WarrantyDetail from "./pages/manager/WarrantyDetail";
+import ProtectedRoute from "./routes/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -44,10 +47,14 @@ const App = () => (
       <Sonner />
 
       <Routes>
+        {/* ✅ Mở web vào thẳng màn login */}
         <Route path='/' element={<Navigate to='/login' replace />} />
+
+        {/* ✅ Auth routes */}
         <Route path='/login' element={<Login />} />
         <Route path='/forgot-password' element={<ForgotPassword />} />
 
+        {/* ✅ Admin routes */}
         <Route
           path='/admin/*'
           element={
@@ -68,7 +75,6 @@ const App = () => (
                         element={<WarrantyClaims />}
                       />
                       <Route path='vehicles' element={<Vehicles />} />
-                      <Route path='service-packages' element={<ServicePackages />} />
                       <Route path='*' element={<NotFound />} />
                     </Routes>
                   </main>
@@ -78,6 +84,7 @@ const App = () => (
           }
         />
 
+        {/* ✅ Staff routes */}
         <Route
           path='/staff/*'
           element={
@@ -104,6 +111,7 @@ const App = () => (
           }
         />
 
+        {/* ✅ Technician routes */}
         <Route
           path='/technician/*'
           element={
@@ -130,34 +138,37 @@ const App = () => (
           }
         />
 
-        <Route
-          path='/storekeeper/*'
+<Route
+          path='/manager/*'
           element={
-            <SidebarProvider>
-              <div className='flex min-h-screen w-full'>
-                <StoreKeeperSidebar />
-                <div className='flex-1 flex flex-col'>
-                  <header className='h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10'>
-                    <SidebarTrigger className='text-foreground' />
-                  </header>
-                  <main className='flex-1'>
-                    <Routes>
-                      <Route path='' element={<AccessoryInventory />} />
-                      <Route path='accessories' element={<AccessoryInventory />} />
-                      <Route path='accessories/:id' element={<AccessoryDetail />} />
-                      <Route path='import-slips' element={<ImportSlipsPage />} />
-                      <Route path='export-slips' element={<ExportSlipsPage />} />
-                      <Route path='export-slips/:id' element={<ExportNoteDetail />} />
-                      <Route path='reports' element={<NotFound />} />
-                      <Route path='*' element={<NotFound />} />
-                    </Routes>
-                  </main>
+            <ProtectedRoute allowedRoles={["ROLE_MANAGER"]}>
+              <SidebarProvider>
+                <div className='flex min-h-screen w-full'>
+                  <ManagerSidebar />
+                  <div className='flex-1 flex flex-col'>
+                    <header className='h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10'>
+                      <SidebarTrigger className='text-foreground' />
+                    </header>
+                    <main className='flex-1'>
+                      <Routes>
+                        <Route path='' element={<Dashboard />} />
+                        <Route path='information' element={<InformationDetail />} />
+                        <Route path='appointments' element={<AppointmentsList />} />
+                        <Route path='staff' element={<StaffList />} />
+                        <Route path='staff/:id' element={<StaffDetail />} />
+                        <Route path='warranty' element={<WarrantyList />} />
+                        <Route path='warranty/:id' element={<WarrantyDetail />} />
+                        <Route path='*' element={<NotFound />} />
+                      </Routes>
+                    </main>
+                  </div>
                 </div>
-              </div>
-            </SidebarProvider>
+              </SidebarProvider>
+            </ProtectedRoute>
           }
         />
-
+        
+        {/* ✅ Not found */}
         <Route path='*' element={<NotFound />} />
       </Routes>
     </TooltipProvider>

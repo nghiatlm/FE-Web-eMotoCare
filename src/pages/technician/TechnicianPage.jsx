@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Modal, Button, Tabs, Select, Space, Input } from "antd";
 import { QRCodeSVG } from "qrcode.react";
 import TechnicianBookingDetailDrawer from "../../components/technician/TechnicanBookingDetailDrawer";
@@ -8,8 +8,6 @@ import { FilterIcon, RotateCcw } from "lucide-react";
 
 const { Option } = Select;
 
-const HARDCODED_TECHNICIAN_ID = "5868e728-e22e-4402-8a7a-810b6ceb5f54";
-
 const TechnicianPage = () => {
   const { data, loading, updateStatus } = useBookings();
 
@@ -17,12 +15,17 @@ const TechnicianPage = () => {
   const [openDrawer, setOpenDrawer] = useState(false);
   const [qrRecord, setQrRecord] = useState(null);
   const [openQRModal, setOpenQRModal] = useState(false);
-
   const [activeTab, setActiveTab] = useState("all");
+  const [currentEVCheckId, setCurrentEVCheckId] = useState(null);
 
   const [statusFilter, setStatusFilter] = useState("");
   const [serviceFilter, setServiceFilter] = useState("");
   const [phoneFilter, setPhoneFilter] = useState("");
+
+  // ✅ Lấy staff_id từ localStorage (khi đăng nhập backend sẽ lưu vào token/localStorage)
+  // ✅ Lấy staffId đúng cách
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const staffId = user?.accountResponse?.id;
 
   const normalizeType = (type) => {
     if (!type) return "";
@@ -77,6 +80,7 @@ const TechnicianPage = () => {
 
   return (
     <div style={{ padding: 16 }}>
+      {/* HEADER + FILTER */}
       <div
         style={{
           marginBottom: 16,
@@ -155,6 +159,7 @@ const TechnicianPage = () => {
         ]}
       />
 
+      {/* Booking Table */}
       <BookingTable
         data={getFilteredData(data)}
         loading={loading}
@@ -162,13 +167,24 @@ const TechnicianPage = () => {
         onShowQR={handleShowQR}
       />
 
-      <TechnicianBookingDetailDrawer
+      {/* Drawer Chi tiết Booking */}
+      {/* <TechnicianBookingDetailDrawer
         booking={selected}
         open={openDrawer}
         onClose={handleCloseDrawer}
         onUpdateStatus={handleUpdateStatus}
+        staffId={staffId} // ✅ Truyền staffId thật xuống drawer
+      /> */}
+      <TechnicianBookingDetailDrawer
+        booking={selected} // 🔹 Dữ liệu booking đang chọn
+        open={openDrawer} // 🔹 Mở/đóng Drawer
+        onClose={() => setOpenDrawer(false)} // 🔹 Đóng Drawer
+        onUpdateStatus={handleUpdateStatus} // ✅ Hàm cập nhật trạng thái booking
+        staffId={staffId} // ✅ ID của kỹ thuật viên hiện tại
+        initialEVCheckId={currentEVCheckId} // ← TRUYỀN ID EVCheck
       />
 
+      {/* QR Modal */}
       <Modal
         title={qrRecord ? `QR Check-in — ${qrRecord.code}` : "QR Check-in"}
         open={openQRModal}

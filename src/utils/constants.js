@@ -7,12 +7,13 @@ export const STATUS_MAP = {
   APPROVED: "Đã phê duyệt",
   CANCELED: "Đã hủy",
   CHECKED_IN: "Đã check-in",
-  QUOTE_APPROVED: "Báo giá được duyệt",
+  QUOTE_APPROVED: "Được xác nhận",
   REPAIR_COMPLETED: "Hoàn tất sửa chữa",
   COMPLETED: "Đã hoàn thành",
   REJECTED: "Bị từ chối",
   ASSIGNED: "Đã phân công",
-  IN_SERVICE: "Đang thực hiện",
+  // IN_SERVICE: "Đang thực hiện",
+  IN_PROGRESS: "Đang sửa chữa",
 };
 
 // 🎨 Màu trạng thái (theo flow bạn gửi)
@@ -20,12 +21,12 @@ export const STATUS_COLORS = {
   PENDING: colorBase.warning,
   APPROVED: colorBase.info,
   CHECKED_IN: "#a855f7",
-  INPROGRESS: "#06b6d4",
+  IN_PROGRESS: "#06b6d4",
   QUOTE_APPROVED: "#06b6d4",
   REPAIR_COMPLETED: "#10b981",
   COMPLETED: colorBase.success,
   CANCELED: colorBase.danger,
-  IN_SERVICE: "#f59e0b",
+  // IN_SERVICE: "#f59e0b",
 };
 
 // --- SERVICE TYPE ---
