@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search, Plus, Download, Filter, Building2, MapPin, Mail, Phone, Hash, Info, Clock, Calendar, Users, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ import BranchesTable from "@/components/BranchesTable";
 import { createServiceCenter, updateServiceCenter, getServiceCenterById } from "@/api/serviceCentersApi";
 
 export default function Branches() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [manager, setManager] = useState("");
@@ -90,8 +92,13 @@ export default function Branches() {
       setIsEditOpen(true);
     };
     window.openViewBranch = (row) => {
-      setSelected(row);
-      setIsViewOpen(true);
+      const id = row?.id || row?.code;
+      if (id) {
+        navigate(`/admin/branches/${id}`);
+      } else {
+        setSelected(row);
+        setIsViewOpen(true);
+      }
     };
     return () => {
       if (window.openEditBranch) delete window.openEditBranch;
@@ -104,7 +111,6 @@ export default function Branches() {
     const tmpId = `BR-${Date.now()}`;
     const statusUpper = String(form.status || "active").toUpperCase();
 
-    // Build API body per backend contract
     const body = {
       code: form.code || `SC-${Date.now()}`,
       name: form.name,
