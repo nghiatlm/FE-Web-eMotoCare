@@ -21,6 +21,14 @@ import BranchReport from "./pages/admin/BranchReport";
 import ServicePackages from "./pages/ServicePackages";
 import NotFound from "./pages/NotFound";
 
+// storekeeper
+import { StoreKeeperSidebar } from "./components/StoreKeeperSidebar";
+import AccessoryInventory from "./pages/storekeeper/AccessoryInventory";
+import AccessoryDetail from "./pages/storekeeper/AccessoryDetail";
+import ImportSlipsPage from "./pages/storekeeper/ImportSlipsPage";
+import ExportSlipsPage from "./pages/storekeeper/ExportSlipsPage";
+import ExportNoteDetail from "./pages/storekeeper/ExportNoteDetail";
+
 // service staff
 import { StaffSidebar } from "./components/service-staff/StaffSidebar";
 import StaffBooking from "./pages/service-staff/StaffBooking";
@@ -38,6 +46,7 @@ import StaffList from "./pages/manager/StaffList";
 import StaffDetail from "./pages/manager/StaffDetail";
 import WarrantyList from "./pages/manager/WarrantyList";
 import WarrantyDetail from "./pages/manager/WarrantyDetail";
+import MissingPartsList from "./pages/manager/MissingPartsList";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import InventorySummary from "./pages/manager/InventorySummary";
 import InventoryDetail from "./pages/manager/InventoryDetail";
@@ -90,6 +99,37 @@ const App = () => (
             </SidebarProvider>
           }
         />
+
+<Route
+          path='/storekeeper/*'
+          element={
+            <ProtectedRoute allowedRoles={["ROLE_STOREKEEPER"]}>
+              <SidebarProvider>
+                <div className='flex min-h-screen w-full'>
+                  <StoreKeeperSidebar />
+                  <div className='flex-1 flex flex-col'>
+                    <header className='h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10'>
+                      <SidebarTrigger className='text-foreground' />
+                    </header>
+                    <main className='flex-1'>
+                      <Routes>
+                        <Route path='' element={<AccessoryInventory />} />
+                        <Route path='accessories' element={<AccessoryInventory />} />
+                        <Route path='accessories/:id' element={<AccessoryDetail />} />
+                        <Route path='import-slips' element={<ImportSlipsPage />} />
+                        <Route path='export-slips' element={<ExportSlipsPage />} />
+                        <Route path='export-slips/:id' element={<ExportNoteDetail />} />
+                        <Route path='reports' element={<NotFound />} />
+                        <Route path='*' element={<NotFound />} />
+                      </Routes>
+                    </main>
+                  </div>
+                </div>
+              </SidebarProvider>
+            </ProtectedRoute>
+          }
+        />
+
 
         {/* ✅ Staff routes */}
         <Route
@@ -176,6 +216,7 @@ const App = () => (
                         />
                          <Route path="inventory" element={<InventorySummary />} />
                          <Route path="inventory/:id" element={<InventoryDetail />} />
+                        <Route path="missing-parts" element={<MissingPartsList />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </main>

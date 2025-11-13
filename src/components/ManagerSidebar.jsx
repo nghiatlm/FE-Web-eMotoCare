@@ -1,4 +1,4 @@
-import { LayoutDashboard, Info, Calendar, Users, FileText, LogOut, Boxes } from "lucide-react";
+import { LayoutDashboard, Info, Calendar, Users, FileText, LogOut, Boxes, AlertTriangle } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar, } from "@/components/ui/sidebar";
 import { authService } from "@/services/authService";
@@ -10,6 +10,7 @@ const menuItems = [
     { title: "Nhân viên", icon: Users, url: "/manager/staff" },
     { title: "Bảo hành", icon: FileText, url: "/manager/warranty" },
     { title: "Kho tổng", icon: Boxes, url: "/manager/inventory" },
+    { title: "Phụ tùng thiếu", icon: AlertTriangle, url: "/manager/missing-parts" },
 ];
 
 export function ManagerSidebar() {

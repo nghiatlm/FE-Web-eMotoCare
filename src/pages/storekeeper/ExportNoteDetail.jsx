@@ -107,7 +107,6 @@ export default function ExportNoteDetail() {
     try {
       setExporting(true);
       
-      // Prepare update data
       const updateData = {
         code: exportNote.code,
         exportDate: exportNote.exportDate || new Date().toISOString(),
@@ -116,20 +115,19 @@ export default function ExportNoteDetail() {
         totalQuantity: exportNote.totalQuantity || 0,
         totalValue: exportNote.totalValue || 0,
         note: exportNote.note || "",
-        exportById: exportNote.exportBy?.id || "",
-        serviceCenterId: exportNote.serviceCenter?.id || "",
+        exportById: exportNote.exportBy?.id || "a2862d00-ebc5-455f-b0ee-b1ab72bb1d75",
+        serviceCenterId: exportNote.serviceCenter?.id || "a805546d-b31d-11f0-9e95-c4efbb30f085",
         exportNoteStatus: "COMPLETED"
       };
-
+        console.log(updateData);
       const response = await updateExportNote(id, updateData);
-      
+      console.log(response);
       if (response.success || response.statusCode === 200) {
         toast({
           title: "Thành công",
-          description: "Xuất kho thành công. Trạng thái đã được cập nhật thành 'Hoàn thành'",
+          description: "Xuất kho thành công!",
         });
         
-        // Refresh data
         const [noteRes, itemsRes] = await Promise.all([
           getExportNoteById(id),
           getExportNotePartItems(id)
@@ -143,7 +141,6 @@ export default function ExportNoteDetail() {
           setPartItems(itemsRes.data);
         }
 
-        // Refresh parent table if available
         if (window.refreshExportNotes) {
           window.refreshExportNotes();
         }
