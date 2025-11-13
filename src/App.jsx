@@ -22,6 +22,7 @@ import NotFound from "./pages/NotFound";
 // service staff
 import { StaffSidebar } from "./components/service-staff/StaffSidebar";
 import StaffBooking from "./pages/service-staff/StaffBooking";
+import StaffWarrantyPage from "./pages/service-staff/StaffWarrantyPage";
 
 // technician
 import { TechnicianSidebar } from "./components/technician/TechnicanSidebar";
@@ -91,6 +92,8 @@ const App = () => (
                         element={<Navigate to='booking' replace />}
                       />
                       <Route path='booking' element={<StaffBooking />} />
+                      <Route path='warranty' element={<StaffWarrantyPage />} />
+
                       <Route path='*' element={<NotFound />} />
                     </Routes>
                   </main>

@@ -19,6 +19,7 @@ import {
   createEVCheckService,
   fetchEVCheckByAppointmentService, // ✅ Thêm dòng này
 } from "../../services/evcheckService";
+import Payment from "./Payment"; // ĐÃ CÓ
 
 const renderServiceContent = (serviceType, booking) => {
   if (!booking.technician) {
@@ -59,6 +60,7 @@ export default function BookingDetailDrawer({
   const [checkedIn, setCheckedIn] = useState(false);
   const [showTechnicianDrawer, setShowTechnicianDrawer] = useState(false);
   const [currentEVCheckId, setCurrentEVCheckId] = useState(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   const status = booking?.status?.toUpperCase();
 
@@ -257,7 +259,7 @@ export default function BookingDetailDrawer({
                 {new Date(booking.appointmentDate).toLocaleDateString("vi-VN")}
               </p>
               <p>
-                <strong>Khung giờ:</strong> {booking.timeSlot || "—"}
+                <strong>Khung giờ:</strong> {booking.slotTime || "—"}
               </p>
 
               <p>
@@ -342,13 +344,13 @@ export default function BookingDetailDrawer({
                     <strong>Tên:</strong>{" "}
                     {`${selectedTechnician.firstName} ${selectedTechnician.lastName}`}
                   </p>
-                  <p>
+                  {/* <p>
                     <strong>SĐT:</strong> {selectedTechnician.phone || "—"}
                   </p>
                   <p>
                     <strong>Chuyên môn:</strong>{" "}
                     {selectedTechnician.specialty || "Không rõ"}
-                  </p>
+                  </p> */}
                 </div>
               )}
               <Button
@@ -373,13 +375,13 @@ export default function BookingDetailDrawer({
                   {booking.technician.name ||
                     `${booking.technician.firstName} ${booking.technician.lastName}`}
                 </p>
-                <p>
+                {/* <p>
                   <strong>SĐT:</strong> {booking.technician.phone || "—"}
                 </p>
                 <p>
                   <strong>Chuyên môn:</strong>{" "}
                   {booking.technician.specialty || "Không rõ"}
-                </p>
+                </p> */}
               </div>
             </section>
           )}
@@ -419,24 +421,18 @@ export default function BookingDetailDrawer({
                 </Button>
               </>
             )}
-            {status === "CHECKED_IN" && (
-              <Button
-                type='primary'
-                onClick={() => handleChangeStatus("QUOTE_APPROVED")}>
-                Nhập kết quả kiểm tra
-              </Button>
-            )}
-            {status === "QUOTE_APPROVED" && (
+
+            {/* {status === "QUOTE_APPROVED" && (
               <Button
                 type='primary'
                 onClick={() => handleChangeStatus("REPAIR_COMPLETED")}>
                 Xác nhận sửa chữa
               </Button>
-            )}
+            )} */}
             {status === "REPAIR_COMPLETED" && (
               <Button
                 type='primary'
-                onClick={() => handleChangeStatus("COMPLETED")}>
+                onClick={() => setIsPaymentModalOpen(true)}>
                 Hoàn tất / Xuất hóa đơn
               </Button>
             )}
@@ -456,6 +452,12 @@ export default function BookingDetailDrawer({
         record={{ code: booking.code, qrCode: qrValue }}
         open={isQRModalOpen}
         onClose={() => setIsQRModalOpen(false)}
+      />
+      <Payment
+        open={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        booking={booking}
+        onPaymentSuccess={() => handleChangeStatus("COMPLETED")}
       />
     </>
   );
