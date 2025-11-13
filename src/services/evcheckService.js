@@ -4,6 +4,7 @@ import {
   getEVCheckDetails,
   getEVCheckDetailById,
   updateEVCheckDetail,
+  createEVCheckDetail,
   getEVCheckByAppointmentId,
 } from "../api/evcheck";
 
@@ -60,5 +61,10 @@ export const fetchEVCheckDetailByIdService = async (id) => {
 
 export const updateEVCheckDetailService = async (id, payload) => {
   const { data } = await updateEVCheckDetail(id, payload);
+  return data?.data;
+};
+
+export const createEVCheckDetailService = async (payload) => {
+  const { data } = await createEVCheckDetail(payload);
   return data?.data;
 };

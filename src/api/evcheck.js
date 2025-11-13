@@ -14,3 +14,4 @@ export const getEVCheckDetails = (params = {}) =>
 export const getEVCheckDetailById = (id) => api.get(`${BASE_DETAIL}/${id}`);
 export const updateEVCheckDetail = (id, data) =>
   api.put(`${BASE_DETAIL}/${id}`, data);
+export const createEVCheckDetail = (data) => api.post(BASE_DETAIL, data);
