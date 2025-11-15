@@ -1,67 +1,75 @@
-// file: RMAConfirmationModal.jsx
-
+// src/components/service-staff/RMAConfirmationModal.jsx
 import { Modal, Button, List, Typography, message } from "antd";
 import { useState } from "react";
-// 🆕 Import service tạo RMA (Cập nhật đường dẫn thực tế của bạn)
-import { createRMAService } from "../../services/rmaService"; // Giả định rmaService nằm ở đây
+
+import {
+  createRMAService,
+  createRMADetailService,
+} from "../../services/rmaService";
 import { fetchServiceStaff } from "../../services/staffsService";
+
 const { Text } = Typography;
 
 export default function RMAConfirmationModal({
   open,
   onClose,
   booking,
-  partsForRMA,
+  partsForRMA = [],
   onRMASuccess,
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // ... (mapPartsToRMAItems)
 
   const handleCreateRMA = async () => {
     if (isSubmitting) return;
 
     try {
       setIsSubmitting(true);
-      message.loading("Đang gửi yêu cầu RMA...", 0);
+      message.loading("Đang tạo yêu cầu RMA...", 0);
 
-      // 🚨 BƯỚC KHẮC PHỤC: Gọi hàm fetchServiceStaff để lấy staffId
-      const staff = await fetchServiceStaff();
-      const staffId = staff?.id;
+      // Lấy staff ID
+      const staffInfo = await fetchServiceStaff();
+      const staffData = staffInfo?.data?.data || staffInfo?.data || staffInfo;
+      const staffId = staffData?.id;
 
-      if (!staffId) {
-        throw new Error(
-          "Không tìm thấy ID nhân viên (Service Staff) để tạo RMA."
-        );
-      }
+      if (!staffId) throw new Error("Không tìm thấy Service Staff.");
 
-      // Xây dựng Payload
-      const payload = {
-        // ...
-        returnAddress: booking.garageAddress || "Địa chỉ trả hàng mặc định",
-        note: `Yêu cầu RMA cho booking: ${booking.code}. Số lượng phụ tùng: ${partsForRMA.length}.`,
-        createById: staffId, // 👈 ID Staff đã được lấy thành công
-        customerId: booking.customer?.id,
-        // ...
+      // 🔥 STEP 1 — Tạo RMA header (chỉ 1)
+      const rmaPayload = {
+        returnAddress: "Địa chỉ kho eMotoCare",
+        createById: staffId,
+        note: `Yêu cầu RMA cho booking ${booking.code}`,
       };
 
-      // 🎯 GỌI API TẠO RMA
-      await createRMAService(payload);
+      console.log("📤 Create RMA:", rmaPayload);
+
+      const rma = await createRMAService(rmaPayload);
+      const rmaId = rma?.id || rma?.data?.id;
+
+      if (!rmaId) throw new Error("Không tìm thấy rmaId trong response.");
+
+      // 🔥 STEP 2 — Loop từng EVCheckDetail tạo detail
+      for (const item of partsForRMA) {
+        const detailPayload = {
+          rmaId,
+          evCheckDetailId: item.id,
+          partItemId: item.partItem?.id,
+          quantity: item.quantity || 1,
+          unit: item.unit || "cái",
+          description: item.NoiDung || "",
+        };
+
+        console.log("📤 Tạo RMADetail:", detailPayload);
+        await createRMADetailService(detailPayload);
+      }
 
       message.destroy();
-      message.success(
-        `Đã tạo yêu cầu RMA cho ${partsForRMA.length} phụ tùng thành công!`
-      );
-
+      message.success("Tạo yêu cầu RMA thành công!");
       onRMASuccess?.();
       onClose();
-    } catch (error) {
+    } catch (err) {
       message.destroy();
-      console.error("Lỗi tạo RMA:", error);
-      message.error(
-        error?.message ||
-          "Không thể tạo yêu cầu RMA. Vui lòng kiểm tra console."
-      );
+      console.error("❌ Lỗi tạo RMA:", err);
+      message.error(err?.message || "Không thể tạo RMA.");
     } finally {
       setIsSubmitting(false);
     }
@@ -86,24 +94,30 @@ export default function RMAConfirmationModal({
           Xác nhận & Tạo RMA
         </Button>,
       ]}>
-      <p className='mb-4'>Xác nhận tạo yêu cầu RMA cho các phụ tùng sau:</p>
+      <p className='mb-4'>
+        Xác nhận tạo yêu cầu RMA cho các phụ tùng sau (mỗi phụ tùng sẽ tạo 1 RMA
+        riêng):
+      </p>
 
       <List
         bordered
         dataSource={partsForRMA}
         renderItem={(item) => (
           <List.Item>
-            {/* Giả định cấu trúc item.partName tồn tại */}
-            <Text strong>
-              {item.partName || item.partItem?.part?.name || "Không rõ tên PT"}
-            </Text>
-            {/* Giả định item.partItem có các thuộc tính cần thiết */}
-            <Text type='secondary' className='ml-2'>
-              (SL: {item.quantity || 1}, PT ID: {item.partItem?.id})
-            </Text>
-            <Text type='danger' className='ml-auto'>
-              Bảo hành hãng
-            </Text>
+            <div className='flex flex-col w-full'>
+              <div className='flex items-center justify-between'>
+                <Text strong>
+                  {item.partName ||
+                    item.partItem?.part?.name ||
+                    "Không rõ tên PT"}
+                </Text>
+                <Text type='danger'>Bảo hành hãng</Text>
+              </div>
+              <div className='text-xs text-gray-500 mt-1'>
+                SL: {item.quantity || 1} | PT ID: {item.partItem?.id} | EV
+                Detail ID: {item.id}
+              </div>
+            </div>
           </List.Item>
         )}
       />

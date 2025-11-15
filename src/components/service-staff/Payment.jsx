@@ -67,8 +67,11 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
             };
           });
 
-          setQuoteItems(items);
-          setTotalAmount(items.reduce((s, i) => s + (i.totalAmount || 0), 0));
+          const filteredItems = items.filter((item) => item.totalAmount > 0);
+          setQuoteItems(filteredItems);
+          setTotalAmount(
+            filteredItems.reduce((s, i) => s + (i.totalAmount || 0), 0)
+          );
         } else {
           setQuoteItems([]);
           setTotalAmount(0);
@@ -99,6 +102,8 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
           paymentMethod === "PAY_OS_CENTER" ? "PAY_OS_CENTER" : "CASH",
         currency: "VND",
         appointmentId,
+        returnUrl: "",
+        callbackUrl: "",
       };
 
       if (paymentMethod === "CASH") {
