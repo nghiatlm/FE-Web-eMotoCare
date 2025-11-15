@@ -465,9 +465,6 @@ export default function InventorySummary() {
                                     <th className="text-left px-6 py-2 text-xs font-semibold uppercase tracking-wide">
                                       Đơn giá
                                     </th>
-                                    <th className="text-left px-6 py-2 text-xs font-semibold uppercase tracking-wide">
-                                      Bảo hành
-                                    </th>
                                     <th className="text-left px-6 py-2 text-xs font-semibold uppercase tracking-wide min-w-[220px]">
                                       Kho
                                     </th>
@@ -497,16 +494,6 @@ export default function InventorySummary() {
                                         </td>
                                         <td className="px-6 py-3 text-sm text-foreground">
                                           {formatCurrency(serial.price)}
-                                        </td>
-                                        <td className="px-6 py-3 text-sm text-muted-foreground">
-                                          {warrantyStart || warrantyEnd ? (
-                                            <div className="space-y-0.5">
-                                              {warrantyStart && <div>BĐ: {warrantyStart}</div>}
-                                              {warrantyEnd && <div>KT: {warrantyEnd}</div>}
-                                            </div>
-                                          ) : (
-                                            "—"
-                                          )}
                                         </td>
                                         <td className="px-6 py-3">
                                           <div className="space-y-1.5 text-sm text-muted-foreground">

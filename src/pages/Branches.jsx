@@ -190,6 +190,7 @@ export default function Branches() {
     } finally {
       setIsEditOpen(false);
       setSelected(null);
+      resetForm();
     }
   };
 
@@ -259,7 +260,10 @@ export default function Branches() {
             )}
 
             <div className="flex items-center gap-3 ml-auto">
-              <Button className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setIsAddOpen(true)}>
+              <Button className="gap-2 bg-primary hover:bg-primary/90" onClick={() => {
+                resetForm();
+                setIsAddOpen(true);
+              }}>
                 <Plus className="h-4 w-4" />
                 Thêm chi nhánh
               </Button>
@@ -330,7 +334,13 @@ export default function Branches() {
           </DialogContent>
         </Dialog>
 
-        <Dialog open={isEditOpen} onOpenChange={(o) => { setIsEditOpen(o); if (!o) setSelected(null); }}>
+        <Dialog open={isEditOpen} onOpenChange={(o) => { 
+          setIsEditOpen(o); 
+          if (!o) {
+            setSelected(null);
+            resetForm();
+          }
+        }}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Chỉnh sửa chi nhánh</DialogTitle>

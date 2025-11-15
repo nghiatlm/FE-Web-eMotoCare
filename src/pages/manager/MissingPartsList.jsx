@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { Search, Calendar as CalendarIcon, RefreshCw, Eye, X, FileText } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Search, Calendar as CalendarIcon, RefreshCw, Eye, X, FileText, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,9 +10,12 @@ import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
+import { getMissingParts, deleteMissingPart } from "@/api/missingPartsApi";
+import { useToast } from "@/hooks/use-toast";
 
 export default function MissingPartsList() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [from, setFrom] = useState(null);
@@ -22,72 +25,82 @@ export default function MissingPartsList() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
+  const [requests, setRequests] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [error, setError] = useState(null);
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 10 }, (_, i) => currentYear - i);
 
-  // Mock data - sẽ thay bằng API call sau
-  const mockRequests = [
-    {
-      id: "REQ-2025-001",
-      code: "REQ-2025-001",
-      sentDate: "2025-09-14",
-      creator: "Nguyễn Văn A",
-      status: "DRAFT",
-      note: "Hết tồn, cần cho lịch bảo dưỡng",
-    },
-    {
-      id: "REQ-2025-002",
-      code: "REQ-2025-002",
-      sentDate: "2025-09-13",
-      creator: "Trần Thị B",
-      status: "REQUESTED",
-      note: "Có đơn hàng chờ giao",
-    },
-    {
-      id: "REQ-2025-003",
-      code: "REQ-2025-003",
-      sentDate: "2025-09-12",
-      creator: "Lê Văn C",
-      status: "APPROVED",
-      note: "Gấp cho khách bảo hành",
-    },
-    {
-      id: "REQ-2025-004",
-      code: "REQ-2025-004",
-      sentDate: "2025-09-11",
-      creator: "Nguyễn Thị D",
-      status: "PENDING",
-      note: "Gấp cho khách bảo hành",
-    },
-    {
-      id: "REQ-2025-005",
-      code: "REQ-2025-005",
-      sentDate: "2025-09-10",
-      creator: "Phạm Văn E",
-      status: "IN_TRANSIT",
-      note: "Gấp cho khách bảo hành",
-    },
-    {
-      id: "REQ-2025-006",
-      code: "REQ-2025-006",
-      sentDate: "2025-09-09",
-      creator: "Lưu Thị F",
-      status: "COMPLETED",
-      note: "Gấp cho khách bảo hành",
-    },
-    {
-      id: "REQ-2025-007",
-      code: "REQ-2025-007",
-      sentDate: "2025-09-08",
-      creator: "Phạm Tấn T",
-      status: "REJECTED",
-      note: "Gấp cho khách bảo hành",
-    },
-  ];
+  // Fetch missing parts requests
+  const fetchMissingParts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const params = {
+        page,
+        pageSize,
+        ...(search && { search }),
+        ...(status !== "all" && { status }),
+        ...(from && { fromDate: format(from, "yyyy-MM-dd") }),
+        ...(to && { toDate: format(to, "yyyy-MM-dd") }),
+      };
+
+      const response = await getMissingParts(params);
+      
+      console.log("📋 Missing Parts Requests API Response:", response);
+      
+      // Handle response structure: { data: { rowDatas: [...], total: ... } }
+      const requestsData = response?.data?.rowDatas || response?.rowDatas || [];
+      const totalCount = response?.data?.total || response?.total || 0;
+      
+      setRequests(requestsData);
+      setTotal(totalCount);
+    } catch (err) {
+      console.error("Error fetching missing parts requests:", err);
+      setError("Không thể tải danh sách yêu cầu phụ tùng thiếu. Vui lòng thử lại sau.");
+      toast({
+        title: "Lỗi",
+        description: err?.message || err?.data?.message || "Không thể tải danh sách yêu cầu phụ tùng thiếu",
+        variant: "destructive",
+      });
+      setRequests([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, pageSize, search, status, from, to, toast]);
+
+  useEffect(() => {
+    fetchMissingParts();
+  }, [fetchMissingParts]);
+
+  // Handle cancel/delete request
+  const handleCancelRequest = async (id, code) => {
+    if (!confirm(`Bạn có chắc chắn muốn hủy yêu cầu ${code}?`)) {
+      return;
+    }
+
+    try {
+      await deleteMissingPart(id);
+      toast({
+        title: "Thành công",
+        description: "Đã hủy yêu cầu phụ tùng thiếu",
+      });
+      fetchMissingParts();
+    } catch (err) {
+      console.error("Error canceling request:", err);
+      toast({
+        title: "Lỗi",
+        description: err?.message || err?.data?.message || "Không thể hủy yêu cầu",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getStatusBadge = (status) => {
-    switch (status) {
+    switch (status?.toUpperCase()) {
       case "DRAFT":
         return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">Draft</Badge>;
       case "REQUESTED":
@@ -103,32 +116,35 @@ export default function MissingPartsList() {
       case "REJECTED":
         return <Badge className="bg-red-900 text-red-100 hover:bg-red-900">Từ chối</Badge>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <Badge variant="secondary">{status || "—"}</Badge>;
     }
   };
 
-  const filteredRequests = useMemo(() => {
-    return mockRequests.filter((req) => {
-      // Search filter
-      const matchesSearch =
-        !search ||
-        req.code.toLowerCase().includes(search.toLowerCase()) ||
-        req.creator.toLowerCase().includes(search.toLowerCase()) ||
-        req.note.toLowerCase().includes(search.toLowerCase());
-      
-      // Status filter
-      const matchesStatus = status === "all" || req.status === status;
-      
-      // Date range filters
-      const startOk = !from || new Date(req.sentDate) >= from;
-      const endOk = !to || new Date(req.sentDate) <= to;
-      
-      return matchesSearch && matchesStatus && startOk && endOk;
-    });
-  }, [search, status, from, to]);
+  // Format date from API response
+  const formatRequestDate = (dateString) => {
+    if (!dateString) return "—";
+    try {
+      return format(new Date(dateString), "dd-MM-yyyy");
+    } catch (error) {
+      return dateString;
+    }
+  };
 
-  const totalPages = Math.ceil(filteredRequests.length / pageSize);
-  const paginatedRequests = filteredRequests.slice((page - 1) * pageSize, page * pageSize);
+  // Get creator name
+  const getCreatorName = (request) => {
+    if (request.creator?.firstName || request.creator?.lastName) {
+      return `${request.creator.firstName || ""} ${request.creator.lastName || ""}`.trim();
+    }
+    if (request.creatorName) {
+      return request.creatorName;
+    }
+    if (request.createdBy) {
+      return request.createdBy;
+    }
+    return "—";
+  };
+
+  const totalPages = Math.ceil(total / pageSize);
 
   return (
     <div className="min-h-screen bg-background">
@@ -288,6 +304,7 @@ export default function MissingPartsList() {
                   setSearch("");
                   setFrom(null);
                   setTo(null);
+                  setPage(1);
                 }}
                 className="text-primary hover:text-primary/90"
               >
@@ -296,16 +313,28 @@ export default function MissingPartsList() {
             )}
 
             <div className="flex items-center gap-2 ml-auto">
-              <Button className="whitespace-nowrap bg-primary hover:bg-primary/90">
+              <Button 
+                className="whitespace-nowrap bg-primary hover:bg-primary/90"
+                onClick={() => {
+                  setPage(1);
+                  fetchMissingParts();
+                }}
+              >
                 Tìm kiếm
               </Button>
-              <Button variant="outline" size="icon" title="Refresh" onClick={() => {
-                setStatus("all");
-                setSearch("");
-                setFrom(null);
-                setTo(null);
-                setPage(1);
-              }}>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                title="Refresh" 
+                onClick={() => {
+                  setStatus("all");
+                  setSearch("");
+                  setFrom(null);
+                  setTo(null);
+                  setPage(1);
+                  fetchMissingParts();
+                }}
+              >
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
@@ -330,19 +359,31 @@ export default function MissingPartsList() {
                 <tr>
                   <td className="px-6 py-12 text-center text-muted-foreground" colSpan={7}>
                     <div className="flex items-center justify-center gap-2">
-                      <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
                       <span>Đang tải dữ liệu...</span>
                     </div>
                   </td>
                 </tr>
-              ) : paginatedRequests.length === 0 ? (
+              ) : error ? (
+                <tr>
+                  <td className="px-6 py-12 text-center text-muted-foreground" colSpan={7}>
+                    <div className="flex flex-col items-center gap-2">
+                      <AlertCircle className="h-8 w-8 text-destructive" />
+                      <p className="text-destructive">{error}</p>
+                      <Button variant="outline" size="sm" onClick={fetchMissingParts} className="mt-2">
+                        Thử lại
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ) : requests.length === 0 ? (
                 <tr>
                   <td className="px-6 py-12 text-center text-muted-foreground" colSpan={7}>
                     Không có dữ liệu phù hợp
                   </td>
                 </tr>
               ) : (
-                paginatedRequests.map((req, idx) => (
+                requests.map((req, idx) => (
                   <tr
                     key={req.id}
                     className="bg-card border border-border/60 hover:border-primary/40 hover:shadow-md transition-all duration-200"
@@ -352,19 +393,19 @@ export default function MissingPartsList() {
                     </td>
                     <td className="px-5 py-4 align-top">
                       <span className="text-primary font-semibold tracking-wide cursor-pointer hover:underline">
-                        {req.code}
+                        {req.code || "—"}
                       </span>
                     </td>
                     <td className="px-5 py-4 align-top">
-                      {req.sentDate ? format(new Date(req.sentDate), "dd-MM-yyyy") : "—"}
+                      {formatRequestDate(req.sentDate || req.createdAt || req.requestDate)}
                     </td>
                     <td className="px-5 py-4 align-top">
-                      <span className="text-foreground">{req.creator}</span>
+                      <span className="text-foreground">{getCreatorName(req)}</span>
                     </td>
                     <td className="px-5 py-4 align-top">{getStatusBadge(req.status)}</td>
                     <td className="px-5 py-4 align-top">
                       <p className="text-sm text-muted-foreground leading-relaxed max-w-md">
-                        {req.note}
+                        {req.note || req.description || "—"}
                       </p>
                     </td>
                     <td className="px-5 py-4 align-top">
@@ -383,9 +424,7 @@ export default function MissingPartsList() {
                             size="sm"
                             variant="outline"
                             className="gap-1 rounded-full px-3 text-destructive hover:text-destructive"
-                            onClick={() => {
-                              // Handle cancel
-                            }}
+                            onClick={() => handleCancelRequest(req.id, req.code)}
                           >
                             <X className="h-4 w-4" />
                             Hủy
@@ -402,15 +441,15 @@ export default function MissingPartsList() {
 
         <div className="flex items-center justify-between mt-4 text-sm">
           <span className="text-muted-foreground">
-            {filteredRequests.length} mục
-            {from && ` • từ ${format(new Date(from), "dd/MM/yyyy")}`}
-            {to && ` • đến ${format(new Date(to), "dd/MM/yyyy")}`}
+            {total} mục
+            {from && ` • từ ${format(from, "dd/MM/yyyy")}`}
+            {to && ` • đến ${format(to, "dd/MM/yyyy")}`}
           </span>
           <div className="flex items-center gap-2">
             <Button
               size="sm"
               variant="outline"
-              disabled={page <= 1}
+              disabled={page <= 1 || loading}
               onClick={() => setPage((prev) => prev - 1)}
             >
               Trước
@@ -424,6 +463,7 @@ export default function MissingPartsList() {
                     size="sm"
                     variant={page === pageNum ? "default" : "outline"}
                     onClick={() => setPage(pageNum)}
+                    disabled={loading}
                     className="min-w-[2.5rem]"
                   >
                     {pageNum}
@@ -434,7 +474,7 @@ export default function MissingPartsList() {
             <Button
               size="sm"
               variant="outline"
-              disabled={page >= totalPages}
+              disabled={page >= totalPages || loading}
               onClick={() => setPage((prev) => prev + 1)}
             >
               Sau

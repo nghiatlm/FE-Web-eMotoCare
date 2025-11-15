@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MapPin, Building2, FileUp, Plus, Eye, Printer, Trash2, Edit } from "lucide-react";
+import { Search, MapPin, Building2, FileUp, Plus, Eye, Printer, Trash2, Edit, Loader2, CheckSquare, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,9 +11,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import ExportSlipsTable from "@/components/ExportSlipsTable";
 import { createExportNote, getExportNoteById, updateExportNote } from "@/api/exportNotesApi";
+import { getPartItems, getPartItemsByServiceCenter } from "@/api/partitemsApi";
+import { useAuth } from "@/contexts/AuthContext";
+import { getStaffByAccountId } from "@/api/staffsApi";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function ExportSlipsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -26,20 +31,31 @@ export default function ExportSlipsPage() {
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   
+  // Part items state
+  const [partItems, setPartItems] = useState([]);
+  const [loadingPartItems, setLoadingPartItems] = useState(false);
+  const [selectedPartItemIds, setSelectedPartItemIds] = useState([]);
+  const [partItemsPage, setPartItemsPage] = useState(1);
+  const [partItemsPageSize, setPartItemsPageSize] = useState(10);
+  const [partItemsTotal, setPartItemsTotal] = useState(0);
+  const [partItemsSearch, setPartItemsSearch] = useState("");
+  const [serviceCenterId, setServiceCenterId] = useState("a805546d-b31d-11f0-9e95-c4efbb30f085");
+  const [staffId, setStaffId] = useState("a7797a1f-c9d9-4b6b-a06f-d26bdc54e917");
+  
   // Form state cho tạo phiếu xuất
   const [formData, setFormData] = useState({
     code: "",
     type: "REPLACEMENT",
-    exportTo: "",
+    exportTo: "string",
     totalQuantity: 0,
     totalValue: 0,
     note: "",
     exportById: "",
     serviceCenterId: "",
-    exportNoteStatus: "PENDING"
+    exportNoteStatus: "PENDING",
+    partItemId: []
   });
 
-  // Edit form state
   const [editFormData, setEditFormData] = useState({
     code: "",
     exportDate: "",
@@ -52,6 +68,162 @@ export default function ExportSlipsPage() {
     serviceCenterId: "",
     exportNoteStatus: "PENDING"
   });
+
+  useEffect(() => {
+    const fetchStaffInfo = async () => {
+      try {
+        const accountId = user?.accountResponse?.id;
+        if (!accountId) return;
+
+        const staffResponse = await getStaffByAccountId(accountId);
+        const staffData = staffResponse?.data?.rowDatas?.[0];
+        
+        if (staffData) {
+          if (staffData.serviceCenterId) {
+            setServiceCenterId(staffData.serviceCenterId);
+            setFormData(prev => ({ ...prev, serviceCenterId: staffData.serviceCenterId }));
+          }
+          if (staffData.id) {
+            setStaffId(staffData.id);
+            setFormData(prev => ({ ...prev, exportById: staffData.id }));
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching staff info:", error);
+      }
+    };
+
+    if (user) {
+      fetchStaffInfo();
+    }
+  }, [user]);
+
+  const fetchPartItems = useCallback(async () => {
+    try {
+      setLoadingPartItems(true);
+      console.log("🔄 Fetching part items for service center:", serviceCenterId);
+
+      // Call API lấy phụ tùng theo serviceCenterId
+      const response = await getPartItemsByServiceCenter(serviceCenterId);
+
+      console.log("📦 Part Items API Response (full):", response);
+      
+      // Xử lý response - có thể là array hoặc object có data/rowDatas
+      let items = [];
+      let total = 0;
+      
+      if (Array.isArray(response?.data)) {
+        items = response.data;
+        total = response.data.length;
+      } else if (response?.data?.rowDatas) {
+        items = response.data.rowDatas;
+        total = response.data.total || response.data.rowDatas.length;
+      } else if (Array.isArray(response)) {
+        items = response;
+        total = response.length;
+      } else if (response?.rowDatas) {
+        items = response.rowDatas;
+        total = response.total || response.rowDatas.length;
+      }
+
+      console.log("📋 Processed part items:", {
+        itemsCount: items.length,
+        total,
+        firstItem: items[0],
+      });
+
+      if (items.length === 0) {
+        console.warn("⚠️ No part items found in response");
+        console.warn("Full response:", JSON.stringify(response, null, 2));
+      }
+
+      setPartItems(items);
+      setPartItemsTotal(total);
+    } catch (error) {
+      console.error("❌ Error fetching part items:", error);
+      console.error("Error response:", error.response);
+      console.error("Error data:", error.data);
+      console.error("Error message:", error.message);
+      toast({
+        title: "Lỗi",
+        description: error?.message || error?.data?.message || "Không thể tải danh sách phụ tùng",
+        variant: "destructive",
+      });
+      setPartItems([]);
+      setPartItemsTotal(0);
+    } finally {
+      setLoadingPartItems(false);
+    }
+  }, [serviceCenterId, toast]);
+
+  useEffect(() => {
+    if (isCreateDialogOpen && serviceCenterId) {
+      console.log("Dialog opened, fetching part items...");
+      console.log("Current serviceCenterId:", serviceCenterId);
+      fetchPartItems();
+    } else {
+      setPartItems([]);
+      setSelectedPartItemIds([]);
+      setPartItemsSearch("");
+      setPartItemsPage(1);
+    }
+  }, [isCreateDialogOpen, serviceCenterId, fetchPartItems]);
+
+  const selectedPartItemsData = useMemo(() => {
+    const selectedItems = partItems.filter(item => selectedPartItemIds.includes(item.id));
+    const totalQty = selectedItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+    const totalVal = selectedItems.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0);
+    return { totalQty, totalVal, selectedItems };
+  }, [partItems, selectedPartItemIds]);
+
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      totalQuantity: selectedPartItemsData.totalQty,
+      totalValue: selectedPartItemsData.totalVal,
+      partItemId: selectedPartItemIds,
+    }));
+  }, [selectedPartItemsData.totalQty, selectedPartItemsData.totalVal, selectedPartItemIds]);
+
+  // Handle part item selection
+  const handlePartItemToggle = (partItemId) => {
+    setSelectedPartItemIds(prev => {
+      if (prev.includes(partItemId)) {
+        return prev.filter(id => id !== partItemId);
+      } else {
+        return [...prev, partItemId];
+      }
+    });
+  };
+
+  // Handle select all part items
+  const handleSelectAllPartItems = () => {
+    if (selectedPartItemIds.length === partItems.length) {
+      setSelectedPartItemIds([]);
+    } else {
+      setSelectedPartItemIds(partItems.map(item => item.id));
+    }
+  };
+
+  // Helper functions để format tên hiển thị
+  const getTypeLabel = (type) => {
+    const typeMap = {
+      REPLACEMENT: "Thay thế",
+      TRANSFER_TO: "Chuyển kho"
+    };
+    return typeMap[type] || type;
+  };
+
+  const getStatusLabel = (status) => {
+    const statusMap = {
+      PENDING: "Chờ xử lý",
+      APPROVED: "Đã duyệt",
+      EXPORTING: "Đang xuất",
+      COMPLETED: "Hoàn thành",
+      CANCELLED: "Đã hủy"
+    };
+    return statusMap[status] || status;
+  };
 
   const currentBranch = {
     id: "BR-001",
@@ -221,7 +393,7 @@ export default function ExportSlipsPage() {
 
       {/* Create Export Slip Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-2xl flex items-center gap-2">
               <FileUp className="h-6 w-6 text-primary" />
@@ -229,18 +401,8 @@ export default function ExportSlipsPage() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 max-h-[80vh] overflow-y-auto">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="code" className="text-sm font-semibold">Mã phiếu *</Label>
-                <Input
-                  id="code"
-                  placeholder="Nhập mã phiếu"
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                />
-              </div>
-              
               <div className="space-y-2">
                 <Label htmlFor="type" className="text-sm font-semibold">Loại *</Label>
                 <Select
@@ -251,22 +413,10 @@ export default function ExportSlipsPage() {
                     <SelectValue placeholder="Chọn loại" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="REPLACEMENT">REPLACEMENT</SelectItem>
-                    <SelectItem value="TRANSFER_TO">TRANSFER_TO</SelectItem>
+                    <SelectItem value="REPLACEMENT">Thay thế</SelectItem>
+                    <SelectItem value="TRANSFER_TO">Chuyển kho</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="exportTo" className="text-sm font-semibold">Người nhận *</Label>
-                <Input
-                  id="exportTo"
-                  placeholder="Nhập người nhận"
-                  value={formData.exportTo}
-                  onChange={(e) => setFormData({ ...formData, exportTo: e.target.value })}
-                />
               </div>
               
               <div className="space-y-2">
@@ -279,13 +429,23 @@ export default function ExportSlipsPage() {
                     <SelectValue placeholder="Chọn trạng thái" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PENDING">PENDING</SelectItem>
-                    <SelectItem value="COMPLETED">COMPLETED</SelectItem>
-                    <SelectItem value="CANCELLED">CANCELLED</SelectItem>
+                    <SelectItem value="PENDING">Chờ xử lý</SelectItem>
+                    <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
+                    <SelectItem value="CANCELLED">Đã hủy</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
+
+            {/* <div className="space-y-2">
+              <Label htmlFor="exportTo" className="text-sm font-semibold">Người nhận (Chi nhánh) *</Label>
+              <Input
+                id="exportTo"
+                placeholder="Nhập người nhận"
+                value={formData.exportTo}
+                onChange={(e) => setFormData({ ...formData, exportTo: e.target.value })}
+              />
+            </div> */}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -296,8 +456,10 @@ export default function ExportSlipsPage() {
                   min="0"
                   placeholder="0"
                   value={formData.totalQuantity}
-                  onChange={(e) => setFormData({ ...formData, totalQuantity: parseInt(e.target.value) || 0 })}
+                  readOnly
+                  className="bg-muted"
                 />
+                <p className="text-xs text-muted-foreground">Tự động tính từ phụ tùng đã chọn</p>
               </div>
               
               <div className="space-y-2">
@@ -308,34 +470,174 @@ export default function ExportSlipsPage() {
                   min="0"
                   placeholder="0"
                   value={formData.totalValue}
-                  onChange={(e) => setFormData({ ...formData, totalValue: parseFloat(e.target.value) || 0 })}
+                  readOnly
+                  className="bg-muted"
                 />
+                <p className="text-xs text-muted-foreground">Tự động tính từ phụ tùng đã chọn</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="exportById" className="text-sm font-semibold">ID Người xuất</Label>
-                <Input
-                  id="exportById"
-                  placeholder="UUID người xuất (optional)"
-                  value={formData.exportById}
-                  onChange={(e) => setFormData({ ...formData, exportById: e.target.value })}
-                />
+            {/* Part Items Selection */}
+            <div className="space-y-2 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold">Chọn phụ tùng *</Label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSelectAllPartItems}
+                    disabled={partItems.length === 0}
+                  >
+                    {selectedPartItemIds.length === partItems.length && partItems.length > 0 ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                  </Button>
+                </div>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="serviceCenterId" className="text-sm font-semibold">ID Trung tâm dịch vụ</Label>
+              {/* Search - Tạm thời comment lại */}
+              {/* <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  id="serviceCenterId"
-                  placeholder="UUID trung tâm (optional)"
-                  value={formData.serviceCenterId}
-                  onChange={(e) => setFormData({ ...formData, serviceCenterId: e.target.value })}
+                  placeholder="Tìm kiếm phụ tùng theo mã/tên..."
+                  value={partItemsSearch}
+                  onChange={(e) => setPartItemsSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      setPartItemsPage(1);
+                      fetchPartItems();
+                    }
+                  }}
+                  className="pl-9"
                 />
+              </div> */}
+
+              <div className="border rounded-lg max-h-96 overflow-y-auto">
+                {loadingPartItems ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-sm text-muted-foreground">Đang tải phụ tùng...</span>
+                  </div>
+                ) : partItems.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">
+                    Không có phụ tùng nào
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {partItems.map((item) => {
+                      const isSelected = selectedPartItemIds.includes(item.id);
+                      const partImage = item.part?.image;
+                      return (
+                        <div
+                          key={item.id}
+                          className="p-3 hover:bg-muted/50 cursor-pointer transition-colors"
+                          onClick={() => handlePartItemToggle(item.id)}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="mt-1">
+                              {isSelected ? (
+                                <CheckSquare className="h-5 w-5 text-primary" />
+                              ) : (
+                                <Square className="h-5 w-5 text-muted-foreground" />
+                              )}
+                            </div>
+                            
+                            {/* Hình ảnh phụ tùng */}
+                            {partImage ? (
+                              <img
+                                src={partImage}
+                                alt={item.part?.name || item.part?.code || "Phụ tùng"}
+                                className="h-16 w-16 rounded-lg object-cover border border-border/60 shadow-sm flex-shrink-0"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <div className="h-16 w-16 rounded-lg border border-dashed border-border/60 flex items-center justify-center text-xs text-muted-foreground bg-muted/30 flex-shrink-0">
+                                N/A
+                              </div>
+                            )}
+                            
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-primary">{item.part?.code || "—"}</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {item.quantity || 1} bộ
+                                </Badge>
+                                <Badge variant="secondary" className="text-xs">
+                                  {new Intl.NumberFormat("vi-VN", {
+                                    style: "currency",
+                                    currency: "VND",
+                                    maximumFractionDigits: 0,
+                                  }).format(item.price || 0)}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-foreground mt-1">{item.part?.name || "—"}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Serial: {item.serialNumber || "—"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
+
+              {/* Pagination - Tạm thời comment lại vì hiển thị hết */}
+              {/* {partItemsTotal > partItemsPageSize && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Hiển thị {(partItemsPage - 1) * partItemsPageSize + 1} - {Math.min(partItemsPage * partItemsPageSize, partItemsTotal)} / {partItemsTotal} phụ tùng
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={partItemsPage <= 1 || loadingPartItems}
+                      onClick={async () => {
+                        setPartItemsPage(prev => prev - 1);
+                        // fetchPartItems will be called by useEffect
+                      }}
+                    >
+                      Trước
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={partItemsPage * partItemsPageSize >= partItemsTotal || loadingPartItems}
+                      onClick={async () => {
+                        setPartItemsPage(prev => prev + 1);
+                        // fetchPartItems will be called by useEffect
+                      }}
+                    >
+                      Sau
+                    </Button>
+                  </div>
+                </div>
+              )} */}
+
+              {partItems.length > 0 && (
+                <div className="mt-2 p-2 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    Tổng cộng: {partItemsTotal} phụ tùng
+                  </p>
+                </div>
+              )}
+
+              {selectedPartItemIds.length > 0 && (
+                <div className="mt-2 p-2 bg-primary/10 rounded-lg">
+                  <p className="text-sm font-medium text-primary">
+                    Đã chọn {selectedPartItemIds.length} phụ tùng
+                  </p>
+                </div>
+              )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 border-t pt-4">
               <Label htmlFor="note" className="text-sm font-semibold">Ghi chú</Label>
               <Textarea
                 id="note"
@@ -359,10 +661,14 @@ export default function ExportSlipsPage() {
                   totalQuantity: 0,
                   totalValue: 0,
                   note: "",
-                  exportById: "",
-                  serviceCenterId: "",
-                  exportNoteStatus: "PENDING"
+                  exportById: staffId || "",
+                  serviceCenterId: serviceCenterId || "",
+                  exportNoteStatus: "PENDING",
+                  partItemId: []
                 });
+                setSelectedPartItemIds([]);
+                setPartItemsSearch("");
+                setPartItemsPage(1);
               }}
               disabled={creating}
             >
@@ -372,10 +678,20 @@ export default function ExportSlipsPage() {
               className="bg-primary hover:bg-primary/90"
               onClick={async () => {
                 // Validate required fields
-                if (!formData.code || !formData.exportTo) {
+                // if (!formData.exportTo) {
+                //   toast({
+                //     title: "Lỗi",
+                //     description: "Vui lòng điền đầy đủ các trường bắt buộc (Người nhận)",
+                //     variant: "destructive"
+                //   });
+                //   return;
+                // }
+
+                // Validate part items
+                if (!formData.partItemId || formData.partItemId.length === 0) {
                   toast({
                     title: "Lỗi",
-                    description: "Vui lòng điền đầy đủ các trường bắt buộc (Mã phiếu, Người nhận)",
+                    description: "Vui lòng chọn ít nhất một phụ tùng",
                     variant: "destructive"
                   });
                   return;
@@ -385,25 +701,16 @@ export default function ExportSlipsPage() {
                   setCreating(true);
                   
                   const createData = {
-                    code: formData.code,
                     type: formData.type,
                     exportTo: formData.exportTo,
                     totalQuantity: formData.totalQuantity,
+                    exportById: staffId,
+                    serviceCenterId: serviceCenterId,
                     totalValue: formData.totalValue,
-                    exportNoteStatus: formData.exportNoteStatus
+                    note: formData.note,
+                    partItemId: formData.partItemId,
                   };
-
-                  // Only include optional fields if they have values
-                  if (formData.note) {
-                    createData.note = formData.note;
-                  }
-                  if (formData.exportById) {
-                    createData.exportById = formData.exportById;
-                  }
-                  if (formData.serviceCenterId) {
-                    createData.serviceCenterId = formData.serviceCenterId;
-                  }
-
+                  console.log(createData);
                   const response = await createExportNote(createData);
                   
                   if (response.success) {
@@ -420,10 +727,14 @@ export default function ExportSlipsPage() {
                       totalQuantity: 0,
                       totalValue: 0,
                       note: "",
-                      exportById: "",
-                      serviceCenterId: "",
-                      exportNoteStatus: "PENDING"
+                      exportById: staffId || "",
+                      serviceCenterId: serviceCenterId || "",
+                      exportNoteStatus: "PENDING",
+                      partItemId: []
                     });
+                    setSelectedPartItemIds([]);
+                    setPartItemsSearch("");
+                    setPartItemsPage(1);
                     // Refresh table
                     if (window.refreshExportNotes) {
                       window.refreshExportNotes();
@@ -483,7 +794,7 @@ export default function ExportSlipsPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Loại</p>
-                  <p className="font-semibold text-foreground">{exportNoteDetail.type || "N/A"}</p>
+                  <p className="font-semibold text-foreground">{getTypeLabel(exportNoteDetail.type) || "N/A"}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Người nhận</p>
@@ -573,7 +884,7 @@ export default function ExportSlipsPage() {
               <div className="p-4 bg-card rounded-lg border border-border">
                 <p className="text-sm text-muted-foreground mb-1">Trạng thái</p>
                 <p className="text-lg font-semibold text-foreground">
-                  {exportNoteDetail.exportNoteStatus || exportNoteDetail.status || "N/A"}
+                  {getStatusLabel(exportNoteDetail.exportNoteStatus || exportNoteDetail.status || "PENDING")}
                 </p>
               </div>
 
@@ -681,8 +992,8 @@ export default function ExportSlipsPage() {
                       <SelectValue placeholder="Chọn loại" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="REPLACEMENT">REPLACEMENT</SelectItem>
-                      <SelectItem value="TRANSFER_TO">TRANSFER_TO</SelectItem>
+                      <SelectItem value="REPLACEMENT">Thay thế</SelectItem>
+                      <SelectItem value="TRANSFER_TO">Chuyển kho</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -754,9 +1065,9 @@ export default function ExportSlipsPage() {
                       <SelectValue placeholder="Chọn trạng thái" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="PENDING">PENDING</SelectItem>
-                      <SelectItem value="COMPLETED">COMPLETED</SelectItem>
-                      <SelectItem value="CANCELLED">CANCELLED</SelectItem>
+                      <SelectItem value="PENDING">Chờ xử lý</SelectItem>
+                      <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
+                      <SelectItem value="CANCELLED">Đã hủy</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

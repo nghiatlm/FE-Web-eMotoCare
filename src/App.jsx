@@ -42,6 +42,7 @@ import { ManagerSidebar } from "./components/ManagerSidebar";
 import Dashboard from "./pages/manager/Dashboard";
 import InformationDetail from "./pages/manager/InformationDetail";
 import AppointmentsList from "./pages/manager/AppointmentsList";
+import AppointmentDetail from "./pages/manager/AppointmentDetail";
 import StaffList from "./pages/manager/StaffList";
 import StaffDetail from "./pages/manager/StaffDetail";
 import WarrantyList from "./pages/manager/WarrantyList";
@@ -206,6 +207,10 @@ const App = () => (
                         <Route
                           path="appointments"
                           element={<AppointmentsList />}
+                        />
+                        <Route
+                          path="appointments/:id"
+                          element={<AppointmentDetail />}
                         />
                         <Route path="staff" element={<StaffList />} />
                         <Route path="staff/:id" element={<StaffDetail />} />

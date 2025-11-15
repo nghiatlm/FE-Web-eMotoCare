@@ -199,6 +199,43 @@ export default function InformationDetail() {
             </CardContent>
           </Card>
 
+          {/* Bản đồ */}
+          {(serviceCenter.latitude || serviceCenter.longitude || serviceCenter.address) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-primary" />
+                  Vị trí trên bản đồ
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md overflow-hidden border border-border">
+                  {(() => {
+                    const lat = serviceCenter.latitude;
+                    const lng = serviceCenter.longitude;
+                    const address = serviceCenter.address;
+                    const hasCoords = lat && lng;
+                    const q = hasCoords ? `${lat},${lng}` : encodeURIComponent(address || "");
+                    const src = `https://www.google.com/maps?q=${q}&z=16&output=embed`;
+                    return (
+                      <iframe
+                        title="service-center-map"
+                        src={src}
+                        style={{ width: "100%", height: 400, border: 0 }}
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        allowFullScreen
+                      />
+                    );
+                  })()}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Dấu ghim đỏ thể hiện vị trí trung tâm dịch vụ trên bản đồ.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

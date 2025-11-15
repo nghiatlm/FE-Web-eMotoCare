@@ -284,7 +284,7 @@ export default function BranchDetail() {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
+        <div className="space-y-6 sticky top-20 self-start">
           <Card>
             <CardHeader>
               <CardTitle>Trạng thái</CardTitle>
