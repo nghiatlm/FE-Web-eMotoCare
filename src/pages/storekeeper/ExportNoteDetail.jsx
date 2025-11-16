@@ -115,7 +115,7 @@ export default function ExportNoteDetail() {
         totalQuantity: exportNote.totalQuantity || 0,
         totalValue: exportNote.totalValue || 0,
         note: exportNote.note || "",
-        exportById: exportNote.exportBy?.id || "a2862d00-ebc5-455f-b0ee-b1ab72bb1d75",
+        exportById: exportNote.exportBy?.id || "93eae610-2ea0-4e9e-89b5-cb20e3f22811",
         serviceCenterId: exportNote.serviceCenter?.id || "a805546d-b31d-11f0-9e95-c4efbb30f085",
         exportNoteStatus: "COMPLETED"
       };

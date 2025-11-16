@@ -10,10 +10,10 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const login = async (phone, password) => {
+  const login = async (email, password) => {
     setLoading(true);
     try {
-      const user = await authService.login(phone, password);
+      const user = await authService.login(email, password);
       setUser(user);
 
       const roleName = user.accountResponse?.roleName;

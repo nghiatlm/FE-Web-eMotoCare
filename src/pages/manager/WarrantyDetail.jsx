@@ -28,7 +28,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { getRmaById, updateRma } from "@/api/rmasApi";
+import { getRmaById, updateRma, updateRmaDetail } from "@/api/rmasApi";
 
 const STATUS_META = {
   PENDING: {
@@ -310,6 +310,11 @@ export default function WarrantyDetail() {
 
   const totalSerials = rma.rmaDetails?.reduce((sum, detail) => sum + (detail.quantity || 0), 0) || 0;
   const partCount = rma.rmaDetails?.length || 0;
+  
+  // Kiểm tra xem có rmaDetails nào đang PENDING không
+  const hasPendingDetails = rma.rmaDetails?.some((detail) => 
+    detail.status?.toUpperCase() === "PENDING"
+  ) || false;
 
   const currentStatus = (rma.status || "PENDING").toUpperCase();
   const normalizedStatus = currentStatus === "APPROVED" ? "PROCESSING" : currentStatus;
@@ -389,21 +394,62 @@ export default function WarrantyDetail() {
   };
 
   const handleConfirm = async () => {
-    setIsProcessing(true);
-    try {
-      await updateRma(id, { status: "PROCESSING" });
-      toast({
-        title: "Thành công",
-        description: "Đã cập nhật trạng thái yêu cầu RMA sang Processing",
-      });
-      setIsConfirmDialogOpen(false);
-      setRma((prev) => (prev ? { ...prev, status: "PROCESSING" } : prev));
-      fetchRmaDetail();
-    } catch (error) {
-      console.error("Error approving RMA:", error);
+    if (!rma?.rmaDetails || rma.rmaDetails.length === 0) {
       toast({
         title: "Lỗi",
-        description: error?.response?.data?.message || "Không thể cập nhật trạng thái yêu cầu RMA",
+        description: "Không có chi tiết RMA nào để duyệt",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      // Duyệt tất cả các rmaDetails có status PENDING
+      const pendingDetails = rma.rmaDetails.filter((detail) => 
+        detail.status?.toUpperCase() === "PENDING"
+      );
+
+      if (pendingDetails.length === 0) {
+        toast({
+          title: "Thông báo",
+          description: "Không có chi tiết RMA nào đang chờ duyệt",
+        });
+        setIsConfirmDialogOpen(false);
+        setIsProcessing(false);
+        return;
+      }
+
+      // Cập nhật status của tất cả rmaDetails sang APPROVED
+      const updatePromises = pendingDetails.map((detail) =>
+        updateRmaDetail(detail.id, { 
+          status: "APPROVED",
+          quantity: detail.quantity,
+          reason: detail.reason,
+          rmaNumber: detail.rmaNumber,
+          releaseDateRMA: detail.releaseDateRMA,
+          expirationDateRMA: detail.expirationDateRMA,
+          inspector: detail.inspector || "",
+          result: detail.result || "",
+          solution: detail.solution || "",
+        })
+      );
+
+      await Promise.all(updatePromises);
+
+      // Fetch lại dữ liệu để đảm bảo có data mới nhất trước khi đóng dialog
+      await fetchRmaDetail();
+
+      toast({
+        title: "Thành công",
+        description: `Đã duyệt ${pendingDetails.length} chi tiết RMA`,
+      });
+      setIsConfirmDialogOpen(false);
+    } catch (error) {
+      console.error("Error approving RMA details:", error);
+      toast({
+        title: "Lỗi",
+        description: error?.response?.data?.message || "Không thể duyệt chi tiết RMA",
         variant: "destructive",
       });
     } finally {
@@ -421,22 +467,64 @@ export default function WarrantyDetail() {
       return;
     }
 
+    if (!rma?.rmaDetails || rma.rmaDetails.length === 0) {
+      toast({
+        title: "Lỗi",
+        description: "Không có chi tiết RMA nào để từ chối",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
     try {
-      await updateRma(id, { status: "REJECTED", note: rejectionReason.trim() });
+      // Từ chối tất cả các rmaDetails có status PENDING
+      const pendingDetails = rma.rmaDetails.filter((detail) => 
+        detail.status?.toUpperCase() === "PENDING"
+      );
+
+      if (pendingDetails.length === 0) {
+        toast({
+          title: "Thông báo",
+          description: "Không có chi tiết RMA nào đang chờ duyệt",
+        });
+        setIsRejectDialogOpen(false);
+        setRejectionReason("");
+        setIsProcessing(false);
+        return;
+      }
+
+      // Cập nhật status của tất cả rmaDetails sang REJECTED và thêm solution là lý do từ chối
+      const updatePromises = pendingDetails.map((detail) =>
+        updateRmaDetail(detail.id, { 
+          status: "REJECTED",
+          quantity: detail.quantity,
+          reason: detail.reason,
+          rmaNumber: detail.rmaNumber,
+          releaseDateRMA: detail.releaseDateRMA,
+          expirationDateRMA: detail.expirationDateRMA,
+          inspector: detail.inspector || "",
+          result: detail.result || "",
+          solution: rejectionReason.trim(),
+        })
+      );
+
+      await Promise.all(updatePromises);
+
+      // Fetch lại dữ liệu để đảm bảo có data mới nhất trước khi đóng dialog
+      await fetchRmaDetail();
+
       toast({
         title: "Thành công",
-        description: "Đã từ chối yêu cầu RMA",
+        description: `Đã từ chối ${pendingDetails.length} chi tiết RMA`,
       });
       setIsRejectDialogOpen(false);
       setRejectionReason("");
-      setRma((prev) => (prev ? { ...prev, status: "REJECTED", note: rejectionReason.trim() } : prev));
-      fetchRmaDetail();
     } catch (error) {
-      console.error("Error rejecting RMA:", error);
+      console.error("Error rejecting RMA details:", error);
       toast({
         title: "Lỗi",
-        description: error?.response?.data?.message || "Không thể từ chối yêu cầu RMA",
+        description: error?.response?.data?.message || "Không thể từ chối chi tiết RMA",
         variant: "destructive",
       });
     } finally {
@@ -458,62 +546,75 @@ export default function WarrantyDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="px-4 py-6 sm:px-6 lg:px-10">
-        <Button variant="ghost" onClick={() => navigate("/manager/warranty")} className="mb-6">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="px-4 py-6 sm:px-6 lg:px-10 max-w-7xl mx-auto">
+        <Button variant="ghost" onClick={() => navigate("/manager/warranty")} className="mb-6 hover:bg-muted/50">
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Quay lại
+          Quay lại danh sách
         </Button>
 
-        <div className="relative mb-8 overflow-hidden rounded-3xl border border-border/60 bg-card shadow-lg">
-          <div className={cn("absolute inset-0 bg-gradient-to-r", statusInfo.gradient)} />
+        {/* Hero Header */}
+        <div className="relative mb-8 overflow-hidden rounded-3xl border border-border/60 bg-card shadow-xl">
+          <div className={cn("absolute inset-0 bg-gradient-to-br opacity-90", statusInfo.gradient)} />
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjEpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-40" />
           <div className="relative flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between md:p-10">
-            <div className="max-w-2xl space-y-5">
-              <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/70 bg-white/80 shadow-inner">
-                  <StatusHeroIcon className="h-5 w-5 text-primary" />
+            <div className="max-w-2xl space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-white/90 bg-white/95 shadow-lg backdrop-blur-sm">
+                  <StatusHeroIcon className="h-7 w-7 text-primary" />
                 </div>
-                <span className="uppercase tracking-wide">RMA #{rma.code}</span>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mã yêu cầu</span>
+                    <Hash className="h-3.5 w-3.5 text-muted-foreground" />
+                  </div>
+                  <span className="text-lg font-bold text-foreground">{rma.code}</span>
+                </div>
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-foreground md:text-4xl">Chi tiết yêu cầu bảo hành</h1>
-                <p className="mt-3 text-muted-foreground">{statusDescription}</p>
+                <h1 className="text-3xl font-bold text-foreground md:text-4xl mb-3">Chi tiết yêu cầu bảo hành</h1>
+                <p className="text-base text-muted-foreground leading-relaxed">{statusDescription}</p>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={cn("inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold shadow-sm backdrop-blur", statusInfo.pill)}>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className={cn("inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold shadow-md backdrop-blur-sm border-2", statusInfo.pill)}>
                   <StatusHeroIcon className="h-4 w-4" />
                   {STATUS_META[currentStatus]?.label || statusInfo.label}
                 </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/80 px-4 py-2 text-sm font-medium text-foreground shadow-sm">
-                  <Hash className="h-4 w-4 text-muted-foreground" />
-                  {rma.code}
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/80 px-4 py-2 text-sm font-medium text-foreground shadow-sm">
+                <span className="inline-flex items-center gap-2 rounded-full border-2 border-white/80 bg-white/70 px-4 py-2.5 text-sm font-medium text-foreground shadow-md backdrop-blur-sm">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   {createdAt}
                 </span>
                 {staffName && (
-                  <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/80 px-4 py-2 text-sm font-medium text-foreground shadow-sm">
+                  <span className="inline-flex items-center gap-2 rounded-full border-2 border-white/80 bg-white/70 px-4 py-2.5 text-sm font-medium text-foreground shadow-md backdrop-blur-sm">
                     <User className="h-4 w-4 text-muted-foreground" />
                     {staffName}
                   </span>
                 )}
               </div>
             </div>
-            <div className="grid w-full max-w-sm grid-cols-2 gap-4">
-              <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-4 text-foreground shadow-sm">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Tổng serial</p>
-                <p className="mt-1 text-2xl font-semibold">{totalSerials}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Đang được quản lý trong yêu cầu</p>
+            <div className="grid w-full max-w-md grid-cols-2 gap-4">
+              <div className="rounded-2xl border-2 border-white/80 bg-white/90 backdrop-blur-sm px-5 py-5 text-foreground shadow-lg hover:shadow-xl transition-shadow">
+                <div className="flex items-center gap-2 mb-2">
+                  <Package className="h-4 w-4 text-primary" />
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tổng serial</p>
               </div>
-              <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-4 text-foreground shadow-sm">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Số phụ tùng</p>
-                <p className="mt-1 text-2xl font-semibold">{partCount}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Đính kèm trong yêu cầu</p>
+                <p className="text-3xl font-bold text-primary mb-1">{totalSerials}</p>
+                <p className="text-xs text-muted-foreground leading-tight">Đang được quản lý trong yêu cầu</p>
               </div>
-              <div className="col-span-2 rounded-2xl border border-white/70 bg-white/80 px-4 py-4 text-foreground shadow-sm">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Địa chỉ trả hàng</p>
-                <p className="mt-2 text-sm font-medium leading-relaxed">{returnAddress}</p>
+              <div className="rounded-2xl border-2 border-white/80 bg-white/90 backdrop-blur-sm px-5 py-5 text-foreground shadow-lg hover:shadow-xl transition-shadow">
+                <div className="flex items-center gap-2 mb-2">
+                  <Hash className="h-4 w-4 text-primary" />
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Số phụ tùng</p>
+              </div>
+                <p className="text-3xl font-bold text-primary mb-1">{partCount}</p>
+                <p className="text-xs text-muted-foreground leading-tight">Đính kèm trong yêu cầu</p>
+            </div>
+              <div className="col-span-2 rounded-2xl border-2 border-white/80 bg-white/90 backdrop-blur-sm px-5 py-4 text-foreground shadow-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Địa chỉ trả hàng</p>
+                </div>
+                <p className="text-sm font-medium leading-relaxed">{returnAddress}</p>
               </div>
             </div>
           </div>
@@ -521,128 +622,610 @@ export default function WarrantyDetail() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
-            <Card className="border-border/60 shadow-sm">
-              <CardHeader>
-                <CardTitle>Thông tin yêu cầu</CardTitle>
-                <CardDescription>Tổng quan chi tiết của yêu cầu bảo hành.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="rounded-2xl border border-border/70 bg-background/80 shadow-sm">
-                  <div className="border-b border-border/60 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    Thông tin chung
+            {/* Thông tin yêu cầu */}
+            <Card className="border-border/60 shadow-lg bg-card">
+              <CardHeader className="bg-gradient-to-r from-primary/5 via-transparent to-transparent border-b border-border/60">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <FileText className="h-5 w-5" />
                   </div>
-                  <div className="grid gap-4 px-5 py-5 md:grid-cols-2">
-                    <DetailRow label="Mã yêu cầu" value={detailInfo.request.code} icon={Hash} />
-                    <DetailRow label="Ngày tạo" value={detailInfo.request.createdAt} icon={Calendar} />
-                    <DetailRow label="Ưu tiên" value={detailInfo.request.priority} icon={FlagIcon} />
-                    <DetailRow label="Trạng thái" value={STATUS_META[normalizedStatus]?.label || detailInfo.request.status} icon={CheckCircle2} valueClassName="text-primary font-medium" />
-                    <DetailRow label="Chính sách bảo hành" value={detailInfo.request.policyName} icon={FileText} />
-                    <DetailRow label="Mô tả" value={detailInfo.request.description} icon={MessageSquareIcon} className="md:col-span-2" />
+                  <div>
+                    <CardTitle className="text-xl">Thông tin yêu cầu</CardTitle>
+                    <CardDescription className="mt-1">Tổng quan chi tiết của yêu cầu bảo hành</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6 pt-6">
+                {/* Thông tin chung */}
+                <div className="rounded-2xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 shadow-sm overflow-hidden">
+                  <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <Hash className="h-5 w-5 text-primary" />
+                      <h3 className="text-base font-semibold text-foreground">Thông tin chung</h3>
+                  </div>
+                  </div>
+                  <div className="grid gap-4 px-6 py-5 md:grid-cols-2">
+                    <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Hash className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Mã yêu cầu</p>
+                      </div>
+                      <p className="text-sm font-medium text-foreground">{detailInfo.request.code}</p>
+                    </div>
+                    <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ngày tạo</p>
+                      </div>
+                      <p className="text-sm font-medium text-foreground">{detailInfo.request.createdAt}</p>
+                    </div>
+                    <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FlagIcon className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ưu tiên</p>
+                      </div>
+                      <p className="text-sm font-medium text-foreground">{detailInfo.request.priority || "—"}</p>
+                    </div>
+                    <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CheckCircle2 className="h-4 w-4 text-primary" />
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Trạng thái</p>
+                      </div>
+                      <p className="text-sm font-medium text-primary">{STATUS_META[normalizedStatus]?.label || detailInfo.request.status}</p>
+                    </div>
+                    <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Chính sách bảo hành</p>
+                      </div>
+                      <p className="text-sm font-medium text-foreground">{detailInfo.request.policyName || "—"}</p>
+                    </div>
+                    {detailInfo.request.description && (
+                      <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
+                        <div className="flex items-center gap-2 mb-2">
+                          <MessageSquareIcon className="h-4 w-4 text-muted-foreground" />
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Mô tả</p>
+                        </div>
+                        <p className="text-sm font-medium text-foreground leading-relaxed">{detailInfo.request.description}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
+                {/* Khách hàng và Phương tiện */}
                 <div className="grid gap-5 lg:grid-cols-2">
-                  <div className="rounded-2xl border border-border/70 bg-background/80 shadow-sm">
-                    <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                      <User className="h-4 w-4" />
-                      Khách hàng
+                  <div className="rounded-2xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 shadow-sm overflow-hidden">
+                    <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <User className="h-5 w-5 text-primary" />
+                        <h3 className="text-base font-semibold text-foreground">Khách hàng</h3>
                     </div>
-                    <div className="space-y-3 px-5 py-5">
-                      <DetailRow label="Tên" value={detailInfo.customer.name} />
-                      <DetailRow label="Số điện thoại" value={detailInfo.customer.phone} icon={Phone} />
-                      <DetailRow label="Email" value={detailInfo.customer.email} icon={Mail} />
-                      <DetailRow label="Địa chỉ" value={detailInfo.customer.address} icon={MapPin} />
+                    </div>
+                    <div className="space-y-3 px-6 py-5">
+                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Tên</p>
+                        <p className="text-sm font-medium text-foreground">{detailInfo.customer.name || "—"}</p>
+                  </div>
+                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Số điện thoại</p>
+                    </div>
+                        <p className="text-sm font-medium text-foreground">{detailInfo.customer.phone || "—"}</p>
+                    </div>
+                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Email</p>
+                        </div>
+                        <p className="text-sm font-medium text-foreground">{detailInfo.customer.email || "—"}</p>
+                      </div>
+                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Địa chỉ</p>
+                        </div>
+                        <p className="text-sm font-medium text-foreground leading-relaxed">{detailInfo.customer.address || "—"}</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="rounded-2xl border border-border/70 bg-background/80 shadow-sm">
-                    <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                      <ScooterIcon className="h-4 w-4" />
-                      Phương tiện
+                  <div className="rounded-2xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 shadow-sm overflow-hidden">
+                    <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <ScooterIcon className="h-5 w-5 text-primary" />
+                        <h3 className="text-base font-semibold text-foreground">Phương tiện</h3>
+                      </div>
                     </div>
-                    <div className="grid gap-3 px-5 py-5 md:grid-cols-2">
-                      <DetailRow label="Tên xe" value={detailInfo.vehicle.name} />
-                      <DetailRow label="Số khung" value={detailInfo.vehicle.frameNumber} />
-                      <DetailRow label="Biển số" value={detailInfo.vehicle.licensePlate} />
-                      <DetailRow label="Số máy" value={detailInfo.vehicle.engineNumber} />
-                      <DetailRow label="Tình trạng BH" value={detailInfo.vehicle.warrantyStatus} />
-                      <DetailRow label="BH từ" value={detailInfo.vehicle.warrantyFrom} />
-                      <DetailRow label="BH đến" value={detailInfo.vehicle.warrantyTo} />
+                    <div className="grid gap-3 px-6 py-5 md:grid-cols-2">
+                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Tên xe</p>
+                        <p className="text-sm font-medium text-foreground">{detailInfo.vehicle.name || "—"}</p>
+                      </div>
+                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Số khung</p>
+                        <p className="text-sm font-medium text-foreground">{detailInfo.vehicle.frameNumber || "—"}</p>
+                      </div>
+                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Biển số</p>
+                        <p className="text-sm font-medium text-foreground">{detailInfo.vehicle.licensePlate || "—"}</p>
+                      </div>
+                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Số máy</p>
+                        <p className="text-sm font-medium text-foreground">{detailInfo.vehicle.engineNumber || "—"}</p>
+                      </div>
+                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Tình trạng BH</p>
+                        <p className="text-sm font-medium text-foreground">{detailInfo.vehicle.warrantyStatus || "—"}</p>
+                      </div>
+                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">BH từ</p>
+                        <p className="text-sm font-medium text-foreground">{detailInfo.vehicle.warrantyFrom || "—"}</p>
+                      </div>
+                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm md:col-span-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">BH đến</p>
+                        <p className="text-sm font-medium text-foreground">{detailInfo.vehicle.warrantyTo || "—"}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {detailInfo.relatedStaffs?.length > 0 && (
-                  <div className="rounded-2xl border border-border/70 bg-background/80 shadow-sm">
-                    <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                      <UsersIcon className="h-4 w-4" />
-                      Nhân viên liên quan
+                  <div className="rounded-2xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 shadow-sm overflow-hidden">
+                    <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <UsersIcon className="h-5 w-5 text-primary" />
+                        <h3 className="text-base font-semibold text-foreground">Nhân viên liên quan</h3>
+                      </div>
                     </div>
                     <div className="divide-y divide-border/60">
                       {detailInfo.relatedStaffs.map((staff, index) => (
-                        <div key={index} className="grid gap-3 px-5 py-4 md:grid-cols-3">
-                          <DetailRow label="Tên" value={`${staff.firstName || ""} ${staff.lastName || ""}`.trim()} />
-                          <DetailRow label="Mã nhân viên" value={staff.staffCode || staff.code || ""} />
-                          <DetailRow label="Chức vụ" value={translatePosition(staff.position)} />
+                        <div key={index} className="grid gap-4 px-6 py-5 md:grid-cols-3">
+                          <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Tên</p>
+                            <p className="text-sm font-medium text-foreground">{`${staff.firstName || ""} ${staff.lastName || ""}`.trim() || "—"}</p>
+                          </div>
+                          <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Mã nhân viên</p>
+                            <p className="text-sm font-medium text-foreground">{staff.staffCode || staff.code || "—"}</p>
+                          </div>
+                          <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Chức vụ</p>
+                            <p className="text-sm font-medium text-foreground">{translatePosition(staff.position)}</p>
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                <div className="rounded-2xl border border-border/70 bg-background/80 shadow-sm">
-                  <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    <Package className="h-4 w-4" />
-                    Thông tin bộ phận
+                {/* Thông tin bộ phận - chỉ hiển thị nếu có dữ liệu */}
+                {(detailInfo.part.code || detailInfo.part.serial || detailInfo.part.name) && (
+                  <div className="rounded-2xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 shadow-sm overflow-hidden">
+                    <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Package className="h-5 w-5 text-primary" />
+                        <h3 className="text-base font-semibold text-foreground">Thông tin bộ phận</h3>
                   </div>
-                  <div className="grid gap-3 px-5 py-5 md:grid-cols-2">
-                    <DetailRow label="Code" value={detailInfo.part.code} />
-                    <DetailRow label="Serial" value={detailInfo.part.serial} />
-                    <DetailRow label="Tên phụ tùng" value={detailInfo.part.name} />
-                    <DetailRow label="Ngày sản xuất" value={detailInfo.part.productionDate} />
-                    <DetailRow label="Tình trạng BH" value={detailInfo.part.warrantyStatus} />
-                    <DetailRow label="Chính sách BH" value={detailInfo.part.policy} />
-                    <DetailRow label="Thời gian BH từ" value={detailInfo.part.warrantyFrom} />
-                    <DetailRow label="Thời gian BH đến" value={detailInfo.part.warrantyTo} />
-                    <DetailRow label="Tình trạng" value={detailInfo.part.condition} className="md:col-span-2" />
                   </div>
+                    <div className="grid gap-4 px-6 py-5 md:grid-cols-2">
+                      <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Code</p>
+                        <p className="text-sm font-medium text-foreground">{detailInfo.part.code || "—"}</p>
                 </div>
+                      <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Serial</p>
+                        <p className="text-sm font-medium text-foreground">{detailInfo.part.serial || "—"}</p>
+                      </div>
+                      <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Tên phụ tùng</p>
+                        <p className="text-sm font-medium text-foreground">{detailInfo.part.name || "—"}</p>
+                      </div>
+                      <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ngày sản xuất</p>
+                        </div>
+                        <p className="text-sm font-medium text-foreground">{detailInfo.part.productionDate || "—"}</p>
+                      </div>
+                      <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Tình trạng BH</p>
+                        <p className="text-sm font-medium text-foreground">{detailInfo.part.warrantyStatus || "—"}</p>
+                      </div>
+                      <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Chính sách BH</p>
+                        <p className="text-sm font-medium text-foreground">{detailInfo.part.policy || "—"}</p>
+                      </div>
+                      <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Thời gian BH từ</p>
+                        </div>
+                        <p className="text-sm font-medium text-foreground">{detailInfo.part.warrantyFrom || "—"}</p>
+                      </div>
+                      <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Thời gian BH đến</p>
+                        </div>
+                        <p className="text-sm font-medium text-foreground">{detailInfo.part.warrantyTo || "—"}</p>
+                      </div>
+                      {detailInfo.part.condition && (
+                        <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Tình trạng</p>
+                          <p className="text-sm font-medium text-foreground leading-relaxed">{detailInfo.part.condition}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
+                {/* Chi tiết RMA */}
+                {rma.rmaDetails && rma.rmaDetails.length > 0 && rma.rmaDetails.map((detail, index) => {
+                  const evCheckDetail = detail.evCheckDetail;
+                  const partItem = evCheckDetail?.partItem;
+                  const replacePart = evCheckDetail?.replacePart;
+                  const rmaNumber = detail.rmaNumber || "—";
+                  const quantity = detail.quantity || 0;
+                  const reason = detail.reason || "—";
+                  const releaseDate = formatDateTime(detail.releaseDateRMA);
+                  const expirationDate = formatDateTime(detail.expirationDateRMA);
+                  const inspector = detail.inspector || "—";
+                  const result = detail.result || "—";
+                  const solution = detail.solution || "—";
+                  const detailStatus = detail.status || "—";
+                  
+                  // EvCheckDetail info
+                  const remedies = evCheckDetail?.remedies || "—";
+                  const unit = evCheckDetail?.unit || "—";
+                  const evQuantity = evCheckDetail?.quantity || 0;
+                  const pricePart = evCheckDetail?.pricePart || 0;
+                  const priceService = evCheckDetail?.priceService || 0;
+                  const totalAmount = evCheckDetail?.totalAmount || 0;
+                  const evStatus = evCheckDetail?.status || "—";
+                  
+                  // PartItem info
+                  const partItemSerial = partItem?.serialNumber || "—";
+                  const partItemPrice = formatCurrency(partItem?.price);
+                  const partItemWarrantyStart = formatDateOnly(partItem?.warantyStartDate);
+                  const partItemWarrantyEnd = formatDateOnly(partItem?.warantyEndDate);
+                  const partItemStatus = partItem?.status || "—";
+                  
+                  // ReplacePart info
+                  const replacePartSerial = replacePart?.serialNumber || "—";
+                  const replacePartPrice = formatCurrency(replacePart?.price);
+                  const replacePartWarrantyStart = formatDateOnly(replacePart?.warantyStartDate);
+                  const replacePartWarrantyEnd = formatDateOnly(replacePart?.warantyEndDate);
+                  const replacePartStatus = replacePart?.status || "—";
+
+                  const getStatusBadgeForDetail = (status) => {
+                    const statusUpper = (status || "").toUpperCase();
+                    switch (statusUpper) {
+                      case "PENDING":
+                        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Chờ xử lý</Badge>;
+                      case "PROCESSING":
+                      case "IN_PROGRESS":
+                        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Đang xử lý</Badge>;
+                      case "COMPLETED":
+                      case "ACTIVE":
+                        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Hoàn thành</Badge>;
+                      default:
+                        return <Badge variant="secondary">{status || "—"}</Badge>;
+                    }
+                  };
+
+                  return (
+                    <div key={detail.id || index} className="space-y-6">
+                      {/* Header của chi tiết RMA */}
+                      <div className="rounded-2xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 shadow-sm overflow-hidden">
+                        <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 px-6 py-4">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-sm">
+                                <Hash className="h-5 w-5" />
+                              </div>
+                              <div>
+                                <h3 className="text-base font-semibold text-foreground">
+                                  Chi tiết RMA #{index + 1}: {rmaNumber}
+                                </h3>
+                                <p className="text-xs text-muted-foreground mt-0.5">Thông tin chi tiết về RMA</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <Badge className="border-2 border-primary/30 bg-primary/10 text-primary font-semibold px-4 py-1.5">
+                                Số lượng: {quantity}
+                              </Badge>
+                              {getStatusBadgeForDetail(detailStatus)}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-6 space-y-4">
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                              <div className="flex items-center gap-2 mb-2">
+                                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Lý do</p>
+                              </div>
+                              <p className="text-sm font-medium text-foreground leading-relaxed">{reason}</p>
+                            </div>
+                            <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                              <div className="flex items-center gap-2 mb-2">
+                                <User className="h-4 w-4 text-muted-foreground" />
+                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Người kiểm tra</p>
+                              </div>
+                              <p className="text-sm font-medium text-foreground">{inspector}</p>
+                            </div>
+                            <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ngày phát hành RMA</p>
+                              </div>
+                              <p className="text-sm font-medium text-foreground">{releaseDate}</p>
+                            </div>
+                            <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ngày hết hạn RMA</p>
+                              </div>
+                              <p className="text-sm font-medium text-foreground">{expirationDate}</p>
+                            </div>
+                            {(result && result !== "—") && (
+                              <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow sm:col-span-2">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Kết quả</p>
+                                </div>
+                                <p className="text-sm font-medium text-foreground leading-relaxed">{result}</p>
+                              </div>
+                            )}
+                            {(solution && solution !== "—") && (
+                              <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow sm:col-span-2">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <MessageSquareIcon className="h-4 w-4 text-muted-foreground" />
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Giải pháp</p>
+                                </div>
+                                <p className="text-sm font-medium text-foreground leading-relaxed">{solution}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* EvCheckDetail */}
+                      {evCheckDetail && (
+                        <div className="rounded-2xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 shadow-sm overflow-hidden">
+                          <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-sm">
+                                <Package className="h-5 w-5" />
+                              </div>
+                              <div>
+                                <h3 className="text-base font-semibold text-foreground">Chi tiết kiểm tra điện tử</h3>
+                                <p className="text-xs text-muted-foreground mt-0.5">Thông tin kiểm tra và khắc phục</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="p-6 space-y-4">
+                            <div className="grid gap-4 sm:grid-cols-2">
+                              {(remedies && remedies !== "—") && (
+                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Biện pháp khắc phục</p>
+                                  <p className="text-sm font-medium text-foreground">{remedies}</p>
+                                </div>
+                              )}
+                              {(unit && unit !== "—") && (
+                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Đơn vị</p>
+                                  <p className="text-sm font-medium text-foreground">{unit}</p>
+                                </div>
+                              )}
+                              {evQuantity > 0 && (
+                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Số lượng</p>
+                                  <p className="text-sm font-medium text-foreground">{evQuantity}</p>
+                                </div>
+                              )}
+                              {(evStatus && evStatus !== "—") && (
+                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Trạng thái</p>
+                                  <p className="text-sm font-medium text-foreground">{evStatus}</p>
+                                </div>
+                              )}
+                              {pricePart > 0 && (
+                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Giá phụ tùng</p>
+                                  <p className="text-sm font-medium text-foreground">{formatCurrency(pricePart)}</p>
+                                </div>
+                              )}
+                              {priceService > 0 && (
+                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Giá dịch vụ</p>
+                                  <p className="text-sm font-medium text-foreground">{formatCurrency(priceService)}</p>
+                                </div>
+                              )}
+                              {totalAmount > 0 && (
+                                <div className="rounded-xl border-2 border-primary/60 bg-primary/5 p-4 shadow-md hover:shadow-lg transition-shadow sm:col-span-2">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-2">Tổng tiền</p>
+                                  <p className="text-lg font-bold text-primary">{formatCurrency(totalAmount)}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* PartItem */}
+                      {/* {partItem && (
+                        <div className="rounded-2xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 shadow-sm overflow-hidden">
+                          <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-sm">
+                                <Package className="h-5 w-5" />
+                              </div>
+                              <div>
+                                <h3 className="text-base font-semibold text-foreground">Phụ tùng gốc</h3>
+                                <p className="text-xs text-muted-foreground mt-0.5">Thông tin phụ tùng ban đầu</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="p-6 space-y-4">
+                            {(partItemSerial && partItemSerial !== "—") && (
+                              <div className="rounded-xl border-2 border-border/60 bg-card p-4 shadow-sm">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Hash className="h-4 w-4 text-primary" />
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Số serial</p>
+                                </div>
+                                <p className="text-sm font-medium text-foreground break-all">{partItemSerial}</p>
+                              </div>
+                            )}
+                            <div className="grid gap-4 sm:grid-cols-2">
+                              {(partItemPrice && partItemPrice !== "—") && (
+                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Giá</p>
+                                  <p className="text-sm font-medium text-foreground">{partItemPrice}</p>
+                                </div>
+                              )}
+                              {(partItemStatus && partItemStatus !== "—") && (
+                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Trạng thái</p>
+                                  <p className="text-sm font-medium text-foreground">{partItemStatus}</p>
+                                </div>
+                              )}
+                              {(partItemWarrantyStart && partItemWarrantyStart !== "—") && (
+                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">BH từ</p>
+                                  </div>
+                                  <p className="text-sm font-medium text-foreground">{partItemWarrantyStart}</p>
+                                </div>
+                              )}
+                              {(partItemWarrantyEnd && partItemWarrantyEnd !== "—") && (
+                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">BH đến</p>
+                                  </div>
+                                  <p className="text-sm font-medium text-foreground">{partItemWarrantyEnd}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )} */}
+
+                      {/* ReplacePart */}
+                      {replacePart && (
+                        <div className="rounded-2xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 shadow-sm overflow-hidden">
+                          <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-sm">
+                                <Package className="h-5 w-5" />
+                              </div>
+                              <div>
+                                <h3 className="text-base font-semibold text-foreground">Phụ tùng thay thế</h3>
+                                <p className="text-xs text-muted-foreground mt-0.5">Thông tin phụ tùng được thay thế</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="p-6 space-y-4">
+                            {(replacePartSerial && replacePartSerial !== "—") && (
+                              <div className="rounded-xl border-2 border-border/60 bg-card p-4 shadow-sm">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Hash className="h-4 w-4 text-primary" />
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Số serial</p>
+                                </div>
+                                <p className="text-sm font-medium text-foreground break-all">{replacePartSerial}</p>
+                              </div>
+                            )}
+                            <div className="grid gap-4 sm:grid-cols-2">
+                              {(replacePartPrice && replacePartPrice !== "—") && (
+                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Giá</p>
+                                  <p className="text-sm font-medium text-foreground">{replacePartPrice}</p>
+                                </div>
+                              )}
+                              {(replacePartStatus && replacePartStatus !== "—") && (
+                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Trạng thái</p>
+                                  <p className="text-sm font-medium text-foreground">{replacePartStatus}</p>
+                                </div>
+                              )}
+                              {(replacePartWarrantyStart && replacePartWarrantyStart !== "—") && (
+                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">BH từ</p>
+                                  </div>
+                                  <p className="text-sm font-medium text-foreground">{replacePartWarrantyStart}</p>
+                                </div>
+                              )}
+                              {(replacePartWarrantyEnd && replacePartWarrantyEnd !== "—") && (
+                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">BH đến</p>
+                                  </div>
+                                  <p className="text-sm font-medium text-foreground">{replacePartWarrantyEnd}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Trạng thái hiện tại */}
                 <div
                   className={cn(
-                    "rounded-2xl px-5 py-4 shadow-sm border",
+                    "rounded-2xl border-2 px-6 py-5 shadow-md",
                     statusInfo.panelBorder,
                     statusInfo.panelBg
                   )}
                 >
-                  <p className={cn("text-xs font-semibold uppercase tracking-wide", statusInfo.panelText)}>
-                    Trạng thái hiện tại
-                  </p>
-                  <div className="mt-3">{getStatusBadge(rma.status)}</div>
-                  <p className={cn("mt-2 text-sm", statusInfo.panelMuted)}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <CheckCircle2 className={cn("h-5 w-5", statusInfo.panelText)} />
+                    <p className={cn("text-xs font-semibold uppercase tracking-wide", statusInfo.panelText)}>
+                      Trạng thái hiện tại
+                    </p>
+                  </div>
+                  <div className="mb-3">{getStatusBadge(rma.status)}</div>
+                  <p className={cn("text-sm leading-relaxed", statusInfo.panelMuted)}>
                     Theo dõi tiến trình ở bảng bên phải để nắm rõ tình trạng xử lý.
                   </p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-border/60 shadow-sm">
-              <CardHeader>
-                <CardTitle>Nhân viên phụ trách</CardTitle>
-                <CardDescription>Nguồn yêu cầu được tạo từ cửa hàng.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                    {staffInitials}
+            {/* Nhân viên phụ trách */}
+            <Card className="border-border/60 shadow-lg bg-card">
+              <CardHeader className="bg-gradient-to-r from-primary/5 via-transparent to-transparent border-b border-border/60">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <UsersIcon className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-lg font-semibold text-foreground">{staffDisplayName}</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
+                    <CardTitle className="text-xl">Nhân viên phụ trách</CardTitle>
+                    <CardDescription className="mt-1">Nguồn yêu cầu được tạo từ cửa hàng</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-5 pt-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10 text-lg font-bold text-primary shadow-lg border-2 border-primary/20">
+                    {staffInitials}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-lg font-bold text-foreground mb-2">{staffDisplayName}</p>
+                    <div className="flex flex-wrap gap-2">
                       {staffPositionLabel && (
-                        <Badge className="border border-primary/20 bg-primary/10 text-primary">{staffPositionLabel}</Badge>
+                        <Badge className="border-2 border-primary/30 bg-primary/10 text-primary font-medium px-3 py-1">
+                          {staffPositionLabel}
+                        </Badge>
                       )}
                       {staffGenderLabel && (
-                        <Badge variant="outline" className="border-border/70 text-muted-foreground">
+                        <Badge variant="outline" className="border-2 border-border/70 text-muted-foreground font-medium px-3 py-1">
                           {staffGenderLabel}
                         </Badge>
                       )}
@@ -689,126 +1272,95 @@ export default function WarrantyDetail() {
               </CardContent>
             </Card>
 
-            <Card className="border-border/60 shadow-sm">
-              <CardHeader>
-                <CardTitle>Ghi chú</CardTitle>
-                <CardDescription>Các ghi chú bổ sung cho yêu cầu bảo hành.</CardDescription>
+            {/* Ghi chú */}
+            <Card className="border-border/60 shadow-lg bg-card">
+              <CardHeader className="bg-gradient-to-r from-primary/5 via-transparent to-transparent border-b border-border/60">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <MessageSquareIcon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl">Ghi chú</CardTitle>
+                    <CardDescription className="mt-1">Các ghi chú bổ sung cho yêu cầu bảo hành</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-5 py-6 text-sm leading-relaxed text-muted-foreground">
+              <CardContent className="pt-6">
+                <div className="rounded-2xl border-2 border-dashed border-primary/40 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent px-6 py-6 text-sm leading-relaxed text-foreground shadow-sm">
                   {noteContent}
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-border/60 shadow-sm">
-              <CardHeader>
-                <CardTitle>Danh sách phụ tùng</CardTitle>
-                <CardDescription>
-                  {partCount > 0 ? `${partCount} phụ tùng được đính kèm trong yêu cầu.` : "Chưa có phụ tùng nào được đính kèm."}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {partCount > 0 ? (
-                  rma.rmaDetails.map((detail, index) => {
-                    const partName = detail.part?.name || detail.part?.code || "—";
-                    const partCode = detail.part?.code || "—";
-                    const serialNumber = detail.serialNumber || "—";
-                    const quantity = detail.quantity || 0;
-                    const price = formatCurrency(detail.price);
-                    const warrantyStart = formatDateOnly(detail.warantyStartDate);
-                    const warrantyEnd = formatDateOnly(detail.warantyEndDate);
-                    return (
-                      <div key={`${serialNumber}-${index}`} className="rounded-2xl border border-border/60 bg-muted/10 p-4 shadow-sm">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div>
-                            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Phụ tùng</p>
-                            <p className="mt-1 text-lg font-semibold text-foreground">{partName}</p>
-                            <p className="text-xs text-muted-foreground">Mã phụ tùng: {partCode}</p>
-                          </div>
-                          <Badge className="border border-primary/20 bg-primary/10 text-primary">SL: {quantity}</Badge>
-                        </div>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                          <div className="rounded-xl border border-border/60 bg-background/80 px-3 py-2">
-                            <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-                              <Hash className="h-3.5 w-3.5" />
-                              Số serial
-                            </div>
-                            <p className="mt-2 text-sm font-medium text-foreground break-all">{serialNumber}</p>
-                          </div>
-                          <div className="rounded-xl border border-border/60 bg-background/80 px-3 py-2">
-                            <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-                              <FileText className="h-3.5 w-3.5" />
-                              Đơn giá
-                            </div>
-                            <p className="mt-2 text-sm font-medium text-foreground">{price}</p>
-                          </div>
-                          <div className="rounded-xl border border-border/60 bg-background/80 px-3 py-2">
-                            <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-                              <Calendar className="h-3.5 w-3.5" />
-                              Bảo hành
-                            </div>
-                            <p className="mt-2 text-sm font-medium text-foreground">
-                              {warrantyStart !== "—" || warrantyEnd !== "—" ? `${warrantyStart} - ${warrantyEnd}` : "Không có"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-border px-5 py-10 text-center text-sm text-muted-foreground">
-                    Chưa có phụ tùng nào được đính kèm cho yêu cầu bảo hành này.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </div>
 
+          {/* Sidebar */}
           <div className="sticky top-20 self-start space-y-6">
-            <Card className="border-border/60 shadow-sm">
-              <CardHeader>
-                <CardTitle>Tổng quan</CardTitle>
-                <CardDescription>Thông tin nhanh về yêu cầu.</CardDescription>
+            <Card className="border-border/60 shadow-lg bg-card">
+              <CardHeader className="bg-gradient-to-r from-primary/5 via-transparent to-transparent border-b border-border/60">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <FileText className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl">Tổng quan</CardTitle>
+                    <CardDescription className="mt-1">Thông tin nhanh về yêu cầu</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="rounded-2xl border border-border/60 bg-muted/15 px-4 py-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Trạng thái</p>
-                  <div className="mt-2 flex items-center gap-2">{getStatusBadge(rma.status)}</div>
+              <CardContent className="space-y-4 pt-6">
+                <div className="rounded-xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 px-5 py-4 shadow-sm hover:shadow-md transition-shadow">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Trạng thái</p>
+                  <div className="flex items-center gap-2">{getStatusBadge(rma.status)}</div>
                 </div>
-                <div className="rounded-2xl border border-border/60 bg-muted/15 px-4 py-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Ngày tạo</p>
-                  <p className="mt-2 text-sm font-medium text-foreground">{createdAt}</p>
+                <div className="rounded-xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 px-5 py-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ngày tạo</p>
                 </div>
-                <div className="rounded-2xl border border-border/60 bg-muted/15 px-4 py-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Địa chỉ trả hàng</p>
-                  <p className="mt-2 text-sm font-medium text-foreground leading-relaxed">{returnAddress}</p>
+                  <p className="text-sm font-semibold text-foreground">{createdAt}</p>
+                </div>
+                <div className="rounded-xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 px-5 py-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 mb-3">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Địa chỉ trả hàng</p>
+                  </div>
+                  <p className="text-sm font-medium text-foreground leading-relaxed">{returnAddress}</p>
                 </div>
               </CardContent>
             </Card>
 
-            {normalizedStatus === "PENDING" && (
-              <Card className="border-amber-200 bg-amber-50/80 shadow-sm">
-                <CardHeader>
-                  <CardTitle>Thao tác nhanh</CardTitle>
-                  <CardDescription>Phê duyệt hoặc từ chối yêu cầu này.</CardDescription>
+            {hasPendingDetails && (
+              <Card className="border-2 border-amber-300 bg-gradient-to-br from-amber-50/90 via-amber-50/70 to-amber-50/90 shadow-lg">
+                <CardHeader className="border-b border-amber-200/60">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-700">
+                      <AlertCircle className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl text-amber-900">Thao tác nhanh</CardTitle>
+                      <CardDescription className="mt-1 text-amber-700">Phê duyệt hoặc từ chối yêu cầu này</CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-amber-700">Kiểm tra kỹ thông tin phụ tùng trước khi xác nhận.</p>
+                <CardContent className="space-y-4 pt-6">
+                  <p className="text-sm text-amber-800 leading-relaxed bg-amber-100/50 rounded-xl px-4 py-3 border border-amber-200/60">
+                    ⚠️ Kiểm tra kỹ thông tin phụ tùng trước khi xác nhận.
+                  </p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Button
-                      className="h-10 gap-2 rounded-full bg-emerald-600 text-white hover:bg-emerald-600/90"
+                      className="h-12 gap-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 shadow-md hover:shadow-lg transition-all font-semibold"
                       onClick={() => setIsConfirmDialogOpen(true)}
                     >
-                      <CheckCircle2 className="h-4 w-4" />
+                      <CheckCircle2 className="h-5 w-5" />
                       Duyệt RMA
                     </Button>
                     <Button
                       variant="destructive"
-                      className="h-10 gap-2 rounded-full"
+                      className="h-12 gap-2 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold"
                       onClick={() => setIsRejectDialogOpen(true)}
                     >
-                      <XCircle className="h-4 w-4" />
+                      <XCircle className="h-5 w-5" />
                       Từ chối
                     </Button>
                   </div>
@@ -816,10 +1368,17 @@ export default function WarrantyDetail() {
               </Card>
             )}
 
-            <Card className="border-border/60 shadow-sm">
-              <CardHeader>
-                <CardTitle>Tiến trình xử lý</CardTitle>
-                <CardDescription>Trạng thái xuyên suốt của yêu cầu.</CardDescription>
+            <Card className="border-border/60 shadow-lg bg-card">
+              <CardHeader className="bg-gradient-to-r from-primary/5 via-transparent to-transparent border-b border-border/60">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Clock className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl">Tiến trình xử lý</CardTitle>
+                    <CardDescription className="mt-1">Trạng thái xuyên suốt của yêu cầu</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="space-y-5">
                 {STATUS_FLOW.map((step, index) => {

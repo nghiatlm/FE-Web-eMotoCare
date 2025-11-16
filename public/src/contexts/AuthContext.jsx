@@ -10,10 +10,10 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const login = async (phone, password) => {
+  const login = async (email, password) => {
     setLoading(true);
     try {
-      const user = await authService.login(phone, password);
+      const user = await authService.login(email, password);
       setUser(user);
 
       const roleName = user.accountResponse?.roleName;
@@ -23,6 +23,7 @@ export const AuthProvider = ({ children }) => {
       else if (roleName === "ROLE_STAFF") navigate("/staff");
       else if (roleName === "ROLE_TECHNICIAN") navigate("/technician");
       else if (roleName === "ROLE_MANAGER") navigate("/manager");
+      else if (roleName === "ROLE_STOREKEEPER") navigate("/storekeeper");
       else navigate("/");
     } catch (error) {
       console.error("Login failed:", error);

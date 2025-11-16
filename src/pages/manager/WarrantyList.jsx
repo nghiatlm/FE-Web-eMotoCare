@@ -78,6 +78,13 @@ export default function WarrantyList() {
             Chờ xác nhận
           </Badge>
         );
+      case "PROCESSING":
+        return (
+          <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100 flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            Đang xử lý
+          </Badge>
+        );
       case "APPROVED":
         return (
           <Badge className="bg-green-100 text-green-800 hover:bg-green-100 flex items-center gap-1">
@@ -101,6 +108,8 @@ export default function WarrantyList() {
     switch (status?.toUpperCase()) {
       case "PENDING":
         return <Clock className="h-4 w-4 text-yellow-600" />;
+      case "PROCESSING":
+        return <Clock className="h-4 w-4 text-gray-600" />;
       case "APPROVED":
         return <CheckCircle2 className="h-4 w-4 text-green-600" />;
       case "REJECTED":
