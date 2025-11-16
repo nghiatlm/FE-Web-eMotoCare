@@ -340,7 +340,7 @@ export default function BookingDetailDrawer({
         open={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
         booking={booking}
-        onPaymentSuccess={() => handleChangeStatus("COMPLETED")}
+        // onPaymentSuccess={() => handleChangeStatus("COMPLETED")}
       />
     </>
   );

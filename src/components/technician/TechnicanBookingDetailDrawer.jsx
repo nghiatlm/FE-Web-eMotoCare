@@ -2,6 +2,10 @@
 import { useState, useEffect } from "react";
 import RepairModeEVCheck from "./detail-content/RepairModeEVCheck";
 import MaintenanceModeEVCheck from "./detail-content/MaintenanceModeEVCheck";
+import {
+  SERVICE_TYPE_MAP,
+  SERVICE_TYPE_COLORS,
+} from "../../utils/constants.js";
 
 import { Drawer, Divider, Button, Input, Spin, message } from "antd";
 
@@ -27,6 +31,8 @@ export default function TechnicianBookingDetailDrawer({
   const isRepair = (booking?.type || "").toUpperCase() === "REPAIR_TYPE";
   const isMaintenance =
     (booking?.type || "").toUpperCase() === "MAINTENANCE_TYPE";
+  const isWarranty = (booking?.type || "").toUpperCase() === "WARRANTY_TYPE";
+  const isCampaign = (booking?.type || "").toUpperCase() === "CAMPAIGN_TYPE";
 
   // LẤY SỐ KHUNG TỪ BOOKING.VEHICLE → TỰ ĐỘNG XÁC NHẬN
   const chassisNumber = booking?.vehicle?.chassisNumber || "";
@@ -180,9 +186,23 @@ export default function TechnicianBookingDetailDrawer({
               className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${
                 isMaintenance
                   ? "bg-blue-100 text-blue-800 border border-blue-300"
-                  : "bg-purple-100 text-purple-800 border border-purple-300"
+                  : isRepair
+                  ? "bg-purple-100 text-purple-800 border border-purple-300"
+                  : isWarranty
+                  ? "bg-green-100 text-green-800 border border-green-300"
+                  : isCampaign
+                  ? "bg-orange-100 text-orange-800 border border-orange-300"
+                  : "bg-gray-100 text-gray-800 border border-gray-300"
               }`}>
-              {isMaintenance ? "Bảo dưỡng" : "Sửa chữa"}
+              {isMaintenance
+                ? "Bảo dưỡng"
+                : isRepair
+                ? "Sửa chữa"
+                : isWarranty
+                ? "Bảo hành"
+                : isCampaign
+                ? "Chiến dịch"
+                : "—"}
             </span>
           </p>
           {isRepair && chassisNumber && (

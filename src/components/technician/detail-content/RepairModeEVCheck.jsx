@@ -10,6 +10,7 @@ import {
 import { getLaborCostByRemediesService } from "../../../services/priceserviceService.js";
 import { getPartItemsByModelService } from "../../../services/partitemsService.js";
 import { PlusOutlined } from "@ant-design/icons";
+import RMAConfirmationModal from "../../../components/service-staff/RMAConfirmationModal";
 
 const { Option } = Select;
 
@@ -36,12 +37,45 @@ export default function RepairModeEVCheck({
     parentEvCheckStatus || null
   );
   const [statusChanges, setStatusChanges] = useState({});
+  const [isRMAConfirmationOpen, setIsRMAConfirmationOpen] = useState(false);
+  const [currentRMAParts, setCurrentRMAParts] = useState([]);
 
   const getModelName = () => {
     const vehicle = booking?.vehicle;
     return vehicle?.modelName || vehicle?.model?.name || "VinFast Evo200";
   };
 
+  const checkWarrantyStatus = (partItem) => {
+    if (!partItem) return false;
+    const start = partItem.warantyStartDate
+      ? new Date(partItem.warantyStartDate)
+      : null;
+    const end = partItem.warantyEndDate
+      ? new Date(partItem.warantyEndDate)
+      : null;
+    const now = new Date();
+    return start && end && now >= start && now <= end;
+  };
+
+  const isRMAEligible = (row) =>
+    row.remedies === "REPLACE" &&
+    checkWarrantyStatus(row.partItem) &&
+    row.partItem;
+
+  const openRMAForRow = (row) => {
+    const oneItem = {
+      id: row.id,
+      PhuTungThayThe:
+        row.partName || row.partItem?.part?.name || "Không rõ tên PT",
+      NoiDung: row.result ?? row.remedies,
+      partItem: row.partItem,
+      partName: row.partName,
+      quantity: row.quantity,
+      unit: row.unit,
+    };
+    setCurrentRMAParts([oneItem]); // chỉ 1 phần tử
+    setIsRMAConfirmationOpen(true);
+  };
   // --- Load Part Options ---
   useEffect(() => {
     const loadParts = async () => {
@@ -156,7 +190,6 @@ export default function RepairModeEVCheck({
 
         return {
           ...item,
-          id: dbId || `missing_id_${Date.now()}`,
           partItemId: partItemId,
           displayName: partOption?.label || partItemId || "",
           replacePartId: replacePartId,
@@ -221,9 +254,7 @@ export default function RepairModeEVCheck({
     if (evCheckStatus === "INSPECTION_COMPLETED" && field !== "status") return;
     if (evCheckStatus === "QUOTE_APPROVED" && field !== "status") return;
     // Cho phép edit status khi đang ở Repair Mode
-    if (isRepairMode && field === "status") {
-      // ... (cho phép)
-    } else if (!canEditFields && field !== "status") {
+    if (!canEditFields && field !== "status") {
       // Chặn edit các field khác nếu không được phép
       return;
     }
@@ -430,7 +461,23 @@ export default function RepairModeEVCheck({
         </Select>
       ),
     },
-    { title: "Bảo hành", width: 80, render: () => "Không" },
+    {
+      title: "Bảo hành",
+      width: 80,
+      render: (_, r) => {
+        const partItem = r.partItem;
+        if (!partItem) return "Không";
+        const start = partItem.warantyStartDate
+          ? new Date(partItem.warantyStartDate)
+          : null;
+        const end = partItem.warantyEndDate
+          ? new Date(partItem.warantyEndDate)
+          : null;
+        const now = new Date();
+        if (!start || !end || now < start || now > end) return "Không";
+        return "BHH";
+      },
+    },
     {
       title: "Phụ tùng thay thế",
       width: 200,
@@ -535,7 +582,33 @@ export default function RepairModeEVCheck({
     ),
   };
 
-  const columns = isRepairMode ? [...baseColumns, statusColumn] : baseColumns;
+  // Cột RMA từng dòng (chỉ hiện khi readOnly = true)
+  const rmaColumn = {
+    title: "RMA",
+    width: 120,
+    render: (_, r) => {
+      if (!readOnly) return <span className='text-gray-400'>-</span>;
+      const eligible = isRMAEligible(r);
+      if (!eligible) return <span className='text-gray-400'>-</span>;
+      return (
+        <Button
+          size='small'
+          type='primary'
+          danger
+          onClick={() => openRMAForRow(r)}>
+          Tạo RMA
+        </Button>
+      );
+    },
+  };
+
+  let columns = baseColumns;
+  if (!readOnly && evCheckStatus === "REPAIR_IN_PROGRESS") {
+    columns = [...columns, statusColumn];
+  }
+  if (readOnly) {
+    columns = [...columns, rmaColumn];
+  }
 
   return (
     <div className='space-y-4'>
@@ -616,6 +689,23 @@ export default function RepairModeEVCheck({
           ) : null}
         </>
       )}
+
+      {/* Modal xác nhận RMA – mỗi lần chỉ chứa 1 dòng */}
+      <RMAConfirmationModal
+        open={isRMAConfirmationOpen}
+        onClose={() => setIsRMAConfirmationOpen(false)}
+        booking={booking}
+        partsForRMA={currentRMAParts}
+        onRMASuccess={() => {
+          const rmaDetailIds = currentRMAParts.map((p) => p.id);
+          setDetails((prev) =>
+            prev.filter((d) => !rmaDetailIds.includes(d.id))
+          );
+          message.info("Đang đồng bộ lại chi tiết EV Check...");
+          loadRepairDetails();
+          setIsRMAConfirmationOpen(false);
+        }}
+      />
     </div>
   );
 }

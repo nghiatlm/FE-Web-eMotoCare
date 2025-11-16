@@ -1,6 +1,16 @@
 // src/components/technician/detail-content/MaintenanceModeEVCheck.jsx
 import { useState, useEffect } from "react";
-import { Table, Input, Select, Tag, Image, Button, message, Spin } from "antd";
+import {
+  Table,
+  Input,
+  Select,
+  Tag,
+  Image,
+  Button,
+  message,
+  Spin,
+  Checkbox,
+} from "antd";
 
 import {
   fetchEVCheckDetailsServiceMain,
@@ -571,30 +581,69 @@ export default function MaintenanceModeEVCheck({
 
   // Cột trạng thái sửa chữa
   const statusColumnForRepair = {
-    title: "Trạng thái",
-    width: 150,
+    title: (
+      <div className='flex items-center gap-2'>
+        {evCheckDetails.filter((d) => d.id).length > 0 && (
+          <Checkbox
+            checked={evCheckDetails.every((d) => d.status === "COMPLETED")}
+            indeterminate={
+              evCheckDetails.some((d) => d.status === "COMPLETED") &&
+              evCheckDetails.some((d) => d.status !== "COMPLETED")
+            }
+            onChange={(e) => {
+              const checked = e.target.checked;
+              const updated = evCheckDetails.map((item) => ({
+                ...item,
+                status: checked ? "COMPLETED" : "PENDING",
+              }));
+              setEvCheckDetails(updated);
+
+              const changes = {};
+              updated.forEach((item) => {
+                if (item.id && checked) {
+                  changes[item.id] = "COMPLETED";
+                }
+              });
+              setStatusChanges((prev) => ({ ...prev, ...changes }));
+            }}
+            disabled={readOnly}></Checkbox>
+        )}
+        <span>Trạng thái</span>
+      </div>
+    ),
+    width: 220,
     render: (_, r, i) => {
       const stat = REPAIR_STATUS[r.status] || REPAIR_STATUS.PENDING;
+
       return (
-        <Select
-          value={r.status}
-          onChange={(value) => handleChange(i, "status", value)}
-          style={{ width: "100%" }}
-          dropdownStyle={{ minWidth: 150 }}>
-          {Object.entries(REPAIR_STATUS).map(([key, { label, color }]) => (
-            <Select.Option key={key} value={key}>
-              <Tag
-                color={color}
-                style={{
-                  fontWeight: 500,
-                  borderRadius: 8,
-                  padding: "2px 8px",
-                }}>
-                {label}
-              </Tag>
-            </Select.Option>
-          ))}
-        </Select>
+        <div className='flex items-center gap-2'>
+          <Checkbox
+            checked={r.status === "COMPLETED"}
+            onChange={(e) => {
+              handleChange(
+                i,
+                "status",
+                e.target.checked ? "COMPLETED" : "PENDING"
+              );
+            }}
+            disabled={readOnly}
+          />
+          <Tag
+            color={stat.color}
+            style={{
+              cursor: r.status !== "COMPLETED" ? "pointer" : "default",
+              fontWeight: 500,
+              borderRadius: 8,
+              padding: "2px 8px",
+            }}
+            onClick={() => {
+              if (r.status !== "COMPLETED" && !readOnly) {
+                handleChange(i, "status", "COMPLETED");
+              }
+            }}>
+            {stat.label}
+          </Tag>
+        </div>
       );
     },
   };
@@ -693,9 +742,7 @@ export default function MaintenanceModeEVCheck({
         partsForRMA={currentRMAParts}
         onRMASuccess={() => {
           const rmaDetailIds = currentRMAParts.map((p) => p.id);
-          setEvCheckDetails((prev) =>
-            prev.filter((d) => !rmaDetailIds.includes(d.id))
-          );
+
           message.info("Đang đồng bộ lại chi tiết EV Check...");
           loadEVCheckDetails();
           setIsRMAConfirmationOpen(false);

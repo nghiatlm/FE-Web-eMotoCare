@@ -107,20 +107,20 @@ export default function BookingTable({
       },
     },
     {
-      title: "QR",
-      dataIndex: "checkinCode",
-      key: "checkinCode",
-      render: (q, record) =>
-        q ? (
-          <Button
-            type='text'
-            icon={<QrcodeOutlined />}
-            onClick={() => onShowQR(record)}
-            title='Mở QR check-in'
-          />
-        ) : (
-          <span style={{ color: "#999" }}>—</span>
-        ),
+      title: "Ghi chú",
+      dataIndex: "note",
+      key: "note",
+      // render: (q, record) =>
+      //   q ? (
+      //     <Button
+      //       type='text'
+      //       icon={<QrcodeOutlined />}
+      //       onClick={() => onShowQR(record)}
+      //       title='Mở QR check-in'
+      //     />
+      //   ) : (
+      //     <span style={{ color: "#999" }}>—</span>
+      //   ),
     },
     {
       title: "Hành động",
