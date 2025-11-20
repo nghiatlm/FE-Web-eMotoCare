@@ -3,8 +3,13 @@ import api from "./api";
 const BASE_URL = "/v1/staffs";
 
 // 🟢 Lấy danh sách kỹ thuật viên (lọc theo position)
-export const getStaffByPosition = (position) => {
-  return api.get(`${BASE_URL}?position=${position}`);
+export const getStaffByPosition = (position, serviceCenterId = null) => {
+  const params = { position };
+  if (serviceCenterId) {
+    params.serviceCenterId = serviceCenterId;
+  }
+  const queryParams = new URLSearchParams(params);
+  return api.get(`${BASE_URL}?${queryParams.toString()}`);
 };
 
 // 🟢 Lấy staff theo accountId

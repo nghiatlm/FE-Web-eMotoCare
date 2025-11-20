@@ -11,9 +11,9 @@ import * as QRCode from "qrcode";
 import { uploadDataUrl } from "../utils/firebaseUpload";
 
 // Lấy danh sách lịch hẹn
-export const fetchAppointments = async ({ page = 1, pageSize = 20 }) => {
+export const fetchAppointments = async ({ page = 1, pageSize = 20, serviceCenterId } = {}) => {
   try {
-    return await getAppointments({ page, pageSize });
+    return await getAppointments({ page, pageSize, serviceCenterId });
   } catch (error) {
     console.error("Lỗi lấy danh sách lịch hẹn:", error);
     throw error;

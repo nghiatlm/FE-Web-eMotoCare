@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileUp, ArrowLeft, Loader2, CheckSquare, Square } from "lucide-react";
+import { FileUp, ArrowLeft, Loader2, CheckSquare, Square, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,8 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { createExportNote } from "@/api/exportNotesApi";
 import { getPartItemsByServiceCenter } from "@/api/partitemsApi";
-import { useAuth } from "@/contexts/AuthContext";
-import { getStaffByAccountId } from "@/api/staffsApi";
+import { getServiceCenters } from "@/api/serviceCentersApi";
+import { useServiceCenter } from "@/hooks/useServiceCenter";
 import {
   Card,
   CardContent,
@@ -22,22 +22,25 @@ import {
 
 export default function CreateExportSlipPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [creating, setCreating] = useState(false);
   const { toast } = useToast();
+  const { serviceCenterId, staffId } = useServiceCenter();
   
   // Part items state
   const [partItems, setPartItems] = useState([]);
   const [loadingPartItems, setLoadingPartItems] = useState(false);
   const [selectedPartItemIds, setSelectedPartItemIds] = useState([]);
-  const [serviceCenterId, setServiceCenterId] = useState("");
-  const [staffId, setStaffId] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  // Service centers state
+  const [serviceCenters, setServiceCenters] = useState([]);
+  const [loadingServiceCenters, setLoadingServiceCenters] = useState(false);
   
   // Form state cho tạo phiếu xuất
   const [formData, setFormData] = useState({
     code: "",
     type: "REPLACEMENT",
-    exportTo: "string",
+    exportTo: "",
     totalQuantity: 0,
     totalValue: 0,
     note: "",
@@ -48,33 +51,58 @@ export default function CreateExportSlipPage() {
   });
 
   useEffect(() => {
-    const fetchStaffInfo = async () => {
-      try {
-        const accountId = user?.accountResponse?.id;
-        if (!accountId) return;
+    if (serviceCenterId) {
+      setFormData(prev => ({ ...prev, serviceCenterId }));
+    }
+    if (staffId) {
+      setFormData(prev => ({ ...prev, exportById: staffId }));
+    }
+  }, [serviceCenterId, staffId]);
 
-        const staffResponse = await getStaffByAccountId(accountId);
-        const staffData = staffResponse?.data?.rowDatas?.[0];
-        
-        if (staffData) {
-          if (staffData.serviceCenterId) {
-            setServiceCenterId(staffData.serviceCenterId);
-            setFormData(prev => ({ ...prev, serviceCenterId: staffData.serviceCenterId }));
-          }
-          if (staffData.id) {
-            setStaffId(staffData.id);
-            setFormData(prev => ({ ...prev, exportById: staffData.id }));
-          }
-        }
+  // State để lưu tất cả service centers (chưa lọc)
+  const [allServiceCenters, setAllServiceCenters] = useState([]);
+
+  // Fetch service centers list ngay từ đầu - không đợi serviceCenterId
+  useEffect(() => {
+    const fetchServiceCenters = async () => {
+      try {
+        setLoadingServiceCenters(true);
+        const response = await getServiceCenters({ page: 1, pageSize: 100 });
+        const centers = response?.data?.rowDatas || response?.data || [];
+        setAllServiceCenters(centers);
+        // Hiển thị tất cả ngay lập tức
+        setServiceCenters(centers);
       } catch (error) {
-        console.error("Error fetching staff info:", error);
+        console.error("Error fetching service centers:", error);
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải danh sách chi nhánh",
+          variant: "destructive"
+        });
+        setAllServiceCenters([]);
+        setServiceCenters([]);
+      } finally {
+        setLoadingServiceCenters(false);
       }
     };
 
-    if (user) {
-      fetchStaffInfo();
+    fetchServiceCenters();
+  }, [toast]);
+
+  // Lọc bỏ chi nhánh hiện tại khi có serviceCenterId
+  useEffect(() => {
+    if (serviceCenterId && allServiceCenters.length > 0) {
+      const filteredCenters = allServiceCenters.filter(center => {
+        const centerId = String(center.id || "").trim();
+        const currentId = String(serviceCenterId || "").trim();
+        return centerId && centerId !== currentId;
+      });
+      setServiceCenters(filteredCenters);
+    } else if (allServiceCenters.length > 0) {
+      // Nếu chưa có serviceCenterId, hiển thị tất cả
+      setServiceCenters(allServiceCenters);
     }
-  }, [user]);
+  }, [serviceCenterId, allServiceCenters]);
 
   const fetchPartItems = useCallback(async () => {
     try {
@@ -133,6 +161,24 @@ export default function CreateExportSlipPage() {
     }
   }, [serviceCenterId, fetchPartItems]);
 
+  // Filter part items based on search term
+  const filteredPartItems = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return partItems;
+    }
+    const searchLower = searchTerm.toLowerCase();
+    return partItems.filter((item) => {
+      const partName = item.part?.name?.toLowerCase() || "";
+      const partCode = item.part?.code?.toLowerCase() || "";
+      const serialNumber = item.serialNumber?.toLowerCase() || "";
+      return (
+        partName.includes(searchLower) ||
+        partCode.includes(searchLower) ||
+        serialNumber.includes(searchLower)
+      );
+    });
+  }, [partItems, searchTerm]);
+
   const selectedPartItemsData = useMemo(() => {
     const selectedItems = partItems.filter(item => selectedPartItemIds.includes(item.id));
     const totalQty = selectedItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
@@ -160,16 +206,39 @@ export default function CreateExportSlipPage() {
     });
   };
 
-  // Handle select all part items
+  // Handle select all part items (only filtered items)
   const handleSelectAllPartItems = () => {
-    if (selectedPartItemIds.length === partItems.length) {
-      setSelectedPartItemIds([]);
+    const filteredIds = filteredPartItems.map(item => item.id);
+    const allFilteredSelected = filteredIds.every(id => selectedPartItemIds.includes(id));
+    
+    if (allFilteredSelected) {
+      // Deselect all filtered items
+      setSelectedPartItemIds(prev => prev.filter(id => !filteredIds.includes(id)));
     } else {
-      setSelectedPartItemIds(partItems.map(item => item.id));
+      // Select all filtered items
+      setSelectedPartItemIds(prev => {
+        const newIds = [...prev];
+        filteredIds.forEach(id => {
+          if (!newIds.includes(id)) {
+            newIds.push(id);
+          }
+        });
+        return newIds;
+      });
     }
   };
 
   const handleSubmit = async () => {
+    // Validate exportTo
+    if (!formData.exportTo || formData.exportTo === "") {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng chọn chi nhánh nhận",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Validate part items
     if (!formData.partItemId || formData.partItemId.length === 0) {
       toast({
@@ -279,6 +348,59 @@ export default function CreateExportSlipPage() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="exportTo" className="text-sm font-semibold">Chi nhánh nhận *</Label>
+                <Select
+                  value={formData.exportTo}
+                  onValueChange={(value) => setFormData({ ...formData, exportTo: value })}
+                  disabled={serviceCenters.length === 0}
+                >
+                  <SelectTrigger id="exportTo">
+                    <SelectValue placeholder={serviceCenters.length === 0 ? "Đang tải..." : "Chọn chi nhánh nhận"}>
+                      {formData.exportTo && (() => {
+                        const selectedCenter = serviceCenters.find(c => c.id === formData.exportTo);
+                        return selectedCenter ? (
+                          <div className="flex flex-col gap-0.5 text-left">
+                            <span className="font-medium">{selectedCenter.name || selectedCenter.code || "Chi nhánh"}</span>
+                            {selectedCenter.address && (
+                              <span className="text-xs text-muted-foreground">{selectedCenter.address}</span>
+                            )}
+                          </div>
+                        ) : null;
+                      })()}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {serviceCenters.length > 0 ? (
+                      serviceCenters.map((center) => (
+                        <SelectItem 
+                          key={center.id} 
+                          value={center.id}
+                        >
+                          <div className="flex flex-col gap-1 py-1">
+                            <span className="font-medium">
+                              {center.name || center.code || "Chi nhánh"}
+                            </span>
+                            {center.address && (
+                              <span className="text-xs text-muted-foreground">
+                                {center.address}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                        {loadingServiceCenters ? "Đang tải..." : "Không có chi nhánh nào"}
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Chọn chi nhánh sẽ nhận phụ tùng
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="totalQuantity" className="text-sm font-semibold">Tổng số lượng *</Label>
@@ -335,26 +457,41 @@ export default function CreateExportSlipPage() {
                   variant="outline"
                   size="sm"
                   onClick={handleSelectAllPartItems}
-                  disabled={partItems.length === 0}
+                  disabled={filteredPartItems.length === 0}
                 >
-                  {selectedPartItemIds.length === partItems.length && partItems.length > 0 ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                  {filteredPartItems.length > 0 && filteredPartItems.every(item => selectedPartItemIds.includes(item.id))
+                    ? "Bỏ chọn tất cả"
+                    : "Chọn tất cả"}
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
+              {/* Search Input */}
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Tìm kiếm phụ tùng theo tên, mã, serial..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+
               <div className="border rounded-lg max-h-96 overflow-y-auto">
                 {loadingPartItems ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     <span className="ml-2 text-sm text-muted-foreground">Đang tải phụ tùng...</span>
                   </div>
-                ) : partItems.length === 0 ? (
+                ) : filteredPartItems.length === 0 ? (
                   <div className="py-8 text-center text-sm text-muted-foreground">
-                    Không có phụ tùng nào
+                    {searchTerm ? "Không tìm thấy phụ tùng nào" : "Không có phụ tùng nào"}
                   </div>
                 ) : (
                   <div className="divide-y">
-                    {partItems.map((item) => {
+                    {filteredPartItems.map((item) => {
                       const isSelected = selectedPartItemIds.includes(item.id);
                       const partImage = item.part?.image;
                       return (
@@ -417,7 +554,9 @@ export default function CreateExportSlipPage() {
               {partItems.length > 0 && (
                 <div className="mt-4 p-2 bg-muted/50 rounded-lg">
                   <p className="text-sm text-muted-foreground">
-                    Tổng cộng: {partItems.length} phụ tùng
+                    {searchTerm 
+                      ? `Hiển thị ${filteredPartItems.length} / ${partItems.length} phụ tùng`
+                      : `Tổng cộng: ${partItems.length} phụ tùng`}
                   </p>
                 </div>
               )}

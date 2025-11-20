@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Eye, PackagePlus, Edit } from "lucide-react";
 import { getImportNotes } from "@/api/importNotesApi";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { useServiceCenter } from "@/hooks/useServiceCenter";
 
 const statusBadge = (status) => {
   const base = "inline-flex px-3 py-1 rounded-full text-xs font-medium";
@@ -35,12 +36,13 @@ export default function ImportSlipsTable({ search = "", status = "" }) {
   const [pageSize] = useState(10);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState(null);
+  const { serviceCenterId } = useServiceCenter();
 
   const fetchImportNotes = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await getImportNotes(page, pageSize);
+      const response = await getImportNotes(page, pageSize, serviceCenterId);
       
       if (response.success && response.data) {
         // Transform API data to match UI format
@@ -100,8 +102,10 @@ export default function ImportSlipsTable({ search = "", status = "" }) {
   };
 
   useEffect(() => {
-    fetchImportNotes();
-  }, [page, pageSize]);
+    if (serviceCenterId) {
+      fetchImportNotes();
+    }
+  }, [page, pageSize, serviceCenterId]);
 
   useEffect(() => {
     const applyAddSlip = (slip) => {

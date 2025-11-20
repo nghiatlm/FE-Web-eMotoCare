@@ -5,6 +5,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { FilterIcon, RotateCcw } from "lucide-react";
 import { getRMAService } from "../../services/rmaService"; // ✅ import service thật
 import { STATUS_MAP, STATUS_COLORS } from "../../utils/constants";
+import { useServiceCenter } from "../../hooks/useServiceCenter";
 
 const { Option } = Select;
 
@@ -18,12 +19,13 @@ export default function StaffWarrantyPage() {
   const [search, setSearch] = useState("");
   const [qrRecord, setQrRecord] = useState(null);
   const [openQRModal, setOpenQRModal] = useState(false);
+  const { serviceCenterId } = useServiceCenter();
 
   // ================== LOAD DATA ==================
   const loadRMAList = async () => {
     setLoading(true);
     try {
-      const data = await getRMAService();
+      const data = await getRMAService({ serviceCenterId });
       const list = data?.rowDatas || [];
       setRmaList(list);
     } catch (err) {
@@ -34,8 +36,10 @@ export default function StaffWarrantyPage() {
   };
 
   useEffect(() => {
-    loadRMAList();
-  }, []);
+    if (serviceCenterId) {
+      loadRMAList();
+    }
+  }, [serviceCenterId]);
 
   // ================== FILTER ==================
   const filteredData = useMemo(() => {

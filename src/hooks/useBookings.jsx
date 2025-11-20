@@ -4,10 +4,12 @@ import {
   fetchAppointments,
   createAppointmentService,
 } from "../services/appointmentService";
+import { useServiceCenter } from "./useServiceCenter";
 
 export const useBookings = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const { serviceCenterId } = useServiceCenter();
 
   const STATUS_FLOW = {
     PENDING: ["APPROVED", "CANCELED"],
@@ -28,7 +30,7 @@ export const useBookings = () => {
   const fetchBookings = async () => {
     setLoading(true);
     try {
-      const res = await fetchAppointments({ page: 1, pageSize: 20 });
+      const res = await fetchAppointments({ page: 1, pageSize: 20, serviceCenterId });
       const list = res?.data?.rowDatas || [];
       setData(list);
       console.log("Fetched bookings:", list.length);
@@ -50,8 +52,10 @@ export const useBookings = () => {
   };
 
   useEffect(() => {
-    fetchBookings();
-  }, []);
+    if (serviceCenterId) {
+      fetchBookings();
+    }
+  }, [serviceCenterId]);
 
   // CẬP NHẬT TRẠNG THÁI – LUÔN FETCH LẠI KHI GÁN KỸ THUẬT VIÊN
   const updateStatus = (id, newStatus, selectedTechnician = null) => {
