@@ -6,7 +6,14 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   const { user } = useAuth();
 
   if (!user) return <Navigate to='/login' replace />;
-  if (allowedRoles && !allowedRoles.includes(user.role))
+
+  const userRole =
+    user?.accountResponse?.roleName ||
+    user?.role ||
+    user?.roleName ||
+    user?.accountResponse?.role;
+
+  if (allowedRoles && !allowedRoles.includes(userRole))
     return <Navigate to='/login' replace />;
 
   return children;

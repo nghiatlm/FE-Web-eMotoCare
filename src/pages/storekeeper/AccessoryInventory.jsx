@@ -14,7 +14,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus } from "lucide-react";
 import * as ProgressPrimitive from "@radix-ui/react-progress";
 import { cn } from "@/lib/utils";
-import { useServiceCenter } from "@/hooks/useServiceCenter";
 
 // Custom Progress component với màu động
 const ColoredProgress = ({ value, colorClass, className, ...props }) => {
@@ -78,11 +77,9 @@ export default function AccessoryInventory() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
-  const { serviceCenterId } = useServiceCenter();
 
   useEffect(() => {
     const fetchParts = async () => {
-      if (!serviceCenterId) return;
       try {
         setLoading(true);
         // Note: API doesn't filter by alert status, so we filter client-side for alert
@@ -90,7 +87,6 @@ export default function AccessoryInventory() {
           page, 
           pageSize,
           search: search || undefined,
-          serviceCenterId,
           // status filter is for backend status (ACTIVE/INACTIVE), not alert
         });
         const payload = res?.data || res;
@@ -124,7 +120,7 @@ export default function AccessoryInventory() {
     };
 
     fetchParts();
-  }, [page, pageSize, search, status, serviceCenterId]);
+  }, [page, pageSize, search, status]);
 
   // Fetch part types when create or edit dialog opens
   useEffect(() => {

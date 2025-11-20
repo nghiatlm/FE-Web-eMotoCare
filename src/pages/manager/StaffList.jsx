@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStaffByAccountId, getStaffsByServiceCenterId } from "@/api/staffsApi";
+import { useServiceCenter } from "@/hooks/useServiceCenter";
 
 export default function StaffList() {
   const navigate = useNavigate();
@@ -17,7 +18,9 @@ export default function StaffList() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [staffs, setStaffs] = useState([]);
-  const [serviceCenterId, setServiceCenterId] = useState(null);
+  const { serviceCenterId } = useServiceCenter();
+  console.log("serviceCenterId", serviceCenterId);
+  const [currentStaffId, setCurrentStaffId] = useState(null);
 
   // Get serviceCenterId from staff info
   useEffect(() => {
@@ -29,6 +32,9 @@ export default function StaffList() {
         const staffResponse = await getStaffByAccountId(accountId);
         const staffData = staffResponse?.data?.rowDatas?.[0];
         
+        if (staffData?.id) {
+          setCurrentStaffId(staffData.id);
+        }
         if (staffData?.serviceCenterId) {
           setServiceCenterId(staffData.serviceCenterId);
         }
@@ -40,9 +46,8 @@ export default function StaffList() {
     if (user) {
       fetchStaffInfo();
     }
-  }, [user]);
+  }, [user, serviceCenterId]);
 
-  // Fetch staffs by serviceCenterId
   useEffect(() => {
     if (!serviceCenterId) return;
 
@@ -130,7 +135,9 @@ export default function StaffList() {
 
   // Transform API data to UI format
   const transformedStaffs = useMemo(() => {
-    return staffs.map((staff) => ({
+    const filteredByCurrent = currentStaffId ? staffs.filter((staff) => staff.id !== currentStaffId) : staffs;
+
+    return filteredByCurrent.map((staff) => ({
       id: staff.id, // Use real UUID id for API calls
       staffCode: staff.staffCode || staff.id, // Use staffCode for display
       name: `${staff.firstName || ""} ${staff.lastName || ""}`.trim(),
@@ -144,7 +151,7 @@ export default function StaffList() {
       specialization: translatePosition(staff.position),
       rawData: staff, // Keep raw data for detail page
     }));
-  }, [staffs]);
+  }, [staffs, currentStaffId]);
 
   const filteredStaff = transformedStaffs.filter((staff) => {
     const matchesSearch =

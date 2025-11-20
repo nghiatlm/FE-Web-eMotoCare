@@ -23,6 +23,6 @@ export const updateRma = (id, payload) => {
 };
 
 export const updateRmaDetail = (id, payload) => {
-  return api.put(`/v1/rma-details/${id}`, payload);
+  return api.put(`/rma-details/${id}`, payload);
 };
 

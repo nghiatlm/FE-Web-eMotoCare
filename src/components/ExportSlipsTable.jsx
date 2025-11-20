@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Eye, Printer, Edit, FileUp } from "lucide-react";
 import { getExportNotes } from "@/api/exportNotesApi";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { useServiceCenter } from "@/hooks/useServiceCenter";
 
 export default function ExportSlipsTable({ search = "", status = "", woCode = "" }) {
   const [rows, setRows] = useState([]);
@@ -13,13 +12,12 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
   const [pageSize] = useState(10);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState(null);
-  const { serviceCenterId } = useServiceCenter();
 
   const fetchExportNotes = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await getExportNotes(page, pageSize, serviceCenterId);
+      const response = await getExportNotes(page, pageSize);
       
       if (response.success && response.data) {
         // Transform API data to match UI format
@@ -45,10 +43,8 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
   };
 
   useEffect(() => {
-    if (serviceCenterId) {
-      fetchExportNotes();
-    }
-  }, [page, pageSize, serviceCenterId]);
+    fetchExportNotes();
+  }, [page, pageSize]);
 
   useEffect(() => {
     const applyAddSlip = (slip) => {

@@ -8,7 +8,7 @@ export const getServiceCenterInventories = (params = {}) => {
     pageSize: params.pageSize || 10,
     ...(params.search && { search: params.search }),
     ...(params.status && { status: params.status }),
-    ...(params.serviceCenterId && { serviceCenterId: params.serviceCenterId }),
+    // ...(params.serviceCenterId && { serviceCenterId: params.serviceCenterId }),
     ...(params.serviceCenterInventoryName && { serviceCenterInventoryName: params.serviceCenterInventoryName }),
   };
 

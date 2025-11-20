@@ -135,7 +135,19 @@ export default function InformationDetail() {
     );
   }
 
-  const groupedSlots = groupSlotsByDate(serviceCenter.serviceCenterSlots || []);
+  const todayString = format(new Date(), "yyyy-MM-dd");
+  const todaySlots = (serviceCenter.serviceCenterSlots || []).filter((slot) => {
+    if (!slot?.date) return false;
+    try {
+      const slotDate = format(new Date(slot.date), "yyyy-MM-dd");
+      return slotDate === todayString;
+    } catch (error) {
+      console.warn("Invalid slot date:", slot?.date);
+      return false;
+    }
+  });
+
+  const groupedSlots = groupSlotsByDate(todaySlots);
   const sortedDates = Object.keys(groupedSlots).sort();
 
   // Tìm manager từ danh sách staffs
@@ -241,9 +253,9 @@ export default function InformationDetail() {
               <CardTitle className="flex items-center gap-2">
                 <Clock className="h-5 w-5 text-primary" />
                 Lịch làm việc
-                {serviceCenter.serviceCenterSlots && serviceCenter.serviceCenterSlots.length > 0 && (
+                {todaySlots.length > 0 && (
                   <Badge variant="secondary" className="ml-2">
-                    {serviceCenter.serviceCenterSlots.length} slot
+                    {todaySlots.length} slot hôm nay
                   </Badge>
                 )}
               </CardTitle>
