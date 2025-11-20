@@ -3,27 +3,24 @@ import { Modal, Button, Tabs, Select, Space, Input } from "antd";
 import { QRCodeSVG } from "qrcode.react";
 import BookingDetailDrawer from "../../components/service-staff/BookingDetailDrawer";
 import BookingTable from "../../components/service-staff/BookingTable";
-import BookingForm from "../../components/service-staff/BookingForm"; // 🆕 import form tạo
 import { useBookings } from "../../hooks/useBookings";
-import { FilterIcon, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 
 const { Option } = Select;
 
 const StaffBooking = () => {
-  const { data, loading, updateStatus } = useBookings();
+  const { data, loading, updateStatus, fetchBookings } = useBookings();
 
   const [selected, setSelected] = useState(null);
   const [openDrawer, setOpenDrawer] = useState(false);
   const [qrRecord, setQrRecord] = useState(null);
   const [openQRModal, setOpenQRModal] = useState(false);
 
-  // 🆕 modal tạo lịch hẹn
-  const [openCreateModal, setOpenCreateModal] = useState(false);
-
   const [activeTab, setActiveTab] = useState("all");
   const [statusFilter, setStatusFilter] = useState("");
   const [serviceFilter, setServiceFilter] = useState("");
   const [phoneFilter, setPhoneFilter] = useState("");
+  const [codeFilter, setCodeFilter] = useState("");
 
   const normalizeType = (type) => {
     if (!type) return "";
@@ -42,7 +39,10 @@ const StaffBooking = () => {
       const matchPhone = phoneFilter
         ? d.phone?.toLowerCase().includes(phoneFilter.toLowerCase())
         : true;
-      return matchTab && matchStatus && matchService && matchPhone;
+      const matchCode = codeFilter
+        ? d.code?.toLowerCase().includes(codeFilter.toLowerCase())
+        : true;
+      return matchTab && matchStatus && matchService && matchPhone && matchCode;
     });
 
   const handleViewDetail = (record) => {
@@ -79,15 +79,6 @@ const StaffBooking = () => {
 
   return (
     <div style={{ padding: 16 }}>
-      {/* 🆕 Nút mở modal tạo lịch hẹn */}
-      <div className='flex justify-end pb-5 pr-10'>
-        <Button
-          className='bg-blue-600 hover:bg-blue-1000 text-white font-medium px-4 py-2 rounded-lg'
-          onClick={() => setOpenCreateModal(true)}>
-          Tạo lịch hẹn
-        </Button>
-      </div>
-
       {/* Header + Filter */}
       <div
         style={{
@@ -99,7 +90,6 @@ const StaffBooking = () => {
         <h2 style={{ margin: 0 }}>Danh sách Booking</h2>
 
         <Space align='center' size='middle' wrap>
-          <FilterIcon style={{ fontSize: 18, color: "#555" }} />
           <span style={{ fontWeight: 500 }}>Bộ lọc:</span>
 
           <Select
@@ -132,6 +122,14 @@ const StaffBooking = () => {
             style={{ width: 180 }}
           />
 
+          <Input
+            placeholder='Tìm theo mã booking'
+            value={codeFilter}
+            onChange={(e) => setCodeFilter(e.target.value)}
+            style={{ width: 180 }}
+            allowClear
+          />
+
           <RotateCcw
             size={20}
             style={{
@@ -143,6 +141,7 @@ const StaffBooking = () => {
               setStatusFilter("");
               setServiceFilter("");
               setPhoneFilter("");
+              setCodeFilter("");
               setActiveTab("all");
             }}
             onMouseEnter={(e) => (e.currentTarget.style.color = "#1677ff")}
@@ -204,20 +203,6 @@ const StaffBooking = () => {
         )}
       </Modal>
 
-      {/* 🆕 Modal tạo lịch hẹn */}
-      <Modal
-        title='Tạo lịch hẹn mới'
-        open={openCreateModal}
-        onCancel={() => setOpenCreateModal(false)}
-        footer={null}
-        centered>
-        <BookingForm
-          onSuccess={() => {
-            setOpenCreateModal(false);
-            // Có thể refetch danh sách sau khi tạo
-          }}
-        />
-      </Modal>
     </div>
   );
 };

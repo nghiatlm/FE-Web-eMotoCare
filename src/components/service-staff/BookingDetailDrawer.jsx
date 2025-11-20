@@ -185,7 +185,7 @@ export default function BookingDetailDrawer({
             </Tag>
           </div>
         }
-        width='80%'
+        width='90%'
         open={open}
         onClose={onClose}
         bodyStyle={{ background: "#fff7f3", paddingBottom: 80 }}>

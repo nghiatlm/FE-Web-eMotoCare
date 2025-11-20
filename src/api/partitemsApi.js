@@ -5,4 +5,4 @@ export const getPartItemById = (id, config) =>
   api.get(`${BASE_URL}/${id}`, config);
 
 export const getSuggestedPartItems = (evCheckDetailId, config) =>
-  api.get(`${BASE_URL}/${evCheckDetailId}/part-items`, config);
+  api.get(`${BASE_URL}/ev-check-detail/${evCheckDetailId}`, config);

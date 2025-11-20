@@ -21,6 +21,7 @@ const TechnicianPage = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [serviceFilter, setServiceFilter] = useState("");
   const [phoneFilter, setPhoneFilter] = useState("");
+  const [codeFilter, setCodeFilter] = useState("");
 
   // ✅ Lấy staff_id từ localStorage (khi đăng nhập backend sẽ lưu vào token/localStorage)
   // ✅ Lấy staffId đúng cách
@@ -44,7 +45,10 @@ const TechnicianPage = () => {
       const matchPhone = phoneFilter
         ? d.phone?.toLowerCase().includes(phoneFilter.toLowerCase())
         : true;
-      return matchTab && matchStatus && matchService && matchPhone;
+      const matchCode = codeFilter
+        ? d.code?.toLowerCase().includes(codeFilter.toLowerCase())
+        : true;
+      return matchTab && matchStatus && matchService && matchPhone && matchCode;
     });
 
   const handleViewDetail = (record) => {
@@ -88,7 +92,7 @@ const TechnicianPage = () => {
           justifyContent: "space-between",
           alignItems: "center",
         }}>
-        <h2 style={{ margin: 0 }}>Danh sách phương tiện được phân công</h2>
+        <h2 style={{ margin: 0 }}>Danh sách được phân công</h2>
 
         <Space align='center' size='middle' wrap>
           <FilterIcon style={{ fontSize: 18, color: "#555" }} />
@@ -124,6 +128,14 @@ const TechnicianPage = () => {
             style={{ width: 180 }}
           />
 
+          <Input
+            placeholder='Tìm theo mã booking'
+            value={codeFilter}
+            onChange={(e) => setCodeFilter(e.target.value)}
+            style={{ width: 180 }}
+            allowClear
+          />
+
           <RotateCcw
             size={20}
             style={{
@@ -135,6 +147,7 @@ const TechnicianPage = () => {
               setStatusFilter("");
               setServiceFilter("");
               setPhoneFilter("");
+              setCodeFilter("");
               setActiveTab("all");
             }}
             onMouseEnter={(e) => (e.currentTarget.style.color = "#1677ff")}

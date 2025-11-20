@@ -39,77 +39,30 @@ export const getSuggestedPartItemsByEvCheckDetailId = async (
   return res?.data?.data || res?.data || res || [];
 };
 
-// export const getPartItemsService = async (config = {}) => {
-//   try {
-//     const res = await getPartItem(config);
-
-//     const rowDatas = res?.data?.rowDatas || [];
-
-//     if (rowDatas.length === 0) {
-//       console.warn("Không có dữ liệu part-items");
-//       return [];
-//     }
-
-//     return rowDatas.map((item) => {
-//       const part = item.part || {};
-//       return {
-//         value: part.code || item.id,
-//         label: part.name || "Không tên",
-//         price: Number(item.price) || 0,
-//         partItemId: item.id,
-//       };
-//     });
-//   } catch (error) {
-//     console.error("Lỗi getPartItemsService:", error);
-//     return [];
-//   }
-// };
-
-const MODEL_TO_CODE_KEYWORD = {
-  "VinFast Evo200": "EVO200",
-  "VinFast Klara S": "KLARAS",
-
-  // Thêm xe mới ở đây
-};
-
-/**
- * LẤY PARTITEM THEO MODEL (EVO200, Klara S,...)
- * Lọc theo prefix trong part.code
- */
-export const getPartItemsByModelService = async (
-  modelName = "VinFast Evo200",
-  config = {}
-) => {
+export const getPartItemsService = async (params = {}) => {
   try {
-    const res = await getPartItem(config);
-    const rowDatas = res?.data?.rowDatas || [];
+    // 👈 GÓI VÀO params CHO AXIOS
+    const res = await getPartItem({ params });
 
-    // LẤY KEYWORD TỪ modelName
-    const keyword = MODEL_TO_CODE_KEYWORD[modelName] || "EVO200";
+    const rowDatas =
+      res?.data?.data?.rowDatas || res?.data?.rowDatas || res?.rowDatas || [];
 
-    // LỌC: code CHỨA keyword (case-insensitive)
-    const filtered = rowDatas.filter((item) => {
-      const part = item.part || {};
-      const code = (part.code || "").toUpperCase();
-      return code.includes(keyword);
-    });
+    if (!Array.isArray(rowDatas) || rowDatas.length === 0) {
+      console.warn("Không có dữ liệu part-items");
+      return [];
+    }
 
-    console.log(
-      `Lọc được ${filtered.length} PartItem cho xe "${modelName}" (tìm: "${keyword}")`
-    );
-
-    return filtered.map((item) => {
+    return rowDatas.map((item) => {
       const part = item.part || {};
       return {
-        value: item.id,
-        label: `${part.name || "Không tên"} (${part.code || "N/A"})`,
+        value: item.id, // id của partItem
+        label: part.name || "Không tên", // tên phụ tùng
         price: Number(item.price) || 0,
         partItemId: item.id,
-        partCode: part.code,
       };
     });
   } catch (error) {
-    console.error("Lỗi getPartItemsByModelService:", error);
+    console.error("Lỗi getPartItemsService:", error);
     return [];
   }
 };

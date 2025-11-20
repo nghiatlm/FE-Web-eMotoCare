@@ -22,6 +22,7 @@ import NotFound from "./pages/NotFound";
 // service staff
 import { StaffSidebar } from "./components/service-staff/StaffSidebar";
 import StaffBooking from "./pages/service-staff/StaffBooking";
+import CreateBooking from "./pages/service-staff/CreateBooking";
 import StaffWarrantyPage from "./pages/service-staff/StaffWarrantyPage";
 
 // technician
@@ -89,9 +90,11 @@ const App = () => (
                     <Routes>
                       <Route
                         path=''
-                        element={<Navigate to='booking' replace />}
+                        element={<Navigate to='booking/list' replace />}
                       />
-                      <Route path='booking' element={<StaffBooking />} />
+                      <Route path='booking/create' element={<CreateBooking />} />
+                      <Route path='booking/list' element={<StaffBooking />} />
+                      <Route path='booking' element={<Navigate to='booking/list' replace />} />
                       <Route path='warranty' element={<StaffWarrantyPage />} />
 
                       <Route path='*' element={<NotFound />} />

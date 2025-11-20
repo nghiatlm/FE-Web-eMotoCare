@@ -115,7 +115,11 @@ export default function RMAConfirmationModal({
         </Button>,
       ]}>
       <p className='mb-4'>
-        Xác nhận tạo <b>01 yêu cầu RMA</b> cho các phụ tùng sau:
+        Xác nhận tạo <b>01 yêu cầu RMA</b> cho <b>{partsForRMA.length} phụ tùng</b> sau:
+        <br />
+        {/* <span className='text-sm text-gray-500'>
+          (Mỗi phụ tùng sẽ tạo 1 RMADetail, tất cả gom vào 1 RMA)
+        </span> */}
       </p>
 
       <List

@@ -3,8 +3,13 @@ import api from "./api";
 const BASE_URL = "/v1/appointments";
 
 // Lấy danh sách lịch hẹn
-export const getAppointments = ({ page = 1, pageSize = 20 } = {}) =>
-  api.get(BASE_URL, { params: { page, pageSize } });
+export const getAppointments = ({ page = 1, pageSize = 20, serviceCenterId } = {}) => {
+  const params = { page, pageSize };
+  if (serviceCenterId) {
+    params.serviceCenterId = serviceCenterId;
+  }
+  return api.get(BASE_URL, { params });
+};
 export const postAppointment = (data) => api.post(BASE_URL, data);
 
 // Lấy chi tiết 1 lịch hẹn

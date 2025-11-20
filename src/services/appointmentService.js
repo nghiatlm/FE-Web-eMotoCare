@@ -10,9 +10,9 @@ import * as QRCode from "qrcode";
 import { uploadDataUrl } from "../utils/firebaseUpload";
 
 // LIST
-export const fetchAppointments = async ({ page = 1, pageSize = 20 }) => {
+export const fetchAppointments = async ({ page = 1, pageSize = 20, serviceCenterId } = {}) => {
   try {
-    return await getAppointments({ page, pageSize });
+    return await getAppointments({ page, pageSize, serviceCenterId });
   } catch (error) {
     console.error("Lỗi lấy danh sách lịch hẹn:", error);
     throw error;
@@ -31,7 +31,7 @@ export const approveAppointmentService = async (appointmentId) => {
   const approveById = staff?.id;
   if (!approveById) throw new Error("Không tìm thấy staffId để duyệt lịch");
 
-  // 2. Lấy thông tin appointment để lấy code (checkinCode)
+  // 2. Lấy thông tin appointment để lấy code (checkinCode) và note
   const appointmentRes = await getAppointmentById(appointmentId);
   const appointment = appointmentRes?.data || appointmentRes;
   const code = appointment?.code;
@@ -44,23 +44,19 @@ export const approveAppointmentService = async (appointmentId) => {
   const path = `appointments/${appointmentId}/checkin.png`;
   const qrUrl = await uploadDataUrl(path, qrDataUrl);
 
-  // 5. PUT status = APPROVED + approveById + checkinQRCode (gửi một lần)
+  // 5. PUT status = APPROVED + approveById + checkinQRCode + note (giữ lại note)
   const res = await updateAppointment(appointmentId, {
     status: "APPROVED",
     approveById,
     checkinQRCode: qrUrl,
+    note: appointment?.note || "", // ✅ Giữ lại note
   });
 
   return res.data;
 };
 
 // --- Check-in appointment (FE gửi đầy đủ các field theo yêu cầu BE) ---
-export const checkinAppointmentService = async (
-  appointmentId,
-  code,
-  qrUrl,
-  note = ""
-) => {
+export const checkinAppointmentService = async (appointmentId, code, qrUrl) => {
   try {
     if (!code || typeof code !== "string" || code.trim() === "") {
       throw new Error("Mã check-in không hợp lệ.");
@@ -75,12 +71,16 @@ export const checkinAppointmentService = async (
     const approveById = staff?.id;
     if (!approveById) throw new Error("Không tìm thấy staffId để check-in");
 
+    // Lấy thông tin appointment hiện tại để giữ lại note
+    const appointmentRes = await getAppointmentById(appointmentId);
+    const appointment = appointmentRes?.data || appointmentRes;
+
     return await updateAppointment(appointmentId, {
       status: "CHECKED_IN",
-
       approveById,
       code: code.trim(),
       checkinQRCode: qrUrl.trim(),
+      note: appointment?.note || "", // ✅ Giữ lại note
     });
   } catch (error) {
     console.error("Lỗi check-in appointment:", error);

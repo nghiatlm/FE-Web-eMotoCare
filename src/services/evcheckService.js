@@ -51,12 +51,15 @@ export const fetchEVCheckDetailsServiceRe = async (checkId) => {
     );
 
     let evCheckDetails = [];
+    let status = null;
 
     // Xử lý nested evCheckDetails từ EVCheck object
     if (data?.data?.evCheckDetails && Array.isArray(data.data.evCheckDetails)) {
       evCheckDetails = data.data.evCheckDetails;
+      status = data.data.status || null;
     } else if (Array.isArray(data?.evCheckDetails)) {
       evCheckDetails = data.evCheckDetails;
+      status = data.status || null;
     }
 
     // Lọc bỏ null/undefined
@@ -64,10 +67,12 @@ export const fetchEVCheckDetailsServiceRe = async (checkId) => {
 
     console.log("✅ Parsed evCheckDetails:", evCheckDetails);
     console.log("✅ Total items:", evCheckDetails.length);
+    console.log("✅ EVCheck status:", status);
 
     return {
       odometer: data?.data?.odometer || data?.odometer || 0,
       evCheckDetails: evCheckDetails,
+      status: status, // ✅ Trả về status từ EVCheck
     };
   } catch (error) {
     console.error("❌ fetchEVCheckDetailsService ERROR:", error);
@@ -101,9 +106,11 @@ export const fetchEVCheckDetailsServiceRe = async (checkId) => {
 
       console.log("✅ Fallback parsed evCheckDetails:", evCheckDetails);
 
+      // ✅ Fallback không có status vì API list details không trả về EVCheck status
       return {
         odometer: 0,
         evCheckDetails: evCheckDetails,
+        status: null, // Fallback không có status
       };
     } catch (fallbackError) {
       console.error("❌ Fallback also failed:", fallbackError);

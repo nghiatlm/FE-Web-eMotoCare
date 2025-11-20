@@ -113,6 +113,27 @@ function RMADetails({ rma, details = [], loading }) {
               render: (_, row) =>
                 row.partItem?.part?.name || row.partItem?.serialNumber || "—",
             },
+            {
+              title: "Hình ảnh",
+              dataIndex: "partItem",
+              render: (partItem) =>
+                partItem &&
+                partItem.part.images &&
+                partItem.part.images.length > 0 ? (
+                  <img
+                    src={partItem.part.images[0]}
+                    alt='Part Item'
+                    style={{ width: 50, height: 50, objectFit: "cover" }}
+                  />
+                ) : (
+                  <span>—</span>
+                ),
+            },
+            {
+              title: "Số serial",
+              render: (_, row) =>
+                row.evCheckDetail?.partItem?.serialNumber || "—",
+            },
             { title: "SL", dataIndex: "quantity", width: 80 },
             { title: "Lý do", dataIndex: "reason" },
             {

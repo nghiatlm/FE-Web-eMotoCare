@@ -51,7 +51,8 @@ export default function MaintenanceModeEVCheck({
 
   // RMA modal
   const [isRMAConfirmationOpen, setIsRMAConfirmationOpen] = useState(false);
-  const [currentRMAParts, setCurrentRMAParts] = useState([]); // luôn truyền mảng, nhưng mỗi lần chỉ 1 phần tử
+  const [currentRMAParts, setCurrentRMAParts] = useState([]);
+  const [selectedRMAItems, setSelectedRMAItems] = useState(new Set()); // ✅ Set các item ID đã chọn để tạo RMA
 
   // -------- Helpers --------
   const loadEVCheckDetails = async () => {
@@ -97,7 +98,7 @@ export default function MaintenanceModeEVCheck({
             : null,
           replacePartId: partItemId,
           partName: partItemName,
-          result: item.result ?? "",
+          result: item.result ?? "Tốt", // ✅ Mặc định "Tốt"
           remedies: item.remedies ?? item.solution ?? "",
           warranty: item.warranty ?? false,
           quantity: item.quantity ?? 1,
@@ -187,13 +188,46 @@ export default function MaintenanceModeEVCheck({
     return start && end && now >= start && now <= end;
   };
 
-  const isRMAEligible = (row) =>
-    row.remedies === "REPLACE" &&
-    checkWarrantyStatus(row.partItem) &&
-    row.partItem;
+  // ✅ Kiểm tra item đã có RMA chưa
+  const hasRMA = (row) => {
+    return !!(row.rmaDetail || row.rmaDetailId || row.rmaDetail?.id);
+  };
 
-  const openRMAForRow = (row) => {
-    const oneItem = {
+  // ✅ Cho phép tạo RMA khi: còn bảo hành + có partItem + kết quả khác "Tốt" (hoặc rỗng) + chưa có RMA
+  const isRMAEligible = (row) => {
+    const result = (row.result || "").trim().toLowerCase();
+    // ✅ Kết quả khác "Tốt" hoặc rỗng (technician đã xóa để nhập lại)
+    const isNotGood = result !== "tốt" && result !== "tot" && result !== "";
+    return (
+      checkWarrantyStatus(row.partItem) &&
+      row.partItem &&
+      isNotGood && // ✅ Kết quả khác "Tốt" hoặc rỗng
+      !hasRMA(row) // ✅ Chưa có RMA
+    );
+  };
+
+  // ✅ Toggle chọn/bỏ chọn item cho RMA
+  const toggleRMAItem = (rowId) => {
+    setSelectedRMAItems((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(rowId)) {
+        newSet.delete(rowId);
+      } else {
+        newSet.add(rowId);
+      }
+      return newSet;
+    });
+  };
+
+  // ✅ Mở modal RMA với các items đã chọn
+  const openRMAModal = () => {
+    const selectedItems = evCheckDetails.filter((d) => selectedRMAItems.has(d.id) && isRMAEligible(d));
+    
+    if (selectedItems.length === 0) {
+      return message.warning("Vui lòng chọn ít nhất 1 phụ tùng để tạo RMA.");
+    }
+
+    const rmaItems = selectedItems.map((row) => ({
       id: row.id,
       PhuTungThayThe:
         row.partName || row.partItem?.part?.name || "Không rõ tên PT",
@@ -202,8 +236,10 @@ export default function MaintenanceModeEVCheck({
       partName: row.partName,
       quantity: row.quantity,
       unit: row.unit,
-    };
-    setCurrentRMAParts([oneItem]); // chỉ 1 phần tử
+      remedies: row.remedies,
+    }));
+
+    setCurrentRMAParts(rmaItems);
     setIsRMAConfirmationOpen(true);
   };
 
@@ -221,6 +257,17 @@ export default function MaintenanceModeEVCheck({
   const handleChange = (index, field, value) => {
     if (evCheckStatus === "INSPECTION_COMPLETED") return;
     if (evCheckStatus === "QUOTE_APPROVED" && field !== "status") return;
+
+    // ✅ Ngăn chọn REPLACE hoặc REPAIR khi còn bảo hành
+    if (field === "remedies" && (value === "REPLACE" || value === "REPAIR")) {
+      const currentRow = evCheckDetails[index];
+      if (checkWarrantyStatus(currentRow?.partItem)) {
+        message.error(
+          "Bộ phận đang trong thời gian bảo hành. Chỉ cho phép 'Kiểm tra' hoặc 'Bôi trơn'."
+        );
+        return; // Không cho thay đổi
+      }
+    }
 
     setEvCheckDetails((prev) =>
       prev.map((row, i) => {
@@ -277,6 +324,16 @@ export default function MaintenanceModeEVCheck({
       setLoading(true);
       message.loading("Đang gửi dữ liệu kiểm tra...", 0);
 
+      // ✅ Kiểm tra: nếu còn bảo hành thì không cho chọn REPLACE hoặc REPAIR
+      for (const item of evCheckDetails) {
+        if ((item.remedies === "REPLACE" || item.remedies === "REPAIR") && checkWarrantyStatus(item.partItem)) {
+          message.destroy();
+          return message.error(
+            "Bộ phận đang trong thời gian bảo hành. Chỉ cho phép 'Kiểm tra' hoặc 'Bôi trơn'."
+          );
+        }
+      }
+
       for (const item of evCheckDetails) {
         const currentStatus = item.status || "PENDING";
         const normalizedStatus =
@@ -289,7 +346,7 @@ export default function MaintenanceModeEVCheck({
           null;
 
         const payload = {
-          result: item.result ?? "",
+          result: (item.result || "").trim() || "Tốt", // ✅ Nếu rỗng thì mặc định "Tốt"
           remedies: item.remedies ?? "",
           warranty: item.warranty,
           quantity: Number(item.quantity),
@@ -406,9 +463,15 @@ export default function MaintenanceModeEVCheck({
       width: 700,
       render: (_, r, i) => (
         <Input.TextArea
-          placeholder='Nhập kết quả kiểm tra...'
-          value={r.result || ""}
+          placeholder='Nhập kết quả kiểm tra (mặc định: Tốt, có thể xóa để nhập lại)...'
+          value={r.result ?? ""}
           onChange={(e) => handleChange(i, "result", e.target.value)}
+          onBlur={(e) => {
+            // ✅ Nếu để trống khi blur, tự động set về "Tốt"
+            if (!e.target.value.trim()) {
+              handleChange(i, "result", "Tốt");
+            }
+          }}
           disabled={!canEditFields}
           autoSize={{ minRows: 2, maxRows: 8 }}
           style={{ resize: "none", fontSize: 14, lineHeight: 1.5 }}
@@ -418,19 +481,27 @@ export default function MaintenanceModeEVCheck({
     {
       title: "Biện pháp",
       width: 110,
-      render: (_, r, i) => (
-        <Select
-          placeholder='Chọn'
-          value={r.remedies}
-          style={{ width: 100 }}
-          onChange={(v) => handleChange(i, "remedies", v)}
-          disabled={!canEditFields}>
-          <Option value='NONE'>Bôi trơn</Option>
-          <Option value='REPLACE'>Thay thế</Option>
-          <Option value='REPAIR'>Sửa chữa</Option>
-          <Option value='CHECK'>Kiểm tra</Option>
-        </Select>
-      ),
+      render: (_, r, i) => {
+        const isWarranty = checkWarrantyStatus(r.partItem);
+        return (
+          <Select
+            placeholder='Chọn'
+            value={r.remedies}
+            style={{ width: 100 }}
+            onChange={(v) => handleChange(i, "remedies", v)}
+            disabled={!canEditFields}>
+            <Option value='NONE'>Bôi trơn</Option>
+            {/* ✅ Nếu đang bảo hành thì không cho chọn "Thay thế" và "Sửa chữa" */}
+            <Option value='REPLACE' disabled={isWarranty}>
+              Thay thế
+            </Option>
+            <Option value='REPAIR' disabled={isWarranty}>
+              Sửa chữa
+            </Option>
+            <Option value='CHECK'>Kiểm tra</Option>
+          </Select>
+        );
+      },
     },
     {
       title: "Bảo hành",
@@ -456,7 +527,11 @@ export default function MaintenanceModeEVCheck({
         <Select
           placeholder='Chọn'
           value={r.replacePart || undefined}
-          disabled={!canEditFields || r.remedies !== "REPLACE"}
+          disabled={
+            !canEditFields ||
+            r.remedies !== "REPLACE" ||
+            checkWarrantyStatus(r.partItem)
+          }
           labelInValue
           loading={partLoading}
           style={{ width: "100%" }}
@@ -648,22 +723,59 @@ export default function MaintenanceModeEVCheck({
     },
   };
 
-  // Cột RMA từng dòng (chỉ hiện khi readOnly = true)
+  // ✅ Cột RMA: checkbox để chọn nhiều items
+  const eligibleItems = evCheckDetails.filter((r) => isRMAEligible(r));
+  const allSelected = eligibleItems.length > 0 && eligibleItems.every((r) => selectedRMAItems.has(r.id));
+  const someSelected = eligibleItems.some((r) => selectedRMAItems.has(r.id));
+
   const rmaColumn = {
-    title: "RMA",
+    title: (
+      <div className='flex items-center gap-2'>
+        <span>RMA</span>
+        {readOnly && eligibleItems.length > 0 && (
+          <Checkbox
+            checked={allSelected}
+            indeterminate={someSelected && !allSelected}
+            onChange={(e) => {
+              if (e.target.checked) {
+                // Chọn tất cả items đủ điều kiện
+                const allIds = new Set(eligibleItems.map((r) => r.id));
+                setSelectedRMAItems(allIds);
+              } else {
+                // Bỏ chọn tất cả
+                setSelectedRMAItems(new Set());
+              }
+            }}
+            onClick={(e) => e.stopPropagation()}
+            title='Chọn tất cả'
+          />
+        )}
+      </div>
+    ),
     width: 120,
+    align: "center",
     render: (_, r) => {
-      if (!readOnly) return <span className='text-gray-400'>-</span>;
+      // ✅ Nếu đã có RMA, hiển thị badge thay vì checkbox
+      if (hasRMA(r)) {
+        return (
+          <Tag color='success' style={{ margin: 0 }}>
+            Đã tạo RMA
+          </Tag>
+        );
+      }
+
       const eligible = isRMAEligible(r);
       if (!eligible) return <span className='text-gray-400'>-</span>;
+      
+      const isSelected = selectedRMAItems.has(r.id);
+      
       return (
-        <Button
-          size='small'
-          type='primary'
-          danger
-          onClick={() => openRMAForRow(r)}>
-          Tạo RMA
-        </Button>
+        <input
+          type='checkbox'
+          checked={isSelected}
+          onChange={() => toggleRMAItem(r.id)}
+          className='w-4 h-4 cursor-pointer'
+        />
       );
     },
   };
@@ -672,7 +784,8 @@ export default function MaintenanceModeEVCheck({
   if (!readOnly && evCheckStatus === "REPAIR_IN_PROGRESS") {
     columns = [...columns, statusColumnForRepair];
   }
-  if (readOnly) {
+  // ✅ Chỉ hiện cột RMA cho staff (readOnly = true), technician không được tạo RMA
+  if (readOnly && evCheckDetails.some((r) => isRMAEligible(r))) {
     columns = [...columns, rmaColumn];
   }
 
@@ -701,6 +814,9 @@ export default function MaintenanceModeEVCheck({
               gap: 8,
             }}>
             {!readOnly &&
+              evCheckStatus !== "REPAIR_COMPLETED" &&
+              evCheckStatus !== "COMPLETED" &&
+              evCheckStatus !== "QUOTE_APPROVED" &&
               evCheckStatus !== "INSPECTION_COMPLETED" &&
               evCheckStatus !== "REPAIR_IN_PROGRESS" && (
                 <Button
@@ -734,15 +850,31 @@ export default function MaintenanceModeEVCheck({
         </>
       )}
 
-      {/* Modal xác nhận RMA – mỗi lần chỉ chứa 1 dòng */}
+      {/* ✅ Nút tạo RMA chỉ cho staff (readOnly = true), technician không được tạo */}
+      {readOnly && selectedRMAItems.size > 0 && (
+        <div className='flex justify-end mt-4' style={{ marginTop: 16 }}>
+          <Button
+            type='primary'
+            danger
+            onClick={openRMAModal}
+            disabled={selectedRMAItems.size === 0}>
+            Tạo RMA ({selectedRMAItems.size} phụ tùng)
+          </Button>
+        </div>
+      )}
+
+      {/* Modal xác nhận RMA – gom nhiều items thành 1 RMA */}
       <RMAConfirmationModal
         open={isRMAConfirmationOpen}
-        onClose={() => setIsRMAConfirmationOpen(false)}
+        onClose={() => {
+          setIsRMAConfirmationOpen(false);
+          setSelectedRMAItems(new Set()); // ✅ Clear selection sau khi đóng
+        }}
         booking={booking}
         partsForRMA={currentRMAParts}
         onRMASuccess={() => {
           const rmaDetailIds = currentRMAParts.map((p) => p.id);
-
+          setSelectedRMAItems(new Set()); // ✅ Clear selection sau khi tạo thành công
           message.info("Đang đồng bộ lại chi tiết EV Check...");
           loadEVCheckDetails();
           setIsRMAConfirmationOpen(false);
