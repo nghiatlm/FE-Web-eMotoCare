@@ -35,7 +35,3 @@ export const assignTechnician = (appointmentId, technicianId, approveById) =>
     {},
     { params: { id: appointmentId, technicianId, approveById } }
   );
-
-// Lấy danh sách phụ tùng thiếu của appointment
-export const getAppointmentMissingParts = (appointmentId) =>
-  api.get(`${BASE_URL}/${appointmentId}/missing-parts`);

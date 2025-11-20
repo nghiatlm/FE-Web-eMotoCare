@@ -1,5 +1,5 @@
 // src/contexts/AuthContext.jsx
-import React, { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
 
@@ -22,7 +22,6 @@ export const AuthProvider = ({ children }) => {
       if (roleName === "ROLE_ADMIN") navigate("/admin");
       else if (roleName === "ROLE_STAFF") navigate("/staff");
       else if (roleName === "ROLE_TECHNICIAN") navigate("/technician");
-      else if (roleName === "ROLE_MANAGER") navigate("/manager");
       else if (roleName === "ROLE_STOREKEEPER") navigate("/storekeeper");
       else navigate("/");
     } catch (error) {
@@ -36,6 +35,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     authService.logout();
     setUser(null);
+    localStorage.removeItem("token");
     navigate("/login");
   };
 

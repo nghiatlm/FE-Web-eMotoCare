@@ -13,6 +13,7 @@ export const authService = {
 
   logout() {
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
   },
 
   getCurrentUser() {

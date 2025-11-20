@@ -13,6 +13,8 @@ import {
 
 const menuItems = [
   { title: "Booking", icon: CalendarCheck, url: "/staff/booking" },
+  { title: "Bảo hành", icon: CalendarCheck, url: "/staff/warranty" },
+
   // Sau này chỉ cần thêm:
   // { title: "Vehicles", icon: Bike, url: "/staff/vehicles" },
   // { title: "Reports", icon: BarChart3, url: "/staff/reports" },

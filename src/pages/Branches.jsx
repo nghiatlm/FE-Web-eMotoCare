@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Search, Plus, Download, Filter, Building2, MapPin, Mail, Phone, Hash, Info, Clock, Calendar, Users, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +13,6 @@ import BranchesTable from "@/components/BranchesTable";
 import { createServiceCenter, updateServiceCenter, getServiceCenterById } from "@/api/serviceCentersApi";
 
 export default function Branches() {
-  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [manager, setManager] = useState("");
@@ -92,13 +90,8 @@ export default function Branches() {
       setIsEditOpen(true);
     };
     window.openViewBranch = (row) => {
-      const id = row?.id || row?.code;
-      if (id) {
-        navigate(`/admin/branches/${id}`);
-      } else {
-        setSelected(row);
-        setIsViewOpen(true);
-      }
+      setSelected(row);
+      setIsViewOpen(true);
     };
     return () => {
       if (window.openEditBranch) delete window.openEditBranch;
@@ -111,6 +104,7 @@ export default function Branches() {
     const tmpId = `BR-${Date.now()}`;
     const statusUpper = String(form.status || "active").toUpperCase();
 
+    // Build API body per backend contract
     const body = {
       code: form.code || `SC-${Date.now()}`,
       name: form.name,
@@ -190,7 +184,6 @@ export default function Branches() {
     } finally {
       setIsEditOpen(false);
       setSelected(null);
-      resetForm();
     }
   };
 
@@ -260,10 +253,7 @@ export default function Branches() {
             )}
 
             <div className="flex items-center gap-3 ml-auto">
-              <Button className="gap-2 bg-primary hover:bg-primary/90" onClick={() => {
-                resetForm();
-                setIsAddOpen(true);
-              }}>
+              <Button className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setIsAddOpen(true)}>
                 <Plus className="h-4 w-4" />
                 Thêm chi nhánh
               </Button>
@@ -334,13 +324,7 @@ export default function Branches() {
           </DialogContent>
         </Dialog>
 
-        <Dialog open={isEditOpen} onOpenChange={(o) => { 
-          setIsEditOpen(o); 
-          if (!o) {
-            setSelected(null);
-            resetForm();
-          }
-        }}>
+        <Dialog open={isEditOpen} onOpenChange={(o) => { setIsEditOpen(o); if (!o) setSelected(null); }}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Chỉnh sửa chi nhánh</DialogTitle>

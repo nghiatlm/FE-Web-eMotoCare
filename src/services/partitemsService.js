@@ -1,4 +1,4 @@
-import { getPartItem } from "../api/partitemsApi";
+import { getPartItem, getSuggestedPartItems } from "../api/partitemsApi";
 
 /**
  * Tìm kiếm Part Items (GET /v1/part-items?search=keyword)
@@ -21,15 +21,16 @@ export const searchPartItemsService = async (
     price: Number(item.price) || 0,
   }));
 };
-// Lấy chi tiết 1 part-item theo id
 export const getPartItemByIdService = async (id) => {
   const res = await getPartItemById(id);
-  const data = res?.data?.data || {};
-  return {
-    id: data.id,
-    serialNumber: data.serialNumber || "",
-    price: Number(data.price) || 0,
-    // BE của bạn có thể trả part = null -> name fallback sẽ xử lý ở component
-    part: data.part || null,
-  };
+  return res?.data?.data || res?.data || res;
+};
+
+// Lấy danh sách gợi ý PartItem cho 1 EVCheckDetail
+export const getSuggestedPartItemsByEvCheckDetailId = async (
+  evCheckDetailId
+) => {
+  const res = await getSuggestedPartItems(evCheckDetailId);
+  // BE có thể trả về {data:{data:[...]}} hoặc {data:[...]} hoặc [...]
+  return res?.data?.data || res?.data || res || [];
 };

@@ -22,7 +22,7 @@ export default function Login() {
       const res = await login(email, password);
       console.log("Đăng nhập thành công:", res);
     } catch {
-      setError("Sai email hoặc mật khẩu");
+      setError("Sai số điện thoại hoặc mật khẩu");
     }
   };
 
@@ -32,11 +32,11 @@ export default function Login() {
         <div>
           <label className='font-medium block mb-1'>Email</label>
           <input
-            type='email'
+            type='tel'
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className='w-full mt-2 px-3 py-2 text-gray-700 bg-transparent outline-none border rounded-lg shadow-sm focus:border-red-600 border-gray-200'
-            placeholder='Nhập email của bạn'
+            placeholder='Nhập số điện thoại của bạn'
           />
         </div>
 
