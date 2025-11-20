@@ -6,3 +6,7 @@ export const getPartItemById = (id, config) =>
 
 export const getSuggestedPartItems = (evCheckDetailId, config) =>
   api.get(`${BASE_URL}/ev-check-detail/${evCheckDetailId}`, config);
+
+// ✅ Lấy phụ tùng theo service center
+export const getPartItemsByServiceCenter = (serviceCenterId, config) =>
+  api.get(`${BASE_URL}/service-center/${serviceCenterId}`, config);

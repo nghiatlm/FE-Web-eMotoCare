@@ -1,5 +1,5 @@
 // src/components/service-staff/BookingForm.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Form, InputNumber, DatePicker, Button, Select, Input } from "antd";
 
 import { getCustomersService } from "../../services/customerService";
@@ -31,6 +31,8 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
   const [centers, setCenters] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [loadingVehicles, setLoadingVehicles] = useState(false);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
+  const [customerSearchText, setCustomerSearchText] = useState("");
 
   // 👉 danh sách slot khả dụng sau khi filter theo center + ngày
   const [availableSlots, setAvailableSlots] = useState([]);
@@ -49,10 +51,57 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
       setVehicles([]);
       setAvailableSlots([]);
       setVehicleStages([]);
+      setCustomerSearchText("");
     }
   }, [resetKey, form]);
 
-  // ====== LOAD CUSTOMER + SERVICE CENTER + STAFF INFO ======
+  // ✅ Cleanup timeout khi component unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // ✅ Debounce timer ref
+  const searchTimeoutRef = useRef(null);
+
+  // ====== LOAD CUSTOMERS VỚI SEARCH ======
+  const loadCustomers = async (searchText = "") => {
+    try {
+      setLoadingCustomers(true);
+      const params = {};
+      if (searchText && searchText.trim()) {
+        params.search = searchText.trim();
+      }
+      const cusRes = await getCustomersService(params);
+      const customersList = Array.isArray(cusRes) ? cusRes : [];
+      setCustomers(customersList);
+    } catch (err) {
+      console.error("Lỗi load khách hàng:", err);
+      setCustomers([]);
+    } finally {
+      setLoadingCustomers(false);
+    }
+  };
+
+  // ✅ Handle search với debounce
+  const handleCustomerSearch = (value) => {
+    setCustomerSearchText(value);
+    
+    // ✅ Clear timeout trước đó
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // ✅ Debounce: đợi 300ms sau khi user ngừng gõ mới gọi API
+    searchTimeoutRef.current = setTimeout(() => {
+      loadCustomers(value);
+    }, 300);
+  };
+
+  // ====== LOAD SERVICE CENTER + STAFF INFO ======
   useEffect(() => {
     const fetchInit = async () => {
       try {
@@ -83,13 +132,11 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
 
         setCurrentServiceCenterId(staffServiceCenterId);
 
-        const [cusRes, cenRes] = await Promise.all([
-          getCustomersService(),
-          getServiceCentersService(),
-        ]);
-
-        setCustomers(Array.isArray(cusRes) ? cusRes : []);
+        const cenRes = await getServiceCentersService();
         setCenters(Array.isArray(cenRes) ? cenRes : []);
+
+        // ✅ Load customers lần đầu (không có search)
+        await loadCustomers();
 
         // ✅ Set serviceCenterId mặc định từ staff
         if (staffServiceCenterId) {
@@ -297,17 +344,26 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
         name='customerId'
         rules={[{ required: true, message: "Chọn khách hàng!" }]}>
         <Select
-          placeholder='Chọn khách hàng'
+          placeholder='Chọn khách hàng (có thể tìm theo tên hoặc SĐT)'
           showSearch
-          optionFilterProp='children'
+          filterOption={false} // ✅ Tắt filter ở frontend, dùng API search
+          onSearch={handleCustomerSearch} // ✅ Gọi API search với debounce
+          loading={loadingCustomers}
           onChange={(val) => handleCustomerChange(val, true)}>
-          {customers.map((c) => (
-            <Option key={c.id} value={c.id}>
-              {c.customerCode
-                ? `${c.customerCode} - ${c.firstName} ${c.lastName}`
-                : `${c.firstName || ""} ${c.lastName || ""}`}
-            </Option>
-          ))}
+          {customers.map((c) => {
+            // ✅ Truy cập phone từ account object (nested property)
+            const phone = c.account && c.account.phone ? c.account.phone : "";
+            const displayName = c.customerCode
+              ? `${c.customerCode} - ${c.firstName} ${c.lastName}`
+              : `${c.firstName || ""} ${c.lastName || ""}`;
+            const displayText = phone ? `${displayName} (${phone})` : displayName;
+            
+            return (
+              <Option key={c.id} value={c.id}>
+                {displayText}
+              </Option>
+            );
+          })}
         </Select>
       </Form.Item>
 

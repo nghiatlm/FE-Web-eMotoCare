@@ -85,13 +85,23 @@ export default function TechnicianBookingDetailDrawer({
             setEvCheckId(checkId);
             if (checkStatus) setEvCheckStatus(checkStatus);
 
+            // ✅ Kiểm tra odometer: nếu là số thì > 0, nếu là string thì không rỗng
             const hasKm =
               typeof odometerValue === "number"
                 ? odometerValue > 0
                 : !!odometerValue;
 
-            setHasOdometer(hasKm);
-            setKm(hasKm && odometerValue != null ? String(odometerValue) : "");
+            // ✅ Chỉ set hasOdometer = false nếu thực sự chưa có odometer
+            // Nếu đã từng có odometer (km state đã có giá trị) thì giữ nguyên
+            setHasOdometer(hasKm || (km && km.trim() !== ""));
+            
+            // ✅ Chỉ set km nếu có odometerValue từ API, không reset nếu đã có giá trị
+            if (hasKm && odometerValue != null) {
+              setKm(String(odometerValue));
+            } else if (!km || km.trim() === "") {
+              // Chỉ reset km nếu chưa có giá trị
+              setKm("");
+            }
           } else {
             setHasOdometer(false);
             if (isMaintenance) {
@@ -217,7 +227,16 @@ export default function TechnicianBookingDetailDrawer({
       </section>
 
       {/* ==== NHẬP KM – CHỈ KỸ THUẬT VIÊN THẤY (readOnly = false) ==== */}
-      {isMaintenance && evCheckId && !hasOdometer && !readOnly && (
+      {/* ✅ Chỉ hiển thị khi: maintenance + có evCheckId + chưa có odometer + chưa ở trạng thái REPAIR_IN_PROGRESS hoặc các trạng thái sau */}
+      {isMaintenance && 
+       evCheckId && 
+       !hasOdometer && 
+       !readOnly && 
+       evCheckStatus !== "REPAIR_IN_PROGRESS" &&
+       evCheckStatus !== "INSPECTION_COMPLETED" &&
+       evCheckStatus !== "QUOTE_APPROVED" &&
+       evCheckStatus !== "REPAIR_COMPLETED" &&
+       evCheckStatus !== "COMPLETED" && (
         <section className='bg-white rounded-xl shadow p-5 mb-6 border border-orange-200'>
           <h3 className='font-semibold text-base mb-3 border-b pb-2 text-orange-600'>
             Cập nhật số km xe đã đi
