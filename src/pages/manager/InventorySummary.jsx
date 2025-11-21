@@ -1,12 +1,11 @@
-import { Fragment, useMemo, useState, useEffect } from "react";
-import { Search, Calendar, ChevronRight, ChevronDown, MapPin, User2, Phone, Boxes } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { Search, Calendar, ChevronRight, MapPin, User2, Phone, Boxes } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { getServiceCenterInventories } from "@/api/serviceCenterInventoriesApi";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,7 +18,6 @@ export default function InventorySummary() {
   const [status, setStatus] = useState("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [expandedId, setExpandedId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [inventories, setInventories] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pageSize: 10, total: 0 });
@@ -148,6 +146,9 @@ export default function InventorySummary() {
       partItemsMap.forEach((partData) => {
         transformedRows.push({
           id: `${inventory.id}-${partData.partCode}`,
+          inventoryId: inventory.id,
+          serviceCenterInventoryName: inventory.serviceCenterInventoryName,
+          serviceCenterId: serviceCenter.id,
           partCode: partData.partCode,
           partName: partData.partName,
           partImage: partData.partImage,
@@ -181,15 +182,6 @@ export default function InventorySummary() {
     return rows.slice(start, start + tablePageSize);
   }, [rows, tablePage, tablePageSize]);
 
-  const formatCurrency = (value) => {
-    if (value === null || value === undefined) return "—";
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-
   const renderStatusBadge = (value) => {
     switch ((value || "").toLowerCase()) {
       case "active":
@@ -222,16 +214,33 @@ export default function InventorySummary() {
 
   const handlePageChange = (pageNumber) => {
     if (pageNumber < 1 || pageNumber > totalPages || pageNumber === currentPage) return;
-    setExpandedId(null);
     setPagination((prev) => ({ ...prev, page: pageNumber }));
   };
 
   const handlePageSizeChange = (value) => {
     const nextSize = Number(value);
     if (!Number.isNaN(nextSize)) {
-      setExpandedId(null);
       setPagination((prev) => ({ ...prev, pageSize: nextSize, page: 1 }));
     }
+  };
+
+  const handleViewDetail = (row) => {
+    if (!row?.inventoryId || !row?.partCode) return;
+    const query = new URLSearchParams();
+    if (row.serviceCenterId || serviceCenterId) {
+      query.set("serviceCenterId", row.serviceCenterId || serviceCenterId);
+    }
+    navigate(
+      `/manager/inventory/${encodeURIComponent(row.inventoryId)}/${encodeURIComponent(row.partCode)}${
+        query.toString() ? `?${query.toString()}` : ""
+      }`,
+      {
+        state: {
+          source: "inventory-summary",
+          serviceCenterInventoryName: row.serviceCenterInventoryName,
+        },
+      },
+    );
   };
 
   const displayStart = pagination.total === 0 ? 0 : (currentPage - 1) * pagination.pageSize + 1;
@@ -314,13 +323,13 @@ export default function InventorySummary() {
           <table className="w-full text-sm border-separate border-spacing-y-2">
             <thead className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm">
               <tr>
-                <th className="px-5 py-3 w-12"></th>
                 <th className="text-left px-5 py-3 w-16 font-semibold text-foreground">STT</th>
                 <th className="text-left px-5 py-3 font-semibold text-foreground">Mã phụ tùng</th>
                 <th className="text-left px-5 py-3 font-semibold text-foreground">Tên phụ tùng</th>
                 <th className="text-left px-5 py-3 font-semibold text-foreground">Số lượng tồn kho</th>
                 <th className="text-left px-5 py-3 min-w-[260px] font-semibold text-foreground">Kho</th>
                 <th className="text-left px-5 py-3 font-semibold text-foreground">Mô tả</th>
+                <th className="text-left px-5 py-3 w-32 font-semibold text-foreground">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -335,35 +344,13 @@ export default function InventorySummary() {
                 </tr>
               ) : (
                 visibleRows.map((r, idx) => {
-                const rowIndex = (tablePage - 1) * tablePageSize + idx;
-                const [line1, line2, line3] = String(r.warehouse || "").split("\n");
-                const isExpanded = expandedId === r.id && r.serials?.length;
-                return (
-                  <Fragment key={r.id}>
+                  const rowIndex = (tablePage - 1) * tablePageSize + idx;
+                  const [line1, line2, line3] = String(r.warehouse || "").split("\n");
+                  return (
                     <tr
-                      className={`bg-card border border-border/60 hover:border-primary/40 hover:shadow-md transition-all duration-200 ${
-                        isExpanded ? "ring-1 ring-primary/20 shadow-md" : ""
-                      }`}
+                      key={r.id}
+                      className="bg-card border border-border/60 hover:border-primary/40 hover:shadow-md transition-all duration-200"
                     >
-                      <td className="px-5 py-4 align-top first:rounded-l-xl">
-                        {r.serials?.length ? (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 rounded-full border border-border/60 hover:border-primary"
-                            onClick={() =>
-                              setExpandedId((prev) => (prev === r.id ? null : r.id))
-                            }
-                            aria-label={isExpanded ? "Thu gọn" : "Mở rộng"}
-                          >
-                            <ChevronDown
-                              className={`h-4 w-4 transition-transform ${
-                                isExpanded ? "rotate-180" : ""
-                              }`}
-                            />
-                          </Button>
-                        ) : null}
-                      </td>
                       <td className="px-5 py-4 align-top text-sm font-medium text-muted-foreground first:rounded-l-xl">
                         {rowIndex + 1}
                       </td>
@@ -428,108 +415,20 @@ export default function InventorySummary() {
                           {r.description}
                         </p>
                       </td>
+                      <td className="px-5 py-4 align-top">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => handleViewDetail(r)}
+                        >
+                          Xem chi tiết
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </td>
                     </tr>
-                    {isExpanded ? (
-                      <tr key={`${r.id}-expanded`}>
-                        <td colSpan={8} className="px-2">
-                          <div className="mx-3 mb-2 rounded-2xl border border-border bg-gradient-to-br from-muted/40 to-background shadow-inner">
-                            <div className="flex items-center justify-between px-6 py-3 border-b border-border/60">
-                              <div>
-                                <p className="text-sm font-semibold text-foreground">
-                                  Chi tiết serial
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {r.serials.length} số serial được quản lý cho phụ tùng này
-                                </p>
-                              </div>
-                              <Badge variant="outline" className="px-3 py-1 text-xs">
-                                Tổng {r.serials.reduce((sum, s) => sum + (s.quantity || 0), 0)} bộ
-                              </Badge>
-                            </div>
-                            <div className="overflow-x-auto pb-1">
-                              <table className="w-full text-sm border-separate border-spacing-y-1">
-                                <thead className="text-muted-foreground">
-                                  <tr>
-                                    <th className="text-left px-6 py-2 w-48 text-xs font-semibold uppercase tracking-wide">
-                                      Mã phụ tùng
-                                    </th>
-                                    <th className="text-left px-6 py-2 text-xs font-semibold uppercase tracking-wide">
-                                      Tên phụ tùng
-                                    </th>
-                                    <th className="text-left px-6 py-2 text-xs font-semibold uppercase tracking-wide">
-                                      Số serial
-                                    </th>
-                                    <th className="text-left px-6 py-2 text-xs font-semibold uppercase tracking-wide">
-                                      Số lượng tồn kho
-                                    </th>
-                                    <th className="text-left px-6 py-2 text-xs font-semibold uppercase tracking-wide">
-                                      Đơn giá
-                                    </th>
-                                    <th className="text-left px-6 py-2 text-xs font-semibold uppercase tracking-wide min-w-[220px]">
-                                      Kho
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {r.serials.map((serial) => {
-                                    const [s1, s2, s3] = String(serial.warehouse || "").split("\n");
-                                    const warrantyStart = serial.warrantyStart ? format(new Date(serial.warrantyStart), "dd/MM/yyyy") : null;
-                                    const warrantyEnd = serial.warrantyEnd ? format(new Date(serial.warrantyEnd), "dd/MM/yyyy") : null;
-                                    return (
-                                      <tr
-                                        key={serial.id}
-                                        className="bg-card/90 border border-border/40 shadow-sm"
-                                      >
-                                        <td className="px-6 py-3 text-primary font-semibold">
-                                          {serial.partCode}
-                                        </td>
-                                        <td className="px-6 py-3">{serial.partName}</td>
-                                        <td className="px-6 py-3 text-primary/90 font-medium">
-                                          {serial.serialNumber || serial.id}
-                                        </td>
-                                        <td className="px-6 py-3">
-                                          <Badge variant="secondary" className="px-2">
-                                            {serial.qty}
-                                          </Badge>
-                                        </td>
-                                        <td className="px-6 py-3 text-sm text-foreground">
-                                          {formatCurrency(serial.price)}
-                                        </td>
-                                        <td className="px-6 py-3">
-                                          <div className="space-y-1.5 text-sm text-muted-foreground">
-                                            {s1 && (
-                                              <div className="flex items-center gap-2">
-                                                <MapPin className="h-4 w-4" />
-                                                <span>{s1}</span>
-                                              </div>
-                                            )}
-                                            {s2 && (
-                                              <div className="flex items-center gap-2">
-                                                <User2 className="h-4 w-4" />
-                                                <span>{s2}</span>
-                                              </div>
-                                            )}
-                                            {s3 && (
-                                              <div className="flex items-center gap-2">
-                                                <Phone className="h-4 w-4" />
-                                                <span>{s3}</span>
-                                              </div>
-                                            )}
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : null}
-                  </Fragment>
-                );
-              })
+                  );
+                })
               )}
               {!loading && rows.length === 0 && (
                 <tr>

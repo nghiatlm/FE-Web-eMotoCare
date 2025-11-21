@@ -45,12 +45,12 @@ import InventoryDetail from "./pages/manager/InventoryDetail";
 
 // storekeeper
 import { StoreKeeperSidebar } from "./components/StoreKeeperSidebar";
-import AccessoryInventory from "./pages/storekeeper/AccessoryInventory";
+import StorekeeperInventory from "./pages/storekeeper/StorekeeperInventory";
+import StorekeeperAccessoryDetail from "./pages/storekeeper/StorekeeperAccessoryDetail";
 import ImportSlipsPage from "./pages/storekeeper/ImportSlipsPage";
 import ExportSlipsPage from "./pages/storekeeper/ExportSlipsPage";
 import CreateExportSlipPage from "./pages/storekeeper/CreateExportSlipPage";
 import ExportNoteDetail from "./pages/storekeeper/ExportNoteDetail";
-import AccessoryDetail from "./pages/storekeeper/AccessoryDetail";
 
 const queryClient = new QueryClient();
 
@@ -167,10 +167,10 @@ const App = () => (
                   </header>
                   <main className="flex-1">
                     <Routes>
-                      <Route path="" element={<AccessoryInventory />} />
-                      <Route 
-                        path="accessories/:id"
-                        element={<AccessoryDetail />}
+                      <Route path="" element={<StorekeeperInventory />} />
+                      <Route
+                        path="accessories/:inventoryId/:partCode"
+                        element={<StorekeeperAccessoryDetail />}
                       />
                       <Route
                         path="import-slips"
@@ -235,7 +235,7 @@ const App = () => (
                           element={<InventorySummary />}
                         />
                         <Route
-                          path="inventory/:id"
+                          path="inventory/:inventoryId/:partCode"
                           element={<InventoryDetail />}
                         />
                         <Route
