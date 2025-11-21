@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Building2, MapPin, Phone, Mail, Clock, Users, Hash, Info, Calendar, FileText, Edit } from "lucide-react";
+import { ArrowLeft, Building2, MapPin, Phone, Mail, Clock, Users, Hash, Info, Calendar, FileText, Edit, DollarSign, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,25 @@ export default function BranchDetail() {
   const navigate = useNavigate();
   const [branchDetail, setBranchDetail] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Mock summary stats - có thể lấy từ API sau
+  const summaryStats = {
+    totalRevenue: 903000000,
+    totalAppointments: 340,
+    completedAppointments: 318,
+    totalStaff: 24,
+    activeStaff: 20,
+    totalWarrantyClaims: 86,
+    confirmedWarranty: 101,
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
 
   useEffect(() => {
     const fetchBranchDetail = async () => {
@@ -74,17 +93,62 @@ export default function BranchDetail() {
             <h1 className="text-3xl font-bold text-foreground mb-2">Chi tiết Chi nhánh</h1>
             <p className="text-muted-foreground">Thông tin chi tiết về chi nhánh</p>
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={() => navigate(`/admin/branches/${id}/report`)}>
-              <FileText className="h-4 w-4 mr-2" />
-              Xem báo cáo
-            </Button>
-            <Button>
-              <Edit className="h-4 w-4 mr-2" />
-              Chỉnh sửa
-            </Button>
-          </div>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Tổng doanh thu</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(summaryStats.totalRevenue)}</div>
+            <p className="text-xs text-green-600 mt-1 flex items-center">
+              <TrendingUp className="h-3 w-3 mr-1" />
+              +12.5% so với kỳ trước
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Tổng lịch hẹn</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{summaryStats.totalAppointments}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Hoàn thành: {summaryStats.completedAppointments}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Nhân viên</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{summaryStats.activeStaff}/{summaryStats.totalStaff}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Đang làm việc / Tổng số
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Bảo hành</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{summaryStats.confirmedWarranty}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Đã xác nhận / Tổng: {summaryStats.totalWarrantyClaims}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -302,24 +366,6 @@ export default function BranchDetail() {
             </CardContent>
           </Card>
 
-          {/* Report Card */}
-          <Card className="border-primary/20 bg-primary/5">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-primary" />
-                Báo cáo
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Xem báo cáo chi tiết về hoạt động của chi nhánh, bao gồm doanh thu, lịch hẹn, hiệu suất nhân viên và thống kê bảo hành.
-              </p>
-              <Button className="w-full" onClick={() => navigate(`/admin/branches/${id}/report`)}>
-                <FileText className="h-4 w-4 mr-2" />
-                Xem báo cáo chi tiết
-              </Button>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

@@ -16,6 +16,8 @@ import Vehicles from "./pages/Vehicles";
 import UserManagement from "./pages/UserManagement";
 import Index from "./pages/Index";
 import Branches from "./pages/Branches";
+import BranchDetail from "./pages/admin/BranchDetail";
+import BranchReport from "./pages/admin/BranchReport";
 import ServicePackages from "./pages/ServicePackages";
 import Campaigns from "./pages/Campaigns";
 import CampaignDetail from "./pages/CampaignDetail";
@@ -86,6 +88,8 @@ const App = () => (
                       <Route path="" element={<Index />} />
                       <Route path="users" element={<UserManagement />} />
                       <Route path="branches" element={<Branches />} />
+                      <Route path="branches/:id" element={<BranchDetail />} />
+                      <Route path="branches/:id/report" element={<BranchReport />} />
                       <Route
                         path="warranty-claims"
                         element={<WarrantyClaims />}

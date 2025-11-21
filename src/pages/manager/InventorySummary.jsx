@@ -1,15 +1,31 @@
-import { useMemo, useState, useEffect } from "react";
-import { Search, Calendar, ChevronRight, MapPin, User2, Phone, Boxes } from "lucide-react";
+import { Fragment, useMemo, useState, useEffect } from "react";
+import { Search, Calendar, ChevronRight, ChevronDown, MapPin, User2, Phone, Boxes } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { getServiceCenterInventories } from "@/api/serviceCenterInventoriesApi";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStaffByAccountId } from "@/api/staffsApi";
+
+// Calculate distance between two coordinates using Haversine formula
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+  
+  const R = 6371; // Radius of the Earth in km
+  const dLat = (parseFloat(lat2) - parseFloat(lat1)) * Math.PI / 180;
+  const dLon = (parseFloat(lon2) - parseFloat(lon1)) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(parseFloat(lat1) * Math.PI / 180) * Math.cos(parseFloat(lat2) * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; // Distance in km
+};
 
 export default function InventorySummary() {
   const navigate = useNavigate();
@@ -18,16 +34,17 @@ export default function InventorySummary() {
   const [status, setStatus] = useState("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [expandedId, setExpandedId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [inventories, setInventories] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pageSize: 10, total: 0 });
-  const [serviceCenterId, setServiceCenterId] = useState(null);
   const [tablePage, setTablePage] = useState(1);
   const [tablePageSize, setTablePageSize] = useState(10);
+  const [currentWarehouse, setCurrentWarehouse] = useState(null);
 
-  // Get serviceCenterId from staff info
+  // Get current warehouse info from staff
   useEffect(() => {
-    const fetchStaffInfo = async () => {
+    const fetchCurrentWarehouse = async () => {
       try {
         const accountId = user?.accountResponse?.id;
         if (!accountId) return;
@@ -36,22 +53,24 @@ export default function InventorySummary() {
         const staffData = staffResponse?.data?.rowDatas?.[0];
         
         if (staffData?.serviceCenterId) {
-          setServiceCenterId(staffData.serviceCenterId);
+          setCurrentWarehouse({
+            serviceCenterId: staffData.serviceCenterId,
+            latitude: staffData.serviceCenter?.latitude,
+            longitude: staffData.serviceCenter?.longitude,
+          });
         }
       } catch (error) {
-        console.error("Error fetching staff info:", error);
+        console.error("Error fetching current warehouse:", error);
       }
     };
 
     if (user) {
-      fetchStaffInfo();
+      fetchCurrentWarehouse();
     }
   }, [user]);
 
   // Fetch data from API
   useEffect(() => {
-    if (!serviceCenterId) return; // Wait for serviceCenterId
-
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -60,7 +79,6 @@ export default function InventorySummary() {
           pageSize: pagination.pageSize,
           search: search || undefined,
           status: status !== "all" ? status.toUpperCase() : undefined,
-          serviceCenterId: serviceCenterId,
         });
 
         const data = response?.data || response;
@@ -81,19 +99,18 @@ export default function InventorySummary() {
     };
 
     fetchData();
-  }, [pagination.page, pagination.pageSize, search, status, serviceCenterId]);
+  }, [pagination.page, pagination.pageSize, search, status]);
 
-  // Transform API data to UI format
+  // Transform API data to UI format - Group by part code across all branches
   const rows = useMemo(() => {
-    const transformedRows = [];
+    const partCodeMap = new Map();
 
+    // First pass: collect all part items from all inventories
     inventories.forEach((inventory) => {
       const serviceCenter = inventory.serviceCenter || {};
-
       const storeKeeper = serviceCenter.staffs?.find((s) => s.position === "STORE_KEEPER");
       const warehouseInfo = `${serviceCenter.name || serviceCenter.code || ""}\nQL kho: ${storeKeeper ? `${storeKeeper.firstName || ""} ${storeKeeper.lastName || ""}`.trim() : ""}\n${serviceCenter.phone || ""}`.trim();
-
-      const partItemsMap = new Map();
+      const description = serviceCenter.description || inventory.serviceCenterInventoryName || "";
 
       (inventory.partItems || []).forEach((item) => {
         if (!item) return;
@@ -107,19 +124,37 @@ export default function InventorySummary() {
         const partImage = item.part?.image || null;
         const partStatus = item.part?.status?.toLowerCase() || item.status?.toLowerCase() || inventory.status?.toLowerCase() || "active";
 
-        if (!partItemsMap.has(partCode)) {
-          partItemsMap.set(partCode, {
+        if (!partCodeMap.has(partCode)) {
+          partCodeMap.set(partCode, {
             partCode,
             partName,
             partImage,
             partStatus,
-            items: [],
+            branches: [],
             totalQty: 0,
           });
         }
 
-        const entry = partItemsMap.get(partCode);
-        entry.items.push({
+        const partEntry = partCodeMap.get(partCode);
+        
+        // Find or create branch entry
+        let branchEntry = partEntry.branches.find((b) => b.inventoryId === inventory.id);
+        if (!branchEntry) {
+          branchEntry = {
+            inventoryId: inventory.id,
+            serviceCenterName: serviceCenter.name || serviceCenter.code || "",
+            warehouse: warehouseInfo,
+            description: description,
+            latitude: serviceCenter.latitude,
+            longitude: serviceCenter.longitude,
+            totalQty: 0,
+            items: [],
+          };
+          partEntry.branches.push(branchEntry);
+        }
+
+        // Add item to branch
+        branchEntry.items.push({
           id: serialNumber || item.id,
           serialNumber,
           quantity: item.quantity || 1,
@@ -133,32 +168,62 @@ export default function InventorySummary() {
           partImage,
           warehouse: warehouseInfo,
         });
-        entry.totalQty += item.quantity || 1;
-        if (!entry.partImage && partImage) entry.partImage = partImage;
-        if (entry.partName === serialPrefix && partName !== serialPrefix) {
-          entry.partName = partName;
-        }
-        if (entry.partStatus === "active" && partStatus !== "active") {
-          entry.partStatus = partStatus;
-        }
-      });
 
-      partItemsMap.forEach((partData) => {
-        transformedRows.push({
-          id: `${inventory.id}-${partData.partCode}`,
-          inventoryId: inventory.id,
-          serviceCenterInventoryName: inventory.serviceCenterInventoryName,
-          serviceCenterId: serviceCenter.id,
-          partCode: partData.partCode,
-          partName: partData.partName,
-          partImage: partData.partImage,
-          totalQty: partData.totalQty,
-          warehouse: warehouseInfo,
-          description: serviceCenter.description || inventory.serviceCenterInventoryName || "",
-          status: partData.partStatus || inventory.status?.toLowerCase() || "active",
-          serials: partData.items,
-        });
+        branchEntry.totalQty += item.quantity || 1;
+        partEntry.totalQty += item.quantity || 1;
+        
+        if (!partEntry.partImage && partImage) partEntry.partImage = partImage;
+        if (partEntry.partName === serialPrefix && partName !== serialPrefix) {
+          partEntry.partName = partName;
+        }
+        if (partEntry.partStatus === "active" && partStatus !== "active") {
+          partEntry.partStatus = partStatus;
+        }
       });
+    });
+
+    // Convert map to array and find nearest warehouse for each part
+    const transformedRows = Array.from(partCodeMap.values()).map((partData) => {
+      let nearestBranch = null;
+      let minDistance = Infinity;
+
+      // Find the nearest branch if we have current warehouse info
+      if (currentWarehouse?.latitude && currentWarehouse?.longitude) {
+        partData.branches.forEach((branch) => {
+          const lat = branch.latitude;
+          const lon = branch.longitude;
+
+          if (lat && lon) {
+            const distance = calculateDistance(
+              currentWarehouse.latitude,
+              currentWarehouse.longitude,
+              lat,
+              lon
+            );
+
+            if (distance < minDistance) {
+              minDistance = distance;
+              nearestBranch = branch;
+            }
+          }
+        });
+      }
+
+      // If no nearest found, use first branch
+      if (!nearestBranch && partData.branches.length > 0) {
+        nearestBranch = partData.branches[0];
+      }
+
+      return {
+        id: `part-${partData.partCode}`,
+        partCode: partData.partCode,
+        partName: partData.partName,
+        partImage: partData.partImage,
+        totalQty: partData.totalQty,
+        status: partData.partStatus || "active",
+        branches: partData.branches,
+        nearestWarehouse: nearestBranch?.warehouse || null,
+      };
     });
 
     return transformedRows.filter((r) => {
@@ -167,11 +232,10 @@ export default function InventorySummary() {
       const q = search.toLowerCase();
       return (
         r.partCode.toLowerCase().includes(q) ||
-        r.partName.toLowerCase().includes(q) ||
-        r.description.toLowerCase().includes(q)
+        r.partName.toLowerCase().includes(q)
       );
     });
-  }, [inventories, search, status]);
+  }, [inventories, search, status, currentWarehouse]);
 
   useEffect(() => {
     setTablePage(1);
@@ -181,6 +245,15 @@ export default function InventorySummary() {
     const start = (tablePage - 1) * tablePageSize;
     return rows.slice(start, start + tablePageSize);
   }, [rows, tablePage, tablePageSize]);
+
+  const formatCurrency = (value) => {
+    if (value === null || value === undefined) return "—";
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
 
   const renderStatusBadge = (value) => {
     switch ((value || "").toLowerCase()) {
@@ -214,33 +287,16 @@ export default function InventorySummary() {
 
   const handlePageChange = (pageNumber) => {
     if (pageNumber < 1 || pageNumber > totalPages || pageNumber === currentPage) return;
+    setExpandedId(null);
     setPagination((prev) => ({ ...prev, page: pageNumber }));
   };
 
   const handlePageSizeChange = (value) => {
     const nextSize = Number(value);
     if (!Number.isNaN(nextSize)) {
+      setExpandedId(null);
       setPagination((prev) => ({ ...prev, pageSize: nextSize, page: 1 }));
     }
-  };
-
-  const handleViewDetail = (row) => {
-    if (!row?.inventoryId || !row?.partCode) return;
-    const query = new URLSearchParams();
-    if (row.serviceCenterId || serviceCenterId) {
-      query.set("serviceCenterId", row.serviceCenterId || serviceCenterId);
-    }
-    navigate(
-      `/manager/inventory/${encodeURIComponent(row.inventoryId)}/${encodeURIComponent(row.partCode)}${
-        query.toString() ? `?${query.toString()}` : ""
-      }`,
-      {
-        state: {
-          source: "inventory-summary",
-          serviceCenterInventoryName: row.serviceCenterInventoryName,
-        },
-      },
-    );
   };
 
   const displayStart = pagination.total === 0 ? 0 : (currentPage - 1) * pagination.pageSize + 1;
@@ -323,19 +379,19 @@ export default function InventorySummary() {
           <table className="w-full text-sm border-separate border-spacing-y-2">
             <thead className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm">
               <tr>
-                <th className="text-left px-5 py-3 w-16 font-semibold text-foreground">STT</th>
-                <th className="text-left px-5 py-3 font-semibold text-foreground">Mã phụ tùng</th>
-                <th className="text-left px-5 py-3 font-semibold text-foreground">Tên phụ tùng</th>
-                <th className="text-left px-5 py-3 font-semibold text-foreground">Số lượng tồn kho</th>
-                <th className="text-left px-5 py-3 min-w-[260px] font-semibold text-foreground">Kho</th>
-                <th className="text-left px-5 py-3 font-semibold text-foreground">Mô tả</th>
-                <th className="text-left px-5 py-3 w-32 font-semibold text-foreground">Thao tác</th>
+                <th className="px-5 py-3 w-12"></th>
+                <th className="text-center px-5 py-3 w-16 font-semibold text-foreground">STT</th>
+                <th className="text-center px-5 py-3 font-semibold text-foreground">Mã phụ tùng</th>
+                <th className="text-center px-5 py-3 font-semibold text-foreground">Tên phụ tùng</th>
+                <th className="text-center px-5 py-3 font-semibold text-foreground">Số lượng tồn kho</th>
+                <th className="text-center px-5 py-3 min-w-[260px] font-semibold text-foreground">Kho</th>
+                <th className="text-center px-5 py-3 max-w-[200px] font-semibold text-foreground">Mô tả</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="px-6 py-12 text-center text-muted-foreground" colSpan={8}>
+                  <td className="px-6 py-12 text-center text-muted-foreground" colSpan={7}>
                     <div className="flex items-center justify-center gap-2">
                       <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
                       <span>Đang tải dữ liệu...</span>
@@ -344,23 +400,47 @@ export default function InventorySummary() {
                 </tr>
               ) : (
                 visibleRows.map((r, idx) => {
-                  const rowIndex = (tablePage - 1) * tablePageSize + idx;
-                  const [line1, line2, line3] = String(r.warehouse || "").split("\n");
-                  return (
+                const rowIndex = (tablePage - 1) * tablePageSize + idx;
+                const isExpanded = expandedId === r.id && r.branches?.length;
+                const hasBranches = r.branches && r.branches.length > 0;
+                return (
+                  <Fragment key={r.id}>
                     <tr
-                      key={r.id}
-                      className="bg-card border border-border/60 hover:border-primary/40 hover:shadow-md transition-all duration-200"
+                      className={`bg-card border border-border/60 hover:border-primary/40 hover:shadow-md transition-all duration-200 ${
+                        isExpanded ? "ring-1 ring-primary/20 shadow-md" : ""
+                      }`}
                     >
-                      <td className="px-5 py-4 align-top text-sm font-medium text-muted-foreground first:rounded-l-xl">
+                      <td className="px-5 py-4 text-center">
+                        <div className="flex items-center justify-center">
+                          {hasBranches ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-full border border-border/60 hover:border-primary"
+                              onClick={() =>
+                                setExpandedId((prev) => (prev === r.id ? null : r.id))
+                              }
+                              aria-label={isExpanded ? "Thu gọn" : "Mở rộng"}
+                            >
+                              <ChevronDown
+                                className={`h-4 w-4 transition-transform ${
+                                  isExpanded ? "rotate-180" : ""
+                                }`}
+                              />
+                            </Button>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-center text-sm font-medium text-muted-foreground">
                         {rowIndex + 1}
                       </td>
-                      <td className="px-5 py-4 align-top">
+                      <td className="px-5 py-4 text-center">
                         <span className="text-primary font-semibold tracking-wide">
                           {r.partCode}
                         </span>
                       </td>
-                      <td className="px-5 py-4 align-top">
-                        <div className="flex items-start gap-3">
+                      <td className="px-5 py-4 text-center">
+                        <div className="flex items-center justify-center gap-3">
                           {r.partImage ? (
                             <img
                               src={r.partImage}
@@ -372,7 +452,7 @@ export default function InventorySummary() {
                               N/A
                             </div>
                           )}
-                          <div className="space-y-1">
+                          <div className="space-y-1 text-left">
                             <p className="font-medium text-foreground line-clamp-2">{r.partName}</p>
                             <p className="text-xs uppercase tracking-wide text-muted-foreground/80">
                               Mã chuẩn: {r.partCode}
@@ -380,59 +460,163 @@ export default function InventorySummary() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-4 align-top">
-                        <div className="flex flex-col gap-2">
+                      <td className="px-5 py-4 text-center">
+                        <div className="flex flex-col items-center gap-2">
                           <Badge variant="secondary" className="text-sm px-3 py-1 w-fit">
                             {r.totalQty} bộ
                           </Badge>
-                          {renderStatusBadge(r.status)}
+                          <div className="flex justify-center">
+                            {renderStatusBadge(r.status)}
+                          </div>
                         </div>
                       </td>
-                      <td className="px-5 py-4 align-top">
-                        <div className="space-y-1.5 text-sm text-muted-foreground">
-                          {line1 && (
-                            <div className="flex items-center gap-2">
-                              <MapPin className="h-4 w-4" />
-                              <span>{line1}</span>
-                            </div>
-                          )}
-                          {line2 && (
-                            <div className="flex items-center gap-2">
-                              <User2 className="h-4 w-4" />
-                              <span>{line2.replace("QL kho:", "QL kho:")}</span>
-                            </div>
-                          )}
-                          {line3 && (
-                            <div className="flex items-center gap-2">
-                              <Phone className="h-4 w-4" />
-                              <span>{line3}</span>
-                            </div>
-                          )}
-                        </div>
+                      <td className="px-5 py-4 text-center">
+                        {r.nearestWarehouse ? (
+                          <div className="flex flex-col items-center space-y-1.5 text-sm text-muted-foreground">
+                            {r.nearestWarehouse.split("\n").map((line, idx) => {
+                              if (!line) return null;
+                              if (idx === 0) {
+                                return (
+                                  <div key={idx} className="flex items-center gap-2">
+                                    <MapPin className="h-4 w-4" />
+                                    <span>{line}</span>
+                                  </div>
+                                );
+                              } else if (line.includes("QL kho:")) {
+                                return (
+                                  <div key={idx} className="flex items-center gap-2">
+                                    <User2 className="h-4 w-4" />
+                                    <span>{line}</span>
+                                  </div>
+                                );
+                              } else if (line.match(/^0\d{9}$/)) {
+                                return (
+                                  <div key={idx} className="flex items-center gap-2">
+                                    <Phone className="h-4 w-4" />
+                                    <span>{line}</span>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">—</p>
+                        )}
                       </td>
-                      <td className="px-5 py-4 align-top">
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          {r.description}
+                      <td className="px-5 py-4 text-center max-w-[200px]">
+                        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 truncate">
+                          {r.branches && r.branches.length > 0 ? r.branches[0].description : "—"}
                         </p>
                       </td>
-                      <td className="px-5 py-4 align-top">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => handleViewDetail(r)}
-                        >
-                          Xem chi tiết
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </td>
                     </tr>
-                  );
-                })
+                    {isExpanded && hasBranches ? (
+                      <tr key={`${r.id}-expanded`}>
+                        <td colSpan={7} className="px-2">
+                          <div className="mx-3 mb-2 rounded-2xl border border-border bg-gradient-to-br from-muted/40 to-background shadow-inner">
+                            <div className="flex items-center justify-between px-6 py-3 border-b border-border/60">
+                              <div>
+                                <p className="text-sm font-semibold text-foreground">
+                                  Chi tiết serial
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {r.branches.reduce((sum, branch) => sum + (branch.items?.length || 0), 0)} số serial được quản lý cho phụ tùng này
+                                </p>
+                              </div>
+                              <Badge variant="outline" className="px-3 py-1 text-xs">
+                                Tổng {r.totalQty} bộ
+                              </Badge>
+                            </div>
+                            <div className="overflow-x-auto pb-1">
+                              <table className="w-full text-sm border-separate border-spacing-y-1">
+                                <thead className="text-muted-foreground">
+                                  <tr>
+                                    <th className="text-center px-6 py-2 text-xs font-semibold uppercase tracking-wide">
+                                      Mã phụ tùng
+                                    </th>
+                                    <th className="text-center px-6 py-2 text-xs font-semibold uppercase tracking-wide">
+                                      Tên phụ tùng
+                                    </th>
+                                    <th className="text-center px-6 py-2 text-xs font-semibold uppercase tracking-wide">
+                                      Số serial
+                                    </th>
+                                    <th className="text-center px-6 py-2 text-xs font-semibold uppercase tracking-wide">
+                                      Số lượng tồn kho
+                                    </th>
+                                    <th className="text-center px-6 py-2 text-xs font-semibold uppercase tracking-wide min-w-[260px]">
+                                      Kho
+                                    </th>
+                                    <th className="text-center px-6 py-2 text-xs font-semibold uppercase tracking-wide max-w-[200px]">
+                                      Mô tả
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {r.branches.flatMap((branch) => {
+                                    const [b1, b2, b3] = String(branch.warehouse || "").split("\n");
+                                    return (branch.items || []).map((item, itemIdx) => (
+                                      <tr
+                                        key={item.id || `${branch.inventoryId}-${itemIdx}`}
+                                        className="bg-card/90 border border-border/40 shadow-sm"
+                                      >
+                                        <td className="px-6 py-3 text-center text-primary font-semibold">
+                                          {r.partCode}
+                                        </td>
+                                        <td className="px-6 py-3 text-center">{r.partName}</td>
+                                        <td className="px-6 py-3 text-center text-primary/90 font-medium">
+                                          {item.serialNumber || item.id}
+                                        </td>
+                                        <td className="px-6 py-3 text-center">
+                                          <div className="flex items-center justify-center">
+                                            <Badge variant="secondary" className="px-2">
+                                              {item.quantity || item.qty || 1}
+                                            </Badge>
+                                          </div>
+                                        </td>
+                                        <td className="px-6 py-3 text-center">
+                                          <div className="flex flex-col items-center space-y-1.5 text-sm text-muted-foreground">
+                                            {b1 && (
+                                              <div className="flex items-center gap-2">
+                                                <MapPin className="h-4 w-4" />
+                                                <span>{b1}</span>
+                                              </div>
+                                            )}
+                                            {b2 && (
+                                              <div className="flex items-center gap-2">
+                                                <User2 className="h-4 w-4" />
+                                                <span>{b2}</span>
+                                              </div>
+                                            )}
+                                            {b3 && (
+                                              <div className="flex items-center gap-2">
+                                                <Phone className="h-4 w-4" />
+                                                <span>{b3}</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td className="px-6 py-3 text-center max-w-[200px]">
+                                          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 truncate">
+                                            {branch.description || "—"}
+                                          </p>
+                                        </td>
+                                      </tr>
+                                    ));
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
+                );
+              })
               )}
               {!loading && rows.length === 0 && (
                 <tr>
-                  <td className="px-6 py-12 text-center text-muted-foreground" colSpan={8}>
+                  <td className="px-6 py-12 text-center text-muted-foreground" colSpan={7}>
                     Không có dữ liệu phù hợp
                   </td>
                 </tr>

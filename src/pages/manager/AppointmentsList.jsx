@@ -5,25 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import { useNavigate } from "react-router-dom";
 import { getAppointments } from "@/api/appointmentsApi";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { useServiceCenter } from "@/hooks/useServiceCenter";
 
 export default function AppointmentsList() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { serviceCenterId } = useServiceCenter();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
@@ -98,18 +87,25 @@ export default function AppointmentsList() {
 
   // Fetch appointments
   const fetchAppointments = useCallback(async () => {
-    if (!serviceCenterId) return;
     try {
       setLoading(true);
       setError(null);
-      const response = await getAppointments({ page, pageSize, serviceCenterId });
+      const response = await getAppointments({ page, pageSize });
       
+      console.log("📋 Appointments API Response:", response);
+      
+      // Handle response structure: 
+      // After axios interceptor returns response.data, we get:
+      // { statusCode: 200, success: true, message: "...", data: { rowDatas: [...], total: ... } }
       const appointmentsData = response?.data?.rowDatas || response?.rowDatas || [];
       const totalCount = response?.data?.total || response?.total || 0;
+      
+      console.log("✅ Parsed appointments:", appointmentsData.length, "Total:", totalCount);
       
       setAppointments(appointmentsData);
       setTotal(totalCount);
     } catch (err) {
+      console.error("❌ Error fetching appointments:", err);
       setError("Không thể tải danh sách lịch hẹn. Vui lòng thử lại sau.");
       toast({
         title: "Lỗi",
@@ -119,15 +115,11 @@ export default function AppointmentsList() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, toast, serviceCenterId]);
+  }, [page, pageSize, toast]);
 
   useEffect(() => {
-    if (serviceCenterId) {
-      fetchAppointments();
-    } else {
-      setLoading(false);
-    }
-  }, [fetchAppointments, serviceCenterId]);
+    fetchAppointments();
+  }, [fetchAppointments]);
 
   // Filter appointments
   const filteredAppointments = appointments.filter((appointment) => {
@@ -160,20 +152,6 @@ export default function AppointmentsList() {
       .map((a) => (a.appointmentDate ? format(new Date(a.appointmentDate), "yyyy-MM-dd") : null))
       .filter(Boolean)
   )];
-
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const getPageNumbers = () => {
-    if (totalPages <= 5) {
-      return Array.from({ length: totalPages }, (_, idx) => idx + 1);
-    }
-    if (page <= 3) {
-      return [1, 2, 3, 4, "ellipsis", totalPages];
-    }
-    if (page >= totalPages - 2) {
-      return [1, "ellipsis", totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
-    }
-    return [1, "ellipsis", page - 1, page, page + 1, "ellipsis", totalPages];
-  };
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -354,56 +332,6 @@ export default function AppointmentsList() {
                   )}
                 </tbody>
               </table>
-
-              {totalPages > 1 && (
-                <div className="flex flex-wrap items-center justify-between gap-4 mt-6">
-                  <p className="text-sm text-muted-foreground">
-                    Trang {page}/{totalPages} — Hiển thị {filteredAppointments.length} / {total}
-                  </p>
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious
-                          className={page === 1 ? "pointer-events-none opacity-50" : ""}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (page > 1) setPage((prev) => prev - 1);
-                          }}
-                        />
-                      </PaginationItem>
-                      {getPageNumbers().map((pageNumber, index) =>
-                        pageNumber === "ellipsis" ? (
-                          <PaginationItem key={`ellipsis-${index}`}>
-                            <PaginationEllipsis />
-                          </PaginationItem>
-                        ) : (
-                          <PaginationItem key={pageNumber}>
-                            <PaginationLink
-                              href="#"
-                              isActive={pageNumber === page}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                setPage(pageNumber);
-                              }}
-                            >
-                              {pageNumber}
-                            </PaginationLink>
-                          </PaginationItem>
-                        )
-                      )}
-                      <PaginationItem>
-                        <PaginationNext
-                          className={page === totalPages ? "pointer-events-none opacity-50" : ""}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (page < totalPages) setPage((prev) => prev + 1);
-                          }}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                </div>
-              )}
             </div>
           )}
         </CardContent>
