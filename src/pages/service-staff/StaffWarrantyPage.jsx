@@ -204,7 +204,7 @@ export default function StaffWarrantyPage() {
     <div style={{ padding: 16 }}>
       {/* HEADER */}
       <div className='flex justify-between items-center mb-4'>
-        <h2 className='text-2xl font-semibold text-green-600'>
+        <h2 className='text-2xl font-semibold text-red-600'>
           🛡️ Danh sách Phiếu Bảo hành (RMA)
         </h2>
         <Button onClick={loadRMAList} type='default' icon={<RotateCcw />}>

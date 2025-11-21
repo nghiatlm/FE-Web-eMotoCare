@@ -1,6 +1,8 @@
 // src/components/service-staff/BookingForm.jsx
 import { useEffect, useState, useRef } from "react";
-import { Form, InputNumber, DatePicker, Button, Select, Input } from "antd";
+import { Form, InputNumber, DatePicker, Button, Select, Input, Card, Divider, Row, Col, Space } from "antd";
+import { User, Car, Calendar, Clock, FileText, Settings, Wrench } from "lucide-react";
+import dayjs from "dayjs";
 
 import { getCustomersService } from "../../services/customerService";
 import { getServiceCentersService } from "../../services/serivceCenterService";
@@ -247,6 +249,12 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
     }
   };
 
+  // ✅ Disable các ngày quá khứ (chỉ cho chọn từ hôm nay trở đi)
+  const disabledDate = (current) => {
+    // Disable các ngày trước hôm nay
+    return current && current < dayjs().startOf("day");
+  };
+
   // ====== LOAD VEHICLE STAGES KHI CHỌN XE VÀ TYPE = BẢO DƯỠNG ======
   const loadVehicleStages = async (vehicleId, type) => {
     // ✅ Chỉ load khi type là MAINTENANCE_TYPE và có vehicleId
@@ -333,131 +341,254 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
   };
 
   return (
-    <Form
-      layout='vertical'
-      form={form}
-      onFinish={handleFinish}
-      initialValues={initialValues}>
-      {/* KHÁCH HÀNG */}
-      <Form.Item
-        label='Khách hàng'
-        name='customerId'
-        rules={[{ required: true, message: "Chọn khách hàng!" }]}>
-        <Select
-          placeholder='Chọn khách hàng (có thể tìm theo tên hoặc SĐT)'
-          showSearch
-          filterOption={false} // ✅ Tắt filter ở frontend, dùng API search
-          onSearch={handleCustomerSearch} // ✅ Gọi API search với debounce
-          loading={loadingCustomers}
-          onChange={(val) => handleCustomerChange(val, true)}>
-          {customers.map((c) => {
-            // ✅ Truy cập phone từ account object (nested property)
-            const phone = c.account && c.account.phone ? c.account.phone : "";
-            const displayName = c.customerCode
-              ? `${c.customerCode} - ${c.firstName} ${c.lastName}`
-              : `${c.firstName || ""} ${c.lastName || ""}`;
-            const displayText = phone ? `${displayName} (${phone})` : displayName;
-            
-            return (
-              <Option key={c.id} value={c.id}>
-                {displayText}
-              </Option>
-            );
-          })}
-        </Select>
-      </Form.Item>
+    <div style={{ padding: "24px", maxWidth: "900px", margin: "0 auto" }}>
+      <Form
+        layout='vertical'
+        form={form}
+        onFinish={handleFinish}
+        initialValues={initialValues}
+        size="large">
+        
+        {/* ✅ CARD 1: THÔNG TIN KHÁCH HÀNG VÀ XE */}
+        <Card
+          title={
+            <Space>
+              <User size={20} style={{ color: "#ff4d4f" }} />
+              <span>Thông tin khách hàng và xe</span>
+            </Space>
+          }
+          style={{ marginBottom: 24, borderRadius: 8 }}
+          headStyle={{ borderBottom: "1px solid #f0f0f0", padding: "16px 24px" }}
+          bodyStyle={{ padding: "24px" }}>
+          <Row gutter={[16, 0]}>
+            <Col xs={24} md={12}>
+              <Form.Item
+                label={
+                  <Space>
+                    <User size={16} style={{ color: "#595959" }} />
+                    <span>Khách hàng</span>
+                  </Space>
+                }
+                name='customerId'
+                rules={[{ required: true, message: "Chọn khách hàng!" }]}>
+                <Select
+                  placeholder='Tìm kiếm khách hàng (tên hoặc SĐT)'
+                  showSearch
+                  filterOption={false}
+                  onSearch={handleCustomerSearch}
+                  loading={loadingCustomers}
+                  onChange={(val) => handleCustomerChange(val, true)}
+                  style={{ width: "100%" }}>
+                  {customers.map((c) => {
+                    const phone = c.account && c.account.phone ? c.account.phone : "";
+                    const displayName = c.customerCode
+                      ? `${c.customerCode} - ${c.firstName} ${c.lastName}`
+                      : `${c.firstName || ""} ${c.lastName || ""}`;
+                    const displayText = phone ? `${displayName} (${phone})` : displayName;
+                    
+                    return (
+                      <Option key={c.id} value={c.id}>
+                        {displayText}
+                      </Option>
+                    );
+                  })}
+                </Select>
+              </Form.Item>
+            </Col>
 
-      {/* XE CỦA KHÁCH */}
-      <Form.Item
-        label='Xe'
-        name='vehicleId'
-        rules={[{ required: true, message: "Chọn xe!" }]}>
-        <Select
-          placeholder='Chọn xe'
-          loading={loadingVehicles}
-          disabled={!form.getFieldValue("customerId")}
-          onChange={handleVehicleChange}>
-          {vehicles.map((v) => (
-            <Option key={v.id} value={v.id}>
-              {`${v.modelName || "Xe"} - ${v.chassisNumber || ""}`}
-            </Option>
-          ))}
-        </Select>
-      </Form.Item>
+            <Col xs={24} md={12}>
+              <Form.Item
+                label={
+                  <Space>
+                    <Car size={16} style={{ color: "#595959" }} />
+                    <span>Xe</span>
+                  </Space>
+                }
+                name='vehicleId'
+                rules={[{ required: true, message: "Chọn xe!" }]}>
+                <Select
+                  placeholder='Chọn xe'
+                  loading={loadingVehicles}
+                  disabled={!form.getFieldValue("customerId")}
+                  onChange={handleVehicleChange}
+                  style={{ width: "100%" }}>
+                  {vehicles.map((v) => (
+                    <Option key={v.id} value={v.id}>
+                      {`${v.modelName || "Xe"} - ${v.chassisNumber || ""}`}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+        </Card>
 
-      {/* ✅ TRUNG TÂM DỊCH VỤ - Ẩn field, tự động set từ staff */}
-      <Form.Item name='serviceCenterId' hidden>
-        <Input type='hidden' />
-      </Form.Item>
-
-      {/* NGÀY HẸN */}
-      <Form.Item
-        label='Ngày hẹn'
-        name='appointmentDate'
-        rules={[{ required: true, message: "Chọn ngày hẹn!" }]}>
-        <DatePicker style={{ width: "100%" }} onChange={handleDateChange} />
-      </Form.Item>
-
-      {/* KHUNG GIỜ (từ serviceCenterSlots) */}
-      <Form.Item
-        label='Khung giờ'
-        name='slotTime'
-        rules={[{ required: true, message: "Chọn khung giờ!" }]}>
-        <Select
-          placeholder={"Chọn khung giờ"}
-          disabled={!availableSlots.length}>
-          {availableSlots.map((slot) => (
-            <Option key={slot.id} value={slot.slotTime}>
-              {SLOT_LABEL_MAP[slot.slotTime] || slot.slotTime}{" "}
-            </Option>
-          ))}
-        </Select>
-      </Form.Item>
-
-      {/* GHI CHÚ */}
-      <Form.Item label='Ghi chú' name='note'>
-        <Input.TextArea rows={3} placeholder='Ghi chú thêm (nếu có)' />
-      </Form.Item>
-
-      {/* LOẠI DỊCH VỤ */}
-      <Form.Item label='Loại dịch vụ' name='type'>
-        <Select
-          allowClear
-          placeholder='Chọn loại dịch vụ'
-          onChange={handleTypeChange}>
-          <Option value='MAINTENANCE_TYPE'>Bảo dưỡng</Option>
-          <Option value='REPAIR_TYPE'>Sửa chữa</Option>
-          <Option value='WARRANTY_TYPE'>Bảo hành</Option>
-        </Select>
-      </Form.Item>
-
-      {/* ✅ MỐC BẢO DƯỠNG - Chỉ hiện khi type = MAINTENANCE_TYPE */}
-      {form.getFieldValue("type") === "MAINTENANCE_TYPE" && (
-        <Form.Item
-          label='Mốc bảo dưỡng'
-          name='vehicleStageId'
-          tooltip='Chọn mốc bảo dưỡng cho xe (chỉ hiển thị các mốc sắp tới)'>
-          <Select
-            placeholder='Chọn mốc bảo dưỡng'
-            loading={loadingVehicleStages}
-            disabled={!form.getFieldValue("vehicleId")}>
-            {vehicleStages.map((stage) => (
-              <Option key={stage.id} value={stage.id}>
-                {stage.maintenanceStage?.name || "Mốc bảo dưỡng"} -{" "}
-                {stage.maintenanceStage?.mileage || ""}
-                {stage.dateOfImplementation
-                  ? ` (${new Date(stage.dateOfImplementation).toLocaleDateString("vi-VN")})`
-                  : ""}
-              </Option>
-            ))}
-          </Select>
+        {/* ✅ TRUNG TÂM DỊCH VỤ - Ẩn field, tự động set từ staff */}
+        <Form.Item name='serviceCenterId' hidden>
+          <Input type='hidden' />
         </Form.Item>
-      )}
 
-      <Button type='primary' htmlType='submit' loading={loading} block>
-        Tạo lịch hẹn
-      </Button>
-    </Form>
+        {/* ✅ CARD 2: THỜI GIAN HẸN */}
+        <Card
+          title={
+            <Space>
+              <Calendar size={20} style={{ color: "#ff4d4f" }} />
+              <span>Thời gian hẹn</span>
+            </Space>
+          }
+          style={{ marginBottom: 24, borderRadius: 8 }}
+          headStyle={{ borderBottom: "1px solid #f0f0f0", padding: "16px 24px" }}
+          bodyStyle={{ padding: "24px" }}>
+          <Row gutter={[16, 0]}>
+            <Col xs={24} md={12}>
+              <Form.Item
+                label={
+                  <Space>
+                    <Calendar size={16} style={{ color: "#595959" }} />
+                    <span>Ngày hẹn</span>
+                  </Space>
+                }
+                name='appointmentDate'
+                rules={[{ required: true, message: "Chọn ngày hẹn!" }]}>
+                <DatePicker
+                  style={{ width: "100%" }}
+                  onChange={handleDateChange}
+                  format="DD/MM/YYYY"
+                  placeholder="Chọn ngày hẹn"
+                  disabledDate={disabledDate}
+                />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={12}>
+              <Form.Item
+                label={
+                  <Space>
+                    <Clock size={16} style={{ color: "#595959" }} />
+                    <span>Khung giờ</span>
+                  </Space>
+                }
+                name='slotTime'
+                rules={[{ required: true, message: "Chọn khung giờ!" }]}>
+                <Select
+                  placeholder="Chọn khung giờ"
+                  disabled={!availableSlots.length}
+                  style={{ width: "100%" }}>
+                  {availableSlots.map((slot) => (
+                    <Option key={slot.id} value={slot.slotTime}>
+                      {SLOT_LABEL_MAP[slot.slotTime] || slot.slotTime}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+        </Card>
+
+        {/* ✅ CARD 3: LOẠI DỊCH VỤ VÀ THÔNG TIN BỔ SUNG */}
+        <Card
+          title={
+            <Space>
+              <Settings size={20} style={{ color: "#ff4d4f" }} />
+              <span>Loại dịch vụ và thông tin bổ sung</span>
+            </Space>
+          }
+          style={{ marginBottom: 24, borderRadius: 8 }}
+          headStyle={{ borderBottom: "1px solid #f0f0f0", padding: "16px 24px" }}
+          bodyStyle={{ padding: "24px" }}>
+          <Row gutter={[16, 0]}>
+            <Col xs={24} md={12}>
+              <Form.Item
+                label={
+                  <Space>
+                    <Wrench size={16} style={{ color: "#595959" }} />
+                    <span>Loại dịch vụ</span>
+                  </Space>
+                }
+                name='type'>
+                <Select
+                  allowClear
+                  placeholder='Chọn loại dịch vụ'
+                  onChange={handleTypeChange}
+                  style={{ width: "100%" }}>
+                  <Option value='MAINTENANCE_TYPE'>Bảo dưỡng</Option>
+                  <Option value='REPAIR_TYPE'>Sửa chữa</Option>
+                  <Option value='WARRANTY_TYPE'>Bảo hành</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+
+            {/* ✅ MỐC BẢO DƯỠNG - Chỉ hiện khi type = MAINTENANCE_TYPE */}
+            {form.getFieldValue("type") === "MAINTENANCE_TYPE" && (
+              <Col xs={24} md={12}>
+                <Form.Item
+                  label={
+                    <Space>
+                      <FileText size={16} style={{ color: "#595959" }} />
+                      <span>Mốc bảo dưỡng</span>
+                    </Space>
+                  }
+                  name='vehicleStageId'
+                  tooltip='Chọn mốc bảo dưỡng cho xe (chỉ hiển thị các mốc sắp tới)'>
+                  <Select
+                    placeholder='Chọn mốc bảo dưỡng'
+                    loading={loadingVehicleStages}
+                    disabled={!form.getFieldValue("vehicleId")}
+                    style={{ width: "100%" }}>
+                    {vehicleStages.map((stage) => (
+                      <Option key={stage.id} value={stage.id}>
+                        {stage.maintenanceStage?.name || "Mốc bảo dưỡng"} -{" "}
+                        {stage.maintenanceStage?.mileage || ""}
+                        {stage.dateOfImplementation
+                          ? ` (${new Date(stage.dateOfImplementation).toLocaleDateString("vi-VN")})`
+                          : ""}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+            )}
+          </Row>
+
+          <Divider style={{ margin: "16px 0" }} />
+
+          <Form.Item
+            label={
+              <Space>
+                <FileText size={16} style={{ color: "#595959" }} />
+                <span>Ghi chú</span>
+              </Space>
+            }
+            name='note'>
+            <Input.TextArea
+              rows={4}
+              placeholder='Nhập ghi chú thêm (nếu có)'
+              showCount
+              maxLength={500}
+            />
+          </Form.Item>
+        </Card>
+
+        {/* ✅ BUTTON SUBMIT */}
+        <Button
+          type='primary'
+          htmlType='submit'
+          loading={loading}
+          block
+          size="large"
+          style={{
+            height: "48px",
+            fontSize: "16px",
+            fontWeight: 600,
+            borderRadius: 8,
+            marginTop: 8,
+            backgroundColor: "#ff4d4f",
+            borderColor: "#ff4d4f",
+          }}>
+          Tạo lịch hẹn
+        </Button>
+      </Form>
+    </div>
   );
 };
 

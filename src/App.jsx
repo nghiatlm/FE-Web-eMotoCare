@@ -94,7 +94,7 @@ const App = () => (
                       />
                       <Route path='booking/create' element={<CreateBooking />} />
                       <Route path='booking/list' element={<StaffBooking />} />
-                      <Route path='booking' element={<Navigate to='booking/list' replace />} />
+                      <Route path='booking' element={<Navigate to='booking' replace />} />
                       <Route path='warranty' element={<StaffWarrantyPage />} />
 
                       <Route path='*' element={<NotFound />} />

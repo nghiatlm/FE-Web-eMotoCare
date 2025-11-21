@@ -1,6 +1,7 @@
 // src/components/staff/RMADetails.jsx
 import React, { useState, useMemo } from "react";
-import { Table, Spin, Button, message, Modal } from "antd";
+import { Table, Spin, Button, message, Modal, Card, Tag, Image, Space, Divider } from "antd";
+import { Calendar, User, FileText, Package, Clock, CheckCircle, Tag as TagIcon } from "lucide-react";
 import BookingForm from "../../components/service-staff/BookingForm";
 import { createAppointmentService } from "../../services/appointmentService";
 
@@ -44,6 +45,7 @@ function RMADetails({ rma, details = [], loading }) {
         type: "REPAIR_TYPE",
         // status: "PENDING",
         note: `Lịch thay thế phụ tùng từ RMA ${rma.code}`,
+        rmaId: rma?.id || null, // ✅ Truyền rmaId xuống BE
       };
 
       await createAppointmentService(payload);
@@ -57,113 +59,259 @@ function RMADetails({ rma, details = [], loading }) {
     }
   };
 
-  return (
-    <div>
-      {/* THÔNG TIN CHUNG */}
-      <div className='mb-4 p-4 border rounded-lg bg-gray-50'>
-        <p>
-          <strong>Mã RMA:</strong> {rma.code}
-        </p>
-        <p>
-          <strong>Khách hàng:</strong>{" "}
-          {rma.customer
-            ? `${rma.customer.firstName} ${rma.customer.lastName}`
-            : "—"}
-        </p>
-        <p>
-          <strong>Ngày tạo:</strong>{" "}
-          {rma.rmaDate ? new Date(rma.rmaDate).toLocaleString("vi-VN") : "—"}
-        </p>
-        <p>
-          <strong>Ghi chú:</strong> {rma.note || "—"}
-        </p>
-      </div>
+  // ✅ Map status colors
+  const getStatusColor = (status) => {
+    const statusUpper = (status || "").toUpperCase();
+    if (statusUpper === "APPROVED") return "success";
+    if (statusUpper === "PENDING") return "processing";
+    if (statusUpper === "REJECTED") return "error";
+    if (statusUpper === "COMPLETED") return "success";
+    return "default";
+  };
 
-      {/* 🔥 NÚT TẠO LỊCH HẸN – khi phụ tùng đã được approve/completed */}
+  const getStatusText = (status) => {
+    const statusUpper = (status || "").toUpperCase();
+    const statusMap = {
+      APPROVED: "Đã duyệt",
+      PENDING: "Đang chờ",
+      REJECTED: "Từ chối",
+      COMPLETED: "Hoàn thành",
+    };
+    return statusMap[statusUpper] || status || "—";
+  };
+
+  return (
+    <div style={{ padding: "24px", maxWidth: "1200px", margin: "0 auto" }}>
+      {/* ✅ CARD THÔNG TIN CHUNG */}
+      <Card
+        title={
+          <Space>
+            <TagIcon size={20} style={{ color: "#ff4d4f" }} />
+            <span>Thông tin RMA</span>
+          </Space>
+        }
+        style={{ marginBottom: 24, borderRadius: 8 }}
+        headStyle={{ borderBottom: "1px solid #f0f0f0", padding: "16px 24px" }}
+        bodyStyle={{ padding: "24px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 16 }}>
+          <div>
+            <Space>
+              <FileText size={16} style={{ color: "#595959" }} />
+              <span style={{ fontWeight: 600, color: "#595959" }}>Mã RMA:</span>
+            </Space>
+            <div style={{ marginTop: 4, fontSize: 16, fontWeight: 600, color: "#ff4d4f" }}>
+              {rma.code}
+            </div>
+          </div>
+
+          <div>
+            <Space>
+              <User size={16} style={{ color: "#595959" }} />
+              <span style={{ fontWeight: 600, color: "#595959" }}>Khách hàng:</span>
+            </Space>
+            <div style={{ marginTop: 4, fontSize: 14 }}>
+              {rma.customer
+                ? `${rma.customer.firstName || ""} ${rma.customer.lastName || ""}`.trim() || "—"
+                : "—"}
+            </div>
+          </div>
+
+          <div>
+            <Space>
+              <Calendar size={16} style={{ color: "#595959" }} />
+              <span style={{ fontWeight: 600, color: "#595959" }}>Ngày tạo:</span>
+            </Space>
+            <div style={{ marginTop: 4, fontSize: 14 }}>
+              {rma.rmaDate
+                ? new Date(rma.rmaDate).toLocaleString("vi-VN", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "—"}
+            </div>
+          </div>
+
+          {rma.note && (
+            <div style={{ gridColumn: "1 / -1" }}>
+              <Space>
+                <FileText size={16} style={{ color: "#595959" }} />
+                <span style={{ fontWeight: 600, color: "#595959" }}>Ghi chú:</span>
+              </Space>
+              <div style={{ marginTop: 4, fontSize: 14, color: "#595959" }}>
+                {rma.note}
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* ✅ NÚT TẠO LỊCH HẸN */}
       {hasReadyParts && (
-        <div className='mb-4'>
+        <div style={{ marginBottom: 24, display: "flex", justifyContent: "flex-end" }}>
           <Button
             type='primary'
-            style={{ backgroundColor: "#16a34a" }}
+            size="large"
+            icon={<Calendar size={18} />}
+            style={{
+              backgroundColor: "#ff4d4f",
+              borderColor: "#ff4d4f",
+              height: "40px",
+              fontSize: "15px",
+              fontWeight: 600,
+              borderRadius: 8,
+            }}
             onClick={handleOpenBooking}>
-            📅 Tạo lịch thay thế cho khách
+            Tạo lịch thay thế cho khách
           </Button>
         </div>
       )}
 
-      {/* BẢNG CHI TIẾT RMA */}
-      {loading ? (
-        <div className='flex justify-center py-10'>
-          <Spin />
-        </div>
-      ) : (
-        <Table
-          dataSource={details}
-          rowKey='id'
-          bordered
-          pagination={false}
-          columns={[
-            {
-              title: "STT",
-              render: (_, __, idx) => idx + 1,
-              width: 60,
-            },
-            {
-              title: "Phụ tùng",
-              render: (_, row) =>
-                row.partItem?.part?.name || row.partItem?.serialNumber || "—",
-            },
-            {
-              title: "Hình ảnh",
-              dataIndex: "partItem",
-              render: (partItem) =>
-                partItem &&
-                partItem.part.images &&
-                partItem.part.images.length > 0 ? (
-                  <img
-                    src={partItem.part.images[0]}
-                    alt='Part Item'
-                    style={{ width: 50, height: 50, objectFit: "cover" }}
-                  />
-                ) : (
-                  <span>—</span>
+      {/* ✅ CARD BẢNG CHI TIẾT RMA */}
+      <Card
+        title={
+          <Space>
+            <Package size={20} style={{ color: "#ff4d4f" }} />
+            <span>Danh sách phụ tùng RMA</span>
+          </Space>
+        }
+        style={{ borderRadius: 8 }}
+        headStyle={{ borderBottom: "1px solid #f0f0f0", padding: "16px 24px" }}
+        bodyStyle={{ padding: "24px" }}>
+        {loading ? (
+          <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
+            <Spin size="large" />
+          </div>
+        ) : (
+          <Table
+            dataSource={details}
+            rowKey='id'
+            bordered
+            pagination={false}
+            size="middle"
+            scroll={{ x: 'max-content' }}
+            columns={[
+              {
+                title: "STT",
+                render: (_, __, idx) => idx + 1,
+                width: 60,
+                align: "center",
+              },
+              {
+                title: "Hình ảnh",
+                dataIndex: "partItem",
+                width: 100,
+                align: "center",
+                render: (partItem) =>
+                  partItem &&
+                  partItem.part?.image ? (
+                    <Image
+                      src={partItem.part.image}
+                      alt='Part Item'
+                      width={60}
+                      height={60}
+                      style={{ objectFit: "cover", borderRadius: 4 }}
+                      preview
+                    />
+                  ) : (
+                    <span style={{ color: "#bfbfbf" }}>—</span>
+                  ),
+              },
+              {
+                title: "Phụ tùng",
+                width: 200,
+                render: (_, row) => {
+                  const partName = row.partItem?.part?.name || row.partItem?.serialNumber || "—";
+                  return (
+                    <div>
+                      <div style={{ fontWeight: 500, marginBottom: 4 }}>{partName}</div>
+                      {row.evCheckDetail?.partItem?.serialNumber && (
+                        <div style={{ fontSize: 12, color: "#8c8c8c" }}>
+                          S/N: {row.evCheckDetail.partItem.serialNumber}
+                        </div>
+                      )}
+                    </div>
+                  );
+                },
+              },
+              {
+                title: "Số lượng",
+                dataIndex: "quantity",
+                width: 100,
+                align: "center",
+                render: (qty) => qty || 1,
+              },
+              {
+                title: "Lý do",
+                dataIndex: "reason",
+                width: 200,
+                ellipsis: {
+                  showTitle: false,
+                },
+                render: (reason) => (
+                  <span title={reason}>{reason || "—"}</span>
                 ),
-            },
-            {
-              title: "Số serial",
-              render: (_, row) =>
-                row.evCheckDetail?.partItem?.serialNumber || "—",
-            },
-            { title: "SL", dataIndex: "quantity", width: 80 },
-            { title: "Lý do", dataIndex: "reason" },
-            {
-              title: "Ngày gửi",
-              dataIndex: "releaseDateRMA",
-              render: (d) =>
-                d ? new Date(d).toLocaleDateString("vi-VN") : "—",
-            },
-            {
-              title: "Hạn bảo hành",
-              dataIndex: "expirationDateRMA",
-              render: (d) =>
-                d ? new Date(d).toLocaleDateString("vi-VN") : "—",
-            },
-            {
-              title: "Trạng thái",
-              dataIndex: "status",
-              render: (st) => <span>{st || "—"}</span>,
-            },
-          ]}
-        />
-      )}
+              },
+              {
+                title: "Ngày gửi",
+                dataIndex: "releaseDateRMA",
+                width: 140,
+                render: (d) =>
+                  d ? (
+                    <Space>
+                      <Clock size={14} style={{ color: "#8c8c8c" }} />
+                      <span>{new Date(d).toLocaleDateString("vi-VN")}</span>
+                    </Space>
+                  ) : (
+                    <span style={{ color: "#bfbfbf" }}>—</span>
+                  ),
+              },
+              {
+                title: "Hạn bảo hành",
+                dataIndex: "expirationDateRMA",
+                width: 140,
+                render: (d) =>
+                  d ? (
+                    <Space>
+                      <Calendar size={14} style={{ color: "#8c8c8c" }} />
+                      <span>{new Date(d).toLocaleDateString("vi-VN")}</span>
+                    </Space>
+                  ) : (
+                    <span style={{ color: "#bfbfbf" }}>—</span>
+                  ),
+              },
+              {
+                title: "Trạng thái",
+                dataIndex: "status",
+                width: 140,
+                align: "center",
+                render: (st) => (
+                  <Tag color={getStatusColor(st)} icon={<CheckCircle size={12} />}>
+                    {getStatusText(st)}
+                  </Tag>
+                ),
+              },
+            ]}
+          />
+        )}
+      </Card>
 
-      {/* MODAL ĐẶT LỊCH HẸN */}
+      {/* ✅ MODAL ĐẶT LỊCH HẸN */}
       <Modal
-        title='Đặt lịch thay thế phụ tùng'
+        title={
+          <Space>
+            <Calendar size={20} style={{ color: "#ff4d4f" }} />
+            <span>Đặt lịch thay thế phụ tùng</span>
+          </Space>
+        }
         open={bookingOpen}
         onCancel={() => setBookingOpen(false)}
         footer={null}
-        destroyOnClose>
+        destroyOnClose
+        width={900}
+        style={{ top: 20 }}>
         <BookingForm
           onSubmit={handleCreateAppointment}
           loading={bookingLoading}

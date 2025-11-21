@@ -1,7 +1,7 @@
 import api from "./api";
 
 const BASE_URL = "v1/rmas";
-const BASE_DETAIL_URL = "/rma-details";
+const BASE_DETAIL_URL = "v1/rma-details";
 const BASE_CUSTOMER_URL = "v1/customers/rma";
 
 export const createRMA = (payload) => api.post(BASE_URL, payload);

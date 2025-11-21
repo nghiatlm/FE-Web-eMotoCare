@@ -1,6 +1,7 @@
 // src/components/service-staff/RMAConfirmationModal.jsx
-import { Modal, Button, List, Typography, message } from "antd";
+import { Modal, Button, List, Typography, message, Card, Space, Tag, Divider } from "antd";
 import { useState } from "react";
+import { AlertTriangle, Package, CheckCircle, XCircle } from "lucide-react";
 
 import {
   createRMAService,
@@ -8,7 +9,7 @@ import {
 } from "../../services/rmaService";
 import { fetchServiceStaff } from "../../services/staffsService";
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 export default function RMAConfirmationModal({
   open,
@@ -97,12 +98,23 @@ export default function RMAConfirmationModal({
 
   return (
     <Modal
-      title='🚨 Xác nhận Tạo Yêu cầu RMA'
+      title={
+        <Space>
+          <AlertTriangle size={20} style={{ color: "#ff4d4f" }} />
+          <span style={{ fontSize: 18, fontWeight: 600 }}>Xác nhận Tạo Yêu cầu RMA</span>
+        </Space>
+      }
       open={open}
       onCancel={onClose}
       confirmLoading={isSubmitting}
+      width={700}
       footer={[
-        <Button key='back' onClick={onClose} disabled={isSubmitting}>
+        <Button 
+          key='back' 
+          onClick={onClose} 
+          disabled={isSubmitting}
+          size="large"
+          style={{ height: "40px", fontSize: "15px" }}>
           Hủy
         </Button>,
         <Button
@@ -110,40 +122,106 @@ export default function RMAConfirmationModal({
           type='primary'
           danger
           onClick={handleCreateRMA}
-          loading={isSubmitting}>
+          loading={isSubmitting}
+          size="large"
+          style={{ 
+            height: "40px", 
+            fontSize: "15px",
+            fontWeight: 600,
+          }}>
           Xác nhận &amp; Tạo RMA
         </Button>,
       ]}>
-      <p className='mb-4'>
-        Xác nhận tạo <b>01 yêu cầu RMA</b> cho <b>{partsForRMA.length} phụ tùng</b> sau:
-        <br />
-        {/* <span className='text-sm text-gray-500'>
-          (Mỗi phụ tùng sẽ tạo 1 RMADetail, tất cả gom vào 1 RMA)
-        </span> */}
-      </p>
-
-      <List
-        bordered
-        dataSource={partsForRMA}
-        renderItem={(item) => (
-          <List.Item>
-            <div className='flex flex-col w-full'>
-              <div className='flex items-center justify-between'>
-                <Text strong>
-                  {item.partName ||
-                    item.partItem?.part?.name ||
-                    "Không rõ tên PT"}
-                </Text>
-                <Text type='danger'>Bảo hành hãng</Text>
-              </div>
-              <div className='text-xs text-gray-500 mt-1'>
-                SL: {item.quantity || 1} | PartItem ID: {item.partItem?.id} | EV
-                Detail ID: {item.id}
+      <div style={{ padding: "8px 0" }}>
+        {/* ✅ Thông báo */}
+        <Card
+          style={{
+            marginBottom: 24,
+            backgroundColor: "#fff7e6",
+            borderColor: "#ffd591",
+            borderRadius: 8,
+          }}
+          bodyStyle={{ padding: "16px" }}>
+          <Space>
+            <AlertTriangle size={18} style={{ color: "#fa8c16" }} />
+            <div>
+              <Text strong style={{ fontSize: 15 }}>
+                Xác nhận tạo <Text style={{ color: "#ff4d4f" }}>01 yêu cầu RMA</Text> cho{" "}
+                <Text style={{ color: "#ff4d4f" }}>{partsForRMA.length} phụ tùng</Text>
+              </Text>
+              <div style={{ fontSize: 13, color: "#8c8c8c", marginTop: 4 }}>
+                Tất cả phụ tùng sẽ được gom vào một RMA duy nhất
               </div>
             </div>
-          </List.Item>
-        )}
-      />
+          </Space>
+        </Card>
+
+        {/* ✅ Danh sách phụ tùng */}
+        <Card
+          title={
+            <Space>
+              <Package size={18} style={{ color: "#ff4d4f" }} />
+              <span style={{ fontSize: 16, fontWeight: 600 }}>Danh sách phụ tùng</span>
+            </Space>
+          }
+          style={{ borderRadius: 8 }}
+          headStyle={{ borderBottom: "1px solid #f0f0f0", padding: "12px 16px" }}
+          bodyStyle={{ padding: "16px" }}>
+          <List
+            dataSource={partsForRMA}
+            renderItem={(item, index) => (
+              <List.Item
+                style={{
+                  padding: "16px",
+                  border: "1px solid #f0f0f0",
+                  borderRadius: 8,
+                  marginBottom: 12,
+                  backgroundColor: "#fafafa",
+                }}>
+                <div style={{ width: "100%" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      <Space>
+                        <Text strong style={{ fontSize: 15 }}>
+                          {index + 1}. {item.partName ||
+                            item.partItem?.part?.name ||
+                            "Không rõ tên PT"}
+                        </Text>
+                        <Tag color="red" icon={<CheckCircle size={12} />}>
+                          Bảo hành hãng
+                        </Tag>
+                      </Space>
+                    </div>
+                  </div>
+                  <Divider style={{ margin: "8px 0" }} />
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8, fontSize: 13 }}>
+                    <div>
+                      <Text type="secondary">Số lượng:</Text>{" "}
+                      <Text strong>{item.quantity || 1}</Text>
+                    </div>
+                    {item.partItem?.id && (
+                      <div>
+                        <Text type="secondary">PartItem ID:</Text>{" "}
+                        <Text code style={{ fontSize: 12 }}>
+                          {item.partItem.id.substring(0, 8)}...
+                        </Text>
+                      </div>
+                    )}
+                    {item.id && (
+                      <div>
+                        <Text type="secondary">EV Detail ID:</Text>{" "}
+                        <Text code style={{ fontSize: 12 }}>
+                          {item.id.substring(0, 8)}...
+                        </Text>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </List.Item>
+            )}
+          />
+        </Card>
+      </div>
     </Modal>
   );
 }

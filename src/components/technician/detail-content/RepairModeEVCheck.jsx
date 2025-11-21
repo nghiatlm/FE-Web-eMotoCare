@@ -10,8 +10,10 @@ import {
 import { getLaborCostByRemediesService } from "../../../services/priceserviceService.js";
 import { fetchVehiclePartItems } from "../../../services/vehiclePartItemService.js";
 import { getPartItemsService, getPartItemByIdService, getPartItemsByServiceCenterService } from "../../../services/partitemsService.js";
+import { findExportNoteStatusByPartItemId } from "../../../services/exportNotesService.js";
 import { PlusOutlined } from "@ant-design/icons";
 import RMAConfirmationModal from "../../../components/service-staff/RMAConfirmationModal";
+import useEVCheckHub from "../../../hooks/useEVCheckHub.jsx";
 
 const { Option } = Select;
 
@@ -53,6 +55,9 @@ export default function RepairModeEVCheck({
   const [isRMAConfirmationOpen, setIsRMAConfirmationOpen] = useState(false);
   const [currentRMAParts, setCurrentRMAParts] = useState([]);
   const [selectedRMAItems, setSelectedRMAItems] = useState(new Set()); // ✅ Set các item ID đã chọn để tạo RMA
+  
+  // ✅ Map export note status theo detail ID
+  const [exportNoteStatusMap, setExportNoteStatusMap] = useState({});
 
   // ========= WARRANTY / RMA =========
   const checkWarrantyStatus = (partItem) => {
@@ -465,6 +470,17 @@ export default function RepairModeEVCheck({
           const normalizedStatus =
             currentStatus === "INPROGRESS" ? "IN_PROGRESS" : currentStatus;
 
+          // ✅ Nếu status là COMPLETED và có replacePartId, tìm export note status
+          let exportNoteStatus = null;
+          if (normalizedStatus === "COMPLETED" && replacePartId) {
+            try {
+              exportNoteStatus = await findExportNoteStatusByPartItemId(replacePartId);
+              console.log(`🔍 Detail ${item.id} - replacePartId: ${replacePartId}, exportNoteStatus:`, exportNoteStatus);
+            } catch (err) {
+              console.error(`❌ Lỗi tìm export note status cho ${replacePartId}:`, err);
+            }
+          }
+
           return {
             ...item,
             partItemId,
@@ -480,10 +496,20 @@ export default function RepairModeEVCheck({
             quantity: Number(item.quantity || 1),
             unit: item.unit || "cái",
             status: normalizedStatus,
+            exportNoteStatus, // ✅ Lưu export note status
             isNew: false,
           };
         })
       );
+      
+      // ✅ Lưu export note status vào map
+      const statusMap = {};
+      mapped.forEach((item) => {
+        if (item.id && item.exportNoteStatus) {
+          statusMap[item.id] = item.exportNoteStatus;
+        }
+      });
+      setExportNoteStatusMap(statusMap);
 
       console.log("DEBUG: mapped details:", mapped);
 
@@ -542,6 +568,21 @@ export default function RepairModeEVCheck({
     replacePartLoading,
     loadRepairDetails,
   ]);
+
+  // ✅ Kết nối SignalR để nhận real-time updates
+  const handleSignalRUpdate = useCallback(() => {
+    console.log("🔄 SignalR update received, reloading EVCheck details...");
+    // Reload data khi nhận được update từ SignalR
+    if (evCheckId && !forceEmpty && !vehiclePartLoading && !replacePartLoading) {
+      loadRepairDetails();
+      // Gọi onRefresh nếu có
+      if (onRefresh) {
+        onRefresh();
+      }
+    }
+  }, [evCheckId, forceEmpty, vehiclePartLoading, replacePartLoading, loadRepairDetails, onRefresh]);
+
+  useEVCheckHub(evCheckId, handleSignalRUpdate);
 
   // ========= CONTROL FLAG =========
   const canEditFields =
@@ -918,6 +959,19 @@ export default function RepairModeEVCheck({
       },
       render: (_, r, i) => {
         const isWarranty = checkWarrantyStatus(r.partItem);
+        const replacePartName = r.replacePartName || "";
+        
+        // ✅ Nếu còn bảo hành, hiển thị "Còn bảo hành" thay vì Select
+        if (isWarranty) {
+          return (
+            <Tooltip title="Bộ phận còn trong thời gian bảo hành" placement="topLeft">
+              <span style={{ color: "#ff4d4f", fontWeight: 500 }}>
+                Còn bảo hành
+              </span>
+            </Tooltip>
+          );
+        }
+        
         // ✅ Lấy phụ tùng từ serviceCenterId thay vì detailId
         const centerId = serviceCenterId || booking?.serviceCenterId || booking?.serviceCenter?.id;
         const allSuggestedParts = centerId ? (partOptionsMap[centerId] || []) : [];
@@ -939,13 +993,11 @@ export default function RepairModeEVCheck({
             })
           : allSuggestedParts; // Nếu chưa chọn bộ phận thì hiển thị tất cả
 
-        const replacePartName = r.replacePartName || "";
-
         return (
           <Tooltip title={replacePartName} placement="topLeft">
             <Select
               showSearch
-              placeholder={isWarranty ? "Bộ phận còn BHH " : "Chọn phụ tùng"}
+              placeholder="Chọn phụ tùng"
               value={
                 r.replacePartId
                   ? { value: r.replacePartId, label: r.replacePartName || "..." }
@@ -1040,6 +1092,18 @@ export default function RepairModeEVCheck({
       width: 110,
       render: (_, r) =>
         r.totalAmount ? `${Number(r.totalAmount).toLocaleString()}đ` : "-",
+    },
+    {
+      title: "Trạng thái phụ tùng",
+      width: 150,
+        render: (_, r) => {
+          // ✅ Chỉ hiển thị khi status là COMPLETED
+          if (r.status === "COMPLETED") {
+            const status = r.exportNoteStatus || exportNoteStatusMap[r.id] || "-";
+            return <span>{status}</span>;
+          }
+          return "-";
+        },
     },
   ];
 

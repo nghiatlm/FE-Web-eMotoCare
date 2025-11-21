@@ -5,6 +5,7 @@ import {
   createAppointmentService,
 } from "../services/appointmentService";
 import { fetchServiceStaff } from "../services/staffsService";
+import useAppointmentHub from "./useAppointmentHub"; // ✅ Import hook SignalR cho Appointment
 
 export const useBookings = () => {
   const [data, setData] = useState([]);
@@ -75,6 +76,14 @@ export const useBookings = () => {
   useEffect(() => {
     fetchBookings();
   }, []);
+
+  // ✅ Kết nối SignalR để nhận real-time updates cho Appointment
+  // Khi staff tạo booking mới, cập nhật trạng thái, hoặc gán technician,
+  // technician sẽ tự động nhận được update và reload danh sách
+  useAppointmentHub(() => {
+    console.log("🔄 SignalR: Appointment updated, reloading bookings...");
+    fetchBookings(); // ✅ Tự động reload danh sách booking
+  });
 
   // CẬP NHẬT TRẠNG THÁI – LUÔN FETCH LẠI KHI GÁN KỸ THUẬT VIÊN
   const updateStatus = (id, newStatus, selectedTechnician = null) => {
