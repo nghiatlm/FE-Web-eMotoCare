@@ -17,6 +17,8 @@ import UserManagement from "./pages/UserManagement";
 import Index from "./pages/Index";
 import Branches from "./pages/Branches";
 import ServicePackages from "./pages/ServicePackages";
+import Campaigns from "./pages/Campaigns";
+import CampaignDetail from "./pages/CampaignDetail";
 import NotFound from "./pages/NotFound";
 
 // service staff
@@ -89,6 +91,8 @@ const App = () => (
                         element={<WarrantyClaims />}
                       />
                       <Route path="vehicles" element={<Vehicles />} />
+                      <Route path="campaigns" element={<Campaigns />} />
+                      <Route path="campaigns/:id" element={<CampaignDetail />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </main>
