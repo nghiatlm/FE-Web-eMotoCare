@@ -1,4 +1,4 @@
-import { LayoutDashboard, Bike, FileText, Users, BarChart3, Settings, Store, Package, LogOut } from "lucide-react";
+import { LayoutDashboard, Bike, FileText, Users, BarChart3, Settings, Store, Package, Megaphone, LogOut } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar, } from "@/components/ui/sidebar";
 import { authService } from "@/services/authService";
@@ -8,6 +8,7 @@ const menuItems = [
     { title: "Khiếu nại bảo hành", icon: FileText, url: "/admin/warranty-claims" },
     { title: "Chi nhánh", icon: Store, url: "/admin/branches" },
     { title: "Gói dịch vụ", icon: Package, url: "/admin/service-packages" },
+    { title: "Campaign", icon: Megaphone, url: "/admin/campaigns" },
     { title: "Người dùng", icon: Users, url: "/admin/users" },
     { title: "Báo cáo", icon: BarChart3, url: "/admin/reports" },
     { title: "Cài đặt", icon: Settings, url: "/admin/settings" },

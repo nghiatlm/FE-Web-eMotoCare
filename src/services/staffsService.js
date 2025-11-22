@@ -1,11 +1,17 @@
-import { getStaffByPosition } from "../api/staffsApi";
+import { getStaffByPosition, getStaffsByServiceCenterId } from "../api/staffsApi";
 
 // 🟢 Lấy danh sách kỹ thuật viên
-export const fetchTechnicians = async () => {
+export const fetchTechnicians = async (serviceCenterId = null) => {
   try {
-    const res = await getStaffByPosition("TECHNICIAN_STAFF"); // truyền position
-    console.log("Technicians API response:", res.data); // kiểm tra response
-    return res?.data?.rowDatas || []; // trả về mảng nhân viên
+    let res;
+    if (serviceCenterId) {
+      // Lấy theo serviceCenterId và position
+      res = await getStaffsByServiceCenterId(serviceCenterId, { position: "TECHNICIAN_STAFF" });
+    } else {
+      res = await getStaffByPosition("TECHNICIAN_STAFF");
+    }
+    console.log("Technicians API response:", res.data);
+    return res?.data?.rowDatas || [];
   } catch (error) {
     console.error("Lỗi lấy danh sách kỹ thuật viên:", error);
     throw error;
@@ -13,11 +19,17 @@ export const fetchTechnicians = async () => {
 };
 
 // 🟢 Lấy danh sách nhân viên service staff
-export const fetchServiceStaff = async () => {
+export const fetchServiceStaff = async (serviceCenterId = null) => {
   try {
-    const res = await getStaffByPosition("SERVICE_STAFF");
+    let res;
+    if (serviceCenterId) {
+      // Lấy theo serviceCenterId và position
+      res = await getStaffsByServiceCenterId(serviceCenterId, { position: "SERVICE_STAFF" });
+    } else {
+      res = await getStaffByPosition("SERVICE_STAFF");
+    }
     console.log("Service Staff API response:", res.data);
-    return res?.data?.rowDatas?.[0] || null; // lấy staff đầu tiên hoặc null
+    return res?.data?.rowDatas?.[0] || null;
   } catch (error) {
     console.error("Lỗi lấy danh sách service staff:", error);
     throw error;

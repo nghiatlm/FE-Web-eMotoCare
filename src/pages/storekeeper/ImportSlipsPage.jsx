@@ -1,14 +1,17 @@
-import { useState, useEffect } from "react";
-import { Search, Plus, MapPin, Building2, FileDown, Eye, Edit } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Search, Plus, MapPin, Building2, FileDown, Eye, Edit, Loader2, CheckSquare, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import ImportSlipsTable from "@/components/ImportSlipsTable";
 import { getImportNoteById, updateImportNote, createImportNote } from "@/api/importNotesApi";
+import { getPartItems, getPartItemsByServiceCenter } from "@/api/partitemsApi";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function ImportSlipsPage() {
   const [search, setSearch] = useState("");
@@ -38,14 +41,117 @@ export default function ImportSlipsPage() {
 
   // Create form state
   const [createFormData, setCreateFormData] = useState({
-    code: "",
-    importFrom: "",
-    supplier: "",
+    importFrom: "Bảo Trân",
+    supplier: "Bảo Trân",
     type: "SUPPLIER",
+    totalQuantity: 0,
     totalAmout: 0,
-    importById: "",
-    serviceCenterId: ""
+    importById: "a7797a1f-c9d9-4b6b-a06f-d26bdc54e917",
+    serviceCenterId: "a805546d-b31d-11f0-9e95-c4efbb30f085",
+    importNoteStatus: "PENDING",
+    partItemId: [],
+    note: ""
   });
+
+  // Part items state
+  const [partItems, setPartItems] = useState([]);
+  const [loadingPartItems, setLoadingPartItems] = useState(false);
+  const [selectedPartItemIds, setSelectedPartItemIds] = useState([]);
+  const [partItemsTotal, setPartItemsTotal] = useState(0);
+  
+  // Hardcoded IDs (user sẽ set cứng)
+  const [importById] = useState("a7797a1f-c9d9-4b6b-a06f-d26bdc54e917"); // staffId
+  const [serviceCenterId] = useState("a805546d-b31d-11f0-9e95-c4efbb30f085"); // serviceCenterId
+
+  // Fetch part items
+  const fetchPartItems = useCallback(async () => {
+    try {
+      setLoadingPartItems(true);
+
+      // Call API lấy phụ tùng theo serviceCenterId
+      const response = await getPartItemsByServiceCenter(serviceCenterId);
+      
+      // Xử lý response - có thể là array hoặc object có data/rowDatas
+      let items = [];
+      let total = 0;
+      
+      if (Array.isArray(response?.data)) {
+        items = response.data;
+        total = response.data.length;
+      } else if (response?.data?.rowDatas) {
+        items = response.data.rowDatas;
+        total = response.data.total || response.data.rowDatas.length;
+      } else if (Array.isArray(response)) {
+        items = response;
+        total = response.length;
+      } else if (response?.rowDatas) {
+        items = response.rowDatas;
+        total = response.total || response.rowDatas.length;
+      }
+
+      setPartItems(items);
+      setPartItemsTotal(total);
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: error?.message || error?.data?.message || "Không thể tải danh sách phụ tùng",
+        variant: "destructive",
+      });
+      setPartItems([]);
+      setPartItemsTotal(0);
+    } finally {
+      setLoadingPartItems(false);
+    }
+  }, [serviceCenterId, toast]);
+
+  // Fetch part items when create dialog opens
+  useEffect(() => {
+    if (isCreateDialogOpen && serviceCenterId) {
+      fetchPartItems();
+    } else {
+      // Reset when dialog closes
+      setPartItems([]);
+      setSelectedPartItemIds([]);
+    }
+  }, [isCreateDialogOpen, serviceCenterId, fetchPartItems]);
+
+  // Calculate total quantity and amount from selected part items
+  const selectedPartItemsData = useMemo(() => {
+    const selectedItems = partItems.filter(item => selectedPartItemIds.includes(item.id));
+    const totalQty = selectedItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+    const totalAmount = selectedItems.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0);
+    return { totalQty, totalAmount, selectedItems };
+  }, [partItems, selectedPartItemIds]);
+
+  // Update form data when selected items change
+  useEffect(() => {
+    setCreateFormData(prev => ({
+      ...prev,
+      totalQuantity: selectedPartItemsData.totalQty,
+      totalAmout: selectedPartItemsData.totalAmount,
+      partItemId: selectedPartItemIds,
+    }));
+  }, [selectedPartItemsData.totalQty, selectedPartItemsData.totalAmount, selectedPartItemIds]);
+
+  // Handle part item selection
+  const handlePartItemToggle = (partItemId) => {
+    setSelectedPartItemIds(prev => {
+      if (prev.includes(partItemId)) {
+        return prev.filter(id => id !== partItemId);
+      } else {
+        return [...prev, partItemId];
+      }
+    });
+  };
+
+  // Handle select all part items
+  const handleSelectAllPartItems = () => {
+    if (selectedPartItemIds.length === partItems.length) {
+      setSelectedPartItemIds([]);
+    } else {
+      setSelectedPartItemIds(partItems.map(item => item.id));
+    }
+  };
 
   const currentBranch = {
     id: "BR-001",
@@ -69,7 +175,6 @@ export default function ImportSlipsPage() {
             setImportNoteDetail(response.data);
           }
         } catch (error) {
-          console.error("Error fetching import note detail:", error);
           setImportNoteDetail(null);
         } finally {
           setLoadingDetail(false);
@@ -103,7 +208,6 @@ export default function ImportSlipsPage() {
             });
           }
         } catch (error) {
-          console.error("Error fetching import note detail:", error);
           toast({
             title: "Lỗi",
             description: "Không thể tải thông tin phiếu nhập",
@@ -577,7 +681,6 @@ export default function ImportSlipsPage() {
                     throw new Error(response.message || "Cập nhật thất bại");
                   }
                 } catch (error) {
-                  console.error("Error updating import note:", error);
                   toast({
                     title: "Lỗi",
                     description: error.message || "Không thể cập nhật phiếu nhập",
@@ -601,17 +704,19 @@ export default function ImportSlipsPage() {
         setIsCreateDialogOpen(open);
         if (!open) {
           setCreateFormData({
-            code: "",
             importFrom: "",
             supplier: "",
             type: "SUPPLIER",
+            totalQuantity: 0,
             totalAmout: 0,
             importById: "",
-            serviceCenterId: ""
+            serviceCenterId: "",
+            partItemId: []
           });
+          setSelectedPartItemIds([]);
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-2xl flex items-center gap-2">
               <Plus className="h-6 w-6 text-primary" />
@@ -619,19 +724,10 @@ export default function ImportSlipsPage() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 max-h-[80vh] overflow-y-auto">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="create-code">Mã phiếu *</Label>
-                <Input
-                  id="create-code"
-                  value={createFormData.code}
-                  onChange={(e) => setCreateFormData({ ...createFormData, code: e.target.value })}
-                  placeholder="Nhập mã phiếu"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="create-importFrom">Nguồn nhập *</Label>
+                <Label htmlFor="create-importFrom" className="text-sm font-semibold">Nguồn nhập *</Label>
                 <Input
                   id="create-importFrom"
                   value={createFormData.importFrom}
@@ -639,11 +735,8 @@ export default function ImportSlipsPage() {
                   placeholder="Nhập nguồn nhập"
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="create-supplier">Nhà cung cấp *</Label>
+                <Label htmlFor="create-supplier" className="text-sm font-semibold">Nhà cung cấp *</Label>
                 <Input
                   id="create-supplier"
                   value={createFormData.supplier}
@@ -651,8 +744,11 @@ export default function ImportSlipsPage() {
                   placeholder="Nhập nhà cung cấp"
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="create-type">Loại *</Label>
+                <Label htmlFor="create-type" className="text-sm font-semibold">Loại *</Label>
                 <Select
                   value={createFormData.type}
                   onValueChange={(value) => setCreateFormData({ ...createFormData, type: value })}
@@ -661,43 +757,143 @@ export default function ImportSlipsPage() {
                     <SelectValue placeholder="Chọn loại" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="SUPPLIER">SUPPLIER</SelectItem>
+                    <SelectItem value="SUPPLIER">Nhà cung cấp</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="create-totalAmout">Tổng giá trị *</Label>
+                <Label htmlFor="create-totalQuantity" className="text-sm font-semibold">Tổng số lượng *</Label>
+                <Input
+                  id="create-totalQuantity"
+                  type="number"
+                  min="0"
+                  value={createFormData.totalQuantity}
+                  readOnly
+                  className="bg-muted"
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground">Tự động tính từ phụ tùng đã chọn</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-totalAmout" className="text-sm font-semibold">Tổng giá trị *</Label>
                 <Input
                   id="create-totalAmout"
                   type="number"
                   min="0"
                   value={createFormData.totalAmout}
-                  onChange={(e) => setCreateFormData({ ...createFormData, totalAmout: parseFloat(e.target.value) || 0 })}
+                  readOnly
+                  className="bg-muted"
                   placeholder="0"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="create-importById">ID Người nhập</Label>
-                <Input
-                  id="create-importById"
-                  value={createFormData.importById}
-                  onChange={(e) => setCreateFormData({ ...createFormData, importById: e.target.value })}
-                  placeholder="UUID người nhập (optional)"
-                />
+                <p className="text-xs text-muted-foreground">Tự động tính từ phụ tùng đã chọn</p>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="create-serviceCenterId">ID Trung tâm dịch vụ</Label>
-              <Input
-                id="create-serviceCenterId"
-                value={createFormData.serviceCenterId}
-                onChange={(e) => setCreateFormData({ ...createFormData, serviceCenterId: e.target.value })}
-                placeholder="UUID trung tâm (optional)"
-              />
+            {/* Part Items Selection */}
+            <div className="space-y-2 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold">Chọn phụ tùng *</Label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSelectAllPartItems}
+                    disabled={partItems.length === 0}
+                  >
+                    {selectedPartItemIds.length === partItems.length && partItems.length > 0 ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="border rounded-lg max-h-96 overflow-y-auto">
+                {loadingPartItems ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-sm text-muted-foreground">Đang tải phụ tùng...</span>
+                  </div>
+                ) : partItems.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">
+                    Không có phụ tùng nào
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {partItems.map((item) => {
+                      const isSelected = selectedPartItemIds.includes(item.id);
+                      const partImage = item.part?.image;
+                      return (
+                        <div
+                          key={item.id}
+                          className="p-3 hover:bg-muted/50 cursor-pointer transition-colors"
+                          onClick={() => handlePartItemToggle(item.id)}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="mt-1">
+                              {isSelected ? (
+                                <CheckSquare className="h-5 w-5 text-primary" />
+                              ) : (
+                                <Square className="h-5 w-5 text-muted-foreground" />
+                              )}
+                            </div>
+                            
+                            {/* Hình ảnh phụ tùng */}
+                            {partImage ? (
+                              <img
+                                src={partImage}
+                                alt={item.part?.name || item.part?.code || "Phụ tùng"}
+                                className="h-16 w-16 rounded-lg object-cover border border-border/60 shadow-sm flex-shrink-0"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <div className="h-16 w-16 rounded-lg border border-dashed border-border/60 flex items-center justify-center text-xs text-muted-foreground bg-muted/30 flex-shrink-0">
+                                N/A
+                              </div>
+                            )}
+                            
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-primary">{item.part?.code || "—"}</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {item.quantity || 1} bộ
+                                </Badge>
+                                <Badge variant="secondary" className="text-xs">
+                                  {new Intl.NumberFormat("vi-VN", {
+                                    style: "currency",
+                                    currency: "VND",
+                                    maximumFractionDigits: 0,
+                                  }).format(item.price || 0)}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-foreground mt-1">{item.part?.name || "—"}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Serial: {item.serialNumber || "—"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {partItems.length > 0 && (
+                <div className="mt-2 p-2 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    Tổng cộng: {partItemsTotal} phụ tùng
+                  </p>
+                </div>
+              )}
+
+              {selectedPartItemIds.length > 0 && (
+                <div className="mt-2 p-2 bg-primary/10 rounded-lg">
+                  <p className="text-sm font-medium text-primary">
+                    Đã chọn {selectedPartItemIds.length} phụ tùng
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -711,7 +907,7 @@ export default function ImportSlipsPage() {
             </Button>
             <Button
               onClick={async () => {
-                // Validate required fields (the API requires these fields)
+                // Validate required fields
                 if (!createFormData.importFrom || !createFormData.supplier) {
                   toast({
                     title: "Lỗi",
@@ -721,23 +917,38 @@ export default function ImportSlipsPage() {
                   return;
                 }
 
+                // Validate part items
+                if (!createFormData.partItemId || createFormData.partItemId.length === 0) {
+                  toast({
+                    title: "Lỗi",
+                    description: "Vui lòng chọn ít nhất một phụ tùng",
+                    variant: "destructive"
+                  });
+                  return;
+                }
+
                 try {
                   setCreating(true);
+                  
+                  // Tính lại totalQuantity và totalAmount từ các phụ tùng đã chọn để đảm bảo chính xác
+                  const selectedItems = partItems.filter(item => selectedPartItemIds.includes(item.id));
+                  const calculatedTotalQuantity = selectedItems.reduce((sum, item) => {
+                    return sum + (item.quantity || 1);
+                  }, 0);
+                  const calculatedTotalAmount = selectedItems.reduce((sum, item) => {
+                    return sum + ((item.price || 0) * (item.quantity || 1));
+                  }, 0);
                   
                   const createData = {
                     importFrom: createFormData.importFrom,
                     supplier: createFormData.supplier,
                     type: createFormData.type,
-                    totalAmout: createFormData.totalAmout
+                    totalQuantity: calculatedTotalQuantity,
+                    totalAmout: calculatedTotalAmount,
+                    partItemId: selectedPartItemIds,
+                    importById: createFormData.importById,
+                    serviceCenterId: createFormData.serviceCenterId,
                   };
-
-                  // Only include optional fields if they have values
-                  if (createFormData.importById) {
-                    createData.importById = createFormData.importById;
-                  }
-                  if (createFormData.serviceCenterId) {
-                    createData.serviceCenterId = createFormData.serviceCenterId;
-                  }
 
                   const response = await createImportNote(createData);
                   
@@ -749,14 +960,14 @@ export default function ImportSlipsPage() {
                     setIsCreateDialogOpen(false);
                     // Reset form
                     setCreateFormData({
-                      code: "",
                       importFrom: "",
                       supplier: "",
                       type: "SUPPLIER",
+                      totalQuantity: 0,
                       totalAmout: 0,
-                      importById: "",
-                      serviceCenterId: ""
+                      partItemId: []
                     });
+                    setSelectedPartItemIds([]);
                     // Refresh table
                     if (window.refreshImportNotes) {
                       window.refreshImportNotes();
@@ -765,7 +976,6 @@ export default function ImportSlipsPage() {
                     throw new Error(response.message || "Tạo thất bại");
                   }
                 } catch (error) {
-                  console.error("Error creating import note:", error);
                   toast({
                     title: "Lỗi",
                     description: error.message || "Không thể tạo phiếu nhập mới",

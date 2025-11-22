@@ -36,7 +36,6 @@ export const SERVICE_TYPE_MAP = {
   WARRANTY_TYPE: "Bảo hành",
   RECALL_TYPE: "Triệu hồi",
   RMA_TYPE: "RMA",
-  CAMPAIGN_TYPE: "Chiến dịch",
 };
 
 export const SERVICE_TYPE_COLORS = {
@@ -45,5 +44,4 @@ export const SERVICE_TYPE_COLORS = {
   WARRANTY_TYPE: "green",
   RECALL_TYPE: "magenta",
   RMA_TYPE: "gold",
-  CAMPAIGN_TYPE: "orange",
 };
