@@ -450,7 +450,7 @@ export default function MissingPartsList() {
                                         <td className="px-4 py-3 align-middle text-center">
                                           <span className="text-sm text-foreground break-words">{part.suggestCenter || "—"}</span>
                                         </td>
-                                        <td className="px-4 py-3 align-middle text-center">
+                                        <td className="px-4 py-3 align-middle">
                                           {getStockStatusBadge(part.stockStatus)}
                                         </td>
                                       </tr>
