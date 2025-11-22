@@ -17,6 +17,8 @@ import {
   MessageSquare as MessageSquareIcon,
   Users as UsersIcon,
   Bike as ScooterIcon,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -159,6 +161,7 @@ export default function WarrantyDetail() {
   const [rma, setRma] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [expandedDetails, setExpandedDetails] = useState(new Set());
 
   const fetchRmaDetail = useCallback(async () => {
     if (!id) return;
@@ -235,6 +238,87 @@ export default function WarrantyDetail() {
         return "Nữ";
       default:
         return gender || "—";
+    }
+  };
+
+  const translateColor = (color) => {
+    if (!color) return "—";
+    const colorUpper = color.toUpperCase();
+    switch (colorUpper) {
+      case "BLUE":
+        return "Xanh dương";
+      case "RED":
+        return "Đỏ";
+      case "GREEN":
+        return "Xanh lá";
+      case "YELLOW":
+        return "Vàng";
+      case "BLACK":
+        return "Đen";
+      case "WHITE":
+        return "Trắng";
+      case "GRAY":
+      case "GREY":
+        return "Xám";
+      case "SILVER":
+        return "Bạc";
+      case "GOLD":
+        return "Vàng";
+      case "ORANGE":
+        return "Cam";
+      case "PURPLE":
+        return "Tím";
+      case "PINK":
+        return "Hồng";
+      case "BROWN":
+        return "Nâu";
+      default:
+        return color;
+    }
+  };
+
+  const translateStatus = (status) => {
+    if (!status || status === "—") return "—";
+    const statusUpper = status.toUpperCase();
+    switch (statusUpper) {
+      case "ACTIVE":
+        return "Đang hoạt động";
+      case "IN_ACTIVE":
+      case "INACTIVE":
+        return "Không hoạt động";
+      case "PENDING":
+        return "Chờ xử lý";
+      case "PROCESSING":
+      case "IN_PROGRESS":
+        return "Đang xử lý";
+      case "COMPLETED":
+        return "Hoàn thành";
+      case "APPROVED":
+        return "Đã duyệt";
+      case "REJECTED":
+        return "Đã từ chối";
+      case "CANCELLED":
+      case "CANCELED":
+        return "Đã hủy";
+      default:
+        return status;
+    }
+  };
+
+  const translateRemedies = (remedies) => {
+    if (!remedies || remedies === "—") return "—";
+    const remediesUpper = remedies.toUpperCase();
+    switch (remediesUpper) {
+      case "NONE":
+        return "Không có";
+      case "REPAIR":
+        return "Sửa chữa";
+      case "REPLACE":
+        return "Thay thế";
+      case "REFUND":
+        return "Hoàn tiền";
+      default:
+        return remedies;
     }
   };
 
@@ -360,20 +444,27 @@ export default function WarrantyDetail() {
       updatedAt: updatedAt !== "—" ? updatedAt : "",
     },
     customer: {
-      name: rma.customer?.name || rma.customerName || "",
-      phone: rma.customer?.phone || rma.customerPhone || "",
-      email: rma.customer?.email || rma.customerEmail || "",
+      name: rma.customer?.name || (rma.customer?.firstName && rma.customer?.lastName ? `${rma.customer.firstName} ${rma.customer.lastName}` : "") || rma.customerName || "",
+      phone: rma.customer?.phone || rma.customer?.account?.phone || rma.customerPhone || "",
+      email: rma.customer?.email || rma.customer?.account?.email || rma.customerEmail || "",
       address: rma.customer?.address || rma.customerAddress || "",
+      customerCode: rma.customer?.customerCode || "",
+      citizenId: rma.customer?.citizenId || "",
+      dateOfBirth: rma.customer?.dateOfBirth ? formatDateOnly(rma.customer.dateOfBirth) : "",
+      gender: rma.customer?.gender || "",
     },
     vehicle: {
-      name: rma.vehicle?.name || rma.vehicleName || "",
+      name: rma.vehicle?.modelName || rma.vehicle?.name || rma.vehicleName || "",
       vin: rma.vehicle?.vin || rma.vehicleVin || "",
-      frameNumber: rma.vehicle?.frameNumber || rma.vehicleFrameNumber || rma.vehicle?.frameNo || "",
+      frameNumber: rma.vehicle?.chassisNumber || rma.vehicle?.frameNumber || rma.vehicleFrameNumber || rma.vehicle?.frameNo || "",
       licensePlate: rma.vehicle?.licensePlate || rma.vehicleLicensePlate || "",
       engineNumber: rma.vehicle?.engineNumber || rma.vehicleEngineNumber || "",
-      warrantyStatus: rma.vehicle?.warrantyStatus || rma.vehicleWarrantyStatus || "",
+      color: rma.vehicle?.color || "",
+      warrantyStatus: rma.vehicle?.status || rma.vehicle?.warrantyStatus || rma.vehicleWarrantyStatus || "",
       warrantyFrom: rma.vehicle?.warrantyStart ? formatDateOnly(rma.vehicle.warrantyStart) : formatDateOnly(rma.vehicleWarrantyStartDate),
-      warrantyTo: rma.vehicle?.warrantyEnd ? formatDateOnly(rma.vehicle.warrantyEnd) : formatDateOnly(rma.vehicleWarrantyEndDate),
+      warrantyTo: rma.vehicle?.warrantyExpiry ? formatDateOnly(rma.vehicle.warrantyExpiry) : (rma.vehicle?.warrantyEnd ? formatDateOnly(rma.vehicle.warrantyEnd) : formatDateOnly(rma.vehicleWarrantyEndDate)),
+      manufactureDate: rma.vehicle?.manufactureDate ? formatDateOnly(rma.vehicle.manufactureDate) : "",
+      purchaseDate: rma.vehicle?.purchaseDate ? formatDateOnly(rma.vehicle.purchaseDate) : "",
     },
     relatedStaffs: Array.isArray(rma.relatedStaffs)
       ? rma.relatedStaffs
@@ -620,8 +711,8 @@ export default function WarrantyDetail() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="space-y-6 lg:col-span-2">
+        <div className="max-w-7xl mx-auto">
+          <div className="space-y-6">
             {/* Thông tin yêu cầu */}
             <Card className="border-border/60 shadow-lg bg-card">
               <CardHeader className="bg-gradient-to-r from-primary/5 via-transparent to-transparent border-b border-border/60">
@@ -637,56 +728,41 @@ export default function WarrantyDetail() {
               </CardHeader>
               <CardContent className="space-y-6 pt-6">
                 {/* Thông tin chung */}
-                <div className="rounded-2xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 shadow-sm overflow-hidden">
-                  <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 px-6 py-4">
+                <div className="rounded-lg border border-border/60 bg-card shadow-sm overflow-hidden">
+                  <div className="bg-muted/30 border-b border-border/60 px-5 py-3">
                     <div className="flex items-center gap-2">
-                      <Hash className="h-5 w-5 text-primary" />
                       <h3 className="text-base font-semibold text-foreground">Thông tin chung</h3>
+                    </div>
                   </div>
-                  </div>
-                  <div className="grid gap-4 px-6 py-5 md:grid-cols-2">
-                    <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex items-center gap-2 mb-2">
+                  <div className="grid gap-4 px-5 py-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
                         <Hash className="h-4 w-4 text-muted-foreground" />
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Mã yêu cầu</p>
+                        <p className="text-sm text-muted-foreground">Mã yêu cầu</p>
                       </div>
-                      <p className="text-sm font-medium text-foreground">{detailInfo.request.code}</p>
+                      <p className="text-base font-semibold text-foreground">{detailInfo.request.code}</p>
                     </div>
-                    <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex items-center gap-2 mb-2">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ngày tạo</p>
+                        <p className="text-sm text-muted-foreground">Ngày tạo</p>
                       </div>
-                      <p className="text-sm font-medium text-foreground">{detailInfo.request.createdAt}</p>
+                      <p className="text-base font-semibold text-foreground">{detailInfo.request.createdAt}</p>
                     </div>
-                    <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex items-center gap-2 mb-2">
-                        <FlagIcon className="h-4 w-4 text-muted-foreground" />
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ưu tiên</p>
-                      </div>
-                      <p className="text-sm font-medium text-foreground">{detailInfo.request.priority || "—"}</p>
-                    </div>
-                    <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex items-center gap-2 mb-2">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 text-primary" />
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Trạng thái</p>
+                        <p className="text-sm text-muted-foreground">Trạng thái</p>
                       </div>
-                      <p className="text-sm font-medium text-primary">{STATUS_META[normalizedStatus]?.label || detailInfo.request.status}</p>
-                    </div>
-                    <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
-                      <div className="flex items-center gap-2 mb-2">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Chính sách bảo hành</p>
-                      </div>
-                      <p className="text-sm font-medium text-foreground">{detailInfo.request.policyName || "—"}</p>
+                      <p className="text-base font-semibold text-primary">{STATUS_META[normalizedStatus]?.label || detailInfo.request.status}</p>
                     </div>
                     {detailInfo.request.description && (
-                      <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
-                        <div className="flex items-center gap-2 mb-2">
+                      <div className="space-y-2 md:col-span-3">
+                        <div className="flex items-center gap-2">
                           <MessageSquareIcon className="h-4 w-4 text-muted-foreground" />
-                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Mô tả</p>
+                          <p className="text-sm text-muted-foreground">Mô tả</p>
                         </div>
-                        <p className="text-sm font-medium text-foreground leading-relaxed">{detailInfo.request.description}</p>
+                        <p className="text-base font-medium text-foreground leading-relaxed">{detailInfo.request.description}</p>
                       </div>
                     )}
                   </div>
@@ -701,31 +777,24 @@ export default function WarrantyDetail() {
                         <h3 className="text-base font-semibold text-foreground">Khách hàng</h3>
                     </div>
                     </div>
-                    <div className="space-y-3 px-6 py-5">
-                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Tên</p>
-                        <p className="text-sm font-medium text-foreground">{detailInfo.customer.name || "—"}</p>
-                  </div>
-                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Số điện thoại</p>
-                    </div>
-                        <p className="text-sm font-medium text-foreground">{detailInfo.customer.phone || "—"}</p>
-                    </div>
-                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Email</p>
-                        </div>
-                        <p className="text-sm font-medium text-foreground">{detailInfo.customer.email || "—"}</p>
+                    <div className="grid gap-3 px-6 py-5 md:grid-cols-2">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Tên</p>
+                        <p className="text-sm font-semibold text-foreground">{detailInfo.customer.name || "—"}</p>
                       </div>
-                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Địa chỉ</p>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">Số điện thoại</p>
                         </div>
-                        <p className="text-sm font-medium text-foreground leading-relaxed">{detailInfo.customer.address || "—"}</p>
+                        <p className="text-sm font-semibold text-foreground">{detailInfo.customer.phone || "—"}</p>
+                      </div>
+                      <div className="space-y-1 md:col-span-2">
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">Địa chỉ</p>
+                        </div>
+                        <p className="text-sm font-semibold text-foreground leading-relaxed">{detailInfo.customer.address || "—"}</p>
                       </div>
                     </div>
                   </div>
@@ -737,33 +806,23 @@ export default function WarrantyDetail() {
                       </div>
                     </div>
                     <div className="grid gap-3 px-6 py-5 md:grid-cols-2">
-                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Tên xe</p>
-                        <p className="text-sm font-medium text-foreground">{detailInfo.vehicle.name || "—"}</p>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Tên xe</p>
+                        <p className="text-sm font-semibold text-foreground">{detailInfo.vehicle.name || "—"}</p>
                       </div>
-                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Số khung</p>
-                        <p className="text-sm font-medium text-foreground">{detailInfo.vehicle.frameNumber || "—"}</p>
+                      {detailInfo.vehicle.color && (
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">Màu sắc</p>
+                          <p className="text-sm font-semibold text-foreground">{translateColor(detailInfo.vehicle.color)}</p>
+                        </div>
+                      )}
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Số khung</p>
+                        <p className="text-sm font-semibold text-foreground">{detailInfo.vehicle.frameNumber || "—"}</p>
                       </div>
-                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Biển số</p>
-                        <p className="text-sm font-medium text-foreground">{detailInfo.vehicle.licensePlate || "—"}</p>
-                      </div>
-                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Số máy</p>
-                        <p className="text-sm font-medium text-foreground">{detailInfo.vehicle.engineNumber || "—"}</p>
-                      </div>
-                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Tình trạng BH</p>
-                        <p className="text-sm font-medium text-foreground">{detailInfo.vehicle.warrantyStatus || "—"}</p>
-                      </div>
-                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">BH từ</p>
-                        <p className="text-sm font-medium text-foreground">{detailInfo.vehicle.warrantyFrom || "—"}</p>
-                      </div>
-                      <div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm md:col-span-2">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">BH đến</p>
-                        <p className="text-sm font-medium text-foreground">{detailInfo.vehicle.warrantyTo || "—"}</p>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Số máy</p>
+                        <p className="text-sm font-semibold text-foreground">{detailInfo.vehicle.engineNumber || "—"}</p>
                       </div>
                     </div>
                   </div>
@@ -860,413 +919,393 @@ export default function WarrantyDetail() {
                 )}
 
                 {/* Chi tiết RMA */}
-                {rma.rmaDetails && rma.rmaDetails.length > 0 && rma.rmaDetails.map((detail, index) => {
-                  const evCheckDetail = detail.evCheckDetail;
-                  const partItem = evCheckDetail?.partItem;
-                  const replacePart = evCheckDetail?.replacePart;
-                  const rmaNumber = detail.rmaNumber || "—";
-                  const quantity = detail.quantity || 0;
-                  const reason = detail.reason || "—";
-                  const releaseDate = formatDateTime(detail.releaseDateRMA);
-                  const expirationDate = formatDateTime(detail.expirationDateRMA);
-                  const inspector = detail.inspector || "—";
-                  const result = detail.result || "—";
-                  const solution = detail.solution || "—";
-                  const detailStatus = detail.status || "—";
-                  
-                  // EvCheckDetail info
-                  const remedies = evCheckDetail?.remedies || "—";
-                  const unit = evCheckDetail?.unit || "—";
-                  const evQuantity = evCheckDetail?.quantity || 0;
-                  const pricePart = evCheckDetail?.pricePart || 0;
-                  const priceService = evCheckDetail?.priceService || 0;
-                  const totalAmount = evCheckDetail?.totalAmount || 0;
-                  const evStatus = evCheckDetail?.status || "—";
-                  
-                  // PartItem info
-                  const partItemSerial = partItem?.serialNumber || "—";
-                  const partItemPrice = formatCurrency(partItem?.price);
-                  const partItemWarrantyStart = formatDateOnly(partItem?.warantyStartDate);
-                  const partItemWarrantyEnd = formatDateOnly(partItem?.warantyEndDate);
-                  const partItemStatus = partItem?.status || "—";
-                  
-                  // ReplacePart info
-                  const replacePartSerial = replacePart?.serialNumber || "—";
-                  const replacePartPrice = formatCurrency(replacePart?.price);
-                  const replacePartWarrantyStart = formatDateOnly(replacePart?.warantyStartDate);
-                  const replacePartWarrantyEnd = formatDateOnly(replacePart?.warantyEndDate);
-                  const replacePartStatus = replacePart?.status || "—";
+                {rma.rmaDetails && rma.rmaDetails.length > 0 && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-foreground">Chi tiết RMA</h3>
+                    <div className="space-y-4">
+                      {rma.rmaDetails.map((detail, index) => {
+                            const evCheckDetail = detail.evCheckDetail;
+                            const partItem = evCheckDetail?.partItem;
+                            const replacePart = evCheckDetail?.replacePart;
+                            const rmaNumber = detail.rmaNumber || "—";
+                            const quantity = detail.quantity || 0;
+                            const reason = detail.reason || "—";
+                            const releaseDate = formatDateTime(detail.releaseDateRMA);
+                            const expirationDate = formatDateTime(detail.expirationDateRMA);
+                            const inspector = detail.inspector || "—";
+                            const result = detail.result || "—";
+                            const solution = detail.solution || "—";
+                            const detailStatus = detail.status || "—";
+                            
+                            // EvCheckDetail info
+                            const remedies = evCheckDetail?.remedies || "—";
+                            const unit = evCheckDetail?.unit || "—";
+                            const evQuantity = evCheckDetail?.quantity || 0;
+                            const pricePart = evCheckDetail?.pricePart || 0;
+                            const priceService = evCheckDetail?.priceService || 0;
+                            const totalAmount = evCheckDetail?.totalAmount || 0;
+                            const evStatus = evCheckDetail?.status || "—";
+                            
+                            // PartItem info
+                            const partItemSerial = partItem?.serialNumber || "—";
+                            const partItemPrice = formatCurrency(partItem?.price);
+                            const partItemWarrantyStart = formatDateOnly(partItem?.warantyStartDate);
+                            const partItemWarrantyEnd = formatDateOnly(partItem?.warantyEndDate);
+                            const partItemStatus = partItem?.status || "—";
+                            
+                            // ReplacePart info
+                            const replacePartSerial = replacePart?.serialNumber || "—";
+                            const replacePartPrice = formatCurrency(replacePart?.price);
+                            const replacePartWarrantyStart = formatDateOnly(replacePart?.warantyStartDate);
+                            const replacePartWarrantyEnd = formatDateOnly(replacePart?.warantyEndDate);
+                            const replacePartStatus = replacePart?.status || "—";
 
-                  const getStatusBadgeForDetail = (status) => {
-                    const statusUpper = (status || "").toUpperCase();
-                    switch (statusUpper) {
-                      case "PENDING":
-                        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Chờ xử lý</Badge>;
-                      case "PROCESSING":
-                      case "IN_PROGRESS":
-                        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Đang xử lý</Badge>;
-                      case "COMPLETED":
-                      case "ACTIVE":
-                        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Hoàn thành</Badge>;
-                      default:
-                        return <Badge variant="secondary">{status || "—"}</Badge>;
-                    }
-                  };
+                            const getStatusBadgeForDetail = (status) => {
+                              const statusUpper = (status || "").toUpperCase();
+                              switch (statusUpper) {
+                                case "PENDING":
+                                  return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Chờ xử lý</Badge>;
+                                case "PROCESSING":
+                                case "IN_PROGRESS":
+                                  return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Đang xử lý</Badge>;
+                                case "COMPLETED":
+                                case "ACTIVE":
+                                  return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Hoàn thành</Badge>;
+                                default:
+                                  return <Badge variant="secondary">{status || "—"}</Badge>;
+                              }
+                            };
 
-                  return (
-                    <div key={detail.id || index} className="space-y-6">
-                      {/* Header của chi tiết RMA */}
-                      <div className="rounded-2xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 shadow-sm overflow-hidden">
-                        <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 px-6 py-4">
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-sm">
-                                <Hash className="h-5 w-5" />
-                              </div>
-                              <div>
-                                <h3 className="text-base font-semibold text-foreground">
-                                  Chi tiết RMA #{index + 1}: {rmaNumber}
-                                </h3>
-                                <p className="text-xs text-muted-foreground mt-0.5">Thông tin chi tiết về RMA</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <Badge className="border-2 border-primary/30 bg-primary/10 text-primary font-semibold px-4 py-1.5">
-                                Số lượng: {quantity}
-                              </Badge>
-                              {getStatusBadgeForDetail(detailStatus)}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="p-6 space-y-4">
-                          <div className="grid gap-4 sm:grid-cols-2">
-                            <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                              <div className="flex items-center gap-2 mb-2">
-                                <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Lý do</p>
-                              </div>
-                              <p className="text-sm font-medium text-foreground leading-relaxed">{reason}</p>
-                            </div>
-                            <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                              <div className="flex items-center gap-2 mb-2">
-                                <User className="h-4 w-4 text-muted-foreground" />
-                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Người kiểm tra</p>
-                              </div>
-                              <p className="text-sm font-medium text-foreground">{inspector}</p>
-                            </div>
-                            <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Calendar className="h-4 w-4 text-muted-foreground" />
-                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ngày phát hành RMA</p>
-                              </div>
-                              <p className="text-sm font-medium text-foreground">{releaseDate}</p>
-                            </div>
-                            <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Calendar className="h-4 w-4 text-muted-foreground" />
-                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ngày hết hạn RMA</p>
-                              </div>
-                              <p className="text-sm font-medium text-foreground">{expirationDate}</p>
-                            </div>
-                            {(result && result !== "—") && (
-                              <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow sm:col-span-2">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Kết quả</p>
+                            const detailId = detail.id || `detail-${index}`;
+                            const isExpanded = expandedDetails.has(detailId);
+                            const toggleExpand = () => {
+                              const newExpanded = new Set(expandedDetails);
+                              if (isExpanded) {
+                                newExpanded.delete(detailId);
+                              } else {
+                                newExpanded.add(detailId);
+                              }
+                              setExpandedDetails(newExpanded);
+                            };
+
+                            return (
+                              <div key={detailId} className="rounded-2xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md">
+                                {/* Header - Thông tin cơ bản */}
+                                <div 
+                                  className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 px-6 py-4 cursor-pointer hover:from-primary/10 transition-colors"
+                                  onClick={toggleExpand}
+                                >
+                                  <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-4 flex-1">
+                                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); toggleExpand(); }}>
+                                        {isExpanded ? (
+                                          <ChevronUp className="h-5 w-5 text-primary" />
+                                        ) : (
+                                          <ChevronDown className="h-5 w-5 text-primary" />
+                                        )}
+                                      </Button>
+                                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-sm">
+                                        <Hash className="h-5 w-5" />
+                                      </div>
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-1">
+                                          <h3 className="text-base font-semibold text-foreground">
+                                            RMA #{index + 1}: {rmaNumber}
+                                          </h3>
+                                          {getStatusBadgeForDetail(detailStatus)}
+                                        </div>
+                                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                          <span className="flex items-center gap-1">
+                                            <Package className="h-3.5 w-3.5" />
+                                            Số lượng: {quantity}
+                                          </span>
+                                          {reason && reason !== "—" && (
+                                            <span className="line-clamp-1">Lý do: {reason}</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
-                                <p className="text-sm font-medium text-foreground leading-relaxed">{result}</p>
+                                
+                                {/* Expanded Content */}
+                                {isExpanded && (
+                                  <div className="p-6 space-y-6">
+                                    {/* Thông tin chi tiết RMA */}
+                                    <div className="rounded-lg border border-border/60 bg-card shadow-sm overflow-hidden">
+                                      <div className="bg-muted/30 border-b border-border/60 px-5 py-3">
+                                        <div className="flex items-center gap-2">
+                                          <h3 className="text-base font-semibold text-foreground">Thông tin RMA</h3>
+                                        </div>
+                                      </div>
+                                      <div className="grid gap-4 px-5 py-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+                                        <div className="space-y-2">
+                                          <div className="flex items-center gap-2">
+                                            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                                              <p className="text-sm text-muted-foreground">Lý do</p>
+                                          </div>
+                                          <p className="text-base font-semibold text-foreground leading-relaxed">{reason}</p>
+                                        </div>
+                                        <div className="space-y-2">
+                                          <div className="flex items-center gap-2">
+                                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                                            <p className="text-sm text-muted-foreground">Ngày phát hành</p>
+                                          </div>
+                                          <p className="text-base font-semibold text-foreground">{releaseDate}</p>
+                                        </div>
+                                        <div className="space-y-2">
+                                          <div className="flex items-center gap-2">
+                                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                                            <p className="text-sm text-muted-foreground">Ngày hết hạn</p>
+                                          </div>
+                                          <p className="text-base font-semibold text-foreground">{expirationDate}</p>
+                                        </div>
+                                        {(result && result !== "—") && (
+                                          <div className="space-y-2 md:col-span-3">
+                                            <div className="flex items-center gap-2">
+                                              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                                              <p className="text-sm text-muted-foreground">Kết quả</p>
+                                            </div>
+                                            <p className="text-base font-medium text-foreground leading-relaxed">{result}</p>
+                                          </div>
+                                        )}
+                                        {(solution && solution !== "—") && (
+                                          <div className="space-y-2 md:col-span-3">
+                                            <div className="flex items-center gap-2">
+                                              <MessageSquareIcon className="h-4 w-4 text-muted-foreground" />
+                                              <p className="text-sm text-muted-foreground">Giải pháp</p>
+                                            </div>
+                                            <p className="text-base font-medium text-foreground leading-relaxed">{solution}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* EvCheckDetail */}
+                                    {evCheckDetail && (
+                                      <div className="rounded-lg border border-border/60 bg-card shadow-sm overflow-hidden">
+                                        <div className="bg-muted/30 border-b border-border/60 px-5 py-3">
+                                          <div className="flex items-center gap-2">
+                                            <h3 className="text-base font-semibold text-foreground">Chi tiết kiểm tra điện tử</h3>
+                                          </div>
+                                        </div>
+                                        <div className="grid gap-4 px-5 py-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+                                          {(remedies && remedies !== "—") && (
+                                            <div className="space-y-2">
+                                              <div className="flex items-center gap-2">
+                                                <Package className="h-4 w-4 text-muted-foreground" />
+                                                <p className="text-sm text-muted-foreground">Biện pháp khắc phục</p>
+                                              </div>
+                                              <p className="text-base font-semibold text-foreground">{translateRemedies(remedies)}</p>
+                                            </div>
+                                          )}
+                                          {evQuantity > 0 && (
+                                            <div className="space-y-2">
+                                              <div className="flex items-center gap-2">
+                                                <Package className="h-4 w-4 text-muted-foreground" />
+                                                <p className="text-sm text-muted-foreground">Số lượng</p>
+                                              </div>
+                                              <p className="text-base font-semibold text-foreground">{evQuantity}</p>
+                                            </div>
+                                          )}
+                                          {(evStatus && evStatus !== "—") && (
+                                            <div className="space-y-2">
+                                              <div className="flex items-center gap-2">
+                                                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                                                <p className="text-sm text-muted-foreground">Trạng thái</p>
+                                              </div>
+                                              <p className="text-base font-semibold text-foreground">{translateStatus(evStatus)}</p>
+                                            </div>
+                                          )}
+                                          {priceService > 0 && (
+                                            <div className="space-y-2">
+                                              <div className="flex items-center gap-2">
+                                                <Hash className="h-4 w-4 text-muted-foreground" />
+                                                <p className="text-sm text-muted-foreground">Giá dịch vụ</p>
+                                              </div>
+                                              <p className="text-base font-semibold text-foreground">{formatCurrency(priceService)}</p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* PartItem */}
+                                    {partItem && (
+                                      <div className="rounded-lg border border-border/60 bg-card shadow-sm overflow-hidden">
+                                        <div className="bg-muted/30 border-b border-border/60 px-5 py-3">
+                                          <div className="flex items-center gap-2">
+                                            <h3 className="text-base font-semibold text-foreground">Phụ tùng gốc</h3>
+                                          </div>
+                                        </div>
+                                        <div className="px-5 py-4 space-y-4">
+                                          {(partItemSerial && partItemSerial !== "—") && (
+                                            <div className="space-y-2">
+                                              <div className="flex items-center gap-2">
+                                                <Hash className="h-4 w-4 text-muted-foreground" />
+                                                <p className="text-sm text-muted-foreground">Số serial</p>
+                                              </div>
+                                              <p className="text-base font-semibold text-foreground break-all">{partItemSerial}</p>
+                                            </div>
+                                          )}
+                                          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                                            {(partItemPrice && partItemPrice !== "—") && (
+                                              <div className="space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                  <Hash className="h-4 w-4 text-muted-foreground" />
+                                                  <p className="text-sm text-muted-foreground">Giá</p>
+                                                </div>
+                                                <p className="text-base font-semibold text-foreground">{partItemPrice}</p>
+                                              </div>
+                                            )}
+                                            {(partItemStatus && partItemStatus !== "—") && (
+                                              <div className="space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                                                  <p className="text-sm text-muted-foreground">Trạng thái</p>
+                                                </div>
+                                                <p className="text-base font-semibold text-foreground">{translateStatus(partItemStatus)}</p>
+                                              </div>
+                                            )}
+                                            {(partItemWarrantyStart && partItemWarrantyStart !== "—") && (
+                                              <div className="space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                                                  <p className="text-sm text-muted-foreground">BH từ</p>
+                                                </div>
+                                                <p className="text-base font-semibold text-foreground">{partItemWarrantyStart}</p>
+                                              </div>
+                                            )}
+                                            {(partItemWarrantyEnd && partItemWarrantyEnd !== "—") && (
+                                              <div className="space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                                                  <p className="text-sm text-muted-foreground">BH đến</p>
+                                                </div>
+                                                <p className="text-base font-semibold text-foreground">{partItemWarrantyEnd}</p>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* ReplacePart */}
+                                    {replacePart && (
+                                      <div className="rounded-lg border border-border/60 bg-card shadow-sm overflow-hidden">
+                                        <div className="bg-muted/30 border-b border-border/60 px-5 py-3">
+                                          <div className="flex items-center gap-2">
+                                            <h3 className="text-base font-semibold text-foreground">Phụ tùng thay thế</h3>
+                                          </div>
+                                        </div>
+                                        <div className="px-5 py-4 space-y-4">
+                                          {(replacePartSerial && replacePartSerial !== "—") && (
+                                            <div className="space-y-2">
+                                              <div className="flex items-center gap-2">
+                                                <Hash className="h-4 w-4 text-muted-foreground" />
+                                                <p className="text-sm text-muted-foreground">Số serial</p>
+                                              </div>
+                                              <p className="text-base font-semibold text-foreground break-all">{replacePartSerial}</p>
+                                            </div>
+                                          )}
+                                          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                                            {(replacePartPrice && replacePartPrice !== "—") && (
+                                              <div className="space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                  <Hash className="h-4 w-4 text-muted-foreground" />
+                                                  <p className="text-sm text-muted-foreground">Giá</p>
+                                                </div>
+                                                <p className="text-base font-semibold text-foreground">{replacePartPrice}</p>
+                                              </div>
+                                            )}
+                                            {(replacePartStatus && replacePartStatus !== "—") && (
+                                              <div className="space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                                                  <p className="text-sm text-muted-foreground">Trạng thái</p>
+                                                </div>
+                                                <p className="text-base font-semibold text-foreground">{translateStatus(replacePartStatus)}</p>
+                                              </div>
+                                            )}
+                                            {(replacePartWarrantyStart && replacePartWarrantyStart !== "—") && (
+                                              <div className="space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                                                  <p className="text-sm text-muted-foreground">BH từ</p>
+                                                </div>
+                                                <p className="text-base font-semibold text-foreground">{replacePartWarrantyStart}</p>
+                                              </div>
+                                            )}
+                                            {(replacePartWarrantyEnd && replacePartWarrantyEnd !== "—") && (
+                                              <div className="space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                                                  <p className="text-sm text-muted-foreground">BH đến</p>
+                                                </div>
+                                                <p className="text-base font-semibold text-foreground">{replacePartWarrantyEnd}</p>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                            )}
-                            {(solution && solution !== "—") && (
-                              <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow sm:col-span-2">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <MessageSquareIcon className="h-4 w-4 text-muted-foreground" />
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Giải pháp</p>
-                                </div>
-                                <p className="text-sm font-medium text-foreground leading-relaxed">{solution}</p>
-                              </div>
-                            )}
-                          </div>
+                            );
+                          })}
                         </div>
                       </div>
+                    )}
 
-                      {/* EvCheckDetail */}
-                      {evCheckDetail && (
-                        <div className="rounded-2xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 shadow-sm overflow-hidden">
-                          <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-sm">
-                                <Package className="h-5 w-5" />
-                              </div>
-                              <div>
-                                <h3 className="text-base font-semibold text-foreground">Chi tiết kiểm tra điện tử</h3>
-                                <p className="text-xs text-muted-foreground mt-0.5">Thông tin kiểm tra và khắc phục</p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="p-6 space-y-4">
-                            <div className="grid gap-4 sm:grid-cols-2">
-                              {(remedies && remedies !== "—") && (
-                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Biện pháp khắc phục</p>
-                                  <p className="text-sm font-medium text-foreground">{remedies}</p>
-                                </div>
-                              )}
-                              {(unit && unit !== "—") && (
-                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Đơn vị</p>
-                                  <p className="text-sm font-medium text-foreground">{unit}</p>
-                                </div>
-                              )}
-                              {evQuantity > 0 && (
-                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Số lượng</p>
-                                  <p className="text-sm font-medium text-foreground">{evQuantity}</p>
-                                </div>
-                              )}
-                              {(evStatus && evStatus !== "—") && (
-                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Trạng thái</p>
-                                  <p className="text-sm font-medium text-foreground">{evStatus}</p>
-                                </div>
-                              )}
-                              {pricePart > 0 && (
-                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Giá phụ tùng</p>
-                                  <p className="text-sm font-medium text-foreground">{formatCurrency(pricePart)}</p>
-                                </div>
-                              )}
-                              {priceService > 0 && (
-                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Giá dịch vụ</p>
-                                  <p className="text-sm font-medium text-foreground">{formatCurrency(priceService)}</p>
-                                </div>
-                              )}
-                              {totalAmount > 0 && (
-                                <div className="rounded-xl border-2 border-primary/60 bg-primary/5 p-4 shadow-md hover:shadow-lg transition-shadow sm:col-span-2">
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-2">Tổng tiền</p>
-                                  <p className="text-lg font-bold text-primary">{formatCurrency(totalAmount)}</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* PartItem */}
-                      {partItem && (
-                        <div className="rounded-2xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 shadow-sm overflow-hidden">
-                          <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-sm">
-                                <Package className="h-5 w-5" />
-                              </div>
-                              <div>
-                                <h3 className="text-base font-semibold text-foreground">Phụ tùng gốc</h3>
-                                <p className="text-xs text-muted-foreground mt-0.5">Thông tin phụ tùng ban đầu</p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="p-6 space-y-4">
-                            {(partItemSerial && partItemSerial !== "—") && (
-                              <div className="rounded-xl border-2 border-border/60 bg-card p-4 shadow-sm">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Hash className="h-4 w-4 text-primary" />
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Số serial</p>
-                                </div>
-                                <p className="text-sm font-medium text-foreground break-all">{partItemSerial}</p>
-                              </div>
-                            )}
-                            <div className="grid gap-4 sm:grid-cols-2">
-                              {(partItemPrice && partItemPrice !== "—") && (
-                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Giá</p>
-                                  <p className="text-sm font-medium text-foreground">{partItemPrice}</p>
-                                </div>
-                              )}
-                              {(partItemStatus && partItemStatus !== "—") && (
-                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Trạng thái</p>
-                                  <p className="text-sm font-medium text-foreground">{partItemStatus}</p>
-                                </div>
-                              )}
-                              {(partItemWarrantyStart && partItemWarrantyStart !== "—") && (
-                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">BH từ</p>
-                                  </div>
-                                  <p className="text-sm font-medium text-foreground">{partItemWarrantyStart}</p>
-                                </div>
-                              )}
-                              {(partItemWarrantyEnd && partItemWarrantyEnd !== "—") && (
-                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">BH đến</p>
-                                  </div>
-                                  <p className="text-sm font-medium text-foreground">{partItemWarrantyEnd}</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* ReplacePart */}
-                      {replacePart && (
-                        <div className="rounded-2xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 shadow-sm overflow-hidden">
-                          <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-sm">
-                                <Package className="h-5 w-5" />
-                              </div>
-                              <div>
-                                <h3 className="text-base font-semibold text-foreground">Phụ tùng thay thế</h3>
-                                <p className="text-xs text-muted-foreground mt-0.5">Thông tin phụ tùng được thay thế</p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="p-6 space-y-4">
-                            {(replacePartSerial && replacePartSerial !== "—") && (
-                              <div className="rounded-xl border-2 border-border/60 bg-card p-4 shadow-sm">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Hash className="h-4 w-4 text-primary" />
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Số serial</p>
-                                </div>
-                                <p className="text-sm font-medium text-foreground break-all">{replacePartSerial}</p>
-                              </div>
-                            )}
-                            <div className="grid gap-4 sm:grid-cols-2">
-                              {(replacePartPrice && replacePartPrice !== "—") && (
-                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Giá</p>
-                                  <p className="text-sm font-medium text-foreground">{replacePartPrice}</p>
-                                </div>
-                              )}
-                              {(replacePartStatus && replacePartStatus !== "—") && (
-                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Trạng thái</p>
-                                  <p className="text-sm font-medium text-foreground">{replacePartStatus}</p>
-                                </div>
-                              )}
-                              {(replacePartWarrantyStart && replacePartWarrantyStart !== "—") && (
-                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">BH từ</p>
-                                  </div>
-                                  <p className="text-sm font-medium text-foreground">{replacePartWarrantyStart}</p>
-                                </div>
-                              )}
-                              {(replacePartWarrantyEnd && replacePartWarrantyEnd !== "—") && (
-                                <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">BH đến</p>
-                                  </div>
-                                  <p className="text-sm font-medium text-foreground">{replacePartWarrantyEnd}</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {/* Trạng thái hiện tại */}
-                <div
-                  className={cn(
-                    "rounded-2xl border-2 px-6 py-5 shadow-md",
-                    statusInfo.panelBorder,
-                    statusInfo.panelBg
-                  )}
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <CheckCircle2 className={cn("h-5 w-5", statusInfo.panelText)} />
-                    <p className={cn("text-xs font-semibold uppercase tracking-wide", statusInfo.panelText)}>
-                      Trạng thái hiện tại
-                    </p>
-                  </div>
-                  <div className="mb-3">{getStatusBadge(rma.status)}</div>
-                  <p className={cn("text-sm leading-relaxed", statusInfo.panelMuted)}>
-                    Theo dõi tiến trình ở bảng bên phải để nắm rõ tình trạng xử lý.
-                  </p>
-                </div>
               </CardContent>
             </Card>
 
             {/* Nhân viên phụ trách */}
             <Card className="border-border/60 shadow-lg bg-card">
-              <CardHeader className="bg-gradient-to-r from-primary/5 via-transparent to-transparent border-b border-border/60">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <UsersIcon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl">Nhân viên phụ trách</CardTitle>
-                    <CardDescription className="mt-1">Nguồn yêu cầu được tạo từ cửa hàng</CardDescription>
-                  </div>
+              <CardHeader className="bg-gradient-to-r from-primary/5 via-transparent to-transparent border-b border-border/60 px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <UsersIcon className="h-4 w-4 text-primary" />
+                  <CardTitle className="text-base">Nhân viên phụ trách</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-5 pt-6">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10 text-lg font-bold text-primary shadow-lg border-2 border-primary/20">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10 text-base font-bold text-primary shadow-md border-2 border-primary/20">
                     {staffInitials}
                   </div>
-                  <div className="flex-1">
-                    <p className="text-lg font-bold text-foreground mb-2">{staffDisplayName}</p>
-                    <div className="flex flex-wrap gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base font-semibold text-foreground mb-1.5">{staffDisplayName}</p>
+                    <div className="flex flex-wrap items-center gap-2">
                       {staffPositionLabel && (
-                        <Badge className="border-2 border-primary/30 bg-primary/10 text-primary font-medium px-3 py-1">
+                        <Badge className="border border-primary/30 bg-primary/10 text-primary text-xs px-2 py-0.5">
                           {staffPositionLabel}
                         </Badge>
                       )}
-                      {staffGenderLabel && (
-                        <Badge variant="outline" className="border-2 border-border/70 text-muted-foreground font-medium px-3 py-1">
-                          {staffGenderLabel}
-                        </Badge>
+                      
+                      {rma.staff?.staffCode && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <FileText className="h-3 w-3" />
+                          {rma.staff.staffCode}
+                        </span>
                       )}
                     </div>
-                  </div>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="rounded-xl border border-border/60 bg-muted/10 px-4 py-3">
-                    <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-                      <Calendar className="h-3.5 w-3.5" />
-                      Ngày sinh
-                    </div>
-                    <p className="mt-2 text-sm font-medium text-foreground">{formatDateOnly(rma.staff?.dateOfBirth)}</p>
-                  </div>
-                  <div className="rounded-xl border border-border/60 bg-muted/10 px-4 py-3">
-                    <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-                      <FileText className="h-3.5 w-3.5" />
-                      Mã nhân viên
-                    </div>
-                    <p className="mt-2 text-sm font-medium text-foreground">{rma.staff?.staffCode || "—"}</p>
-                  </div>
-                  <div className="rounded-xl border border-border/60 bg-muted/10 px-4 py-3 md:col-span-2">
-                    <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-                      <MapPin className="h-3.5 w-3.5" />
-                      Địa chỉ
-                    </div>
-                    <p className="mt-2 text-sm font-medium text-foreground leading-relaxed">{staffAddress || "—"}</p>
-                  </div>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium text-foreground">{staffPhone || "—"}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium text-foreground">{staffEmail || "—"}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground md:col-span-2">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium text-foreground">CMND/CCCD: {staffCitizenId || "—"}</span>
+                    {(staffPhone || staffEmail) && (
+                      <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
+                        {staffPhone && (
+                          <span className="flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {staffPhone}
+                          </span>
+                        )}
+                        {staffEmail && (
+                          <span className="flex items-center gap-1">
+                            <Mail className="h-3 w-3" />
+                            {staffEmail}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -1294,132 +1333,6 @@ export default function WarrantyDetail() {
 
           </div>
 
-          {/* Sidebar */}
-          <div className="sticky top-20 self-start space-y-6">
-            <Card className="border-border/60 shadow-lg bg-card">
-              <CardHeader className="bg-gradient-to-r from-primary/5 via-transparent to-transparent border-b border-border/60">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <FileText className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl">Tổng quan</CardTitle>
-                    <CardDescription className="mt-1">Thông tin nhanh về yêu cầu</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-6">
-                <div className="rounded-xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 px-5 py-4 shadow-sm hover:shadow-md transition-shadow">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Trạng thái</p>
-                  <div className="flex items-center gap-2">{getStatusBadge(rma.status)}</div>
-                </div>
-                <div className="rounded-xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 px-5 py-4 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ngày tạo</p>
-                </div>
-                  <p className="text-sm font-semibold text-foreground">{createdAt}</p>
-                </div>
-                <div className="rounded-xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 px-5 py-4 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-2 mb-3">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Địa chỉ trả hàng</p>
-                  </div>
-                  <p className="text-sm font-medium text-foreground leading-relaxed">{returnAddress}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {hasPendingDetails && (
-              <Card className="border-2 border-amber-300 bg-gradient-to-br from-amber-50/90 via-amber-50/70 to-amber-50/90 shadow-lg">
-                <CardHeader className="border-b border-amber-200/60">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-700">
-                      <AlertCircle className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-xl text-amber-900">Thao tác nhanh</CardTitle>
-                      <CardDescription className="mt-1 text-amber-700">Phê duyệt hoặc từ chối yêu cầu này</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-6">
-                  <p className="text-sm text-amber-800 leading-relaxed bg-amber-100/50 rounded-xl px-4 py-3 border border-amber-200/60">
-                    ⚠️ Kiểm tra kỹ thông tin phụ tùng trước khi xác nhận.
-                  </p>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Button
-                      className="h-12 gap-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 shadow-md hover:shadow-lg transition-all font-semibold"
-                      onClick={() => setIsConfirmDialogOpen(true)}
-                    >
-                      <CheckCircle2 className="h-5 w-5" />
-                      Duyệt RMA
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      className="h-12 gap-2 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold"
-                      onClick={() => setIsRejectDialogOpen(true)}
-                    >
-                      <XCircle className="h-5 w-5" />
-                      Từ chối
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            <Card className="border-border/60 shadow-lg bg-card">
-              <CardHeader className="bg-gradient-to-r from-primary/5 via-transparent to-transparent border-b border-border/60">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <Clock className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl">Tiến trình xử lý</CardTitle>
-                    <CardDescription className="mt-1">Trạng thái xuyên suốt của yêu cầu</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                {STATUS_FLOW.map((step, index) => {
-                  const state = computeStepState(step.key);
-                  const isActive = state === "active";
-                  const isComplete = state === "complete";
-                  const StepIcon = step.icon;
-                  return (
-                    <div key={step.key} className="flex items-start gap-3">
-                      <div className="flex flex-col items-center">
-                        <div
-                          className={cn(
-                            "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors",
-                            isActive
-                              ? "border-primary bg-primary text-primary-foreground shadow-lg"
-                              : isComplete
-                              ? "border-primary/40 bg-primary/10 text-primary"
-                              : "border-border bg-background text-muted-foreground"
-                          )}
-                        >
-                          <StepIcon className="h-4 w-4" />
-                        </div>
-                        {index < STATUS_FLOW.length - 1 && (
-                          <div
-                            className={cn(
-                              "mt-1 h-10 w-px",
-                              isComplete || isActive ? "bg-primary/40" : "bg-border"
-                            )}
-                          />
-                        )}
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <p className={cn("text-sm font-semibold", isActive ? "text-foreground" : "text-muted-foreground")}> {step.label}</p>
-                        <p className="text-xs text-muted-foreground leading-relaxed">{step.description}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          </div>
         </div>
       </div>
 
