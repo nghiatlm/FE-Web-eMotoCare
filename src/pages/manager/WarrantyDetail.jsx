@@ -1054,7 +1054,7 @@ export default function WarrantyDetail() {
                       )}
 
                       {/* PartItem */}
-                      {/* {partItem && (
+                      {partItem && (
                         <div className="rounded-2xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 shadow-sm overflow-hidden">
                           <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 px-6 py-4">
                             <div className="flex items-center gap-2">
@@ -1111,7 +1111,7 @@ export default function WarrantyDetail() {
                             </div>
                           </div>
                         </div>
-                      )} */}
+                      )}
 
                       {/* ReplacePart */}
                       {replacePart && (

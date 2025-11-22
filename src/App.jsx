@@ -19,6 +19,7 @@ import Branches from "./pages/Branches";
 import BranchDetail from "./pages/admin/BranchDetail";
 import BranchReport from "./pages/admin/BranchReport";
 import ServicePackages from "./pages/ServicePackages";
+import CreateServicePackage from "./pages/admin/CreateServicePackage";
 import Campaigns from "./pages/Campaigns";
 import CampaignDetail from "./pages/CampaignDetail";
 import NotFound from "./pages/NotFound";
@@ -95,6 +96,8 @@ const App = () => (
                         element={<WarrantyClaims />}
                       />
                       <Route path="vehicles" element={<Vehicles />} />
+                      <Route path="service-packages" element={<ServicePackages />} />
+                      <Route path="service-packages/create" element={<CreateServicePackage />} />
                       <Route path="campaigns" element={<Campaigns />} />
                       <Route path="campaigns/:id" element={<CampaignDetail />} />
                       <Route path="*" element={<NotFound />} />
