@@ -28,6 +28,7 @@ import {
 import { getLaborCostByRemediesService } from "../../../services/priceserviceService";
 import RMAConfirmationModal from "../../../components/service-staff/RMAConfirmationModal";
 import useEVCheckHub from "../../../hooks/useEVCheckHub.jsx";
+import BatteryDataDisplay from "../BatteryDataDisplay";
 
 const { Option } = Select;
 
@@ -572,22 +573,41 @@ export default function MaintenanceModeEVCheck({
     {
       title: "Kết quả",
       width: 350,
-      render: (_, r, i) => (
-        <Input.TextArea
-          placeholder='Nhập kết quả kiểm tra (mặc định: Tốt, có thể xóa để nhập lại)...'
-          value={r.result ?? ""}
-          onChange={(e) => handleChange(i, "result", e.target.value)}
-          onBlur={(e) => {
-            // ✅ Nếu để trống khi blur, tự động set về "Tốt"
-            if (!e.target.value.trim()) {
-              handleChange(i, "result", "Tốt");
-            }
-          }}
-          disabled={!canEditFields}
-          autoSize={{ minRows: 2, maxRows: 8 }}
-          style={{ resize: "none", fontSize: 14, lineHeight: 1.5, maxWidth: "100%" }}
-        />
-      ),
+      render: (_, r, i) => {
+        // ✅ Kiểm tra nếu bộ phận là CÒI
+        const partName = r.maintenanceStageDetail?.part?.name || r.partName || "";
+        const isCoi = partName.toLowerCase().includes("còi") || 
+                     partName.toLowerCase().includes("coi") ||
+                     partName.toLowerCase().includes("horn");
+        
+        return (
+          <div className="space-y-2">
+            <Input.TextArea
+              placeholder='Nhập kết quả kiểm tra (mặc định: Tốt, có thể xóa để nhập lại)...'
+              value={r.result ?? ""}
+              onChange={(e) => handleChange(i, "result", e.target.value)}
+              onBlur={(e) => {
+                // ✅ Nếu để trống khi blur, tự động set về "Tốt"
+                if (!e.target.value.trim()) {
+                  handleChange(i, "result", "Tốt");
+                }
+              }}
+              disabled={!canEditFields}
+              autoSize={{ minRows: 2, maxRows: 8 }}
+              style={{ resize: "none", fontSize: 14, lineHeight: 1.5, maxWidth: "100%" }}
+            />
+            {/* ✅ Hiển thị dữ liệu pin nếu bộ phận là CÒI và có ID thật (không phải temp) */}
+            {isCoi && r.id && !r.id.startsWith("temp_") && (
+              <div className="mt-2 p-2 border rounded bg-gray-50">
+                <BatteryDataDisplay 
+                  evCheckDetailId={r.id} 
+                  canImport={canEditFields}
+                />
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: "Biện pháp",
