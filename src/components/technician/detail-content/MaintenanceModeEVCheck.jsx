@@ -7,11 +7,11 @@ import {
   Tag,
   Image,
   Button,
-  message,
   Spin,
   Checkbox,
   Tooltip,
 } from "antd";
+import { toast } from "@/components/ui/sonner";
 
 import {
   fetchEVCheckDetailsServiceMain,
@@ -158,7 +158,7 @@ export default function MaintenanceModeEVCheck({
       setStatusChanges({});
     } catch (err) {
       console.error("Lỗi tải chi tiết EV Check:", err);
-      message.error("Không thể tải chi tiết EV Check!");
+      toast.error("Không thể tải chi tiết EV Check!");
       setEvCheckDetails([]);
     } finally {
       setLoading(false);
@@ -199,7 +199,7 @@ export default function MaintenanceModeEVCheck({
       }));
     } catch (e) {
       console.error("Lỗi load phụ tùng đề xuất:", e);
-      message.error("Không tải được danh sách phụ tùng đề xuất");
+      toast.error("Không tải được danh sách phụ tùng đề xuất");
     } finally {
       setPartLoading(false);
     }
@@ -275,7 +275,7 @@ export default function MaintenanceModeEVCheck({
     const selectedItems = evCheckDetails.filter((d) => selectedRMAItems.has(d.id) && isRMAEligible(d));
     
     if (selectedItems.length === 0) {
-      return message.warning("Vui lòng chọn ít nhất 1 phụ tùng để tạo RMA.");
+      return toast.warning("Vui lòng chọn ít nhất 1 phụ tùng để tạo RMA.");
     }
 
     const rmaItems = selectedItems.map((row) => ({
@@ -354,7 +354,7 @@ export default function MaintenanceModeEVCheck({
     if (field === "remedies" && (value === "REPLACE" || value === "REPAIR")) {
       const currentRow = evCheckDetails[index];
       if (checkWarrantyStatus(currentRow?.partItem)) {
-        message.error(
+        toast.error(
           "Bộ phận đang trong thời gian bảo hành. Chỉ cho phép 'Kiểm tra' hoặc 'Bôi trơn'."
         );
         return; // Không cho thay đổi
@@ -414,13 +414,13 @@ export default function MaintenanceModeEVCheck({
   const handleConfirmQuote = async () => {
     try {
       setLoading(true);
-      message.loading("Đang gửi dữ liệu kiểm tra...", 0);
+      const loadingToast = toast.loading("Đang gửi dữ liệu kiểm tra...");
 
       // ✅ Kiểm tra: nếu còn bảo hành thì không cho chọn REPLACE hoặc REPAIR
       for (const item of evCheckDetails) {
         if ((item.remedies === "REPLACE" || item.remedies === "REPAIR") && checkWarrantyStatus(item.partItem)) {
-          message.destroy();
-          return message.error(
+          toast.dismiss(loadingToast);
+          return toast.error(
             "Bộ phận đang trong thời gian bảo hành. Chỉ cho phép 'Kiểm tra' hoặc 'Bôi trơn'."
           );
         }
@@ -459,39 +459,41 @@ export default function MaintenanceModeEVCheck({
       await loadEVCheckDetails();
       setLocalEvCheckStatus("INSPECTION_COMPLETED");
       setParentEvCheckStatus("INSPECTION_COMPLETED");
-      message.success("Xác nhận báo giá thành công!");
+      toast.dismiss(loadingToast);
+      toast.success("Xác nhận báo giá thành công!");
     } catch (err) {
       console.error("Lỗi xác nhận báo giá:", err);
-      message.error("Lỗi khi gửi dữ liệu!");
+      toast.dismiss(loadingToast);
+      toast.error("Lỗi khi gửi dữ liệu!");
     } finally {
       setLoading(false);
-      message.destroy();
     }
   };
 
   const handleConfirmRepair = async () => {
     if (!Object.keys(statusChanges).length) {
-      return message.info("Chưa có thay đổi trạng thái nào để lưu.");
+      return toast.info("Chưa có thay đổi trạng thái nào để lưu.");
     }
     try {
       setLoading(true);
-      message.loading("Đang cập nhật trạng thái hạng mục...", 0);
+      const loadingToast = toast.loading("Đang cập nhật trạng thái hạng mục...");
 
       for (const [detailId, newStatus] of Object.entries(statusChanges)) {
         await updateEVCheckDetailService(detailId, { status: newStatus });
       }
 
-      message.success("Cập nhật trạng thái thành công!");
+      toast.dismiss(loadingToast);
+      toast.success("Cập nhật trạng thái thành công!");
       setStatusChanges({});
       await loadEVCheckDetails();
       await updateEVCheckService(evCheckId, { status: "REPAIR_COMPLETED" });
       onRefresh?.();
     } catch (err) {
       console.error("Cập nhật trạng thái thất bại:", err);
-      message.error("Không thể cập nhật trạng thái hạng mục!");
+      toast.dismiss(loadingToast);
+      toast.error("Không thể cập nhật trạng thái hạng mục!");
     } finally {
       setLoading(false);
-      message.destroy();
     }
   };
 
@@ -729,7 +731,7 @@ export default function MaintenanceModeEVCheck({
                       ],
                     }));
                   } catch (e) {
-                    message.error("Lỗi tải phụ tùng");
+                    toast.error("Lỗi tải phụ tùng");
                   }
                 }
               }}
@@ -1053,7 +1055,7 @@ export default function MaintenanceModeEVCheck({
         onRMASuccess={() => {
           const rmaDetailIds = currentRMAParts.map((p) => p.id);
           setSelectedRMAItems(new Set()); // ✅ Clear selection sau khi tạo thành công
-          message.info("Đang đồng bộ lại chi tiết EV Check...");
+          toast.info("Đang đồng bộ lại chi tiết EV Check...");
           loadEVCheckDetails();
           setIsRMAConfirmationOpen(false);
         }}

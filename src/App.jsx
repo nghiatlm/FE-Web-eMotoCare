@@ -9,6 +9,7 @@ import { AdminSidebar } from "@/components/AdminSidebar";
 // auth
 import Login from "./pages/login/Login";
 import ForgotPassword from "./pages/login/ForgotPassword";
+import VerifyOTP from "./pages/login/VerifyOTP";
 
 // admin
 import WarrantyClaims from "./pages/WarrantyClaims";
@@ -26,11 +27,15 @@ import NotFound from "./pages/NotFound";
 
 // service staff
 import { StaffSidebar } from "./components/service-staff/StaffSidebar";
+import StaffDashboard from "./pages/service-staff/StaffDashboard";
 import StaffBooking from "./pages/service-staff/StaffBooking";
+import CreateBooking from "./pages/service-staff/CreateBooking";
 import StaffWarrantyPage from "./pages/service-staff/StaffWarrantyPage";
+import StaffRMADetailPage from "./pages/service-staff/StaffRMADetailPage";
 
 // technician
 import { TechnicianSidebar } from "./components/technician/TechnicanSidebar";
+import TechnicianDashboard from "./pages/technician/TechnicianDashboard";
 import TechnicianPage from "./pages/technician/TechnicianPage";
 
 // manager
@@ -72,6 +77,7 @@ const App = () => (
         {/* Auth routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/verify-otp" element={<VerifyOTP />} />
 
         {/* Admin routes */}
         <Route
@@ -90,16 +96,28 @@ const App = () => (
                       <Route path="users" element={<UserManagement />} />
                       <Route path="branches" element={<Branches />} />
                       <Route path="branches/:id" element={<BranchDetail />} />
-                      <Route path="branches/:id/report" element={<BranchReport />} />
+                      <Route
+                        path="branches/:id/report"
+                        element={<BranchReport />}
+                      />
                       <Route
                         path="warranty-claims"
                         element={<WarrantyClaims />}
                       />
                       <Route path="vehicles" element={<Vehicles />} />
-                      <Route path="service-packages" element={<ServicePackages />} />
-                      <Route path="service-packages/create" element={<CreateServicePackage />} />
+                      <Route
+                        path="service-packages"
+                        element={<ServicePackages />}
+                      />
+                      <Route
+                        path="service-packages/create"
+                        element={<CreateServicePackage />}
+                      />
                       <Route path="campaigns" element={<Campaigns />} />
-                      <Route path="campaigns/:id" element={<CampaignDetail />} />
+                      <Route
+                        path="campaigns/:id"
+                        element={<CampaignDetail />}
+                      />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </main>
@@ -124,10 +142,23 @@ const App = () => (
                     <Routes>
                       <Route
                         path=""
-                        element={<Navigate to="booking" replace />}
+                        element={<Navigate to="dashboard" replace />}
                       />
-                      <Route path="booking" element={<StaffBooking />} />
+                      <Route path="dashboard" element={<StaffDashboard />} />
+                      <Route
+                        path="booking/create"
+                        element={<CreateBooking />}
+                      />
+                      <Route path="booking/list" element={<StaffBooking />} />
+                      <Route
+                        path="booking"
+                        element={<Navigate to="booking/list" replace />}
+                      />
                       <Route path="warranty" element={<StaffWarrantyPage />} />
+                      <Route
+                        path="warranty/:rmaId"
+                        element={<StaffRMADetailPage />}
+                      />
 
                       <Route path="*" element={<NotFound />} />
                     </Routes>
@@ -153,7 +184,11 @@ const App = () => (
                     <Routes>
                       <Route
                         path=""
-                        element={<Navigate to="vehicles" replace />}
+                        element={<Navigate to="dashboard" replace />}
+                      />
+                      <Route
+                        path="dashboard"
+                        element={<TechnicianDashboard />}
                       />
                       <Route path="vehicles" element={<TechnicianPage />} />
                       <Route path="*" element={<NotFound />} />
@@ -192,8 +227,8 @@ const App = () => (
                         element={<ExportSlipsPage />}
                       />
                       <Route
-                      path="export-slips/:id"
-                      element={<ExportNoteDetail />}
+                        path="export-slips/:id"
+                        element={<ExportNoteDetail />}
                       />
                       <Route
                         path="export-slips/create"

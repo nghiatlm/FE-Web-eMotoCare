@@ -5,11 +5,10 @@ const PART_TYPES_BASE_URL = "/v1/part-types";
 const user = JSON.parse(localStorage.getItem("user"));
 const token = user?.token;
 
-export const getParts = ({ page = 1, pageSize = 10, search, status, serviceCenterId } = {}) => {
+export const getParts = ({ page = 1, pageSize = 10, search, status } = {}) => {
   const params = { page, pageSize };
   if (search) params.search = search;
   if (status) params.status = status;
-  if (serviceCenterId) params.serviceCenterId = serviceCenterId;
   return api.get(BASE_URL, { params });
 };
 

@@ -54,13 +54,22 @@ export default function AppointmentsList() {
     switch (status?.toUpperCase()) {
       case "PENDING":
         return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Chờ xử lý</Badge>;
-      case "CHECKED_IN":
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Đã check-in</Badge>;
       case "APPROVED":
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Đã duyệt</Badge>;
+      case "CHECKED_IN":
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Đã check-in</Badge>;
+      case "QUOTE_APPROVED":
+        return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">Đã duyệt báo giá</Badge>;
+      case "REPAIR_COMPLETED":
+        return <Badge className="bg-teal-100 text-teal-800 hover:bg-teal-100">Hoàn thành sửa chữa</Badge>;
+      case "WAITING_FOR_PAYMENT":
+        return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">Chờ thanh toán</Badge>;
+      case "PAYMENT_FAILED":
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Thanh toán thất bại</Badge>;
       case "COMPLETED":
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Hoàn thành</Badge>;
       case "CANCELLED":
+      case "CANCELED":
         return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Đã hủy</Badge>;
       default:
         return <Badge variant="secondary">{status || "—"}</Badge>;
@@ -72,13 +81,22 @@ export default function AppointmentsList() {
     switch (status?.toUpperCase()) {
       case "PENDING":
         return <AlertCircle className="h-4 w-4 text-yellow-600" />;
-      case "CHECKED_IN":
-        return <CheckCircle2 className="h-4 w-4 text-blue-600" />;
       case "APPROVED":
         return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+      case "CHECKED_IN":
+        return <CheckCircle2 className="h-4 w-4 text-blue-600" />;
+      case "QUOTE_APPROVED":
+        return <CheckCircle2 className="h-4 w-4 text-purple-600" />;
+      case "REPAIR_COMPLETED":
+        return <CheckCircle2 className="h-4 w-4 text-teal-600" />;
+      case "WAITING_FOR_PAYMENT":
+        return <Clock className="h-4 w-4 text-orange-600" />;
+      case "PAYMENT_FAILED":
+        return <XCircle className="h-4 w-4 text-red-600" />;
       case "COMPLETED":
         return <CheckCircle2 className="h-4 w-4 text-green-600" />;
       case "CANCELLED":
+      case "CANCELED":
         return <XCircle className="h-4 w-4 text-red-600" />;
       default:
         return null;
@@ -183,10 +201,15 @@ export default function AppointmentsList() {
               <SelectContent>
                 <SelectItem value="all">Tất cả</SelectItem>
                 <SelectItem value="PENDING">Chờ xử lý</SelectItem>
-                <SelectItem value="CHECKED_IN">Đã check-in</SelectItem>
                 <SelectItem value="APPROVED">Đã duyệt</SelectItem>
+                <SelectItem value="CHECKED_IN">Đã check-in</SelectItem>
+                <SelectItem value="QUOTE_APPROVED">Đã duyệt báo giá</SelectItem>
+                <SelectItem value="REPAIR_COMPLETED">Hoàn thành sửa chữa</SelectItem>
+                <SelectItem value="WAITING_FOR_PAYMENT">Chờ thanh toán</SelectItem>
+                <SelectItem value="PAYMENT_FAILED">Thanh toán thất bại</SelectItem>
                 <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
                 <SelectItem value="CANCELLED">Đã hủy</SelectItem>
+                <SelectItem value="CANCELED">Đã hủy</SelectItem>
               </SelectContent>
             </Select>
             <Select value={dateFilter} onValueChange={setDateFilter}>

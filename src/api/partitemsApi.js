@@ -1,7 +1,7 @@
 import api from "./api";
 const BASE_URL = "/v1/part-items";
-
 export const getPartItem = (config) => api.get(BASE_URL, config);
+
 export const getPartItems = (params = {}) => {
   const queryParams = {
     page: params.page || 1,
@@ -12,16 +12,12 @@ export const getPartItems = (params = {}) => {
   };
   return api.get(BASE_URL, { params: queryParams });
 };
+
 export const getPartItemById = (id, config) =>
   api.get(`${BASE_URL}/${id}`, config);
 
 export const getSuggestedPartItems = (evCheckDetailId, config) =>
-  api.get(`${BASE_URL}/${evCheckDetailId}/part-items`, config)
+  api.get(`${BASE_URL}/ev-check-detail/${evCheckDetailId}`, config);
 
-
-
-// Get part items by service center ID
-export const getPartItemsByServiceCenter = (serviceCenterId) => {
-  return api.get(`${BASE_URL}/service-center/${serviceCenterId}`);
-};
-
+export const getPartItemsByServiceCenter = (serviceCenterId, config) =>
+  api.get(`${BASE_URL}/service-center/${serviceCenterId}`, config);
