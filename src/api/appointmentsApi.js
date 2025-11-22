@@ -30,3 +30,9 @@ export const getAppointmentsByTechnician = (technicianId) => {
 
 export const getAppointmentMissingParts = (appointmentId) =>
   api.get(`${BASE_URL}/${appointmentId}/missing-parts`);
+
+// Lấy danh sách phụ tùng còn thiếu (cho manager)
+export const getAppointmentsMissingParts = ({ page = 1, pageSize = 10, sortDesc = true } = {}) => {
+  const params = { page, pageSize, sortDesc };
+  return api.get(`${BASE_URL}/missing-parts`, { params });
+};
