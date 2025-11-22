@@ -69,10 +69,14 @@ export default function VerifyOTP() {
       const roleName = user.accountResponse?.roleName;
       if (roleName === "ROLE_ADMIN") {
         navigate("/admin");
+      } else if (roleName === "ROLE_MANAGER") {
+        navigate("/manager");
       } else if (roleName === "ROLE_STAFF") {
         navigate("/staff");
       } else if (roleName === "ROLE_TECHNICIAN") {
         navigate("/technician");
+      } else if (roleName === "ROLE_STOREKEEPER") {
+        navigate("/storekeeper");
       } else {
         navigate("/");
       }

@@ -2,7 +2,6 @@ import api from "./api";
 
 const BASE_URL = "/v1/appointments";
 
-// Lấy danh sách lịch hẹn
 export const getAppointments = ({ page = 1, pageSize = 20, serviceCenterId } = {}) => {
   const params = { page, pageSize };
   if (serviceCenterId) {
@@ -12,7 +11,7 @@ export const getAppointments = ({ page = 1, pageSize = 20, serviceCenterId } = {
 };
 export const postAppointment = (data) => api.post(BASE_URL, data);
 
-// Lấy chi tiết 1 lịch hẹn
+
 export const getAppointmentById = (id) => api.get(`${BASE_URL}/${id}`);
 
 // // Duyệt lịch hẹn
@@ -27,4 +26,13 @@ export const updateAppointment = (id, body) =>
 // Lấy danh sách lịch hẹn theo Technician ID (staffId)
 export const getAppointmentsByTechnician = (technicianId) => {
   return api.get(`${BASE_URL}/technician/${technicianId}`);
+};
+
+export const getAppointmentMissingParts = (appointmentId) =>
+  api.get(`${BASE_URL}/${appointmentId}/missing-parts`);
+
+// Lấy danh sách phụ tùng còn thiếu (cho manager)
+export const getAppointmentsMissingParts = ({ page = 1, pageSize = 10, sortDesc = true } = {}) => {
+  const params = { page, pageSize, sortDesc };
+  return api.get(`${BASE_URL}/missing-parts`, { params });
 };

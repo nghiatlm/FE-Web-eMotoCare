@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { EllipsisVertical, Pencil, Eye, Pause, Play } from "lucide-react";
+import { Pencil, Eye, Pause, Play, Building2 } from "lucide-react";
 import { getServiceCenters } from "@/api/serviceCentersApi";
 import { formatPhoneNumber } from "@/utils/formatters";
 
@@ -21,6 +22,7 @@ const statusBadge = (status) => {
 };
 
 export function BranchesTable({ search = "", status = "", manager = "" }) {
+  const navigate = useNavigate();
   const [rows, setRows] = useState(initialBranches);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -139,46 +141,76 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
   };
 
   return (
-    <div className="bg-card rounded-lg border border-border overflow-hidden">
+    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-lg overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="bg-muted/50 border-b border-border">
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">STT</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Tên chi nhánh</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Địa chỉ</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Số điện thoại</th>
-              {/* <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Quản lý</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Giờ hoạt động</th> */}
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Trạng thái</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Thao tác</th>
+            <tr className="bg-gradient-to-r from-red-50 via-red-50/90 to-red-100/50 dark:from-red-950/20 dark:via-red-950/15 dark:to-red-900/10 border-b-2 border-red-200/60 dark:border-red-800/30">
+              <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider w-16">STT</th>
+              <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Tên chi nhánh</th>
+              <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Địa chỉ</th>
+              <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Số điện thoại</th>
+              <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Trạng thái</th>
+              <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider w-32">Thao tác</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-200/80">
             {loading ? (
               <tr>
-                <td colSpan="8" className="py-12 px-6 text-center text-sm text-muted-foreground">Đang tải...</td>
+                <td colSpan="6" className="py-16 px-6 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="relative">
+                      <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-primary"></div>
+                      <div className="absolute inset-0 inline-block animate-spin rounded-full h-12 w-12 border-4 border-transparent border-r-primary/30" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+                    </div>
+                    <p className="text-base font-semibold text-slate-600 animate-pulse">Đang tải dữ liệu...</p>
+                  </div>
+                </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan="8" className="py-12 px-6 text-center text-sm text-muted-foreground">Không tìm thấy chi nhánh</td>
+                <td colSpan="6" className="py-16 px-6 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <Building2 className="h-12 w-12 text-slate-300" />
+                    <p className="text-base font-medium text-muted-foreground">Không tìm thấy chi nhánh</p>
+                  </div>
+                </td>
               </tr>
             ) : (
               filtered.map((b, i) => (
-                <tr key={b.id} className={`border-b border-border hover:bg-muted/30 transition-colors ${i % 2 === 0 ? "bg-card" : "bg-muted/10"}`}>
-                  <td className="py-4 px-6 text-sm text-muted-foreground">{i + 1}</td>
-                  <td className="py-4 px-6 text-sm font-medium text-foreground">{b.name}</td>
-                  <td className="py-4 px-6 text-sm text-foreground">{b.location}</td>
-                  <td className="py-4 px-6 text-sm text-foreground">{formatPhoneNumber(b.phone)}</td>
-                  {/* <td className="py-4 px-6 text-sm text-foreground">{b.manager}</td>
-                  <td className="py-4 px-6 text-sm text-foreground">{b.hours}</td> */}
-                  <td className="py-4 px-6"><span className={statusBadge(b.status)}>{b.status === "active" ? "Hoạt động" : b.status === "inactive" ? "Ngưng hoạt động" : b.status === "suspended" ? "Tạm dừng" : b.status}</span></td>
-                  <td className="py-4 px-6">
-                    <div className="flex items-center gap-2">
+                <tr 
+                  key={b.id} 
+                  className={`transition-all duration-200 ease-in-out group ${
+                    i % 2 === 0 
+                      ? 'bg-white hover:bg-slate-50/50' 
+                      : 'bg-slate-50/30 hover:bg-slate-50'
+                  } hover:shadow-md`}
+                >
+                  <td className="py-5 px-6 text-center text-sm font-medium text-muted-foreground">
+                    {i + 1}
+                  </td>
+                  <td className="py-5 px-6 text-center">
+                    <span className="font-semibold text-slate-900 text-sm">{b.name}</span>
+                  </td>
+                  <td className="py-5 px-6 text-center">
+                    <span className="text-sm text-slate-700">{b.location || "—"}</span>
+                  </td>
+                  <td className="py-5 px-6 text-center">
+                    <span className="text-sm text-slate-700">{formatPhoneNumber(b.phone) || "—"}</span>
+                  </td>
+                  <td className="py-5 px-6 text-center">
+                    <div className="flex items-center justify-center">
+                      <span className={statusBadge(b.status)}>
+                        {b.status === "active" ? "Hoạt động" : b.status === "inactive" ? "Ngưng hoạt động" : b.status === "suspended" ? "Tạm dừng" : b.status}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-5 px-6 text-center">
+                    <div className="flex items-center justify-center gap-2">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        className="h-8 w-8 text-primary hover:bg-primary/10 hover:text-primary transition-colors"
                         onClick={() => window?.openEditBranch?.(b)}
                         title="Sửa"
                       >
@@ -187,8 +219,8 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                        onClick={() => window?.openViewBranch?.(b)}
+                        className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                        onClick={() => navigate(`/admin/branches/${b.id}`)}
                         title="Xem chi tiết"
                       >
                         <Eye className="h-4 w-4" />
@@ -196,13 +228,16 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className={`h-8 w-8 ${b.status === "active" ? "text-amber-600 hover:text-amber-700" : "text-green-600 hover:text-green-700"}`}
+                        className={`h-8 w-8 transition-colors ${
+                          b.status === "active" 
+                            ? "text-amber-600 hover:text-amber-700 hover:bg-amber-50" 
+                            : "text-green-600 hover:text-green-700 hover:bg-green-50"
+                        }`}
                         onClick={() => toggleStatus(b)}
                         title={b.status === "active" ? "Tạm dừng" : "Kích hoạt"}
                       >
                         {b.status === "active" ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                       </Button>
-                      
                     </div>
                   </td>
                 </tr>
