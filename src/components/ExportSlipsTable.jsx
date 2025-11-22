@@ -145,22 +145,22 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
         <table className="w-full table-fixed">
           <thead>
             <tr className="bg-gradient-to-r from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-b-2 border-red-200/50 dark:border-red-800/30">
-              <th className="text-left py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[18%]">
+              <th className="text-center py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[18%]">
                 Mã phiếu
               </th>
-              <th className="text-left py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[15%]">
+              <th className="text-center py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[15%]">
                 Người nhận
               </th>
               <th className="text-center py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[12%]">
                 Tổng SL
               </th>
-              <th className="text-left py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[12%]">
+              <th className="text-center py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[12%]">
                 Ngày xuất
               </th>
-              <th className="text-left py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[13%]">
+              <th className="text-center py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[13%]">
                 Trạng thái
               </th>
-              <th className="text-left py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[30%]">
+              <th className="text-center py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[30%]">
                 Thao tác
               </th>
             </tr>
@@ -187,40 +187,48 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
                     i % 2 === 0 ? "bg-card" : "bg-muted/30"
                   }`}
                 >
-                  <td className="py-4 px-6">
-                    <span className="text-sm font-semibold text-foreground inline-flex items-center gap-2">
-                      {slip.id}
-                    </span>
+                  <td className="py-4 px-6 text-center">
+                    <div className="flex items-center justify-center">
+                      <span className="text-sm font-semibold text-foreground">
+                        {slip.id}
+                      </span>
+                    </div>
                   </td>
-                  <td className="py-4 px-6">
-                    <span className="text-sm text-foreground/90">{slip.exportTo}</span>
+                  <td className="py-4 px-6 text-center">
+                    <div className="flex items-center justify-center">
+                      <span className="text-sm text-foreground/90">{slip.exportTo}</span>
+                    </div>
                   </td>
-                  <td className="py-4 px-6">
+                  <td className="py-4 px-6 text-center">
                     <div className="flex items-center justify-center">
                       <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-semibold bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800">
                         {slip.totalQuantity}
                       </span>
                     </div>
                   </td>
-                  <td className="py-4 px-6">
-                    <span className="text-sm text-foreground/90">
-                      {slip.date ? new Date(slip.date).toLocaleDateString('vi-VN', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric'
-                      }) : 'N/A'}
-                    </span>
+                  <td className="py-4 px-6 text-center">
+                    <div className="flex items-center justify-center">
+                      <span className="text-sm text-foreground/90">
+                        {slip.date ? new Date(slip.date).toLocaleDateString('vi-VN', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        }) : 'N/A'}
+                      </span>
+                    </div>
                   </td>
-                  <td className="py-4 px-6">
-                    <Badge
-                      variant="secondary"
-                      className={`border ${getStatusBadgeClass(slip.status)}`}
-                    >
-                      {getStatusLabel(slip.status)}
-                    </Badge>
+                  <td className="py-4 px-6 text-center">
+                    <div className="flex items-center justify-center">
+                      <Badge
+                        variant="secondary"
+                        className={`border ${getStatusBadgeClass(slip.status)}`}
+                      >
+                        {getStatusLabel(slip.status)}
+                      </Badge>
+                    </div>
                   </td>
-                  <td className="py-4 px-6">
-                    <div className="flex items-center gap-2 flex-wrap">
+                  <td className="py-4 px-6 text-center">
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
                       <Button
                         variant="ghost"
                         size="sm"
