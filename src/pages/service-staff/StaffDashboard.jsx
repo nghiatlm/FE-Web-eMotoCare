@@ -14,16 +14,31 @@ import { useBookings } from "../../hooks/useBookings";
 import { Card, Statistic, Table, Tag, Space } from "antd";
 import dayjs from "dayjs";
 import { getRMAService } from "../../services/rmaService";
+import { fetchServiceStaff } from "../../services/staffsService";
 
 const StaffDashboard = () => {
   const { data: bookings, loading: bookingsLoading, fetchBookings } = useBookings();
   const [rmaData, setRmaData] = useState([]);
   const [rmaLoading, setRmaLoading] = useState(false);
+  const [currentStaffId, setCurrentStaffId] = useState(null);
 
   useEffect(() => {
+    loadCurrentStaff();
     fetchBookings();
     loadRMAs();
   }, []);
+
+  // ✅ Lấy staffId của staff hiện tại
+  const loadCurrentStaff = async () => {
+    try {
+      const staff = await fetchServiceStaff();
+      const staffData = staff?.data?.data || staff?.data || staff;
+      const staffId = staffData?.id;
+      setCurrentStaffId(staffId);
+    } catch (error) {
+      console.error("Lỗi lấy staffId:", error);
+    }
+  };
 
   const loadRMAs = async () => {
     setRmaLoading(true);
@@ -38,26 +53,31 @@ const StaffDashboard = () => {
     }
   };
 
-  // Tính toán thống kê
+  // ✅ Lọc booking chỉ lấy những booking mà staff này đã approve
+  const approvedBookings = currentStaffId
+    ? bookings.filter(b => b.approveById === currentStaffId)
+    : [];
+
+  // Tính toán thống kê (chỉ tính booking đã approve bởi staff này)
   const stats = {
-    total: bookings.length,
-    pending: bookings.filter(b => b.status === "PENDING").length,
-    approved: bookings.filter(b => b.status === "APPROVED").length,
-    checkedIn: bookings.filter(b => b.status === "CHECKED_IN").length,
-    completed: bookings.filter(b => b.status === "COMPLETED").length,
-    canceled: bookings.filter(b => b.status === "CANCELED").length,
+    total: approvedBookings.length,
+    pending: approvedBookings.filter(b => b.status === "PENDING").length,
+    approved: approvedBookings.filter(b => b.status === "APPROVED").length,
+    checkedIn: approvedBookings.filter(b => b.status === "CHECKED_IN").length,
+    completed: approvedBookings.filter(b => b.status === "COMPLETED").length,
+    canceled: approvedBookings.filter(b => b.status === "CANCELED").length,
   };
 
-  // Booking hôm nay
+  // Booking hôm nay (chỉ booking đã approve)
   const today = dayjs().startOf("day");
-  const todayBookings = bookings.filter(b => {
+  const todayBookings = approvedBookings.filter(b => {
     const bookingDate = dayjs(b.appointmentDate);
     return bookingDate.isSame(today, "day");
   });
 
-  // Booking sắp tới (trong 7 ngày tới)
+  // Booking sắp tới (trong 7 ngày tới, chỉ booking đã approve)
   const next7Days = dayjs().add(7, "day");
-  const upcomingBookings = bookings.filter(b => {
+  const upcomingBookings = approvedBookings.filter(b => {
     const bookingDate = dayjs(b.appointmentDate);
     return bookingDate.isAfter(today) && bookingDate.isBefore(next7Days);
   });
@@ -67,8 +87,8 @@ const StaffDashboard = () => {
     rma.status === "PENDING" || rma.status === "IN_PROGRESS"
   ).length;
 
-  // Booking gần đây (5 booking mới nhất)
-  const recentBookings = [...bookings]
+  // Booking gần đây (5 booking mới nhất, chỉ booking đã approve)
+  const recentBookings = [...approvedBookings]
     .sort((a, b) => dayjs(b.createdAt || b.appointmentDate).diff(dayjs(a.createdAt || a.appointmentDate)))
     .slice(0, 5);
 
@@ -147,7 +167,7 @@ const StaffDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <Statistic
-            title="Tổng số booking"
+            title="Tổng số booking đã duyệt"
             value={stats.total}
             prefix={<Calendar style={{ color: "#ff4d4f" }} />}
             valueStyle={{ color: "#ff4d4f" }}
@@ -242,7 +262,7 @@ const StaffDashboard = () => {
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold" style={{ color: "#722ed1" }}>
-              {bookings.filter(b => b.status === "QUOTE_APPROVED" || b.status === "REPAIR_COMPLETED").length}
+              {approvedBookings.filter(b => b.status === "QUOTE_APPROVED" || b.status === "REPAIR_COMPLETED").length}
             </div>
             <div className="text-sm text-gray-600">Đang sửa chữa</div>
           </div>

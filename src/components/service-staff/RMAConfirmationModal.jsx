@@ -1,5 +1,6 @@
 // src/components/service-staff/RMAConfirmationModal.jsx
-import { Modal, Button, List, Typography, message, Card, Space, Tag, Divider } from "antd";
+import { Modal, Button, List, Typography, Card, Space, Tag, Divider } from "antd";
+import { toast } from "@/components/ui/sonner";
 import { useState } from "react";
 import { AlertTriangle, Package, CheckCircle, XCircle } from "lucide-react";
 
@@ -24,12 +25,12 @@ export default function RMAConfirmationModal({
     if (isSubmitting) return;
 
     if (!partsForRMA.length) {
-      return message.warning("Không có phụ tùng nào đủ điều kiện RMA.");
+      return toast.warning("Không có phụ tùng nào đủ điều kiện RMA.");
     }
 
     try {
       setIsSubmitting(true);
-      message.loading("Đang tạo yêu cầu RMA...", 0);
+      const loadingToast = toast.loading("Đang tạo yêu cầu RMA...");
 
       // 1. Lấy Service Staff
       const staffInfo = await fetchServiceStaff();
@@ -83,14 +84,14 @@ export default function RMAConfirmationModal({
         console.log("✅ [RMAConfirmationModal] RMADetail response:", detailRes);
       }
 
-      message.destroy();
-      message.success("Tạo yêu cầu RMA thành công!");
+      toast.dismiss(loadingToast);
+      toast.success("Tạo yêu cầu RMA thành công!");
       onRMASuccess?.();
       onClose();
     } catch (err) {
-      message.destroy();
+      toast.dismiss(loadingToast);
       console.error("❌ Lỗi tạo RMA:", err);
-      message.error(err?.message || "Không thể tạo RMA.");
+      toast.error(err?.message || "Không thể tạo RMA.");
     } finally {
       setIsSubmitting(false);
     }

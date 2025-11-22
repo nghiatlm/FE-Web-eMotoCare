@@ -7,7 +7,8 @@ import {
   SERVICE_TYPE_COLORS,
 } from "../../utils/constants.js";
 
-import { Drawer, Divider, Button, Input, Spin, message } from "antd";
+import { Drawer, Divider, Button, Input, Spin } from "antd";
+import { toast } from "@/components/ui/sonner";
 
 import {
   fetchEVCheckByAppointmentService,
@@ -105,16 +106,16 @@ export default function TechnicianBookingDetailDrawer({
           } else {
             setHasOdometer(false);
             if (isMaintenance) {
-              message.info(
+              toast.info(
                 "Chưa có EV Check. Vui lòng gán kỹ thuật viên / tạo EVCheck trước."
               );
             } else {
-              message.info("Chưa có EVCheck. Hãy gán kỹ thuật viên trước.");
+              toast.info("Chưa có EVCheck. Hãy gán kỹ thuật viên trước.");
             }
           }
         } catch (err) {
           console.error("Lỗi tải EV Check:", err);
-          message.error("Không thể tải EV Check!");
+          toast.error("Không thể tải EV Check!");
         } finally {
           setLoading(false);
         }
@@ -127,11 +128,11 @@ export default function TechnicianBookingDetailDrawer({
 
   // ======== CẬP NHẬT KM (Maintenance) – CHỈ DÙNG CHO TECHNICIAN =========
   const handleSendKm = async () => {
-    if (!km && km !== 0) return message.error("Vui lòng nhập số KM!");
+    if (!km && km !== 0) return toast.error("Vui lòng nhập số KM!");
     const odometerNumber = Number(km);
     try {
       setLoading(true);
-      message.loading("Đang cập nhật số KM...", 0);
+      const loadingToast = toast.loading("Đang cập nhật số KM...");
 
       if (!evCheckId)
         throw new Error(
@@ -145,16 +146,17 @@ export default function TechnicianBookingDetailDrawer({
       };
 
       await updateEVCheckService(evCheckId, payload);
-      message.success("Cập nhật số KM thành công!");
+      toast.dismiss(loadingToast);
+      toast.success("Cập nhật số KM thành công!");
 
       setHasOdometer(true);
       setRefreshKey((prev) => prev + 1);
     } catch (err) {
       console.error("Lỗi cập nhật KM:", err);
-      message.error(err?.message || "Không thể cập nhật số KM!");
+      toast.dismiss(loadingToast);
+      toast.error(err?.message || "Không thể cập nhật số KM!");
     } finally {
       setLoading(false);
-      message.destroy();
     }
   };
 

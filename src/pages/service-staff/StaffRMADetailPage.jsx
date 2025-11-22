@@ -1,7 +1,8 @@
 // src/pages/service-staff/StaffRMADetailPage.jsx
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Spin, Button, message } from "antd";
+import { Spin, Button } from "antd";
+import { toast } from "@/components/ui/sonner";
 import { ArrowLeft } from "lucide-react";
 import { getRMAService, getRMADetailsService, getCustomerByRMAService } from "../../services/rmaService";
 import RMADetails from "../../components/service-staff/RMADetails";
@@ -15,7 +16,7 @@ export default function StaffRMADetailPage() {
 
   useEffect(() => {
     if (!rmaId) {
-      message.error("Không tìm thấy mã RMA");
+      toast.error("Không tìm thấy mã RMA");
       navigate("/staff/warranty");
       return;
     }
@@ -33,7 +34,7 @@ export default function StaffRMADetailPage() {
 
       const foundRMA = rmaList.find((r) => r.id === rmaId);
       if (!foundRMA) {
-        message.error("Không tìm thấy RMA");
+        toast.error("Không tìm thấy RMA");
         navigate("/staff/warranty");
         return;
       }
@@ -60,7 +61,7 @@ export default function StaffRMADetailPage() {
       setRmaDetails(detailsList);
     } catch (err) {
       console.error("❌ Lỗi khi tải dữ liệu RMA:", err);
-      message.error("Không thể tải dữ liệu RMA");
+      toast.error("Không thể tải dữ liệu RMA");
     } finally {
       setLoading(false);
     }

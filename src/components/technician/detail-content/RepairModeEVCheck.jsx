@@ -1,6 +1,7 @@
 // src/components/technician/detail-content/RepairModeEVCheck.jsx
 import { useState, useEffect, useCallback } from "react";
-import { Table, Input, Select, Button, message, Spin, Tag, Checkbox, Tooltip } from "antd";
+import { Table, Input, Select, Button, Spin, Tag, Checkbox, Tooltip } from "antd";
+import { toast } from "@/components/ui/sonner";
 import {
   fetchEVCheckDetailsServiceRe as getRepairDetailsList,
   updateEVCheckDetailService,
@@ -108,7 +109,7 @@ export default function RepairModeEVCheck({
     const selectedItems = details.filter((d) => selectedRMAItems.has(d.id) && isRMAEligible(d));
     
     if (selectedItems.length === 0) {
-      return message.warning("Vui lòng chọn ít nhất 1 phụ tùng để tạo RMA.");
+      return toast.warning("Vui lòng chọn ít nhất 1 phụ tùng để tạo RMA.");
     }
 
     const rmaItems = selectedItems.map((row) => ({
@@ -243,7 +244,7 @@ export default function RepairModeEVCheck({
         setVehiclePartOptions(options);
       } catch (err) {
         console.error("Không load được phụ tùng xe:", err);
-        message.error("Không tải được phụ tùng gắn trên xe!");
+        toast.error("Không tải được phụ tùng gắn trên xe!");
         setVehiclePartOptions([]);
       } finally {
         setVehiclePartLoading(false);
@@ -280,7 +281,7 @@ export default function RepairModeEVCheck({
       }));
     } catch (e) {
       console.error("Lỗi load phụ tùng đề xuất:", e);
-      message.error("Không tải được danh sách phụ tùng đề xuất");
+      toast.error("Không tải được danh sách phụ tùng đề xuất");
     } finally {
       setPartLoading(false);
     }
@@ -334,7 +335,7 @@ export default function RepairModeEVCheck({
         setReplacePartOptions(options);
       } catch (err) {
         console.error("Không load được phụ tùng kho:", err);
-        message.error("Không tải được phụ tùng trong kho!");
+        toast.error("Không tải được phụ tùng trong kho!");
         setReplacePartOptions([]);
       } finally {
         setReplacePartLoading(false);
@@ -515,7 +516,7 @@ export default function RepairModeEVCheck({
 
       if (mapped.length > 0) {
         setDetails(mapped);
-        message.success(`✅ Đã tải ${mapped.length} hạng mục từ DB.`);
+        toast.success(`✅ Đã tải ${mapped.length} hạng mục từ DB.`);
       } else {
         setDetails(readOnly ? [] : [createEmptyRow()]);
       }
@@ -535,7 +536,7 @@ export default function RepairModeEVCheck({
       setStatusChanges({});
     } catch (err) {
       console.error("❌ Lỗi khi tải chi tiết EV Check:", err);
-      message.error("Không thể tải dữ liệu chi tiết!");
+      toast.error("Không thể tải dữ liệu chi tiết!");
       setDetails(readOnly ? [] : [createEmptyRow()]);
     } finally {
       setLoading(false);
@@ -599,7 +600,7 @@ export default function RepairModeEVCheck({
     if (field === "remedies" && (value === "REPLACE" || value === "REPAIR")) {
       const currentRow = details[index];
       if (checkWarrantyStatus(currentRow?.partItem)) {
-        message.error(
+        toast.error(
           "Bộ phận đang trong thời gian bảo hành. Chỉ cho phép 'Kiểm tra' hoặc 'Bôi trơn'."
         );
         return; // Không cho thay đổi
@@ -637,15 +638,15 @@ export default function RepairModeEVCheck({
     const itemsToSave = details.filter((item) => item.partItemId);
 
     if (itemsToSave.length === 0) {
-      return message.warning("Vui lòng chọn Bộ phận.");
+      return toast.warning("Vui lòng chọn Bộ phận.");
     }
 
     for (const item of itemsToSave) {
-      if (!item.remedies) return message.warning("Vui lòng chọn Biện pháp!");
+      if (!item.remedies) return toast.warning("Vui lòng chọn Biện pháp!");
 
       // ✅ Nếu còn bảo hành, không cho chọn REPLACE hoặc REPAIR
       if ((item.remedies === "REPLACE" || item.remedies === "REPAIR") && checkWarrantyStatus(item.partItem)) {
-        return message.error(
+        return toast.error(
           "Bộ phận đang trong thời gian bảo hành. Chỉ cho phép 'Kiểm tra' hoặc 'Bôi trơn'."
         );
       }
@@ -661,15 +662,15 @@ export default function RepairModeEVCheck({
         ["REPAIR", "REPLACE"].includes(item.remedies) &&
         !item.result?.trim()
       ) {
-        return message.warning("Vui lòng nhập Kết quả!");
+        return toast.warning("Vui lòng nhập Kết quả!");
       }
     }
 
-    if (!evCheckId) return message.error("Thiếu EVCheckId!");
+    if (!evCheckId) return toast.error("Thiếu EVCheckId!");
 
     try {
       setLoading(true);
-      message.loading("Đang lưu hạng mục sửa chữa...", 0);
+      const loadingToast = toast.loading("Đang lưu hạng mục sửa chữa...");
 
       for (const item of itemsToSave) {
         const payload = {
@@ -704,7 +705,8 @@ export default function RepairModeEVCheck({
       // ✅ Set status trước khi reload để đảm bảo UI cập nhật ngay
       setEvCheckStatus("INSPECTION_COMPLETED");
       
-      message.success("Gửi báo giá thành công!");
+      toast.dismiss(loadingToast);
+      toast.success("Gửi báo giá thành công!");
 
       // Reload để lấy id thật
       await loadRepairDetails();
@@ -713,10 +715,10 @@ export default function RepairModeEVCheck({
       setEvCheckStatus("INSPECTION_COMPLETED");
     } catch (err) {
       console.error("Lỗi khi lưu EV Check Detail:", err);
-      message.error("Không thể lưu hạng mục sửa chữa!");
+      toast.dismiss(loadingToast);
+      toast.error("Không thể lưu hạng mục sửa chữa!");
     } finally {
       setLoading(false);
-      message.destroy();
     }
   };
 
@@ -726,12 +728,12 @@ export default function RepairModeEVCheck({
     if (loading) return;
 
     if (!Object.keys(statusChanges).length) {
-      return message.info("Chưa có thay đổi trạng thái nào để lưu.");
+      return toast.info("Chưa có thay đổi trạng thái nào để lưu.");
     }
 
     try {
       setLoading(true);
-      message.loading("Đang cập nhật trạng thái hạng mục...", 0);
+      const loadingToast = toast.loading("Đang cập nhật trạng thái hạng mục...");
 
       // ✅ Cập nhật từng detail
       for (const [detailId, newStatus] of Object.entries(statusChanges)) {
@@ -739,8 +741,8 @@ export default function RepairModeEVCheck({
         await updateEVCheckDetailService(detailId, { status: newStatus });
       }
 
-      message.destroy();
-      message.success("Cập nhật trạng thái thành công!");
+      toast.dismiss(loadingToast);
+      toast.success("Cập nhật trạng thái thành công!");
       
       // ✅ Clear statusChanges trước khi reload
       setStatusChanges({});
@@ -780,17 +782,17 @@ export default function RepairModeEVCheck({
         console.log(`📤 Cập nhật EVCheck ${evCheckId} thành REPAIR_COMPLETED`);
         await updateEVCheckService(evCheckId, { status: "REPAIR_COMPLETED" });
         setEvCheckStatus("REPAIR_COMPLETED");
-        message.success("Đã hoàn thành tất cả hạng mục sửa chữa!");
+        toast.success("Đã hoàn thành tất cả hạng mục sửa chữa!");
       }
 
       onRefresh?.();
     } catch (err) {
       console.error("❌ Cập nhật trạng thái thất bại:", err);
       console.error("❌ Error details:", err.response?.data || err.message);
-      message.error("Không thể cập nhật trạng thái hạng mục!");
+      toast.dismiss(loadingToast);
+      toast.error("Không thể cập nhật trạng thái hạng mục!");
     } finally {
       setLoading(false);
-      message.destroy();
     }
   };
 
@@ -1365,7 +1367,7 @@ export default function RepairModeEVCheck({
         onRMASuccess={() => {
           const rmaDetailIds = currentRMAParts.map((p) => p.id);
           setSelectedRMAItems(new Set()); // ✅ Clear selection sau khi tạo thành công
-          message.info("Đang đồng bộ lại chi tiết EV Check...");
+          toast.info("Đang đồng bộ lại chi tiết EV Check...");
           loadRepairDetails();
           setIsRMAConfirmationOpen(false);
         }}

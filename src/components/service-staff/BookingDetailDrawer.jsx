@@ -1,5 +1,6 @@
 import { STATUS_COLORS, STATUS_MAP } from "../../utils/constants";
-import { Drawer, Button, Tag, Divider, Select, message } from "antd";
+import { Drawer, Button, Tag, Divider, Select } from "antd";
+import { toast } from "@/components/ui/sonner";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 
@@ -72,7 +73,7 @@ export default function BookingDetailDrawer({
         const list = await fetchTechnicians();
         setTechnicians(list);
       } catch {
-        message.error("Không thể tải danh sách kỹ thuật viên");
+        toast.error("Không thể tải danh sách kỹ thuật viên");
       } finally {
         setLoadingTechs(false);
       }
@@ -105,7 +106,7 @@ export default function BookingDetailDrawer({
 
   const handleAssignTechnician = async () => {
     if (!selectedTechnician)
-      return message.warning("Vui lòng chọn kỹ thuật viên");
+      return toast.warning("Vui lòng chọn kỹ thuật viên");
 
     try {
       const payload = {
@@ -124,10 +125,10 @@ export default function BookingDetailDrawer({
         onUpdateStatus?.(booking.id, booking.status, selectedTechnician);
       }
 
-      message.success("Đã gán kỹ thuật viên và tạo EVCheck!");
+      toast.success("Đã gán kỹ thuật viên và tạo EVCheck!");
     } catch (error) {
       console.error("Lỗi gán kỹ thuật viên:", error);
-      message.error(error.message || "Không thể gán kỹ thuật viên!");
+      toast.error(error.message || "Không thể gán kỹ thuật viên!");
     }
   };
 
@@ -139,18 +140,18 @@ export default function BookingDetailDrawer({
         await changeAppointmentStatusService(booking.id, newStatus);
       }
 
-      message.success(`Cập nhật trạng thái: ${STATUS_MAP[newStatus]}`);
+      toast.success(`Cập nhật trạng thái: ${STATUS_MAP[newStatus]}`);
       onUpdateStatus?.(booking.id, newStatus, booking.technician);
       onClose();
     } catch (e) {
-      message.error(e.message || "Không thể cập nhật trạng thái!");
+      toast.error(e.message || "Không thể cập nhật trạng thái!");
     }
   };
 
   /* ------------ MANUAL CHECK-IN BUTTON ------------ */
   const handleManualCheckIn = async () => {
     if (!booking.checkinQRCode) {
-      message.error("Lịch hẹn chưa có mã QR check-in!");
+      toast.error("Lịch hẹn chưa có mã QR check-in!");
       return;
     }
 
@@ -162,12 +163,12 @@ export default function BookingDetailDrawer({
         // Không gửi note
       });
 
-      message.success("Check-in thành công!");
+      toast.success("Check-in thành công!");
       onUpdateStatus?.(booking.id, "CHECKED_IN");
       onClose();
     } catch (error) {
       console.error("Lỗi check-in:", error);
-      message.error(error.message || "Check-in thất bại!");
+      toast.error(error.message || "Check-in thất bại!");
     }
   };
 

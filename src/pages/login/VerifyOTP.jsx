@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import AuthLayout from "../../components/authlayout/AuthLayout";
 import { authService } from "@/services/authService";
-import { message } from "antd";
+import { toast } from "@/components/ui/sonner";
 
 export default function VerifyOTP() {
   const navigate = useNavigate();
@@ -77,11 +77,11 @@ export default function VerifyOTP() {
         navigate("/");
       }
 
-      message.success("Xác thực OTP thành công!");
+      toast.success("Xác thực OTP thành công!");
     } catch (error) {
       console.error("Verify OTP failed:", error);
       setError(error?.message || "Mã OTP không đúng. Vui lòng thử lại.");
-      message.error("Mã OTP không đúng. Vui lòng thử lại.");
+      toast.error("Mã OTP không đúng. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -94,9 +94,9 @@ export default function VerifyOTP() {
       // Gọi lại API login để gửi OTP mới (hoặc có API riêng để resend OTP)
       // Tạm thời chỉ reset countdown
       setCountdown(60);
-      message.info("Đã gửi lại mã OTP. Vui lòng kiểm tra email.");
+      toast.info("Đã gửi lại mã OTP. Vui lòng kiểm tra email.");
     } catch (error) {
-      message.error("Không thể gửi lại mã OTP. Vui lòng thử lại.");
+      toast.error("Không thể gửi lại mã OTP. Vui lòng thử lại.");
     }
   };
 

@@ -1,5 +1,6 @@
 // src/components/Payment.jsx
-import { Modal, Table, Radio, Button, message, Spin, Empty, Tag } from "antd";
+import { Modal, Table, Radio, Button, Spin, Empty, Tag } from "antd";
+import { toast } from "@/components/ui/sonner";
 import { useState, useEffect } from "react";
 import { createPaymentLinkService } from "../../services/paymentService";
 import { fetchEVCheckByAppointmentService } from "../../services/evcheckService";
@@ -79,7 +80,7 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
         }
       } catch (e) {
         console.error(e);
-        message.warning("Không tải được báo giá từ EVCheck");
+        toast.warning("Không tải được báo giá từ EVCheck");
         setQuoteItems([]);
         setTotalAmount(0);
       } finally {
@@ -91,8 +92,8 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
   }, [open, appointmentId]);
 
   const handlePayment = async () => {
-    if (!appointmentId) return message.error("Thiếu thông tin lịch hẹn");
-    if (totalAmount <= 0) return message.warning("Tổng tiền phải lớn hơn 0");
+    if (!appointmentId) return toast.error("Thiếu thông tin lịch hẹn");
+    if (totalAmount <= 0) return toast.warning("Tổng tiền phải lớn hơn 0");
 
     setLoading(true);
     try {
@@ -109,7 +110,7 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
 
       if (paymentMethod === "CASH") {
         // Không tạo link, chỉ xác nhận đã thu tiền
-        message.success("Đã xác nhận thanh toán tiền mặt!");
+        toast.success("Đã xác nhận thanh toán tiền mặt!");
         onPaymentSuccess?.({ method: "CASH", amount: totalAmount });
         onClose();
       } else {
@@ -124,7 +125,7 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
 
         if (url) {
           window.open(url, "_blank");
-          message.success("Tạo yêu cầu thanh toán thành công!");
+          toast.success("Tạo yêu cầu thanh toán thành công!");
           onPaymentSuccess?.({ method: "PAYOS", amount: totalAmount, url });
           onClose();
         } else {
@@ -133,7 +134,7 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
       }
     } catch (e) {
       console.error(e);
-      message.error(e.message || "Không thể tạo yêu cầu thanh toán");
+      toast.error(e.message || "Không thể tạo yêu cầu thanh toán");
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { message, Card, Space } from "antd";
+import { Card, Space } from "antd";
+import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
 import { Calendar } from "lucide-react";
 import BookingForm from "../../components/service-staff/BookingForm";
@@ -13,14 +14,14 @@ const CreateBooking = () => {
     try {
       setLoading(true);
       await createAppointmentService(values);
-      message.success("Tạo lịch hẹn thành công!");
+      toast.success("Tạo lịch hẹn thành công!");
       // ✅ Redirect về danh sách sau khi tạo thành công
       setTimeout(() => {
         navigate("/staff/booking/list");
       }, 1000);
     } catch (error) {
       console.error("Lỗi tạo lịch hẹn:", error);
-      message.error(error?.response?.data?.message || "Tạo lịch hẹn thất bại!");
+      toast.error(error?.response?.data?.message || "Tạo lịch hẹn thất bại!");
     } finally {
       setLoading(false);
     }

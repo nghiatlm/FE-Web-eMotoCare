@@ -1,6 +1,7 @@
 // src/components/staff/RMADetails.jsx
 import React, { useState, useMemo } from "react";
-import { Table, Spin, Button, message, Modal, Card, Tag, Image, Space, Divider, Typography } from "antd";
+import { Table, Spin, Button, Modal, Card, Tag, Image, Space, Divider, Typography } from "antd";
+import { toast } from "@/components/ui/sonner";
 import { Calendar, User, FileText, Package, Clock, CheckCircle, Tag as TagIcon } from "lucide-react";
 
 const { Text } = Typography;
@@ -51,11 +52,11 @@ function RMADetails({ rma, details = [], loading }) {
       };
 
       await createAppointmentService(payload);
-      message.success("Tạo lịch thay thế cho khách thành công!");
+      toast.success("Tạo lịch thay thế cho khách thành công!");
       setBookingOpen(false);
     } catch (err) {
       console.error("Lỗi tạo lịch hẹn từ RMA:", err);
-      message.error("Không thể tạo lịch hẹn. Vui lòng thử lại.");
+      toast.error("Không thể tạo lịch hẹn. Vui lòng thử lại.");
     } finally {
       setBookingLoading(false);
     }
