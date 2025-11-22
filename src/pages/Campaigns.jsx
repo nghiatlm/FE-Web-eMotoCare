@@ -1,13 +1,15 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, Megaphone, Calendar, Percent, Users, Filter, Eye, Edit, Trash2 } from "lucide-react";
+import { Search, Plus, Megaphone, Calendar, Percent, Users, Filter, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getCampaigns } from "@/api/campaignsApi";
+import { useToast } from "@/hooks/use-toast";
 
-// Data cứng về campaigns
+// Data cứng về campaigns (fallback)
 const mockCampaigns = [
   {
     id: "CAMP001",
@@ -118,24 +120,117 @@ const formatDate = (dateString) => {
 
 export default function Campaigns() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [campaigns] = useState(mockCampaigns);
+  const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [total, setTotal] = useState(0);
+
+  // Determine status based on dates
+  const getCampaignStatus = (startDate, endDate, status) => {
+    if (status?.toUpperCase() === "INACTIVE") return "ENDED";
+    
+    const now = new Date();
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (now < start) return "UPCOMING";
+    if (now >= start && now <= end) return "ACTIVE";
+    return "ENDED";
+  };
+
+  // Fetch campaigns
+  const fetchCampaigns = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const params = {
+        page,
+        pageSize,
+        ...(search && { search }),
+        ...(statusFilter !== "all" && { status: statusFilter === "ENDED" ? "INACTIVE" : statusFilter }),
+      };
+
+      const response = await getCampaigns(params);
+      const data = response?.data || response;
+      
+      // Map API data to UI format
+      const mappedCampaigns = (data?.rowDatas || []).map((campaign) => {
+        const campaignStatus = getCampaignStatus(campaign.startDate, campaign.endDate, campaign.status);
+        return {
+          id: campaign.code,
+          name: campaign.name,
+          description: campaign.description || "",
+          startDate: campaign.startDate,
+          endDate: campaign.endDate,
+          discount: 0, // API không có discount, có thể lấy từ campaignDetails
+          status: campaignStatus,
+          totalQuantity: 0, // API không có, có thể tính từ campaignDetails
+          usedQuantity: 0, // API không có
+          createdAt: campaign.startDate,
+          modelName: campaign.modelName,
+          campaignDetails: campaign.campaignDetails || [],
+        };
+      });
+      
+      setCampaigns(mappedCampaigns);
+      setTotal(data?.total || 0);
+    } catch (err) {
+      console.error("Error fetching campaigns:", err);
+      setError("Không thể tải danh sách campaigns");
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải danh sách campaigns",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [page, pageSize, search, statusFilter, toast]);
+
+  useEffect(() => {
+    fetchCampaigns();
+  }, [fetchCampaigns]);
+
+  // Handle search with debounce
+  const handleSearch = (value) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  // Handle filter change
+  const handleFilterChange = (value) => {
+    setStatusFilter(value);
+    setPage(1);
+  };
+
+  // Clear filters
+  const handleClearFilter = () => {
+    setSearch("");
+    setStatusFilter("all");
+    setPage(1);
+  };
 
   const filteredCampaigns = useMemo(() => {
+    // If search is done on server, just return campaigns
+    if (search) {
+      return campaigns;
+    }
     return campaigns.filter((campaign) => {
       if (statusFilter !== "all" && campaign.status !== statusFilter) {
         return false;
       }
-      if (!search) return true;
-      const q = search.toLowerCase();
-      return (
-        campaign.id.toLowerCase().includes(q) ||
-        campaign.name.toLowerCase().includes(q) ||
-        campaign.description.toLowerCase().includes(q)
-      );
+      return true;
     });
   }, [campaigns, search, statusFilter]);
+
+  // Calculate total pages
+  const totalPages = Math.ceil(total / pageSize);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -174,19 +269,18 @@ export default function Campaigns() {
                   <SelectItem value="CANCELLED">Đã hủy</SelectItem>
                 </SelectContent>
               </Select>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => {
-                  setSearch("");
-                  setStatusFilter("all");
-                }}
-              >
-                <Filter className="h-4 w-4" />
-                Xóa lọc
-              </Button>
-              <Button className="gap-2 ml-auto" size="sm">
+              {(search || statusFilter !== "all") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={handleClearFilter}
+                >
+                  <Filter className="h-4 w-4" />
+                  Xóa lọc
+                </Button>
+              )}
+              <Button className="gap-2 ml-auto" size="sm" onClick={() => navigate("/admin/campaigns/new")}>
                 <Plus className="h-4 w-4" />
                 Tạo campaign mới
               </Button>
@@ -206,15 +300,11 @@ export default function Campaigns() {
                   <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     Tên campaign
                   </th>
-                  <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                    Giảm giá
-                  </th>
+                 
                   <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     Thời gian
                   </th>
-                  <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                    Số lượng
-                  </th>
+                 
                   <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     Trạng thái
                   </th>
@@ -224,7 +314,18 @@ export default function Campaigns() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200/80">
-                {filteredCampaigns.length === 0 ? (
+                {loading ? (
+                  <tr>
+                    <td colSpan={7} className="py-16 px-6 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Đang tải...
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredCampaigns.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-16 px-6 text-center">
                       <div className="flex flex-col items-center gap-3">
@@ -252,14 +353,7 @@ export default function Campaigns() {
                           <p className="text-xs text-slate-500 font-medium line-clamp-1">{campaign.description}</p>
                         </div>
                       </td>
-                      <td className="py-5 px-6 text-center">
-                        <div className="flex items-center justify-center">
-                          <Badge className="px-3 py-1.5 rounded-md font-semibold text-xs bg-primary/10 text-primary border border-primary/20">
-                            <Percent className="h-3 w-3 inline mr-1" />
-                            {campaign.discount}%
-                          </Badge>
-                        </div>
-                      </td>
+                      
                       <td className="py-5 px-6 text-center">
                         <div className="space-y-1">
                           <div className="flex items-center justify-center gap-1 text-xs text-slate-600">
@@ -269,21 +363,7 @@ export default function Campaigns() {
                           <div className="text-xs text-slate-500">→ {formatDate(campaign.endDate)}</div>
                         </div>
                       </td>
-                      <td className="py-5 px-6 text-center">
-                        <div className="space-y-1">
-                          <div className="text-sm font-semibold text-slate-900">
-                            {campaign.usedQuantity} / {campaign.totalQuantity}
-                          </div>
-                          <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden mx-auto">
-                            <div
-                              className="h-full bg-primary rounded-full transition-all"
-                              style={{
-                                width: `${Math.min(100, (campaign.usedQuantity / campaign.totalQuantity) * 100)}%`,
-                              }}
-                            ></div>
-                          </div>
-                        </div>
-                      </td>
+                      
                       <td className="py-5 px-6 text-center">
                         <div className="flex items-center justify-center">
                           <Badge
@@ -331,6 +411,36 @@ export default function Campaigns() {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination */}
+          {!loading && filteredCampaigns.length > 0 && totalPages > 1 && (
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200/80">
+              <p className="text-sm text-muted-foreground">
+                Hiển thị {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, total)} trong tổng số {total} campaigns
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  Trước
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Trang {page} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                >
+                  Sau
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
       </div>
     </div>
