@@ -11,6 +11,16 @@ export const authService = {
     return user;
   },
 
+  async verifyOtp(otp, email) {
+    const res = await api.post("/v1/auths/verify-otp/staff", { otp, email });
+    console.log("Response verify OTP:", res);
+
+    const user = res.data;
+
+    localStorage.setItem("user", JSON.stringify(user));
+    return user;
+  },
+
   logout() {
     localStorage.removeItem("user");
     localStorage.removeItem("token");

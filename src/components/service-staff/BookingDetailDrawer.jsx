@@ -21,6 +21,7 @@ import {
 } from "../../services/evcheckService";
 
 import Payment from "./Payment";
+import PaymentInfo from "./PaymentInfo";
 
 const renderServiceContent = (serviceType, booking) => {
   if (!booking.technician) {
@@ -300,6 +301,16 @@ export default function BookingDetailDrawer({
               </div>
             )}
           </section>
+
+          {/* Thông tin thanh toán - hiển thị khi có EVCheck và status phù hợp */}
+          {(status === "REPAIR_COMPLETED" || status === "COMPLETED" || status === "QUOTE_APPROVED") && booking.technician && (
+            <div className='mb-6'>
+              <PaymentInfo
+                booking={booking}
+                onOpenPayment={() => setIsPaymentModalOpen(true)}
+              />
+            </div>
+          )}
 
           <Divider />
 

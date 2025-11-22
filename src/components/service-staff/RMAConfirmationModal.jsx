@@ -199,19 +199,27 @@ export default function RMAConfirmationModal({
                       <Text type="secondary">Số lượng:</Text>{" "}
                       <Text strong>{item.quantity || 1}</Text>
                     </div>
-                    {item.partItem?.id && (
+                    {(item.partItem?.serialNumber || item.serialNumber) && (
                       <div>
-                        <Text type="secondary">PartItem ID:</Text>{" "}
-                        <Text code style={{ fontSize: 12 }}>
-                          {item.partItem.id.substring(0, 8)}...
+                        <Text type="secondary">Số serial:</Text>{" "}
+                        <Text strong style={{ color: "#262626" }}>
+                          {item.partItem?.serialNumber || item.serialNumber}
                         </Text>
                       </div>
                     )}
-                    {item.id && (
+                    {item.partItem?.part?.code && (
                       <div>
-                        <Text type="secondary">EV Detail ID:</Text>{" "}
-                        <Text code style={{ fontSize: 12 }}>
-                          {item.id.substring(0, 8)}...
+                        <Text type="secondary">Mã phụ tùng:</Text>{" "}
+                        <Text strong style={{ color: "#262626" }}>
+                          {item.partItem.part.code}
+                        </Text>
+                      </div>
+                    )}
+                    {item.result && item.result !== "Tốt" && (
+                      <div>
+                        <Text type="secondary">Kết quả:</Text>{" "}
+                        <Text strong style={{ color: "#ff4d4f" }}>
+                          {item.result}
                         </Text>
                       </div>
                     )}

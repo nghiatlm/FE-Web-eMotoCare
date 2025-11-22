@@ -1,4 +1,4 @@
-import { CalendarCheck } from "lucide-react";
+import { CalendarCheck, LayoutDashboard } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
   Sidebar,
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const menuItems = [
+  { title: "Dashboard", icon: LayoutDashboard, url: "/technician/dashboard" },
   { title: "Danh sách xe", icon: CalendarCheck, url: "/technician/vehicles" },
 ];
 

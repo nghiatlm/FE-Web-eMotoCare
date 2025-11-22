@@ -31,6 +31,29 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const verifyOtp = async (otp, email) => {
+    setLoading(true);
+    try {
+      const user = await authService.verifyOtp(otp, email);
+      setUser(user);
+
+      const roleName = user.accountResponse?.roleName;
+      console.log("Detected role:", roleName);
+
+      if (roleName === "ROLE_ADMIN") navigate("/admin");
+      else if (roleName === "ROLE_STAFF") navigate("/staff");
+      else if (roleName === "ROLE_TECHNICIAN") navigate("/technician");
+      else navigate("/");
+      
+      return user;
+    } catch (error) {
+      console.error("Verify OTP failed:", error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = () => {
     authService.logout();
     setUser(null);
@@ -39,7 +62,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, verifyOtp, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -161,7 +161,6 @@ export default function BookingTable({
       key: "action",
       width: 120,
       align: "center",
-      fixed: "right",
       render: (_, record) => (
         <Button 
           type='link' 

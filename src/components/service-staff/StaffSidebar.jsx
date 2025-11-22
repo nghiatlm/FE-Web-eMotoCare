@@ -1,4 +1,4 @@
-import { CalendarCheck, LogOut, Plus, List } from "lucide-react";
+import { CalendarCheck, LogOut, Plus, List, LayoutDashboard } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -16,6 +16,7 @@ import {
 import { authService } from "@/services/authService";
 
 const menuItems = [
+  { title: "Dashboard", icon: LayoutDashboard, url: "/staff/dashboard" },
   {
     title: "Booking",
     icon: CalendarCheck,

@@ -1,5 +1,5 @@
 // src/pages/login/Login.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import AuthLayout from "../../components/authlayout/AuthLayout";
@@ -8,7 +8,17 @@ export default function Login() {
   const { login, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
+
+  // Load email đã lưu khi component mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("rememberedEmail");
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -21,6 +31,13 @@ export default function Login() {
     try {
       const res = await login(email, password);
       console.log("Đăng nhập thành công:", res);
+
+      // Lưu hoặc xóa email dựa trên checkbox "Ghi nhớ đăng nhập"
+      if (rememberMe) {
+        localStorage.setItem("rememberedEmail", email);
+      } else {
+        localStorage.removeItem("rememberedEmail");
+      }
     } catch {
       setError("Sai số điện thoại hoặc mật khẩu");
     }
@@ -55,7 +72,12 @@ export default function Login() {
 
         <div className='flex items-center justify-between text-sm'>
           <label className='flex items-center gap-x-2 cursor-pointer select-none'>
-            <input type='checkbox' className='accent-red-600' />
+            <input
+              type='checkbox'
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className='accent-red-600'
+            />
             <span className='text-gray-700'>Ghi nhớ đăng nhập</span>
           </label>
           <Link

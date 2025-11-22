@@ -220,8 +220,7 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
     <Modal
       title={
         <span className='text-xl font-bold text-[#d4380d] justify-center flex items-center'>
-          Hóa đơn thanh toán
-        </span>
+Xác nhận hóa đơn        </span>
       }
       open={open}
       onCancel={onClose}
