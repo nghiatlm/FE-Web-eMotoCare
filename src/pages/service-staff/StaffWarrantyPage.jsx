@@ -1,31 +1,59 @@
+// src/pages/staff/StaffWarrantyPage.jsx
 import { useState, useEffect, useMemo } from "react";
-import { Table, Tag, Button, Space, Modal, Select, Input, Spin } from "antd";
-import { QrcodeOutlined } from "@ant-design/icons";
-import { QRCodeSVG } from "qrcode.react";
+import { Table, Tag, Button, Select, Input, Spin, Modal } from "antd";
 import { FilterIcon, RotateCcw } from "lucide-react";
-import { getRMAService } from "../../services/rmaService"; // ✅ import service thật
+
+import {
+  getRMAService,
+  getCustomerByRMAService,
+  getRMADetailsService,
+} from "../../services/rmaService";
 import { STATUS_MAP, STATUS_COLORS } from "../../utils/constants";
+
+// 👉 chỉnh path này theo nơi bạn đặt file RMADetails.jsx
+import RMADetails from "../../components/service-staff/RMADetails";
 
 const { Option } = Select;
 
-// ================== CONSTANTS ==================
-
-// ================== COMPONENT ==================
 export default function StaffWarrantyPage() {
   const [rmaList, setRmaList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
   const [search, setSearch] = useState("");
-  const [qrRecord, setQrRecord] = useState(null);
-  const [openQRModal, setOpenQRModal] = useState(false);
 
-  // ================== LOAD DATA ==================
+  // state cho màn chi tiết
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [selectedRMA, setSelectedRMA] = useState(null);
+  const [rmaDetails, setRmaDetails] = useState([]);
+
+  // ================== LOAD DATA LIST RMA ==================
   const loadRMAList = async () => {
     setLoading(true);
     try {
       const data = await getRMAService();
-      const list = data?.rowDatas || [];
-      setRmaList(list);
+
+      let list =
+        data?.rowDatas ||
+        data?.data?.rowDatas ||
+        (Array.isArray(data) ? data : []);
+
+      if (!Array.isArray(list)) list = [];
+
+      // Gắn thêm customer cho từng RMA
+      const enriched = await Promise.all(
+        list.map(async (rma) => {
+          try {
+            const customer = await getCustomerByRMAService(rma.id);
+            return { ...rma, customer };
+          } catch (e) {
+            console.error("Không load được customer cho RMA", rma.id, e);
+            return rma;
+          }
+        })
+      );
+
+      setRmaList(enriched);
     } catch (err) {
       console.error("❌ Lỗi khi tải danh sách RMA:", err);
     } finally {
@@ -43,18 +71,48 @@ export default function StaffWarrantyPage() {
       const matchStatus = statusFilter
         ? item.status?.toUpperCase() === statusFilter
         : true;
+
+      const lowerSearch = search.toLowerCase();
+
+      const fullName = item.customer
+        ? `${item.customer.firstName || ""} ${
+            item.customer.lastName || ""
+          }`.trim()
+        : "";
+
       const matchSearch = search
-        ? item.customer?.firstName
-            ?.toLowerCase()
-            ?.includes(search.toLowerCase()) ||
-          item.customer?.lastName
-            ?.toLowerCase()
-            ?.includes(search.toLowerCase()) ||
-          item.code?.toLowerCase()?.includes(search.toLowerCase())
+        ? fullName.toLowerCase().includes(lowerSearch) ||
+          item.code?.toLowerCase()?.includes(lowerSearch)
         : true;
+
       return matchStatus && matchSearch;
     });
   }, [rmaList, statusFilter, search]);
+
+  // ================== ACTION: XEM CHI TIẾT ==================
+  const handleViewDetail = async (record) => {
+    setSelectedRMA(record);
+    setDetailOpen(true);
+    setDetailLoading(true);
+    setRmaDetails([]);
+
+    try {
+      const data = await getRMADetailsService({ rmaId: record.id });
+
+      let list =
+        data?.rowDatas ||
+        data?.data?.rowDatas ||
+        (Array.isArray(data) ? data : []);
+
+      if (!Array.isArray(list)) list = [];
+
+      setRmaDetails(list);
+    } catch (err) {
+      console.error("❌ Lỗi load chi tiết RMA:", err);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
 
   // ================== TABLE ==================
   const columns = [
@@ -74,25 +132,27 @@ export default function StaffWarrantyPage() {
     {
       title: "Khách hàng",
       key: "customer",
+      width: 200,
       render: (_, record) => {
         const c = record.customer;
-        return c ? `${c.firstName || ""} ${c.lastName || ""}`.trim() : "—";
+        if (!c) return "—";
+        return `${c.firstName || ""} ${c.lastName || ""}`.trim() || "—";
       },
-      width: 160,
     },
     {
       title: "Nhân viên xử lý",
       key: "staff",
+      width: 180,
       render: (_, record) => {
         const s = record.staff;
         return s ? `${s.firstName || ""} ${s.lastName || ""}`.trim() : "—";
       },
-      width: 160,
     },
     {
       title: "Ngày tạo RMA",
       dataIndex: "rmaDate",
       key: "rmaDate",
+      width: 180,
       render: (date) =>
         date
           ? new Date(date).toLocaleString("vi-VN", {
@@ -103,13 +163,12 @@ export default function StaffWarrantyPage() {
               minute: "2-digit",
             })
           : "—",
-      width: 180,
     },
     {
       title: "Ghi chú",
       dataIndex: "note",
       key: "note",
-      width: 180,
+      width: 200,
       render: (note) => note || "—",
     },
     {
@@ -127,11 +186,10 @@ export default function StaffWarrantyPage() {
         );
       },
     },
-
     {
       title: "Hành động",
       key: "actions",
-      width: 100,
+      width: 120,
       align: "center",
       render: (_, record) => (
         <Button type='link' onClick={() => handleViewDetail(record)}>
@@ -146,7 +204,7 @@ export default function StaffWarrantyPage() {
     <div style={{ padding: 16 }}>
       {/* HEADER */}
       <div className='flex justify-between items-center mb-4'>
-        <h2 className='text-2xl font-semibold text-green-600'>
+        <h2 className='text-2xl font-semibold text-red-600'>
           🛡️ Danh sách Phiếu Bảo hành (RMA)
         </h2>
         <Button onClick={loadRMAList} type='default' icon={<RotateCcw />}>
@@ -155,14 +213,7 @@ export default function StaffWarrantyPage() {
       </div>
 
       {/* FILTER */}
-      <div
-        style={{
-          marginBottom: 16,
-          display: "flex",
-          justifyContent: "flex-end",
-          alignItems: "center",
-          gap: 12,
-        }}>
+      <div className='flex justify-end items-center gap-3 mb-4'>
         <FilterIcon size={18} />
         <Select
           placeholder='Trạng thái'
@@ -178,7 +229,7 @@ export default function StaffWarrantyPage() {
 
         <Input
           placeholder='Tìm theo mã hoặc tên KH'
-          style={{ width: 200 }}
+          style={{ width: 220 }}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -192,7 +243,7 @@ export default function StaffWarrantyPage() {
         </Button>
       </div>
 
-      {/* TABLE */}
+      {/* TABLE LIST RMA */}
       {loading ? (
         <div className='flex justify-center items-center h-64'>
           <Spin size='large' />
@@ -208,29 +259,24 @@ export default function StaffWarrantyPage() {
         />
       )}
 
-      {/* QR MODAL */}
+      {/* MODAL CHI TIẾT RMA */}
       <Modal
-        title={qrRecord ? `QR RMA — ${qrRecord.code}` : "QR RMA"}
-        open={openQRModal}
-        onCancel={() => setOpenQRModal(false)}
+        title={
+          selectedRMA ? `Yêu cầu bảo hành: ${selectedRMA.code}` : "Chi tiết RMA"
+        }
+        open={detailOpen}
+        onCancel={() => setDetailOpen(false)}
+        width='80%'
         footer={[
-          <Button key='close' onClick={() => setOpenQRModal(false)}>
+          <Button key='close' onClick={() => setDetailOpen(false)}>
             Đóng
           </Button>,
-        ]}
-        centered>
-        {qrRecord ? (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              padding: 24,
-            }}>
-            <QRCodeSVG value={qrRecord.code || "N/A"} size={180} />
-          </div>
-        ) : (
-          <p className='text-center text-gray-500'>Không có QR</p>
-        )}
+        ]}>
+        <RMADetails
+          rma={selectedRMA}
+          details={rmaDetails}
+          loading={detailLoading}
+        />
       </Modal>
     </div>
   );

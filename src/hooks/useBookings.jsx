@@ -4,6 +4,8 @@ import {
   fetchAppointments,
   createAppointmentService,
 } from "../services/appointmentService";
+import { fetchServiceStaff } from "../services/staffsService";
+import useAppointmentHub from "./useAppointmentHub"; // ✅ Import hook SignalR cho Appointment
 
 export const useBookings = () => {
   const [data, setData] = useState([]);
@@ -25,13 +27,35 @@ export const useBookings = () => {
     return nextList.includes(newStatus.toUpperCase());
   };
 
+  // ✅ Lấy serviceCenterId từ staff hiện tại
+  const getServiceCenterId = async () => {
+    try {
+      const staff = await fetchServiceStaff();
+      const staffData = staff?.data?.data || staff?.data || staff;
+      return staffData?.serviceCenterId || null;
+    } catch (error) {
+      console.error("Lỗi lấy serviceCenterId:", error);
+      // Fallback: lấy từ localStorage
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      return user?.staff?.serviceCenterId || 
+             user?.accountResponse?.staff?.serviceCenterId || 
+             null;
+    }
+  };
+
   const fetchBookings = async () => {
     setLoading(true);
     try {
-      const res = await fetchAppointments({ page: 1, pageSize: 20 });
+      // ✅ Lấy serviceCenterId và filter theo trung tâm
+      const serviceCenterId = await getServiceCenterId();
+      const res = await fetchAppointments({ 
+        page: 1, 
+        pageSize: 20,
+        serviceCenterId 
+      });
       const list = res?.data?.rowDatas || [];
       setData(list);
-      console.log("Fetched bookings:", list.length);
+      console.log("Fetched bookings:", list.length, "serviceCenterId:", serviceCenterId);
     } catch (error) {
       console.error("Lỗi fetch bookings:", error);
     } finally {
@@ -52,6 +76,14 @@ export const useBookings = () => {
   useEffect(() => {
     fetchBookings();
   }, []);
+
+  // ✅ Kết nối SignalR để nhận real-time updates cho Appointment
+  // Khi staff tạo booking mới, cập nhật trạng thái, hoặc gán technician,
+  // technician sẽ tự động nhận được update và reload danh sách
+  useAppointmentHub(() => {
+    console.log("🔄 SignalR: Appointment updated, reloading bookings...");
+    fetchBookings(); // ✅ Tự động reload danh sách booking
+  });
 
   // CẬP NHẬT TRẠNG THÁI – LUÔN FETCH LẠI KHI GÁN KỸ THUẬT VIÊN
   const updateStatus = (id, newStatus, selectedTechnician = null) => {

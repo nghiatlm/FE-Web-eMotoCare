@@ -1,67 +1,96 @@
-// file: RMAConfirmationModal.jsx
-
-import { Modal, Button, List, Typography, message } from "antd";
+// src/components/service-staff/RMAConfirmationModal.jsx
+import { Modal, Button, List, Typography, message, Card, Space, Tag, Divider } from "antd";
 import { useState } from "react";
-// 🆕 Import service tạo RMA (Cập nhật đường dẫn thực tế của bạn)
-import { createRMAService } from "../../services/rmaService"; // Giả định rmaService nằm ở đây
+import { AlertTriangle, Package, CheckCircle, XCircle } from "lucide-react";
+
+import {
+  createRMAService,
+  createRMADetailService,
+} from "../../services/rmaService";
 import { fetchServiceStaff } from "../../services/staffsService";
-const { Text } = Typography;
+
+const { Text, Title } = Typography;
 
 export default function RMAConfirmationModal({
   open,
   onClose,
   booking,
-  partsForRMA,
+  partsForRMA = [],
   onRMASuccess,
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ... (mapPartsToRMAItems)
-
   const handleCreateRMA = async () => {
     if (isSubmitting) return;
 
+    if (!partsForRMA.length) {
+      return message.warning("Không có phụ tùng nào đủ điều kiện RMA.");
+    }
+
     try {
       setIsSubmitting(true);
-      message.loading("Đang gửi yêu cầu RMA...", 0);
+      message.loading("Đang tạo yêu cầu RMA...", 0);
 
-      // 🚨 BƯỚC KHẮC PHỤC: Gọi hàm fetchServiceStaff để lấy staffId
-      const staff = await fetchServiceStaff();
-      const staffId = staff?.id;
-
+      // 1. Lấy Service Staff
+      const staffInfo = await fetchServiceStaff();
+      const staffData = staffInfo?.data?.data || staffInfo?.data || staffInfo;
+      const staffId = staffData?.id;
       if (!staffId) {
-        throw new Error(
-          "Không tìm thấy ID nhân viên (Service Staff) để tạo RMA."
-        );
+        throw new Error("Không tìm thấy Service Staff.");
       }
 
-      // Xây dựng Payload
-      const payload = {
-        // ...
-        returnAddress: booking.garageAddress || "Địa chỉ trả hàng mặc định",
-        note: `Yêu cầu RMA cho booking: ${booking.code}. Số lượng phụ tùng: ${partsForRMA.length}.`,
-        createById: staffId, // 👈 ID Staff đã được lấy thành công
-        customerId: booking.customer?.id,
-        // ...
+      // 2. Tạo RMA header (1 RMA cho tất cả phụ tùng)
+      const rmaPayload = {
+        returnAddress: booking.garageAddress || "Địa chỉ kho eMotoCare",
+        note: `Yêu cầu RMA cho booking ${booking.code}`,
+        createById: staffId,
       };
 
-      // 🎯 GỌI API TẠO RMA
-      await createRMAService(payload);
+      console.log("📤 [RMAConfirmationModal] Create RMA payload:", rmaPayload);
+
+      const rma = await createRMAService(rmaPayload);
+      console.log("✅ [RMAConfirmationModal] RMA response:", rma);
+
+      // ➜ Với response BE: { statusCode, success, message, data: { id } }
+      const rmaId = rma?.id; // <<< CHỈ SỬA DÒNG NÀY
+      if (!rmaId) {
+        console.error("❌ Không lấy được rmaId từ response:", rma);
+        throw new Error("Không tạo được RMA (thiếu rmaId).");
+      }
+
+      // 3. Tạo RMA detail cho từng EVCheckDetail
+      const now = new Date();
+      const expiration = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // +30 ngày
+
+      for (const item of partsForRMA) {
+        const detailPayload = {
+          rmaId,
+          evCheckDetailId: item.id,
+          quantity: item.quantity || 1,
+          reason: item.NoiDung || item.result || "Lỗi kỹ thuật / hư hỏng",
+          releaseDateRMA: now.toISOString(),
+          expirationDateRMA: expiration.toISOString(),
+          inspector: staffData?.fullName || staffData?.name || "",
+          result: "",
+          solution: item.remedies || "",
+        };
+
+        console.log(
+          "📤 [RMAConfirmationModal] Tạo RMADetail payload:",
+          detailPayload
+        );
+        const detailRes = await createRMADetailService(detailPayload);
+        console.log("✅ [RMAConfirmationModal] RMADetail response:", detailRes);
+      }
 
       message.destroy();
-      message.success(
-        `Đã tạo yêu cầu RMA cho ${partsForRMA.length} phụ tùng thành công!`
-      );
-
+      message.success("Tạo yêu cầu RMA thành công!");
       onRMASuccess?.();
       onClose();
-    } catch (error) {
+    } catch (err) {
       message.destroy();
-      console.error("Lỗi tạo RMA:", error);
-      message.error(
-        error?.message ||
-          "Không thể tạo yêu cầu RMA. Vui lòng kiểm tra console."
-      );
+      console.error("❌ Lỗi tạo RMA:", err);
+      message.error(err?.message || "Không thể tạo RMA.");
     } finally {
       setIsSubmitting(false);
     }
@@ -69,12 +98,23 @@ export default function RMAConfirmationModal({
 
   return (
     <Modal
-      title='🚨 Xác nhận Tạo Yêu cầu RMA'
+      title={
+        <Space>
+          <AlertTriangle size={20} style={{ color: "#ff4d4f" }} />
+          <span style={{ fontSize: 18, fontWeight: 600 }}>Xác nhận Tạo Yêu cầu RMA</span>
+        </Space>
+      }
       open={open}
       onCancel={onClose}
       confirmLoading={isSubmitting}
+      width={700}
       footer={[
-        <Button key='back' onClick={onClose} disabled={isSubmitting}>
+        <Button 
+          key='back' 
+          onClick={onClose} 
+          disabled={isSubmitting}
+          size="large"
+          style={{ height: "40px", fontSize: "15px" }}>
           Hủy
         </Button>,
         <Button
@@ -82,31 +122,106 @@ export default function RMAConfirmationModal({
           type='primary'
           danger
           onClick={handleCreateRMA}
-          loading={isSubmitting}>
-          Xác nhận & Tạo RMA
+          loading={isSubmitting}
+          size="large"
+          style={{ 
+            height: "40px", 
+            fontSize: "15px",
+            fontWeight: 600,
+          }}>
+          Xác nhận &amp; Tạo RMA
         </Button>,
       ]}>
-      <p className='mb-4'>Xác nhận tạo yêu cầu RMA cho các phụ tùng sau:</p>
+      <div style={{ padding: "8px 0" }}>
+        {/* ✅ Thông báo */}
+        <Card
+          style={{
+            marginBottom: 24,
+            backgroundColor: "#fff7e6",
+            borderColor: "#ffd591",
+            borderRadius: 8,
+          }}
+          bodyStyle={{ padding: "16px" }}>
+          <Space>
+            <AlertTriangle size={18} style={{ color: "#fa8c16" }} />
+            <div>
+              <Text strong style={{ fontSize: 15 }}>
+                Xác nhận tạo <Text style={{ color: "#ff4d4f" }}>01 yêu cầu RMA</Text> cho{" "}
+                <Text style={{ color: "#ff4d4f" }}>{partsForRMA.length} phụ tùng</Text>
+              </Text>
+              <div style={{ fontSize: 13, color: "#8c8c8c", marginTop: 4 }}>
+                Tất cả phụ tùng sẽ được gom vào một RMA duy nhất
+              </div>
+            </div>
+          </Space>
+        </Card>
 
-      <List
-        bordered
-        dataSource={partsForRMA}
-        renderItem={(item) => (
-          <List.Item>
-            {/* Giả định cấu trúc item.partName tồn tại */}
-            <Text strong>
-              {item.partName || item.partItem?.part?.name || "Không rõ tên PT"}
-            </Text>
-            {/* Giả định item.partItem có các thuộc tính cần thiết */}
-            <Text type='secondary' className='ml-2'>
-              (SL: {item.quantity || 1}, PT ID: {item.partItem?.id})
-            </Text>
-            <Text type='danger' className='ml-auto'>
-              Bảo hành hãng
-            </Text>
-          </List.Item>
-        )}
-      />
+        {/* ✅ Danh sách phụ tùng */}
+        <Card
+          title={
+            <Space>
+              <Package size={18} style={{ color: "#ff4d4f" }} />
+              <span style={{ fontSize: 16, fontWeight: 600 }}>Danh sách phụ tùng</span>
+            </Space>
+          }
+          style={{ borderRadius: 8 }}
+          headStyle={{ borderBottom: "1px solid #f0f0f0", padding: "12px 16px" }}
+          bodyStyle={{ padding: "16px" }}>
+          <List
+            dataSource={partsForRMA}
+            renderItem={(item, index) => (
+              <List.Item
+                style={{
+                  padding: "16px",
+                  border: "1px solid #f0f0f0",
+                  borderRadius: 8,
+                  marginBottom: 12,
+                  backgroundColor: "#fafafa",
+                }}>
+                <div style={{ width: "100%" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      <Space>
+                        <Text strong style={{ fontSize: 15 }}>
+                          {index + 1}. {item.partName ||
+                            item.partItem?.part?.name ||
+                            "Không rõ tên PT"}
+                        </Text>
+                        <Tag color="red" icon={<CheckCircle size={12} />}>
+                          Bảo hành hãng
+                        </Tag>
+                      </Space>
+                    </div>
+                  </div>
+                  <Divider style={{ margin: "8px 0" }} />
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8, fontSize: 13 }}>
+                    <div>
+                      <Text type="secondary">Số lượng:</Text>{" "}
+                      <Text strong>{item.quantity || 1}</Text>
+                    </div>
+                    {item.partItem?.id && (
+                      <div>
+                        <Text type="secondary">PartItem ID:</Text>{" "}
+                        <Text code style={{ fontSize: 12 }}>
+                          {item.partItem.id.substring(0, 8)}...
+                        </Text>
+                      </div>
+                    )}
+                    {item.id && (
+                      <div>
+                        <Text type="secondary">EV Detail ID:</Text>{" "}
+                        <Text code style={{ fontSize: 12 }}>
+                          {item.id.substring(0, 8)}...
+                        </Text>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </List.Item>
+            )}
+          />
+        </Card>
+      </div>
     </Modal>
   );
 }
