@@ -3,18 +3,29 @@ import {
   updateAppointment,
   postAppointment,
   getAppointmentById,
+  getAppointmentsByTechnician,
 } from "../api/appointmentsApi";
 
 import { fetchServiceStaff } from "./staffsService";
 import * as QRCode from "qrcode";
 import { uploadDataUrl } from "../utils/firebaseUpload";
 
-// LIST
+// LIST (for Staff/Admin)
 export const fetchAppointments = async ({ page = 1, pageSize = 20, serviceCenterId } = {}) => {
   try {
     return await getAppointments({ page, pageSize, serviceCenterId });
   } catch (error) {
     console.error("Lỗi lấy danh sách lịch hẹn:", error);
+    throw error;
+  }
+};
+
+// LIST by Technician (staffId)
+export const fetchAppointmentsByTechnician = async (technicianId) => {
+  try {
+    return await getAppointmentsByTechnician(technicianId);
+  } catch (error) {
+    console.error("Lỗi lấy danh sách lịch hẹn của kỹ thuật viên:", error);
     throw error;
   }
 };

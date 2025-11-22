@@ -23,3 +23,19 @@ export const fetchServiceStaff = async () => {
     throw error;
   }
 };
+
+// 🟢 Lấy staff (technician) theo accountId
+export const fetchTechnicianByAccountId = async (accountId) => {
+  try {
+    const res = await getStaffByPosition("TECHNICIAN_STAFF");
+    const staffList = res?.data?.rowDatas || res?.data || [];
+    // Tìm staff có accountId khớp
+    const technician = staffList.find(
+      (staff) => staff.accountId === accountId || staff.account?.id === accountId
+    );
+    return technician || null;
+  } catch (error) {
+    console.error("Lỗi lấy technician theo accountId:", error);
+    throw error;
+  }
+};

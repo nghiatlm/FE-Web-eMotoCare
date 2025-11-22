@@ -3,8 +3,9 @@ import { useState, useEffect } from "react";
 import {
   fetchAppointments,
   createAppointmentService,
+  fetchAppointmentsByTechnician,
 } from "../services/appointmentService";
-import { fetchServiceStaff } from "../services/staffsService";
+import { fetchServiceStaff, fetchTechnicianByAccountId } from "../services/staffsService";
 import useAppointmentHub from "./useAppointmentHub"; // ✅ Import hook SignalR cho Appointment
 
 export const useBookings = () => {
@@ -46,16 +47,39 @@ export const useBookings = () => {
   const fetchBookings = async () => {
     setLoading(true);
     try {
-      // ✅ Lấy serviceCenterId và filter theo trung tâm
-      const serviceCenterId = await getServiceCenterId();
-      const res = await fetchAppointments({ 
-        page: 1, 
-        pageSize: 20,
-        serviceCenterId 
-      });
-      const list = res?.data?.rowDatas || [];
+      // ✅ Kiểm tra role của user
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const roleName = user?.accountResponse?.roleName;
+      const accountId = user?.accountResponse?.id;
+
+      let list = [];
+
+      if (roleName === "ROLE_TECHNICIAN" && accountId) {
+        // ✅ Nếu là technician, lấy staffId từ accountId
+        const technician = await fetchTechnicianByAccountId(accountId);
+        const staffId = technician?.id;
+        
+        if (staffId) {
+          // Gọi API lấy booking theo technician ID (staffId)
+          const res = await fetchAppointmentsByTechnician(staffId);
+          list = res?.data?.rowDatas || res?.data || res || [];
+          console.log("Fetched technician bookings:", list.length, "staffId:", staffId);
+        } else {
+          console.warn("Không tìm thấy staffId cho technician với accountId:", accountId);
+        }
+      } else {
+        // ✅ Nếu là staff/admin, lấy theo serviceCenterId
+        const serviceCenterId = await getServiceCenterId();
+        const res = await fetchAppointments({ 
+          page: 1, 
+          pageSize: 20,
+          serviceCenterId 
+        });
+        list = res?.data?.rowDatas || [];
+        console.log("Fetched staff bookings:", list.length, "serviceCenterId:", serviceCenterId);
+      }
+
       setData(list);
-      console.log("Fetched bookings:", list.length, "serviceCenterId:", serviceCenterId);
     } catch (error) {
       console.error("Lỗi fetch bookings:", error);
     } finally {

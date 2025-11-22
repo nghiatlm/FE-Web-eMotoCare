@@ -23,3 +23,8 @@ export const getAppointmentById = (id) => api.get(`${BASE_URL}/${id}`);
 // ✅ Gửi staffId trong body thay vì query
 export const updateAppointment = (id, body) =>
   api.put(`${BASE_URL}/${id}`, body);
+
+// Lấy danh sách lịch hẹn theo Technician ID (staffId)
+export const getAppointmentsByTechnician = (technicianId) => {
+  return api.get(`${BASE_URL}/technician/${technicianId}`);
+};

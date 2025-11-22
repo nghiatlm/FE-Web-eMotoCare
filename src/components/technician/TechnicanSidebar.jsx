@@ -1,4 +1,4 @@
-import { CalendarCheck, LayoutDashboard } from "lucide-react";
+import { CalendarCheck, LayoutDashboard, LogOut } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
   Sidebar,
@@ -10,6 +10,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { authService } from "@/services/authService";
 
 const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, url: "/technician/dashboard" },
@@ -44,6 +45,25 @@ export function TechnicianSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
+        {/* Logout Button */}
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => {
+                    authService.logout();
+                    window.location.href = "/login";
+                  }}
+                  tooltip="Logout">
+                  <LogOut className="h-5 w-5 flex-shrink-0"/>
+                  {!isCollapsed && <span>Logout</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
