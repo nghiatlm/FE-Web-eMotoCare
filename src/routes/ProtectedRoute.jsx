@@ -5,12 +5,16 @@ import { useAuth } from "../contexts/AuthContext";
 export default function ProtectedRoute({ children, allowedRoles }) {
   const { user } = useAuth();
 
-  if (!user) return <Navigate to='/login' replace />;
+  // Nếu chưa đăng nhập, redirect về login
+  if (!user) return <Navigate to="/login" replace />;
   
   // Lấy role từ accountResponse?.roleName thay vì user.role
   const roleName = user.accountResponse?.roleName;
-  if (allowedRoles && roleName && !allowedRoles.includes(roleName))
-    return <Navigate to='/login' replace />;
+  
+  // Nếu có allowedRoles và role không nằm trong danh sách, redirect về login
+  if (allowedRoles && roleName && !allowedRoles.includes(roleName)) {
+    return <Navigate to="/login" replace />;
+  }
 
   return children;
 }

@@ -83,47 +83,49 @@ const App = () => (
         <Route
           path="/admin/*"
           element={
-            <SidebarProvider>
-              <div className="flex min-h-screen w-full">
-                <AdminSidebar />
-                <div className="flex-1 flex flex-col">
-                  <header className="h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10">
-                    <SidebarTrigger className="text-foreground" />
-                  </header>
-                  <main className="flex-1">
-                    <Routes>
-                      <Route path="" element={<Index />} />
-                      <Route path="users" element={<UserManagement />} />
-                      <Route path="branches" element={<Branches />} />
-                      <Route path="branches/:id" element={<BranchDetail />} />
-                      <Route
-                        path="branches/:id/report"
-                        element={<BranchReport />}
-                      />
-                      <Route
-                        path="warranty-claims"
-                        element={<WarrantyClaims />}
-                      />
-                      <Route path="vehicles" element={<Vehicles />} />
-                      <Route
-                        path="service-packages"
-                        element={<ServicePackages />}
-                      />
-                      <Route
-                        path="service-packages/create"
-                        element={<CreateServicePackage />}
-                      />
-                      <Route path="campaigns" element={<Campaigns />} />
-                      <Route
-                        path="campaigns/:id"
-                        element={<CampaignDetail />}
-                      />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </main>
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN"]}>
+              <SidebarProvider>
+                <div className="flex min-h-screen w-full">
+                  <AdminSidebar />
+                  <div className="flex-1 flex flex-col">
+                    <header className="h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10">
+                      <SidebarTrigger className="text-foreground" />
+                    </header>
+                    <main className="flex-1">
+                      <Routes>
+                        <Route path="" element={<Index />} />
+                        <Route path="users" element={<UserManagement />} />
+                        <Route path="branches" element={<Branches />} />
+                        <Route path="branches/:id" element={<BranchDetail />} />
+                        <Route
+                          path="branches/:id/report"
+                          element={<BranchReport />}
+                        />
+                        <Route
+                          path="warranty-claims"
+                          element={<WarrantyClaims />}
+                        />
+                        <Route path="vehicles" element={<Vehicles />} />
+                        <Route
+                          path="service-packages"
+                          element={<ServicePackages />}
+                        />
+                        <Route
+                          path="service-packages/create"
+                          element={<CreateServicePackage />}
+                        />
+                        <Route path="campaigns" element={<Campaigns />} />
+                        <Route
+                          path="campaigns/:id"
+                          element={<CampaignDetail />}
+                        />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </main>
+                  </div>
                 </div>
-              </div>
-            </SidebarProvider>
+              </SidebarProvider>
+            </ProtectedRoute>
           }
         />
 
@@ -131,41 +133,43 @@ const App = () => (
         <Route
           path="/staff/*"
           element={
-            <SidebarProvider>
-              <div className="flex min-h-screen w-full">
-                <StaffSidebar />
-                <div className="flex-1 flex flex-col">
-                  <header className="h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10">
-                    <SidebarTrigger className="text-foreground" />
-                  </header>
-                  <main className="flex-1">
-                    <Routes>
-                      <Route
-                        path=""
-                        element={<Navigate to="dashboard" replace />}
-                      />
-                      <Route path="dashboard" element={<StaffDashboard />} />
-                      <Route
-                        path="booking/create"
-                        element={<CreateBooking />}
-                      />
-                      <Route path="booking/list" element={<StaffBooking />} />
-                      <Route
-                        path="booking"
-                        element={<Navigate to="booking/list" replace />}
-                      />
-                      <Route path="warranty" element={<StaffWarrantyPage />} />
-                      <Route
-                        path="warranty/:rmaId"
-                        element={<StaffRMADetailPage />}
-                      />
+            <ProtectedRoute allowedRoles={["ROLE_STAFF"]}>
+              <SidebarProvider>
+                <div className="flex min-h-screen w-full">
+                  <StaffSidebar />
+                  <div className="flex-1 flex flex-col">
+                    <header className="h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10">
+                      <SidebarTrigger className="text-foreground" />
+                    </header>
+                    <main className="flex-1">
+                      <Routes>
+                        <Route
+                          path=""
+                          element={<Navigate to="dashboard" replace />}
+                        />
+                        <Route path="dashboard" element={<StaffDashboard />} />
+                        <Route
+                          path="booking/create"
+                          element={<CreateBooking />}
+                        />
+                        <Route path="booking/list" element={<StaffBooking />} />
+                        <Route
+                          path="booking"
+                          element={<Navigate to="booking/list" replace />}
+                        />
+                        <Route path="warranty" element={<StaffWarrantyPage />} />
+                        <Route
+                          path="warranty/:rmaId"
+                          element={<StaffRMADetailPage />}
+                        />
 
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </main>
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </main>
+                  </div>
                 </div>
-              </div>
-            </SidebarProvider>
+              </SidebarProvider>
+            </ProtectedRoute>
           }
         />
 
@@ -173,30 +177,32 @@ const App = () => (
         <Route
           path="/technician/*"
           element={
-            <SidebarProvider>
-              <div className="flex min-h-screen w-full">
-                <TechnicianSidebar />
-                <div className="flex-1 flex flex-col">
-                  <header className="h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10">
-                    <SidebarTrigger className="text-foreground" />
-                  </header>
-                  <main className="flex-1">
-                    <Routes>
-                      <Route
-                        path=""
-                        element={<Navigate to="dashboard" replace />}
-                      />
-                      <Route
-                        path="dashboard"
-                        element={<TechnicianDashboard />}
-                      />
-                      <Route path="vehicles" element={<TechnicianPage />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </main>
+            <ProtectedRoute allowedRoles={["ROLE_TECHNICIAN"]}>
+              <SidebarProvider>
+                <div className="flex min-h-screen w-full">
+                  <TechnicianSidebar />
+                  <div className="flex-1 flex flex-col">
+                    <header className="h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10">
+                      <SidebarTrigger className="text-foreground" />
+                    </header>
+                    <main className="flex-1">
+                      <Routes>
+                        <Route
+                          path=""
+                          element={<Navigate to="dashboard" replace />}
+                        />
+                        <Route
+                          path="dashboard"
+                          element={<TechnicianDashboard />}
+                        />
+                        <Route path="vehicles" element={<TechnicianPage />} />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </main>
+                  </div>
                 </div>
-              </div>
-            </SidebarProvider>
+              </SidebarProvider>
+            </ProtectedRoute>
           }
         />
 
@@ -204,42 +210,44 @@ const App = () => (
         <Route
           path="/storekeeper/*"
           element={
-            <SidebarProvider>
-              <div className="flex min-h-screen w-full">
-                <StoreKeeperSidebar />
-                <div className="flex-1 flex flex-col">
-                  <header className="h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10">
-                    <SidebarTrigger className="text-foreground" />
-                  </header>
-                  <main className="flex-1">
-                    <Routes>
-                      <Route path="" element={<StorekeeperInventory />} />
-                      <Route
-                        path="accessories/:inventoryId/:partCode"
-                        element={<StorekeeperAccessoryDetail />}
-                      />
-                      <Route
-                        path="import-slips"
-                        element={<ImportSlipsPage />}
-                      />
-                      <Route
-                        path="export-slips"
-                        element={<ExportSlipsPage />}
-                      />
-                      <Route
-                        path="export-slips/:id"
-                        element={<ExportNoteDetail />}
-                      />
-                      <Route
-                        path="export-slips/create"
-                        element={<CreateExportSlipPage />}
-                      />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </main>
+            <ProtectedRoute allowedRoles={["ROLE_STOREKEEPER"]}>
+              <SidebarProvider>
+                <div className="flex min-h-screen w-full">
+                  <StoreKeeperSidebar />
+                  <div className="flex-1 flex flex-col">
+                    <header className="h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10">
+                      <SidebarTrigger className="text-foreground" />
+                    </header>
+                    <main className="flex-1">
+                      <Routes>
+                        <Route path="" element={<StorekeeperInventory />} />
+                        <Route
+                          path="accessories/:inventoryId/:partCode"
+                          element={<StorekeeperAccessoryDetail />}
+                        />
+                        <Route
+                          path="import-slips"
+                          element={<ImportSlipsPage />}
+                        />
+                        <Route
+                          path="export-slips"
+                          element={<ExportSlipsPage />}
+                        />
+                        <Route
+                          path="export-slips/:id"
+                          element={<ExportNoteDetail />}
+                        />
+                        <Route
+                          path="export-slips/create"
+                          element={<CreateExportSlipPage />}
+                        />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </main>
+                  </div>
                 </div>
-              </div>
-            </SidebarProvider>
+              </SidebarProvider>
+            </ProtectedRoute>
           }
         />
 
