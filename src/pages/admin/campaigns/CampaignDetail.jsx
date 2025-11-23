@@ -3,94 +3,9 @@ import { ArrowLeft, Megaphone, Calendar, Percent, Users, Clock, CheckCircle2, Al
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getProgramDetails } from "../../../services/programService";
+import { useEffect, useState } from "react";
 
-// Data cứng - giống như trong Campaigns.jsx
-const mockCampaigns = [
-  {
-    id: "CAMP001",
-    name: "Khuyến mãi dịch vụ bảo dưỡng mùa hè",
-    description: "Giảm giá 20% cho tất cả dịch vụ bảo dưỡng định kỳ trong mùa hè. Campaign này nhằm thu hút khách hàng đến với dịch vụ bảo dưỡng định kỳ của chúng tôi. Áp dụng cho tất cả các loại xe và dịch vụ bảo dưỡng từ cơ bản đến cao cấp.",
-    startDate: "2024-06-01",
-    endDate: "2024-08-31",
-    discount: 20,
-    status: "ACTIVE",
-    totalQuantity: 500,
-    usedQuantity: 234,
-    createdAt: "2024-05-15",
-    applicableServices: ["Bảo dưỡng định kỳ", "Thay nhớt", "Kiểm tra tổng thể"],
-    branches: ["Chi nhánh Hà Nội", "Chi nhánh TP.HCM", "Chi nhánh Đà Nẵng"],
-  },
-  {
-    id: "CAMP002",
-    name: "Thay lốp giảm 15%",
-    description: "Ưu đãi đặc biệt cho dịch vụ thay lốp xe với mức giảm giá hấp dẫn",
-    startDate: "2024-07-01",
-    endDate: "2024-07-31",
-    discount: 15,
-    status: "UPCOMING",
-    totalQuantity: 300,
-    usedQuantity: 0,
-    createdAt: "2024-06-20",
-    applicableServices: ["Thay lốp", "Cân chỉnh lốp"],
-    branches: ["Tất cả chi nhánh"],
-  },
-  {
-    id: "CAMP003",
-    name: "Combo bảo hành + sửa chữa",
-    description: "Gói combo dịch vụ bảo hành kèm sửa chữa với mức giảm 25%",
-    startDate: "2024-04-01",
-    endDate: "2024-05-31",
-    discount: 25,
-    status: "ENDED",
-    totalQuantity: 200,
-    usedQuantity: 198,
-    createdAt: "2024-03-20",
-    applicableServices: ["Bảo hành", "Sửa chữa"],
-    branches: ["Chi nhánh Hà Nội", "Chi nhánh TP.HCM"],
-  },
-  {
-    id: "CAMP004",
-    name: "Kiểm tra miễn phí",
-    description: "Miễn phí kiểm tra tổng thể xe cho khách hàng mới",
-    startDate: "2024-09-01",
-    endDate: "2024-09-30",
-    discount: 100,
-    status: "UPCOMING",
-    totalQuantity: 1000,
-    usedQuantity: 0,
-    createdAt: "2024-08-10",
-    applicableServices: ["Kiểm tra tổng thể"],
-    branches: ["Tất cả chi nhánh"],
-  },
-  {
-    id: "CAMP005",
-    name: "Giảm giá phụ tùng",
-    description: "Giảm 10% cho tất cả phụ tùng chính hãng",
-    startDate: "2024-01-01",
-    endDate: "2024-03-31",
-    discount: 10,
-    status: "ENDED",
-    totalQuantity: 1000,
-    usedQuantity: 987,
-    createdAt: "2023-12-15",
-    applicableServices: ["Mua phụ tùng"],
-    branches: ["Tất cả chi nhánh"],
-  },
-  {
-    id: "CAMP006",
-    name: "Tặng voucher sửa chữa",
-    description: "Tặng voucher 500.000đ cho khách hàng sửa chữa trên 5 triệu",
-    startDate: "2024-08-01",
-    endDate: "2024-08-15",
-    discount: 0,
-    status: "ACTIVE",
-    totalQuantity: 500,
-    usedQuantity: 156,
-    createdAt: "2024-07-25",
-    applicableServices: ["Sửa chữa"],
-    branches: ["Tất cả chi nhánh"],
-  },
-];
 
 const getStatusLabel = (status) => {
   const statusMap = {
@@ -140,11 +55,45 @@ const formatDateTime = (dateString) => {
   }
 };
 
+const renderProgramDetail = (pd) => {
+  if (!pd) return "";
+  if (typeof pd === "string") return pd;
+  if (pd.program && typeof pd.program === "object") {
+    const p = pd.program;
+    return p.title || p.name || p.programName || p.description || p.id || p.code || JSON.stringify(p);
+  }
+  return pd.title || pd.name || pd.programName || pd.description || pd.programId || JSON.stringify(pd);
+};
+
+const renderModel = (m) => {
+  if (!m) return "";
+  if (typeof m === "string") return m;
+  if (m.vehicleModel && typeof m.vehicleModel === "object") {
+    const vm = m.vehicleModel;
+    return vm.name || vm.modelName || vm.code || vm.id || JSON.stringify(vm);
+  }
+  return m.name || m.modelName || m.model || m.modelName || m.modelId || JSON.stringify(m);
+};
+
 export default function CampaignDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const campaign = mockCampaigns.find((c) => c.id === id);
+  // const campaign = mockCampaigns.find((c) => c.id === id);
+  const [campaign, setCampaign] = useState(null);
+
+  useEffect(() => {
+    fetchCampaign(id);
+  }, [id])
+
+  const fetchCampaign = async (id) => {
+    var res = await getProgramDetails(id);
+    console.log("Campaign details:", res);
+    if (res) {
+      setCampaign(res);
+    }
+  }
+
 
   if (!campaign) {
     return (
@@ -159,8 +108,9 @@ export default function CampaignDetail() {
     );
   }
 
-  const usagePercentage = Math.min(100, (campaign.usedQuantity / campaign.totalQuantity) * 100);
-  const remainingQuantity = campaign.totalQuantity - campaign.usedQuantity;
+  const hasQuantity = typeof campaign.totalQuantity === "number" && typeof campaign.usedQuantity === "number";
+  const usagePercentage = hasQuantity ? Math.min(100, (campaign.usedQuantity / campaign.totalQuantity) * 100) : 0;
+  const remainingQuantity = hasQuantity ? campaign.totalQuantity - campaign.usedQuantity : 0;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -193,7 +143,7 @@ export default function CampaignDetail() {
                     <Megaphone className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <CardTitle className="text-2xl font-bold text-slate-900">{campaign.name}</CardTitle>
+                    <CardTitle className="text-2xl font-bold text-slate-900">{campaign.title || campaign.name}</CardTitle>
                     <p className="text-sm text-slate-600 mt-1">Mã: <span className="font-semibold text-primary">{campaign.id}</span></p>
                   </div>
                 </div>
@@ -219,42 +169,46 @@ export default function CampaignDetail() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Percent className="h-5 w-5 text-primary" />
-                      <p className="text-xs font-semibold uppercase text-slate-600 tracking-wider">Mức giảm giá</p>
+                  {typeof campaign.discount !== 'undefined' && (
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Percent className="h-5 w-5 text-primary" />
+                        <p className="text-xs font-semibold uppercase text-slate-600 tracking-wider">Mức giảm giá</p>
+                      </div>
+                      <p className="text-2xl font-bold text-primary">{campaign.discount}%</p>
                     </div>
-                    <p className="text-2xl font-bold text-primary">{campaign.discount}%</p>
-                  </div>
+                  )}
 
-                  <div className="p-4 rounded-xl bg-blue-50 border border-blue-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Users className="h-5 w-5 text-blue-600" />
-                      <p className="text-xs font-semibold uppercase text-slate-600 tracking-wider">Số lượng</p>
+                  {hasQuantity && (
+                    <div className="p-4 rounded-xl bg-blue-50 border border-blue-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Users className="h-5 w-5 text-blue-600" />
+                        <p className="text-xs font-semibold uppercase text-slate-600 tracking-wider">Số lượng</p>
+                      </div>
+                      <p className="text-2xl font-bold text-blue-700">{campaign.usedQuantity} / {campaign.totalQuantity}</p>
                     </div>
-                    <p className="text-2xl font-bold text-blue-700">
-                      {campaign.usedQuantity} / {campaign.totalQuantity}
-                    </p>
-                  </div>
+                  )}
                 </div>
 
                 {/* Progress Bar */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-slate-700">Tiến độ sử dụng</span>
-                    <span className="text-sm font-semibold text-slate-900">{usagePercentage.toFixed(1)}%</span>
+                {hasQuantity && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-slate-700">Tiến độ sử dụng</span>
+                      <span className="text-sm font-semibold text-slate-900">{usagePercentage.toFixed(1)}%</span>
+                    </div>
+                    <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full transition-all duration-500"
+                        style={{ width: `${usagePercentage}%` }}
+                      ></div>
+                    </div>
+                    <div className="flex items-center justify-between mt-2 text-xs text-slate-500">
+                      <span>Còn lại: {remainingQuantity}</span>
+                      <span>Đã dùng: {campaign.usedQuantity}</span>
+                    </div>
                   </div>
-                  <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full transition-all duration-500"
-                      style={{ width: `${usagePercentage}%` }}
-                    ></div>
-                  </div>
-                  <div className="flex items-center justify-between mt-2 text-xs text-slate-500">
-                    <span>Còn lại: {remainingQuantity}</span>
-                    <span>Đã dùng: {campaign.usedQuantity}</span>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Right Column - Details */}
@@ -285,7 +239,7 @@ export default function CampaignDetail() {
                         <Clock className="h-4 w-4 text-slate-500" />
                         <p className="text-xs font-semibold text-slate-600">Ngày tạo</p>
                       </div>
-                      <p className="text-sm font-medium text-slate-900">{formatDateTime(campaign.createdAt)}</p>
+                      <p className="text-sm font-medium text-slate-900">{formatDateTime(campaign.createdAt) || campaign.createdBy || "—"}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -296,25 +250,39 @@ export default function CampaignDetail() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div>
-                      <p className="text-xs font-semibold text-slate-600 mb-2">Dịch vụ</p>
+                      <p className="text-xs font-semibold text-slate-600 mb-2">Chương trình / Chi tiết</p>
                       <div className="space-y-1">
-                        {(campaign.applicableServices || []).map((service, idx) => (
-                          <Badge key={idx} variant="secondary" className="mr-1">
-                            {service}
-                          </Badge>
+                        {(campaign.programDetails || campaign.programs || []).map((pd, idx) => (
+                          <div key={idx} className="text-sm text-slate-700">
+                            {renderProgramDetail(pd)}
+                          </div>
                         ))}
                       </div>
                     </div>
 
                     <div>
-                      <p className="text-xs font-semibold text-slate-600 mb-2">Chi nhánh</p>
+                      <p className="text-xs font-semibold text-slate-600 mb-2">Áp dụng cho mẫu xe</p>
                       <div className="space-y-1">
-                        {(campaign.branches || []).map((branch, idx) => (
+                        {(campaign.programModels || campaign.models || []).map((m, idx) => (
                           <Badge key={idx} variant="outline" className="mr-1">
-                            {branch}
+                            {renderModel(m)}
                           </Badge>
                         ))}
                       </div>
+                      {campaign.attachmentUrl && (
+                        <div className="mt-3">
+                          <p className="text-xs font-semibold text-slate-600 mb-1">Tài liệu đính kèm</p>
+                          <a href={campaign.attachmentUrl} target="_blank" rel="noreferrer" className="text-sm text-primary underline">
+                            Xem tài liệu
+                          </a>
+                        </div>
+                      )}
+                      {campaign.type && (
+                        <div className="mt-3">
+                          <p className="text-xs font-semibold text-slate-600 mb-1">Loại</p>
+                          <p className="text-sm text-slate-900">{campaign.type}</p>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

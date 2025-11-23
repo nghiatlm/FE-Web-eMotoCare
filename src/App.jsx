@@ -19,8 +19,6 @@ import Branches from "./pages/Branches";
 import BranchDetail from "./pages/admin/BranchDetail";
 import BranchReport from "./pages/admin/BranchReport";
 import ServicePackages from "./pages/ServicePackages";
-import Campaigns from "./pages/Campaigns";
-import CampaignDetail from "./pages/CampaignDetail";
 import NotFound from "./pages/NotFound";
 
 // service staff
@@ -55,6 +53,8 @@ import ImportSlipsPage from "./pages/storekeeper/ImportSlipsPage";
 import ExportSlipsPage from "./pages/storekeeper/ExportSlipsPage";
 import CreateExportSlipPage from "./pages/storekeeper/CreateExportSlipPage";
 import ExportNoteDetail from "./pages/storekeeper/ExportNoteDetail";
+import Campaigns from "./pages/admin/campaigns/Campaigns";
+import CampaignDetail from "./pages/admin/campaigns/CampaignDetail";
 
 const queryClient = new QueryClient();
 
@@ -189,8 +189,8 @@ const App = () => (
                         element={<ExportSlipsPage />}
                       />
                       <Route
-                      path="export-slips/:id"
-                      element={<ExportNoteDetail />}
+                        path="export-slips/:id"
+                        element={<ExportNoteDetail />}
                       />
                       <Route
                         path="export-slips/create"
