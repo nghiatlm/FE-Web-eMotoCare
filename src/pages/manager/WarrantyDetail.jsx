@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -56,15 +57,15 @@ const STATUS_META = {
     panelMuted: "text-sky-600",
   },
   APPROVED: {
-    label: "Đang xử lý",
-    description: "Yêu cầu đang trong quá trình xử lý và theo dõi.",
-    pill: "bg-sky-500/10 text-sky-600 border border-sky-200",
-    gradient: "from-sky-50 via-white to-white",
+    label: "Đã cập nhật hãng",
+    description: "Yêu cầu đã được cập nhật hãng.",
+    pill: "bg-green-500/10 text-green-600 border border-green-200",
+    gradient: "from-green-50 via-white to-white",
     icon: CheckCircle2,
-    panelBorder: "border-sky-200",
-    panelBg: "bg-sky-50/70",
-    panelText: "text-sky-700",
-    panelMuted: "text-sky-600",
+    panelBorder: "border-green-200",
+    panelBg: "bg-green-50/70",
+    panelText: "text-green-700",
+    panelMuted: "text-green-600",
   },
   REJECTED: {
     label: "Đã từ chối",
@@ -158,10 +159,12 @@ export default function WarrantyDetail() {
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [updatingDetailId, setUpdatingDetailId] = useState(null);
   const [rma, setRma] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedDetails, setExpandedDetails] = useState(new Set());
+  const [detailForms, setDetailForms] = useState({}); 
 
   const fetchRmaDetail = useCallback(async () => {
     if (!id) return;
@@ -511,7 +514,6 @@ export default function WarrantyDetail() {
         return;
       }
 
-      // Cập nhật status của tất cả rmaDetails sang APPROVED
       const updatePromises = pendingDetails.map((detail) =>
         updateRmaDetail(detail.id, { 
           status: "APPROVED",
@@ -528,7 +530,6 @@ export default function WarrantyDetail() {
 
       await Promise.all(updatePromises);
 
-      // Fetch lại dữ liệu để đảm bảo có data mới nhất trước khi đóng dialog
       await fetchRmaDetail();
 
       toast({
@@ -545,6 +546,99 @@ export default function WarrantyDetail() {
       });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleApproveDetail = async (detailId, detail) => {
+    if (!detailId || !detail) return;
+    
+    setIsProcessing(true);
+    setUpdatingDetailId(detailId);
+    try {
+      await updateRmaDetail(detailId, { 
+        status: "APPROVED",
+        quantity: detail.quantity,
+        reason: detail.reason,
+        rmaNumber: detail.rmaNumber,
+        releaseDateRMA: detail.releaseDateRMA,
+        expirationDateRMA: detail.expirationDateRMA,
+        inspector: detail.inspector || "",
+        result: detail.result || "",
+        solution: detail.solution || "",
+        evCheckDetailId: detail.evCheckDetailId || detail.evCheckDetail?.id,
+        rmaId: detail.rmaId || rma?.id,
+      });
+
+      await fetchRmaDetail();
+
+      toast({
+        title: "Thành công",
+        description: "Đã cập nhật hãng thành công",
+      });
+    } catch (error) {
+      console.error("Error approving RMA detail:", error);
+      toast({
+        title: "Lỗi",
+        description: error?.response?.data?.message || "Không thể cập nhật hãng",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+      setUpdatingDetailId(null);
+    }
+  };
+
+  const handleFormChange = (detailId, field, value) => {
+    setDetailForms(prev => ({
+      ...prev,
+      [detailId]: {
+        ...prev[detailId],
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleSubmitHangInfo = async (detailId, detail) => {
+    if (!detailId || !detail) return;
+    
+    const formData = detailForms[detailId] || {};
+    
+    setIsProcessing(true);
+    setUpdatingDetailId(detailId);
+    try {
+      const payload = {
+        status: "APPROVED", // Giữ nguyên status
+        quantity: detail.quantity,
+        reason: detail.reason,
+        rmaNumber: formData.rmaNumber || detail.rmaNumber || "",
+        releaseDateRMA: formData.releaseDateRMA || detail.releaseDateRMA || null,
+        expirationDateRMA: formData.expirationDateRMA || detail.expirationDateRMA || null,
+        inspector: formData.inspector || detail.inspector || "",
+        result: formData.result || detail.result || "",
+        solution: formData.solution || detail.solution || "",
+        evCheckDetailId: detail.evCheckDetailId || detail.evCheckDetail?.id,
+        rmaId: detail.rmaId || rma?.id,
+      };
+
+      await updateRmaDetail(detailId, payload);
+
+      // Fetch lại dữ liệu để đảm bảo có data mới nhất
+      await fetchRmaDetail();
+
+      toast({
+        title: "Thành công",
+        description: "Đã cập nhật thông tin hãng thành công",
+      });
+    } catch (error) {
+      console.error("Error updating hang info:", error);
+      toast({
+        title: "Lỗi",
+        description: error?.response?.data?.message || "Không thể cập nhật thông tin hãng",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+      setUpdatingDetailId(null);
     }
   };
 
@@ -968,6 +1062,8 @@ export default function WarrantyDetail() {
                                 case "PROCESSING":
                                 case "IN_PROGRESS":
                                   return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Đang xử lý</Badge>;
+                                case "APPROVED":
+                                  return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Đã cập nhật hãng</Badge>;
                                 case "COMPLETED":
                                 case "ACTIVE":
                                   return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Hoàn thành</Badge>;
@@ -995,7 +1091,7 @@ export default function WarrantyDetail() {
                                   className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 px-6 py-4 cursor-pointer hover:from-primary/10 transition-colors"
                                   onClick={toggleExpand}
                                 >
-                                  <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center justify-between gap-4">
                                     <div className="flex items-center gap-4 flex-1">
                                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); toggleExpand(); }}>
                                         {isExpanded ? (
@@ -1025,6 +1121,30 @@ export default function WarrantyDetail() {
                                         </div>
                                       </div>
                                     </div>
+                                    {detailStatus?.toUpperCase() === "PENDING" && (
+                                      <Button
+                                        variant="default"
+                                        size="sm"
+                                        className="bg-green-600 hover:bg-green-700 text-white"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleApproveDetail(detailId, detail);
+                                        }}
+                                        disabled={isProcessing && updatingDetailId === detailId}
+                                      >
+                                        {isProcessing && updatingDetailId === detailId ? (
+                                          <>
+                                            <Clock className="h-4 w-4 mr-2 animate-spin" />
+                                            Đang xử lý...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                                            Xác nhận
+                                          </>
+                                        )}
+                                      </Button>
+                                    )}
                                   </div>
                                 </div>
                                 
@@ -1080,6 +1200,127 @@ export default function WarrantyDetail() {
                                         )}
                                       </div>
                                     </div>
+
+                                    {/* Form nhập thông tin hãng - chỉ hiển thị khi status là APPROVED */}
+                                    {detailStatus?.toUpperCase() === "APPROVED" && (
+                                      <div className="rounded-lg border-2 border-green-200 bg-green-50/30 shadow-sm overflow-hidden">
+                                        <div className="bg-green-100/50 border-b border-green-200 px-5 py-3">
+                                          <div className="flex items-center gap-2">
+                                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                            <h3 className="text-base font-semibold text-foreground">Phản hồi của hãng</h3>
+                                          </div>
+                                        </div>
+                                        <div className="p-5 space-y-4">
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                              <Label htmlFor={`rmaNumber-${detailId}`}>Số RMA</Label>
+                                              <Input
+                                                id={`rmaNumber-${detailId}`}
+                                                value={detailForms[detailId]?.rmaNumber || detail.rmaNumber || ""}
+                                                onChange={(e) => handleFormChange(detailId, "rmaNumber", e.target.value)}
+                                                placeholder="Nhập số RMA"
+                                              />
+                                            </div>
+                                            <div className="space-y-2">
+                                              <Label htmlFor={`inspector-${detailId}`}>Người kiểm tra</Label>
+                                              <Input
+                                                id={`inspector-${detailId}`}
+                                                value={detailForms[detailId]?.inspector || detail.inspector || ""}
+                                                onChange={(e) => handleFormChange(detailId, "inspector", e.target.value)}
+                                                placeholder="Nhập tên người kiểm tra"
+                                              />
+                                            </div>
+                                            <div className="space-y-2">
+                                              <Label htmlFor={`releaseDate-${detailId}`}>Ngày phát hành RMA</Label>
+                                              <Input
+                                                id={`releaseDate-${detailId}`}
+                                                type="date"
+                                                value={detailForms[detailId]?.releaseDateRMA 
+                                                  ? format(new Date(detailForms[detailId].releaseDateRMA), "yyyy-MM-dd")
+                                                  : detail.releaseDateRMA 
+                                                    ? format(new Date(detail.releaseDateRMA), "yyyy-MM-dd")
+                                                    : ""}
+                                                onChange={(e) => {
+                                                  const date = e.target.value ? new Date(e.target.value).toISOString() : null;
+                                                  handleFormChange(detailId, "releaseDateRMA", date);
+                                                }}
+                                              />
+                                            </div>
+                                            <div className="space-y-2">
+                                              <Label htmlFor={`expirationDate-${detailId}`}>Ngày hết hạn RMA</Label>
+                                              <Input
+                                                id={`expirationDate-${detailId}`}
+                                                type="date"
+                                                value={detailForms[detailId]?.expirationDateRMA 
+                                                  ? format(new Date(detailForms[detailId].expirationDateRMA), "yyyy-MM-dd")
+                                                  : detail.expirationDateRMA 
+                                                    ? format(new Date(detail.expirationDateRMA), "yyyy-MM-dd")
+                                                    : ""}
+                                                onChange={(e) => {
+                                                  const date = e.target.value ? new Date(e.target.value).toISOString() : null;
+                                                  handleFormChange(detailId, "expirationDateRMA", date);
+                                                }}
+                                              />
+                                            </div>
+                                          </div>
+                                          
+                                          <div className="space-y-2">
+                                            <Label htmlFor={`result-${detailId}`}>Kết quả kiểm tra</Label>
+                                            <Textarea
+                                              id={`result-${detailId}`}
+                                              value={detailForms[detailId]?.result || detail.result || ""}
+                                              onChange={(e) => handleFormChange(detailId, "result", e.target.value)}
+                                              placeholder="Nhập kết quả kiểm tra từ hãng"
+                                              rows={3}
+                                            />
+                                          </div>
+
+                                          <div className="space-y-2">
+                                            <Label htmlFor={`solution-${detailId}`}>Giải pháp</Label>
+                                            <Textarea
+                                              id={`solution-${detailId}`}
+                                              value={detailForms[detailId]?.solution || detail.solution || ""}
+                                              onChange={(e) => handleFormChange(detailId, "solution", e.target.value)}
+                                              placeholder="Nhập giải pháp từ hãng (thay thế, sửa chữa, v.v.)"
+                                              rows={3}
+                                            />
+                                          </div>
+
+                                          <div className="flex justify-end gap-2 pt-2">
+                                            <Button
+                                              variant="outline"
+                                              onClick={() => {
+                                                setDetailForms(prev => {
+                                                  const newForms = { ...prev };
+                                                  delete newForms[detailId];
+                                                  return newForms;
+                                                });
+                                              }}
+                                              disabled={isProcessing && updatingDetailId === detailId}
+                                            >
+                                              Hủy
+                                            </Button>
+                                            <Button
+                                              onClick={() => handleSubmitHangInfo(detailId, detail)}
+                                              disabled={isProcessing && updatingDetailId === detailId}
+                                              className="bg-green-600 hover:bg-green-700"
+                                            >
+                                              {isProcessing && updatingDetailId === detailId ? (
+                                                <>
+                                                  <Clock className="h-4 w-4 mr-2 animate-spin" />
+                                                  Đang lưu...
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                                                  Lưu thông tin
+                                                </>
+                                              )}
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
 
                                     {/* EvCheckDetail */}
                                     {evCheckDetail && (
