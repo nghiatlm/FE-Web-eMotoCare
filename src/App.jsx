@@ -32,11 +32,13 @@ import StaffBooking from "./pages/service-staff/StaffBooking";
 import CreateBooking from "./pages/service-staff/CreateBooking";
 import StaffWarrantyPage from "./pages/service-staff/StaffWarrantyPage";
 import StaffRMADetailPage from "./pages/service-staff/StaffRMADetailPage";
+import StaffBookingDetailPage from "./pages/service-staff/StaffBookingDetailPage";
 
 // technician
 import { TechnicianSidebar } from "./components/technician/TechnicanSidebar";
 import TechnicianDashboard from "./pages/technician/TechnicianDashboard";
 import TechnicianPage from "./pages/technician/TechnicianPage";
+import TechnicianBookingDetailPage from "./pages/technician/TechnicianBookingDetailPage";
 
 // manager
 import { ManagerSidebar } from "./components/ManagerSidebar";
@@ -157,6 +159,10 @@ const App = () => (
                           path="booking"
                           element={<Navigate to="booking/list" replace />}
                         />
+                        <Route
+                          path="booking/:id"
+                          element={<StaffBookingDetailPage />}
+                        />
                         <Route path="warranty" element={<StaffWarrantyPage />} />
                         <Route
                           path="warranty/:rmaId"
@@ -195,8 +201,12 @@ const App = () => (
                           path="dashboard"
                           element={<TechnicianDashboard />}
                         />
-                        <Route path="vehicles" element={<TechnicianPage />} />
-                        <Route path="*" element={<NotFound />} />
+                      <Route path="vehicles" element={<TechnicianPage />} />
+                      <Route
+                        path="vehicles/:id"
+                        element={<TechnicianBookingDetailPage />}
+                      />
+                      <Route path="*" element={<NotFound />} />
                       </Routes>
                     </main>
                   </div>

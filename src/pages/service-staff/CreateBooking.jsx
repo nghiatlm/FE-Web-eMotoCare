@@ -4,7 +4,7 @@ import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
 import { Calendar } from "lucide-react";
 import BookingForm from "../../components/service-staff/BookingForm";
-import { createAppointmentService } from "../../services/appointmentService";
+import { createAppointmentService, approveAppointmentService } from "../../services/appointmentService";
 
 const CreateBooking = () => {
   const [loading, setLoading] = useState(false);
@@ -13,15 +13,36 @@ const CreateBooking = () => {
   const handleSubmit = async (values) => {
     try {
       setLoading(true);
-      await createAppointmentService(values);
-      toast.success("Tạo lịch hẹn thành công!");
-      // ✅ Redirect về danh sách sau khi tạo thành công
-      setTimeout(() => {
-        navigate("/staff/booking/list");
-      }, 1000);
+      // ✅ 1. Tạo appointment
+      const newAppointment = await createAppointmentService(values);
+      const appointmentId = newAppointment?.id || newAppointment?.data?.id;
+      
+      if (!appointmentId) {
+        throw new Error("Không nhận được ID của lịch hẹn sau khi tạo");
+      }
+
+      // ✅ 2. FE phải gọi approve để tạo QR code
+      try {
+        await approveAppointmentService(appointmentId);
+        toast.success("Tạo lịch hẹn và mã QR check-in thành công!");
+      } catch (approveError) {
+        console.error("Lỗi approve appointment:", approveError);
+        toast.warning("Tạo lịch hẹn thành công nhưng chưa tạo được QR code. Vui lòng duyệt lại sau.");
+      }
+
+      // ✅ Redirect đến detail page để xem QR code ngay
+      if (appointmentId) {
+        setTimeout(() => {
+          navigate(`/staff/booking/${appointmentId}`);
+        }, 500);
+      } else {
+        setTimeout(() => {
+          navigate("/staff/booking/list");
+        }, 1000);
+      }
     } catch (error) {
       console.error("Lỗi tạo lịch hẹn:", error);
-      toast.error(error?.response?.data?.message || "Tạo lịch hẹn thất bại!");
+      toast.error(error?.response?.data?.message || error?.message || "Tạo lịch hẹn thất bại!");
     } finally {
       setLoading(false);
     }

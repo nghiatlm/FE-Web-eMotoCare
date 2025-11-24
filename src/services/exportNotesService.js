@@ -8,8 +8,10 @@ export const fetchExportNotesService = async (params = {}) => {
     const { page = 1, pageSize = 100 } = params;
     const res = await getExportNotes(page, pageSize);
     
-    // Axios interceptor đã unwrap response.data
-    const rowDatas = res?.data?.rowDatas || res?.rowDatas || res?.data || [];
+    // ✅ Axios interceptor đã unwrap response.data
+    // Response structure: { data: { rowDatas: [...] } } hoặc { rowDatas: [...] }
+    const data = res?.data?.data || res?.data || res;
+    const rowDatas = data?.rowDatas || data || [];
     return Array.isArray(rowDatas) ? rowDatas : [];
   } catch (error) {
     console.error("Lỗi lấy danh sách export notes:", error);
@@ -46,21 +48,34 @@ export const findExportNoteStatusByPartItemId = async (partItemId) => {
     
     // Tìm trong từng export note
     for (const exportNote of exportNotes) {
-      try {
-        const partItems = await fetchExportNotePartItemsService(exportNote.id);
-        
-        // Tìm partItemId trong part items
-        const foundItem = partItems.find(
-          (item) => item.partItemId === partItemId || item.partItem?.id === partItemId
-        );
-        
-        if (foundItem) {
-          // Trả về status của export note
-          return exportNote.exportNoteStatus || exportNote.status || null;
+      // ✅ Kiểm tra xem export note có partItems trong response không (từ API getExportNotes)
+      let partItems = exportNote.partItems || [];
+      
+      // ✅ Nếu không có partItems trong response, gọi API riêng để lấy
+      if (!partItems || partItems.length === 0) {
+        try {
+          partItems = await fetchExportNotePartItemsService(exportNote.id);
+        } catch (err) {
+          console.error(`Lỗi lấy part items của export note ${exportNote.id}:`, err);
+          continue;
         }
-      } catch (err) {
-        console.error(`Lỗi lấy part items của export note ${exportNote.id}:`, err);
-        continue;
+      }
+      
+      // ✅ Tìm partItemId trong part items
+      // partItem có thể có: id, partItemId, hoặc partItem.id
+      // ✅ Từ API response: partItems là array các object có id trực tiếp
+      const foundItem = partItems.find(
+        (item) => {
+          const itemId = item.id || item.partItemId || item.partItem?.id || item.part?.id;
+          return itemId === partItemId;
+        }
+      );
+      
+      if (foundItem) {
+        // ✅ Trả về exportNoteStatus từ export note
+        const status = exportNote.exportNoteStatus || exportNote.status;
+        console.log(`✅ Tìm thấy export note status cho partItem ${partItemId}:`, status, "từ export note", exportNote.code);
+        return status;
       }
     }
     

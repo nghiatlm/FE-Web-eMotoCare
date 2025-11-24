@@ -12,6 +12,20 @@ import {
 } from "lucide-react";
 import BatteryImportModal from "./BatteryImportModal";
 import { toast } from "@/components/ui/sonner";
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 export default function BatteryDataDisplay({ evCheckDetailId, canImport = true }) {
   const [batteryData, setBatteryData] = useState(null);
@@ -158,7 +172,7 @@ export default function BatteryDataDisplay({ evCheckDetailId, canImport = true }
             Đóng
           </Button>,
         ]}
-        width={900}
+        width={1200}
       >
         <div className="space-y-4">
           {/* Tóm tắt nhanh */}
@@ -222,111 +236,189 @@ export default function BatteryDataDisplay({ evCheckDetailId, canImport = true }
 
           <Divider />
 
-          {/* Chi tiết đầy đủ */}
-          <div>
-            <h4 className="text-sm font-semibold mb-3" style={{ color: "#ff4d4f" }}>Chi tiết đầy đủ</h4>
+          {/* Biểu đồ dữ liệu */}
+          <div className="space-y-6">
+            <h4 className="text-sm font-semibold mb-3" style={{ color: "#ff4d4f" }}>Biểu đồ dữ liệu Pin</h4>
+            
+            {/* Biểu đồ Điện áp và Dòng điện */}
             <Row gutter={[16, 16]}>
-            <Col span={12}>
-              <Card title="Điện áp (Voltage)" size="small">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Trung bình:</span>
-                    <strong>{avgVoltage?.toFixed(2)} V</strong>
+              <Col span={24}>
+                <Card title="Điện áp (Voltage) - Dòng điện (Current)" size="small">
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart
+                      data={[
+                        {
+                          name: "Min",
+                          "Điện áp (V)": minVoltage || 0,
+                          "Dòng điện (A)": minCurrent || 0,
+                        },
+                        {
+                          name: "Trung bình",
+                          "Điện áp (V)": avgVoltage || 0,
+                          "Dòng điện (A)": avgCurrent || 0,
+                        },
+                        {
+                          name: "Max",
+                          "Điện áp (V)": maxVoltage || 0,
+                          "Dòng điện (A)": maxCurrent || 0,
+                        },
+                      ]}
+                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis yAxisId="left" orientation="left" stroke="#1890ff" />
+                      <YAxis yAxisId="right" orientation="right" stroke="#52c41a" />
+                      <Tooltip />
+                      <Legend />
+                      <Bar yAxisId="left" dataKey="Điện áp (V)" fill="#1890ff" />
+                      <Bar yAxisId="right" dataKey="Dòng điện (A)" fill="#52c41a" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Card>
+              </Col>
+            </Row>
+
+            {/* Biểu đồ Nhiệt độ */}
+            <Row gutter={[16, 16]}>
+              <Col span={24}>
+                <Card title="Nhiệt độ (Temperature)" size="small">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <AreaChart
+                      data={[
+                        { name: "Min", value: minTemp || 0 },
+                        { name: "Trung bình", value: avgTemp || 0 },
+                        { name: "Max", value: maxTemp || 0 },
+                      ]}
+                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                    >
+                      <defs>
+                        <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#fa8c16" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="#fa8c16" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Area
+                        type="monotone"
+                        dataKey="value"
+                        stroke="#fa8c16"
+                        fillOpacity={1}
+                        fill="url(#colorTemp)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </Card>
+              </Col>
+            </Row>
+
+            {/* Biểu đồ SOC và SOH */}
+            <Row gutter={[16, 16]}>
+              <Col span={24}>
+                <Card title="SOC (State of Charge) - SOH (State of Health)" size="small">
+                  <ResponsiveContainer width="100%" height={250}>
+                    <LineChart
+                      data={[
+                        {
+                          name: "Min",
+                          "SOC (%)": minSOC || 0,
+                          "SOH (%)": minSOH || 0,
+                        },
+                        {
+                          name: "Trung bình",
+                          "SOC (%)": avgSOC || 0,
+                          "SOH (%)": avgSOH || 0,
+                        },
+                        {
+                          name: "Max",
+                          "SOC (%)": maxSOC || 0,
+                          "SOH (%)": maxSOH || 0,
+                        },
+                      ]}
+                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="SOC (%)"
+                        stroke="#722ed1"
+                        strokeWidth={2}
+                        dot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="SOH (%)"
+                        stroke="#eb2f96"
+                        strokeWidth={2}
+                        dot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </Card>
+              </Col>
+            </Row>
+
+            {/* Bảng tóm tắt số liệu */}
+            <Row gutter={[16, 16]}>
+              <Col span={24}>
+                <Card title="Bảng tóm tắt số liệu" size="small">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2">Chỉ số</th>
+                          <th className="text-right p-2">Min</th>
+                          <th className="text-right p-2">Trung bình</th>
+                          <th className="text-right p-2">Max</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b">
+                          <td className="p-2 font-medium">Điện áp (V)</td>
+                          <td className="text-right p-2 text-red-600">{minVoltage?.toFixed(2)}</td>
+                          <td className="text-right p-2 font-semibold">{avgVoltage?.toFixed(2)}</td>
+                          <td className="text-right p-2 text-green-600">{maxVoltage?.toFixed(2)}</td>
+                        </tr>
+                        <tr className="border-b">
+                          <td className="p-2 font-medium">Dòng điện (A)</td>
+                          <td className="text-right p-2 text-red-600">{minCurrent?.toFixed(2)}</td>
+                          <td className="text-right p-2 font-semibold">{avgCurrent?.toFixed(2)}</td>
+                          <td className="text-right p-2 text-green-600">{maxCurrent?.toFixed(2)}</td>
+                        </tr>
+                        <tr className="border-b">
+                          <td className="p-2 font-medium">Nhiệt độ (°C)</td>
+                          <td className="text-right p-2 text-blue-600">{minTemp?.toFixed(1)}</td>
+                          <td className="text-right p-2 font-semibold">{avgTemp?.toFixed(1)}</td>
+                          <td className="text-right p-2 text-orange-600">{maxTemp?.toFixed(1)}</td>
+                        </tr>
+                        <tr className="border-b">
+                          <td className="p-2 font-medium">SOC (%)</td>
+                          <td className="text-right p-2 text-red-600">{minSOC}</td>
+                          <td className="text-right p-2 font-semibold">{avgSOC?.toFixed(1)}</td>
+                          <td className="text-right p-2 text-green-600">{maxSOC}</td>
+                        </tr>
+                        <tr>
+                          <td className="p-2 font-medium">SOH (%)</td>
+                          <td className="text-right p-2 text-red-600">{minSOH}</td>
+                          <td className="text-right p-2 font-semibold">{avgSOH?.toFixed(1)}</td>
+                          <td className="text-right p-2 text-green-600">{maxSOH}</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Min:</span>
-                    <span className="text-red-600">{minVoltage?.toFixed(2)} V</span>
+                  <div className="mt-4 text-sm text-gray-600">
+                    <strong>Số mẫu:</strong> {sampleCount}
                   </div>
-                  <div className="flex justify-between">
-                    <span>Max:</span>
-                    <span className="text-green-600">{maxVoltage?.toFixed(2)} V</span>
-                  </div>
-                </div>
-              </Card>
-            </Col>
-            <Col span={12}>
-              <Card title="Dòng điện (Current)" size="small">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Trung bình:</span>
-                    <strong>{avgCurrent?.toFixed(2)} A</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Min:</span>
-                    <span className="text-red-600">{minCurrent?.toFixed(2)} A</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Max:</span>
-                    <span className="text-green-600">{maxCurrent?.toFixed(2)} A</span>
-                  </div>
-                </div>
-              </Card>
-            </Col>
-            <Col span={12}>
-              <Card title="Nhiệt độ (Temperature)" size="small">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Trung bình:</span>
-                    <strong>{avgTemp?.toFixed(1)} °C</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Min:</span>
-                    <span className="text-blue-600">{minTemp?.toFixed(1)} °C</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Max:</span>
-                    <span className="text-orange-600">{maxTemp?.toFixed(1)} °C</span>
-                  </div>
-                </div>
-              </Card>
-            </Col>
-            <Col span={12}>
-              <Card title="SOC (State of Charge)" size="small">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Trung bình:</span>
-                    <strong>{avgSOC?.toFixed(1)} %</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Min:</span>
-                    <span className="text-red-600">{minSOC} %</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Max:</span>
-                    <span className="text-green-600">{maxSOC} %</span>
-                  </div>
-                </div>
-              </Card>
-            </Col>
-            <Col span={12}>
-              <Card title="SOH (State of Health)" size="small">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Trung bình:</span>
-                    <strong>{avgSOH?.toFixed(1)} %</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Min:</span>
-                    <span className="text-red-600">{minSOH} %</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Max:</span>
-                    <span className="text-green-600">{maxSOH} %</span>
-                  </div>
-                </div>
-              </Card>
-            </Col>
-            <Col span={12}>
-              <Card title="Thông tin mẫu" size="small">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Số mẫu:</span>
-                    <strong>{sampleCount}</strong>
-                  </div>
-                </div>
-              </Card>
-            </Col>
-          </Row>
+                </Card>
+              </Col>
+            </Row>
           </div>
 
           {conclusion && (

@@ -60,8 +60,8 @@ export default function RMAConfirmationModal({
       }
 
       // 3. Tạo RMA detail cho từng EVCheckDetail
-      const now = new Date();
-      const expiration = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // +30 ngày
+      // const now = new Date();
+      // const expiration = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // +30 ngày
 
       for (const item of partsForRMA) {
         const detailPayload = {
@@ -69,8 +69,8 @@ export default function RMAConfirmationModal({
           evCheckDetailId: item.id,
           quantity: item.quantity || 1,
           reason: item.NoiDung || item.result || "Lỗi kỹ thuật / hư hỏng",
-          releaseDateRMA: now.toISOString(),
-          expirationDateRMA: expiration.toISOString(),
+          // releaseDateRMA: now.toISOString(),
+          // expirationDateRMA: expiration.toISOString(),
           inspector: staffData?.fullName || staffData?.name || "",
           result: "",
           solution: item.remedies || "",
@@ -147,12 +147,10 @@ export default function RMAConfirmationModal({
             <AlertTriangle size={18} style={{ color: "#fa8c16" }} />
             <div>
               <Text strong style={{ fontSize: 15 }}>
-                Xác nhận tạo <Text style={{ color: "#ff4d4f" }}>01 yêu cầu RMA</Text> cho{" "}
+                Xác nhận tạo <Text style={{ color: "#ff4d4f" }}> yêu cầu bảo hành</Text> cho{" "}
                 <Text style={{ color: "#ff4d4f" }}>{partsForRMA.length} phụ tùng</Text>
               </Text>
-              <div style={{ fontSize: 13, color: "#8c8c8c", marginTop: 4 }}>
-                Tất cả phụ tùng sẽ được gom vào một RMA duy nhất
-              </div>
+             
             </div>
           </Space>
         </Card>
@@ -188,7 +186,7 @@ export default function RMAConfirmationModal({
                             item.partItem?.part?.name ||
                             "Không rõ tên PT"}
                         </Text>
-                        <Tag color="red" icon={<CheckCircle size={12} />}>
+                        <Tag color="red" >
                           Bảo hành hãng
                         </Tag>
                       </Space>

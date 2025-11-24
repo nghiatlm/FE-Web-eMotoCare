@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Modal, Button, Tabs, Select, Space, Input, Card } from "antd";
 import { QRCodeSVG } from "qrcode.react";
-import TechnicianBookingDetailDrawer from "../../components/technician/TechnicanBookingDetailDrawer";
+import { useNavigate } from "react-router-dom";
 import BookingTable from "../../components/service-staff/BookingTable";
 import { useBookings } from "../../hooks/useBookings";
 import { Filter, RotateCcw, Wrench, Phone, Search } from "lucide-react";
@@ -10,13 +10,11 @@ const { Option } = Select;
 
 const TechnicianPage = () => {
   const { data, loading, updateStatus } = useBookings();
+  const navigate = useNavigate();
 
-  const [selected, setSelected] = useState(null);
-  const [openDrawer, setOpenDrawer] = useState(false);
   const [qrRecord, setQrRecord] = useState(null);
   const [openQRModal, setOpenQRModal] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
-  const [currentEVCheckId, setCurrentEVCheckId] = useState(null);
 
   const [statusFilter, setStatusFilter] = useState("");
   const [serviceFilter, setServiceFilter] = useState("");
@@ -52,13 +50,7 @@ const TechnicianPage = () => {
     });
 
   const handleViewDetail = (record) => {
-    setSelected(record);
-    setOpenDrawer(true);
-  };
-
-  const handleCloseDrawer = () => {
-    setSelected(null);
-    setOpenDrawer(false);
+    navigate(`/technician/vehicles/${record.id}`);
   };
 
   const handleShowQR = (record) => {
@@ -71,19 +63,9 @@ const TechnicianPage = () => {
     setOpenQRModal(false);
   };
 
-  const handleUpdateStatus = (id, newStatus, selectedTechnician = null) => {
-    updateStatus(id, newStatus, selectedTechnician);
-    if (selected?.id === id) {
-      setSelected({
-        ...selected,
-        status: newStatus,
-        technician: selectedTechnician || selected.technician || null,
-      });
-    }
-  };
 
   return (
-    <div style={{ padding: 24, maxWidth: "1400px", margin: "0 auto" }}>
+    <div style={{ padding: 24, width: "100%", margin: "0 auto" }}>
       {/* ✅ HEADER */}
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#ff4d4f", display: "flex", alignItems: "center", gap: 12 }}>
@@ -240,23 +222,6 @@ const TechnicianPage = () => {
         loading={loading}
         onViewDetail={handleViewDetail}
         onShowQR={handleShowQR}
-      />
-
-      {/* Drawer Chi tiết Booking */}
-      {/* <TechnicianBookingDetailDrawer
-        booking={selected}
-        open={openDrawer}
-        onClose={handleCloseDrawer}
-        onUpdateStatus={handleUpdateStatus}
-        staffId={staffId} // ✅ Truyền staffId thật xuống drawer
-      /> */}
-      <TechnicianBookingDetailDrawer
-        booking={selected} // 🔹 Dữ liệu booking đang chọn
-        open={openDrawer} // 🔹 Mở/đóng Drawer
-        onClose={() => setOpenDrawer(false)} // 🔹 Đóng Drawer
-        onUpdateStatus={handleUpdateStatus} // ✅ Hàm cập nhật trạng thái booking
-        staffId={staffId} // ✅ ID của kỹ thuật viên hiện tại
-        initialEVCheckId={currentEVCheckId} // ← TRUYỀN ID EVCheck
       />
 
       {/* QR Modal */}

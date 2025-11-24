@@ -108,13 +108,16 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
         callbackUrl: "https://modernestate.vercel.app/payment-success",
       };
 
+      // ✅ Luôn gọi API, truyền paymentMethod (CASH hoặc PAY_OS_CENTER)
+      const res = await createPaymentLinkService(payload);
+      
       if (paymentMethod === "CASH") {
-        // Không tạo link, chỉ xác nhận đã thu tiền
+        // ✅ Thanh toán tiền mặt: truyền CASH vào API
         toast.success("Đã xác nhận thanh toán tiền mặt!");
         onPaymentSuccess?.({ method: "CASH", amount: totalAmount });
         onClose();
       } else {
-        const res = await createPaymentLinkService(payload);
+        // ✅ Thanh toán PayOS: mở link thanh toán
         const url =
           res?.data?.urlPayemt ||
           res?.data?.urlPayment ||

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Modal, Button, Tabs, Select, Space, Input, Card } from "antd";
 import { QRCodeSVG } from "qrcode.react";
-import BookingDetailDrawer from "../../components/service-staff/BookingDetailDrawer";
+import { useNavigate } from "react-router-dom";
 import BookingTable from "../../components/service-staff/BookingTable";
 import { useBookings } from "../../hooks/useBookings";
 import { RotateCcw, Filter, Calendar, Phone, Search } from "lucide-react";
@@ -10,9 +10,8 @@ const { Option } = Select;
 
 const StaffBooking = () => {
   const { data, loading, updateStatus, fetchBookings } = useBookings();
+  const navigate = useNavigate();
 
-  const [selected, setSelected] = useState(null);
-  const [openDrawer, setOpenDrawer] = useState(false);
   const [qrRecord, setQrRecord] = useState(null);
   const [openQRModal, setOpenQRModal] = useState(false);
 
@@ -46,14 +45,9 @@ const StaffBooking = () => {
     });
 
   const handleViewDetail = (record) => {
-    setSelected(record);
-    setOpenDrawer(true);
+    navigate(`/staff/booking/${record.id}`);
   };
 
-  const handleCloseDrawer = () => {
-    setSelected(null);
-    setOpenDrawer(false);
-  };
 
   const handleShowQR = (record) => {
     setQrRecord(record);
@@ -66,19 +60,9 @@ const StaffBooking = () => {
   };
 
   // ✅ Cập nhật trạng thái
-  const handleUpdateStatus = (id, newStatus, selectedTechnician = null) => {
-    updateStatus(id, newStatus, selectedTechnician);
-    if (selected?.id === id) {
-      setSelected({
-        ...selected,
-        status: newStatus,
-        technician: selectedTechnician || selected.technician || null,
-      });
-    }
-  };
 
   return (
-    <div style={{ padding: 24, maxWidth: "1400px", margin: "0 auto" }}>
+    <div style={{ padding: 24, width: "100%", margin: "0 auto" }}>
       {/* ✅ HEADER */}
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#ff4d4f", display: "flex", alignItems: "center", gap: 12 }}>
@@ -235,14 +219,6 @@ const StaffBooking = () => {
         loading={loading}
         onViewDetail={handleViewDetail}
         onShowQR={handleShowQR}
-      />
-
-      {/* Drawer chi tiết */}
-      <BookingDetailDrawer
-        booking={selected}
-        open={openDrawer}
-        onClose={handleCloseDrawer}
-        onUpdateStatus={handleUpdateStatus}
       />
 
       {/* QR Modal */}

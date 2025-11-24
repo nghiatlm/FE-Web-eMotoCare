@@ -9,6 +9,7 @@ import { getServiceCentersService } from "../../services/serivceCenterService";
 import { getVehiclesByCustomerService } from "../../services/vehicleService";
 import { getVehicleStagesService } from "../../services/vehicleStageService";
 import { fetchServiceStaff } from "../../services/staffsService";
+import { getCampaignsService } from "../../services/campaignService";
 
 const { Option } = Select;
 
@@ -42,6 +43,10 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
   // ✅ Danh sách mốc bảo dưỡng (vehicle stages)
   const [vehicleStages, setVehicleStages] = useState([]);
   const [loadingVehicleStages, setLoadingVehicleStages] = useState(false);
+
+  // ✅ Danh sách campaigns
+  const [campaigns, setCampaigns] = useState([]);
+  const [loadingCampaigns, setLoadingCampaigns] = useState(false);
 
   // ✅ ServiceCenterId của nhân viên hiện tại
   const [currentServiceCenterId, setCurrentServiceCenterId] = useState(null);
@@ -139,6 +144,9 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
 
         // ✅ Load customers lần đầu (không có search)
         await loadCustomers();
+
+        // ✅ Load campaigns lần đầu
+        await loadCampaigns();
 
         // ✅ Set serviceCenterId mặc định từ staff
         if (staffServiceCenterId) {
@@ -291,6 +299,24 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
     loadVehicleStages(vehicleId, type);
   };
 
+  // ✅ Load campaigns
+  const loadCampaigns = async () => {
+    try {
+      setLoadingCampaigns(true);
+      const campaignsList = await getCampaignsService({
+        page: 1,
+        pageSize: 100,
+        status: "ACTIVE", // Chỉ lấy campaigns đang active
+      });
+      setCampaigns(Array.isArray(campaignsList) ? campaignsList : []);
+    } catch (err) {
+      console.error("Lỗi load chiến dịch:", err);
+      setCampaigns([]);
+    } finally {
+      setLoadingCampaigns(false);
+    }
+  };
+
   // ✅ Khi đổi loại dịch vụ
   const handleTypeChange = (type) => {
     const vehicleId = form.getFieldValue("vehicleId");
@@ -299,6 +325,27 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
     // ✅ Nếu không phải bảo dưỡng, clear vehicleStageId
     if (type !== "MAINTENANCE_TYPE") {
       form.setFieldsValue({ vehicleStageId: undefined });
+    }
+    
+    // ✅ Nếu không phải campaign, clear campaignId
+    if (type !== "CAMPAIGN_TYPE") {
+      form.setFieldsValue({ campaignId: undefined });
+    }
+  };
+
+  // ✅ Khi chọn campaign
+  const handleCampaignChange = (campaignId) => {
+    if (campaignId) {
+      // ✅ Tự động set type = CAMPAIGN_TYPE khi chọn campaign
+      form.setFieldsValue({ 
+        type: "CAMPAIGN_TYPE",
+        campaignId: campaignId 
+      });
+      // ✅ Clear vehicleStageId khi chọn campaign (vì không dùng cho campaign)
+      form.setFieldsValue({ vehicleStageId: undefined });
+    } else {
+      // ✅ Clear campaignId khi bỏ chọn
+      form.setFieldsValue({ campaignId: undefined });
     }
   };
 
@@ -311,18 +358,28 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
     // ✅ Đảm bảo serviceCenterId luôn có giá trị (từ staff hoặc form)
     const serviceCenterId = values.serviceCenterId || currentServiceCenterId;
 
+    // ✅ Xác định type và campaignId
+    let appointmentType = values.type || DEFAULT_TYPE;
+    let campaignId = null;
+    
+    // ✅ Nếu có campaignId, đảm bảo type = CAMPAIGN_TYPE
+    if (values.campaignId) {
+      appointmentType = "CAMPAIGN_TYPE";
+      campaignId = values.campaignId;
+    }
+
     const payload = {
       serviceCenterId: serviceCenterId,
       customerId: values.customerId,
       vehicleStageId: values.vehicleStageId || null,
       vehicleId: values.vehicleId,
       slotTime: values.slotTime,
-      campaignId: values.campaignId || null,
+      campaignId: campaignId,
       appointmentDate, // ✅ dùng string local
       estimatedCost: values.estimatedCost || 0,
       actualCost: 0,
-      status: "PENDING",
-      type: values.type || DEFAULT_TYPE,
+      // ✅ Không set status, để backend tự set mặc định là PENDING
+      type: appointmentType,
       note: values.note || "",
     };
 
@@ -514,9 +571,45 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
                   <Option value='MAINTENANCE_TYPE'>Bảo dưỡng</Option>
                   <Option value='REPAIR_TYPE'>Sửa chữa</Option>
                   <Option value='WARRANTY_TYPE'>Bảo hành</Option>
+                  <Option value='CAMPAIGN_TYPE'>Chiến dịch</Option>
                 </Select>
               </Form.Item>
             </Col>
+
+            {/* ✅ CAMPAIGN - Chỉ hiện khi type = CAMPAIGN_TYPE hoặc đã chọn campaign */}
+            {(form.getFieldValue("type") === "CAMPAIGN_TYPE" || form.getFieldValue("campaignId")) && (
+              <Col xs={24} md={12}>
+                <Form.Item
+                  label={
+                    <Space>
+                      <FileText size={16} style={{ color: "#595959" }} />
+                      <span>Chiến dịch</span>
+                    </Space>
+                  }
+                  name='campaignId'
+                  rules={form.getFieldValue("type") === "CAMPAIGN_TYPE" ? [{ required: true, message: "Chọn campaign!" }] : []}
+                  tooltip='Chọn chiến dịch cho lịch hẹn'>
+                  <Select
+                    placeholder='Chọn chiến dịch'
+                    loading={loadingCampaigns}
+                    onChange={handleCampaignChange}
+                    style={{ width: "100%" }}>
+                    {campaigns.map((campaign) => {
+                      // ✅ Lấy campaignId từ id (đã được map trong service)
+                      const campaignId = campaign.id;
+                      return (
+                        <Option key={campaignId} value={campaignId}>
+                          {campaign.name || campaign.code || campaignId}
+                          {campaign.startDate && campaign.endDate
+                            ? ` (${new Date(campaign.startDate).toLocaleDateString("vi-VN")} - ${new Date(campaign.endDate).toLocaleDateString("vi-VN")})`
+                            : ""}
+                        </Option>
+                      );
+                    })}
+                  </Select>
+                </Form.Item>
+              </Col>
+            )}
 
             {/* ✅ MỐC BẢO DƯỠNG - Chỉ hiện khi type = MAINTENANCE_TYPE */}
             {form.getFieldValue("type") === "MAINTENANCE_TYPE" && (

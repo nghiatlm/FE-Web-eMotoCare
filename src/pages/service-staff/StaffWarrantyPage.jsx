@@ -186,7 +186,7 @@ export default function StaffWarrantyPage() {
 
   // ================== RENDER ==================
   return (
-    <div style={{ padding: 24, maxWidth: "1400px", margin: "0 auto" }}>
+    <div style={{ padding: 24, width: "100%", margin: "0 auto" }}>
       {/* ✅ HEADER */}
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#ff4d4f", display: "flex", alignItems: "center", gap: 12 }}>
@@ -223,10 +223,12 @@ export default function StaffWarrantyPage() {
               style={{ width: "100%" }}
               value={statusFilter || undefined}
               onChange={setStatusFilter}>
-              <Option value='PENDING'>Đang chờ duyệt</Option>
-              <Option value='APPROVED'>Đã duyệt</Option>
-              <Option value='REJECTED'>Từ chối</Option>
-              <Option value='COMPLETED'>Hoàn tất</Option>
+              <Option value='PENDING'>Chờ xử lý</Option>
+              <Option value='APPROVED'>Đã phê duyệt</Option>
+              <Option value='PROCESSING'>Đang xử lý</Option>
+              <Option value='APPOINTMENT_BOOKED'>Đã đặt lịch</Option>
+              <Option value='REJECTED'>Bị từ chối</Option>
+              <Option value='COMPLETED'>Đã hoàn thành</Option>
             </Select>
           </div>
 
@@ -293,7 +295,7 @@ export default function StaffWarrantyPage() {
           showQuickJumper: true,
           style: { padding: "16px" }
         }}
-        scroll={{ x: "max-content" }}
+        scroll={{ x: false }}
         style={{
           borderRadius: 8,
         }}

@@ -56,6 +56,7 @@ export default function RepairModeEVCheck({
   const [isRMAConfirmationOpen, setIsRMAConfirmationOpen] = useState(false);
   const [currentRMAParts, setCurrentRMAParts] = useState([]);
   const [selectedRMAItems, setSelectedRMAItems] = useState(new Set()); // ✅ Set các item ID đã chọn để tạo RMA
+  const [isRMASubmitting, setIsRMASubmitting] = useState(false); // ✅ Track trạng thái đang tạo RMA
   
   // ✅ Map export note status theo detail ID
   const [exportNoteStatusMap, setExportNoteStatusMap] = useState({});
@@ -106,6 +107,8 @@ export default function RepairModeEVCheck({
 
   // ✅ Mở modal RMA với các items đã chọn
   const openRMAModal = () => {
+    if (isRMASubmitting) return; // ✅ Không cho mở nếu đang submit
+    
     const selectedItems = details.filter((d) => selectedRMAItems.has(d.id) && isRMAEligible(d));
     
     if (selectedItems.length === 0) {
@@ -126,6 +129,8 @@ export default function RepairModeEVCheck({
 
     setCurrentRMAParts(rmaItems);
     setIsRMAConfirmationOpen(true);
+    // ✅ Set submitting ngay khi mở modal để disable nút và checkbox
+    setIsRMASubmitting(true);
   };
 
   // ========= LOAD PHỤ TÙNG THEO XE (BỘ PHẬN) =========
@@ -1098,14 +1103,40 @@ export default function RepairModeEVCheck({
     {
       title: "Trạng thái phụ tùng",
       width: 150,
-        render: (_, r) => {
-          // ✅ Chỉ hiển thị khi status là COMPLETED
-          if (r.status === "COMPLETED") {
-            const status = r.exportNoteStatus || exportNoteStatusMap[r.id] || "-";
-            return <span>{status}</span>;
-          }
-          return "-";
-        },
+      render: (_, r) => {
+        // ✅ Chỉ hiển thị khi status là COMPLETED
+        if (r.status === "COMPLETED") {
+          const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
+          if (!status) return <span style={{ color: "#999" }}>—</span>;
+          
+          // ✅ Format status với Tag và màu sắc
+          const getStatusColor = (s) => {
+            const statusUpper = (s || "").toUpperCase();
+            if (statusUpper === "COMPLETED") return "success";
+            if (statusUpper === "PENDING") return "processing";
+            if (statusUpper === "REJECTED" || statusUpper === "CANCELLED") return "error";
+            return "default";
+          };
+          
+          const getStatusLabel = (s) => {
+            const statusUpper = (s || "").toUpperCase();
+            const statusMap = {
+              COMPLETED: "Đã xuất",
+              PENDING: "Đang chờ",
+              REJECTED: "Từ chối",
+              CANCELLED: "Hủy",
+            };
+            return statusMap[statusUpper] || s;
+          };
+          
+          return (
+            <Tag color={getStatusColor(status)}>
+              {getStatusLabel(status)}
+            </Tag>
+          );
+        }
+        return <span style={{ color: "#999" }}>—</span>;
+      },
     },
   ];
 
@@ -1136,7 +1167,7 @@ export default function RepairModeEVCheck({
               });
               setStatusChanges((prev) => ({ ...prev, ...changes }));
             }}
-            disabled={readOnly}></Checkbox>
+            disabled={readOnly || !canEditFields}></Checkbox>
         )}
         <span>Trạng thái</span>
       </div>
@@ -1156,7 +1187,7 @@ export default function RepairModeEVCheck({
                 e.target.checked ? "COMPLETED" : "PENDING"
               );
             }}
-            disabled={readOnly}
+            disabled={readOnly || !canEditFields}
           />
           <Tag
             color={stat.color}
@@ -1178,70 +1209,63 @@ export default function RepairModeEVCheck({
     },
   };
 
-  // ✅ Cột RMA: checkbox để chọn nhiều items với checkbox "Chọn tất cả" trong header
+  // ✅ Row selection cho RMA (chỉ cho staff)
   const eligibleItems = details.filter((r) => isRMAEligible(r));
-  const allSelected = eligibleItems.length > 0 && eligibleItems.every((r) => selectedRMAItems.has(r.id));
-  const someSelected = eligibleItems.some((r) => selectedRMAItems.has(r.id));
+  const noEligibleItems = eligibleItems.length === 0; // ✅ Không còn items nào eligible
+  const allSelectedRMAItemsHaveRMA = Array.from(selectedRMAItems).every((id) => {
+    const item = details.find((d) => d.id === id);
+    return item && hasRMA(item);
+  });
 
-  const rmaColumn = {
-    title: (
-      <div className='flex items-center gap-2'>
-        <span>RMA</span>
-        {readOnly && eligibleItems.length > 0 && (
-          <Checkbox
-            checked={allSelected}
-            indeterminate={someSelected && !allSelected}
-            onChange={(e) => {
-              if (e.target.checked) {
-                // Chọn tất cả items đủ điều kiện
-                const allIds = new Set(eligibleItems.map((r) => r.id));
-                setSelectedRMAItems(allIds);
-              } else {
-                // Bỏ chọn tất cả
-                setSelectedRMAItems(new Set());
-              }
-            }}
-            onClick={(e) => e.stopPropagation()}
-            title='Chọn tất cả'
-          />
-        )}
-      </div>
-    ),
-    width: 120,
-    align: "center",
-    render: (_, r) => {
-      // ✅ Nếu đã có RMA, hiển thị badge thay vì checkbox
-      if (hasRMA(r)) {
-        return (
-          <Tag color='success' style={{ margin: 0 }}>
-            Đã tạo RMA
-          </Tag>
-        );
-      }
+  // ✅ Tự động clear selection cho các items đã có RMA sau khi reload data
+  useEffect(() => {
+    if (selectedRMAItems.size === 0) return; // Không cần check nếu không có selection
+    
+    const validSelectedKeys = Array.from(selectedRMAItems).filter((id) => {
+      const item = details.find((d) => d.id === id);
+      // ✅ Loại bỏ items đã có RMA hoặc không còn đủ điều kiện
+      return item && !hasRMA(item) && isRMAEligible(item);
+    });
 
-      const eligible = isRMAEligible(r);
-      if (!eligible) return <span className='text-gray-400'>-</span>;
+    // ✅ Nếu có keys không hợp lệ (đã có RMA), clear chúng ngay lập tức
+    if (validSelectedKeys.length !== selectedRMAItems.size) {
+      console.log("🧹 Auto-clearing invalid RMA selections:", {
+        before: selectedRMAItems.size,
+        after: validSelectedKeys.length,
+        removed: selectedRMAItems.size - validSelectedKeys.length
+      });
+      setSelectedRMAItems(new Set(validSelectedKeys));
+    }
+  }, [details]); // ✅ Chỉ check khi details thay đổi (sau khi reload)
+
+  // ✅ Filter selectedRowKeys để chỉ hiển thị những items còn tồn tại và chưa có RMA
+  const validSelectedKeys = Array.from(selectedRMAItems).filter((id) => {
+    const item = details.find((d) => d.id === id);
+    return item && !hasRMA(item) && isRMAEligible(item);
+  });
+
+  const rowSelection = readOnly ? {
+    selectedRowKeys: validSelectedKeys, // ✅ Chỉ hiển thị những keys hợp lệ (chưa có RMA)
+    onChange: (selectedKeys, selectedRows) => {
+      if (isRMASubmitting) return; // ✅ Không cho thay đổi selection khi đang submit
       
-      const isSelected = selectedRMAItems.has(r.id);
-      
-      return (
-        <input
-          type='checkbox'
-          checked={isSelected}
-          onChange={() => toggleRMAItem(r.id)}
-          className='w-4 h-4 cursor-pointer'
-        />
-      );
+      // ✅ Chỉ cho phép chọn những items chưa có RMA
+      const validKeys = selectedKeys.filter((id) => {
+        const item = details.find((d) => d.id === id);
+        return item && !hasRMA(item) && isRMAEligible(item);
+      });
+      setSelectedRMAItems(new Set(validKeys));
     },
-  };
+    getCheckboxProps: (record) => ({
+      disabled: isRMASubmitting || hasRMA(record) || !isRMAEligible(record), // ✅ Disable khi đang submit, đã có RMA hoặc không đủ điều kiện
+    }),
+    // ✅ Preserve selected row keys khi data thay đổi (nhưng useEffect sẽ tự động clear)
+    preserveSelectedRowKeys: false, // ✅ Không preserve, để tự động clear khi items có RMA
+  } : undefined;
 
   let columns = baseColumns;
   if (!readOnly && evCheckStatus === "REPAIR_IN_PROGRESS") {
     columns = [...columns, statusColumn];
-  }
-  // ✅ Chỉ hiện cột RMA cho staff (readOnly = true), technician không được tạo RMA
-  if (readOnly && details.some((r) => isRMAEligible(r))) {
-    columns = [...columns, rmaColumn];
   }
 
   return (
@@ -1256,15 +1280,43 @@ export default function RepairModeEVCheck({
           <Spin />
         </div>
       ) : (
-        <Table
-          columns={columns}
-          dataSource={details}
-          rowKey='id'
-          scroll={{ x: 'max-content' }}
-          pagination={false}
-          size='small'
-          bordered
-        />
+        <>
+          {/* ✅ Nút Tạo RMA ở trên bảng (chỉ cho staff) */}
+          {readOnly &&
+            (evCheckStatus === "QUOTE_APPROVED" ||
+              evCheckStatus === "REPAIR_IN_PROGRESS" ||
+              evCheckStatus === "REPAIR_COMPLETED" ||
+              evCheckStatus === "COMPLETED") && (
+              <div className='flex justify-between items-center mb-4'>
+                <h4 className='text-base font-semibold text-gray-700'>Danh sách hạng mục sửa chữa</h4>
+                <Button
+                  type='primary'
+                  danger
+                  onClick={openRMAModal}
+                  loading={isRMASubmitting}
+                  disabled={
+                    isRMASubmitting || // ✅ Disable khi đang submit
+                    selectedRMAItems.size === 0 || 
+                    allSelectedRMAItemsHaveRMA ||
+                    noEligibleItems || // ✅ Disable khi không còn items nào eligible
+                    evCheckStatus === "INSPECTION_COMPLETED" // Disable khi đã gửi báo giá nhưng chưa duyệt
+                  }>
+                  {isRMASubmitting ? "Đang tạo RMA..." : `Tạo RMA (${selectedRMAItems.size} phụ tùng)`}
+                </Button>
+              </div>
+            )}
+          <Table
+            key={`rma-table-${selectedRMAItems.size}`} // ✅ Force re-render khi selection thay đổi
+            columns={columns}
+            dataSource={details}
+            rowKey='id'
+            rowSelection={rowSelection} // ✅ Dùng rowSelection thay vì cột RMA
+            scroll={{ x: false }}
+            pagination={false}
+            size='small'
+            bordered
+          />
+        </>
       )}
 
       {!readOnly && (
@@ -1342,34 +1394,37 @@ export default function RepairModeEVCheck({
         </>
       )}
 
-      {/* ✅ Nút tạo RMA chỉ cho staff (readOnly = true) khi có items đã chọn */}
-      {readOnly && selectedRMAItems.size > 0 && (
-        <div className='flex justify-end mt-4'>
-          <Button
-            type='primary'
-            danger
-            onClick={openRMAModal}
-            disabled={selectedRMAItems.size === 0}>
-            Tạo RMA ({selectedRMAItems.size} phụ tùng)
-          </Button>
-        </div>
-      )}
 
       {/* Modal xác nhận RMA – gom nhiều items thành 1 RMA */}
       <RMAConfirmationModal
         open={isRMAConfirmationOpen}
         onClose={() => {
+          // ✅ Cho phép đóng modal, nhưng reset submitting state
           setIsRMAConfirmationOpen(false);
+          setIsRMASubmitting(false); // ✅ Reset khi đóng modal
           setSelectedRMAItems(new Set()); // ✅ Clear selection sau khi đóng
         }}
         booking={booking}
         partsForRMA={currentRMAParts}
         onRMASuccess={() => {
-          const rmaDetailIds = currentRMAParts.map((p) => p.id);
-          setSelectedRMAItems(new Set()); // ✅ Clear selection sau khi tạo thành công
-          toast.info("Đang đồng bộ lại chi tiết EV Check...");
-          loadRepairDetails();
+          // ✅ Clear selection ngay lập tức TRƯỚC KHI đóng modal
+          setSelectedRMAItems(new Set());
           setIsRMAConfirmationOpen(false);
+          
+          toast.success("Tạo RMA thành công! Đang đồng bộ lại dữ liệu...");
+          
+          // ✅ Reload data sau khi clear selection
+          setTimeout(() => {
+            loadRepairDetails().then(() => {
+              // ✅ Đảm bảo selection được clear sau khi reload
+              setSelectedRMAItems(new Set());
+              // ✅ Reset submitting state sau khi reload xong
+              setIsRMASubmitting(false);
+            }).catch(() => {
+              // ✅ Reset submitting state nếu có lỗi
+              setIsRMASubmitting(false);
+            });
+          }, 100);
         }}
       />
     </div>
