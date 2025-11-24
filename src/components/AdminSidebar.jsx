@@ -5,13 +5,11 @@ import { authService } from "@/services/authService";
 const menuItems = [
     { title: "Tổng quan", icon: LayoutDashboard, url: "/admin" },
     { title: "Xe", icon: Bike, url: "/admin/vehicles" },
-    { title: "Khiếu nại bảo hành", icon: FileText, url: "/admin/warranty-claims" },
     { title: "Chi nhánh", icon: Store, url: "/admin/branches" },
     { title: "Gói dịch vụ", icon: Package, url: "/admin/service-packages" },
     { title: "Campaign", icon: Megaphone, url: "/admin/campaigns" },
     { title: "Người dùng", icon: Users, url: "/admin/users" },
-    { title: "Báo cáo", icon: BarChart3, url: "/admin/reports" },
-    { title: "Cài đặt", icon: Settings, url: "/admin/settings" },
+
 ];
 export function AdminSidebar() {
     const { state } = useSidebar();

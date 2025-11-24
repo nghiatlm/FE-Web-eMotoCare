@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStaffByAccountId } from "@/api/staffsApi";
-import { getPartItems } from "@/api/partitemsApi";
+import { getPartItemsByServiceCenter } from "@/api/partitemsApi";
 
 const STOCK_THRESHOLD = 10;
 
@@ -40,6 +40,9 @@ const aggregatePartItems = (partItems, branchInfo) => {
       });
     }
     const entry = map.get(partCode);
+    // QUAN TRỌNG: Lấy quantity từ item (partItem) ở ngoài, KHÔNG phải từ part.quantity ở trong
+    // item.quantity là số lượng thực tế của partItem trong kho
+    // part.quantity là số lượng tổng của part (không dùng ở đây)
     entry.totalQty += item.quantity || 0;
     if (!entry.partImage && part.image) {
       entry.partImage = part.image;
@@ -166,13 +169,22 @@ export default function StorekeeperInventory() {
       setLoading(true);
       setError("");
       try {
-        const response = await getPartItems({
-          serviceCenterId,
-          page: 1,
-          pageSize: 500,
-        });
-        const payload = response?.data || response;
-        const rows = payload?.rowDatas || payload?.data || payload || [];
+        const response = await getPartItemsByServiceCenter(serviceCenterId);
+        // API trả về: { statusCode, success, message, data: [...] } - data là array trực tiếp
+        let rows = [];
+        if (Array.isArray(response?.data)) {
+          // data là array trực tiếp
+          rows = response.data;
+        } else if (Array.isArray(response)) {
+          // response là array trực tiếp
+          rows = response;
+        } else if (response?.data?.rowDatas) {
+          // fallback: nếu có nested rowDatas
+          rows = response.data.rowDatas;
+        } else if (response?.rowDatas) {
+          // fallback: nếu rowDatas ở root
+          rows = response.rowDatas;
+        }
         setParts(aggregatePartItems(rows, branchInfo));
       } catch (err) {
         console.error("Error loading part items:", err);

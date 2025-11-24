@@ -23,6 +23,7 @@ import ServicePackages from "./pages/ServicePackages";
 import CreateServicePackage from "./pages/admin/CreateServicePackage";
 import Campaigns from "./pages/Campaigns";
 import CampaignDetail from "./pages/CampaignDetail";
+import CreateCampaign from "./pages/admin/CreateCampaign";
 import NotFound from "./pages/NotFound";
 
 // service staff
@@ -114,6 +115,10 @@ const App = () => (
                         element={<CreateServicePackage />}
                       />
                       <Route path="campaigns" element={<Campaigns />} />
+                      <Route
+                        path="campaigns/new"
+                        element={<CreateCampaign />}
+                      />
                       <Route
                         path="campaigns/:id"
                         element={<CampaignDetail />}
