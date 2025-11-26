@@ -22,7 +22,6 @@ import BranchReport from "./pages/admin/BranchReport";
 import ServicePackages from "./pages/ServicePackages";
 import CreateServicePackage from "./pages/admin/CreateServicePackage";
 import Campaigns from "./pages/Campaigns";
-import CampaignDetail from "./pages/CampaignDetail";
 import CreateCampaign from "./pages/admin/CreateCampaign";
 import NotFound from "./pages/NotFound";
 
@@ -119,10 +118,6 @@ const App = () => (
                       <Route
                         path="campaigns/new"
                         element={<CreateCampaign />}
-                      />
-                      <Route
-                        path="campaigns/:id"
-                        element={<CampaignDetail />}
                       />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
