@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search, Plus, MapPin, Building2, FileDown, Eye, Edit, Loader2, CheckSquare, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ import { getPartItems, getPartItemsByServiceCenter } from "@/api/partitemsApi";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export default function ImportSlipsPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -299,9 +301,9 @@ export default function ImportSlipsPage() {
             )}
 
             <div className="flex items-center gap-3 ml-auto">
-              <Button 
+              <Button
                 className="gap-2 bg-primary hover:bg-primary/90"
-                onClick={() => setIsCreateDialogOpen(true)}
+                onClick={() => navigate("/storekeeper/import-slips/create")}
               >
                 <Plus className="h-4 w-4" />
                 Tạo phiếu nhập mới

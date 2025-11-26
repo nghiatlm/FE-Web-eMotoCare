@@ -189,7 +189,6 @@ export default function ImportSlipsTable({ search = "", status = "" }) {
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Số mặt hàng</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Tổng giá trị</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Người nhập</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Trung tâm dịch vụ</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Trạng thái</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Thao tác</th>
             </tr>
@@ -221,7 +220,6 @@ export default function ImportSlipsTable({ search = "", status = "" }) {
                     }).format(slip.totalValue)}
                   </td>
                   <td className="py-4 px-6 text-sm text-foreground">{slip.importByName}</td>
-                  <td className="py-4 px-6 text-sm text-foreground">{slip.serviceCenterName}</td>
                   <td className="py-4 px-6">
                     <span className={statusBadge(slip.status)}>
                       {getStatusLabel(slip.status)}

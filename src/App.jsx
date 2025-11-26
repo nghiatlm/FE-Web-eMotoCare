@@ -62,6 +62,7 @@ import ImportSlipsPage from "./pages/storekeeper/ImportSlipsPage";
 import ExportSlipsPage from "./pages/storekeeper/ExportSlipsPage";
 import CreateExportSlipPage from "./pages/storekeeper/CreateExportSlipPage";
 import ExportNoteDetail from "./pages/storekeeper/ExportNoteDetail";
+import CreateImportNotePage from "./pages/storekeeper/CreateImportNotePage";
 
 const queryClient = new QueryClient();
 
@@ -226,6 +227,10 @@ const App = () => (
                       <Route
                         path="import-slips"
                         element={<ImportSlipsPage />}
+                      />
+                      <Route
+                        path="import-slips/create"
+                        element={<CreateImportNotePage />}
                       />
                       <Route
                         path="export-slips"
