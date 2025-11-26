@@ -1,33 +1,51 @@
+// src/pages/staff/StaffWarrantyPage.jsx
 import { useState, useEffect, useMemo } from "react";
-import { Table, Tag, Button, Space, Modal, Select, Input, Spin } from "antd";
-import { QrcodeOutlined } from "@ant-design/icons";
-import { QRCodeSVG } from "qrcode.react";
-import { FilterIcon, RotateCcw } from "lucide-react";
-import { getRMAService } from "../../services/rmaService"; // ✅ import service thật
+import { useNavigate } from "react-router-dom";
+import { Table, Tag, Button, Select, Input, Card } from "antd";
+import { RotateCcw, Shield, Search } from "lucide-react";
+
+import {
+  getRMAService,
+  getCustomerByRMAService,
+} from "../../services/rmaService";
 import { STATUS_MAP, STATUS_COLORS } from "../../utils/constants";
-import { useServiceCenter } from "../../hooks/useServiceCenter";
 
 const { Option } = Select;
 
-// ================== CONSTANTS ==================
-
-// ================== COMPONENT ==================
 export default function StaffWarrantyPage() {
+  const navigate = useNavigate();
   const [rmaList, setRmaList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
   const [search, setSearch] = useState("");
-  const [qrRecord, setQrRecord] = useState(null);
-  const [openQRModal, setOpenQRModal] = useState(false);
-  const { serviceCenterId } = useServiceCenter();
 
-  // ================== LOAD DATA ==================
+  // ================== LOAD DATA LIST RMA ==================
   const loadRMAList = async () => {
     setLoading(true);
     try {
-      const data = await getRMAService({ serviceCenterId });
-      const list = data?.rowDatas || [];
-      setRmaList(list);
+      const data = await getRMAService();
+
+      let list =
+        data?.rowDatas ||
+        data?.data?.rowDatas ||
+        (Array.isArray(data) ? data : []);
+
+      if (!Array.isArray(list)) list = [];
+
+      // Gắn thêm customer cho từng RMA
+      const enriched = await Promise.all(
+        list.map(async (rma) => {
+          try {
+            const customer = await getCustomerByRMAService(rma.id);
+            return { ...rma, customer };
+          } catch (e) {
+            console.error("Không load được customer cho RMA", rma.id, e);
+            return rma;
+          }
+        })
+      );
+
+      setRmaList(enriched);
     } catch (err) {
       console.error("❌ Lỗi khi tải danh sách RMA:", err);
     } finally {
@@ -36,10 +54,8 @@ export default function StaffWarrantyPage() {
   };
 
   useEffect(() => {
-    if (serviceCenterId) {
-      loadRMAList();
-    }
-  }, [serviceCenterId]);
+    loadRMAList();
+  }, []);
 
   // ================== FILTER ==================
   const filteredData = useMemo(() => {
@@ -47,18 +63,28 @@ export default function StaffWarrantyPage() {
       const matchStatus = statusFilter
         ? item.status?.toUpperCase() === statusFilter
         : true;
+
+      const lowerSearch = search.toLowerCase();
+
+      const fullName = item.customer
+        ? `${item.customer.firstName || ""} ${
+            item.customer.lastName || ""
+          }`.trim()
+        : "";
+
       const matchSearch = search
-        ? item.customer?.firstName
-            ?.toLowerCase()
-            ?.includes(search.toLowerCase()) ||
-          item.customer?.lastName
-            ?.toLowerCase()
-            ?.includes(search.toLowerCase()) ||
-          item.code?.toLowerCase()?.includes(search.toLowerCase())
+        ? fullName.toLowerCase().includes(lowerSearch) ||
+          item.code?.toLowerCase()?.includes(lowerSearch)
         : true;
+
       return matchStatus && matchSearch;
     });
   }, [rmaList, statusFilter, search]);
+
+  // ================== ACTION: XEM CHI TIẾT ==================
+  const handleViewDetail = (record) => {
+    navigate(`/staff/warranty/${record.id}`);
+  };
 
   // ================== TABLE ==================
   const columns = [
@@ -78,25 +104,27 @@ export default function StaffWarrantyPage() {
     {
       title: "Khách hàng",
       key: "customer",
+      width: 200,
       render: (_, record) => {
         const c = record.customer;
-        return c ? `${c.firstName || ""} ${c.lastName || ""}`.trim() : "—";
+        if (!c) return "—";
+        return `${c.firstName || ""} ${c.lastName || ""}`.trim() || "—";
       },
-      width: 160,
     },
     {
       title: "Nhân viên xử lý",
       key: "staff",
+      width: 180,
       render: (_, record) => {
         const s = record.staff;
         return s ? `${s.firstName || ""} ${s.lastName || ""}`.trim() : "—";
       },
-      width: 160,
     },
     {
       title: "Ngày tạo RMA",
       dataIndex: "rmaDate",
       key: "rmaDate",
+      width: 180,
       render: (date) =>
         date
           ? new Date(date).toLocaleString("vi-VN", {
@@ -107,13 +135,12 @@ export default function StaffWarrantyPage() {
               minute: "2-digit",
             })
           : "—",
-      width: 180,
     },
     {
       title: "Ghi chú",
       dataIndex: "note",
       key: "note",
-      width: 180,
+      width: 200,
       render: (note) => note || "—",
     },
     {
@@ -131,14 +158,26 @@ export default function StaffWarrantyPage() {
         );
       },
     },
-
     {
       title: "Hành động",
       key: "actions",
-      width: 100,
+      width: 120,
       align: "center",
       render: (_, record) => (
-        <Button type='link' onClick={() => handleViewDetail(record)}>
+        <Button
+          type='link'
+          onClick={() => handleViewDetail(record)}
+          style={{
+            color: "#ff4d4f",
+            fontWeight: 500,
+            padding: 0,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "#ff7875";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "#ff4d4f";
+          }}>
           Xem chi tiết
         </Button>
       ),
@@ -147,95 +186,121 @@ export default function StaffWarrantyPage() {
 
   // ================== RENDER ==================
   return (
-    <div style={{ padding: 16 }}>
-      {/* HEADER */}
-      <div className='flex justify-between items-center mb-4'>
-        <h2 className='text-2xl font-semibold text-green-600'>
-          🛡️ Danh sách Phiếu Bảo hành (RMA)
+    <div style={{ padding: 24, maxWidth: "1400px", margin: "0 auto" }}>
+      {/* ✅ HEADER */}
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#ff4d4f", display: "flex", alignItems: "center", gap: 12 }}>
+          <Shield size={28} />
+          Danh sách Phiếu Bảo hành (RMA)
         </h2>
-        <Button onClick={loadRMAList} type='default' icon={<RotateCcw />}>
-          Tải lại
-        </Button>
       </div>
 
-      {/* FILTER */}
-      <div
-        style={{
-          marginBottom: 16,
-          display: "flex",
-          justifyContent: "flex-end",
-          alignItems: "center",
-          gap: 12,
+      {/* ✅ FILTER CARD */}
+      <Card
+        style={{ marginBottom: 24, borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
+        headStyle={{ 
+          borderBottom: "1px solid #f0f0f0", 
+          padding: "16px 20px",
+          backgroundColor: "#fafafa",
+          borderRadius: "8px 8px 0 0"
+        }}
+        bodyStyle={{ padding: "20px" }}>
+        <div style={{ 
+          display: "grid", 
+          gridTemplateColumns: "repeat(2, 1fr) auto", 
+          gap: "20px",
+          alignItems: "end"
         }}>
-        <FilterIcon size={18} />
-        <Select
-          placeholder='Trạng thái'
-          style={{ width: 180 }}
-          allowClear
-          value={statusFilter || undefined}
-          onChange={setStatusFilter}>
-          <Option value='PENDING'>Đang chờ duyệt</Option>
-          <Option value='APPROVED'>Đã duyệt</Option>
-          <Option value='REJECTED'>Từ chối</Option>
-          <Option value='COMPLETED'>Hoàn tất</Option>
-        </Select>
-
-        <Input
-          placeholder='Tìm theo mã hoặc tên KH'
-          style={{ width: 200 }}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-
-        <Button
-          onClick={() => {
-            setSearch("");
-            setStatusFilter("");
-          }}>
-          Đặt lại
-        </Button>
-      </div>
-
-      {/* TABLE */}
-      {loading ? (
-        <div className='flex justify-center items-center h-64'>
-          <Spin size='large' />
-        </div>
-      ) : (
-        <Table
-          columns={columns}
-          dataSource={filteredData}
-          rowKey='id'
-          bordered
-          pagination={{ pageSize: 10 }}
-          scroll={{ x: 1000 }}
-        />
-      )}
-
-      {/* QR MODAL */}
-      <Modal
-        title={qrRecord ? `QR RMA — ${qrRecord.code}` : "QR RMA"}
-        open={openQRModal}
-        onCancel={() => setOpenQRModal(false)}
-        footer={[
-          <Button key='close' onClick={() => setOpenQRModal(false)}>
-            Đóng
-          </Button>,
-        ]}
-        centered>
-        {qrRecord ? (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              padding: 24,
-            }}>
-            <QRCodeSVG value={qrRecord.code || "N/A"} size={180} />
+          {/* Trạng thái */}
+          <div>
+            <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 500, color: "#595959" }}>
+              Trạng thái
+            </div>
+            <Select
+              placeholder='Chọn trạng thái'
+              allowClear
+              size="large"
+              style={{ width: "100%" }}
+              value={statusFilter || undefined}
+              onChange={setStatusFilter}>
+              <Option value='PENDING'>Đang chờ duyệt</Option>
+              <Option value='APPROVED'>Đã duyệt</Option>
+              <Option value='REJECTED'>Từ chối</Option>
+              <Option value='COMPLETED'>Hoàn tất</Option>
+            </Select>
           </div>
-        ) : (
-          <p className='text-center text-gray-500'>Không có QR</p>
-        )}
-      </Modal>
+
+          {/* Tìm kiếm */}
+          <div>
+            <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 500, color: "#595959" }}>
+              Tìm kiếm
+            </div>
+            <Input
+              placeholder='Tìm theo mã RMA hoặc tên khách hàng'
+              prefix={<Search size={16} style={{ color: "#bfbfbf" }} />}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              size="large"
+              allowClear
+              style={{ width: "100%" }}
+            />
+          </div>
+
+          {/* Nút Reset */}
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "flex-start" }}>
+            <div
+              onClick={() => {
+                setSearch("");
+                setStatusFilter("");
+              }}
+              style={{
+                width: 40,
+                height: 40,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px solid #ff4d4f",
+                borderRadius: 6,
+                cursor: "pointer",
+                color: "#ff4d4f",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#fff1f0";
+                e.currentTarget.style.borderColor = "#ff4d4f";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#fff";
+                e.currentTarget.style.borderColor = "#ff4d4f";
+              }}>
+              <RotateCcw size={20} />
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* TABLE LIST RMA */}
+      <Table
+        columns={columns}
+        dataSource={filteredData}
+        rowKey='id'
+        loading={loading}
+        bordered
+        pagination={{ 
+          pageSize: 10,
+          showSizeChanger: true,
+          showTotal: (total) => `Tổng ${total} bản ghi`,
+          showQuickJumper: true,
+          style: { padding: "16px" }
+        }}
+        scroll={{ x: "max-content" }}
+        style={{
+          borderRadius: 8,
+        }}
+        rowClassName={(record, index) =>
+          index % 2 === 0 ? "table-row-light" : "table-row-dark"
+        }
+      />
     </div>
   );
 }

@@ -1,8 +1,10 @@
 // src/components/Payment.jsx
-import { Modal, Table, Radio, Button, message, Spin, Empty, Tag } from "antd";
+import { Modal, Table, Radio, Button, Spin, Empty, Tag } from "antd";
+import { toast } from "@/components/ui/sonner";
 import { useState, useEffect } from "react";
 import { createPaymentLinkService } from "../../services/paymentService";
 import { fetchEVCheckByAppointmentService } from "../../services/evcheckService";
+import { SERVICE_TYPE_MAP } from "../../utils/constants";
 
 const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
   const [paymentMethod, setPaymentMethod] = useState("PAY_OS_CENTER");
@@ -67,15 +69,18 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
             };
           });
 
-          setQuoteItems(items);
-          setTotalAmount(items.reduce((s, i) => s + (i.totalAmount || 0), 0));
+          const filteredItems = items.filter((item) => item.totalAmount > 0);
+          setQuoteItems(filteredItems);
+          setTotalAmount(
+            filteredItems.reduce((s, i) => s + (i.totalAmount || 0), 0)
+          );
         } else {
           setQuoteItems([]);
           setTotalAmount(0);
         }
       } catch (e) {
         console.error(e);
-        message.warning("Không tải được báo giá từ EVCheck");
+        toast.warning("Không tải được báo giá từ EVCheck");
         setQuoteItems([]);
         setTotalAmount(0);
       } finally {
@@ -87,8 +92,8 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
   }, [open, appointmentId]);
 
   const handlePayment = async () => {
-    if (!appointmentId) return message.error("Thiếu thông tin lịch hẹn");
-    if (totalAmount <= 0) return message.warning("Tổng tiền phải lớn hơn 0");
+    if (!appointmentId) return toast.error("Thiếu thông tin lịch hẹn");
+    if (totalAmount <= 0) return toast.warning("Tổng tiền phải lớn hơn 0");
 
     setLoading(true);
     try {
@@ -99,11 +104,13 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
           paymentMethod === "PAY_OS_CENTER" ? "PAY_OS_CENTER" : "CASH",
         currency: "VND",
         appointmentId,
+        returnUrl: "https://modernestate.vercel.app/payment-success",
+        callbackUrl: "https://modernestate.vercel.app/payment-success",
       };
 
       if (paymentMethod === "CASH") {
         // Không tạo link, chỉ xác nhận đã thu tiền
-        message.success("Đã xác nhận thanh toán tiền mặt!");
+        toast.success("Đã xác nhận thanh toán tiền mặt!");
         onPaymentSuccess?.({ method: "CASH", amount: totalAmount });
         onClose();
       } else {
@@ -118,7 +125,7 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
 
         if (url) {
           window.open(url, "_blank");
-          message.success("Tạo yêu cầu thanh toán thành công!");
+          toast.success("Tạo yêu cầu thanh toán thành công!");
           onPaymentSuccess?.({ method: "PAYOS", amount: totalAmount, url });
           onClose();
         } else {
@@ -127,7 +134,7 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
       }
     } catch (e) {
       console.error(e);
-      message.error(e.message || "Không thể tạo yêu cầu thanh toán");
+      toast.error(e.message || "Không thể tạo yêu cầu thanh toán");
     } finally {
       setLoading(false);
     }
@@ -213,9 +220,8 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
   return (
     <Modal
       title={
-        <span className='text-lg font-bold text-[#d4380d]'>
-          Thanh toán & Xuất hóa đơn
-        </span>
+        <span className='text-xl font-bold text-[#d4380d] justify-center flex items-center'>
+Xác nhận hóa đơn        </span>
       }
       open={open}
       onCancel={onClose}
@@ -236,9 +242,9 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
               <span className='font-mono text-red-600'>{booking.code}</span>
             </p>
             <p>
-              <strong>Tổng tiền:</strong>{" "}
-              <span className='text-xl font-bold text-red-600'>
-                {totalAmount.toLocaleString()} ₫
+              <strong>Loại dịch vụ:</strong>{" "}
+              <span className=' font-bold text-blue-600'>
+                {SERVICE_TYPE_MAP[booking.type] || booking.type}
               </span>
             </p>
           </div>
@@ -274,8 +280,8 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
             <Radio.Group
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}>
-              <Radio value='PAY_OS_CENTER'>Chuyển khoản / QR (PayOS)</Radio>
-              <Radio value='CASH'>Tiền mặt tại quầy</Radio>
+              <Radio value='PAY_OS_CENTER'>Chuyển khoản ngân hàng</Radio>
+              <Radio value='CASH'>Tiền mặt </Radio>
             </Radio.Group>
           </div>
 
@@ -289,10 +295,10 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
               onClick={handlePayment}
               loading={loading}
               disabled={loading || totalAmount === 0}
-              className='bg-[#d4380d] hover:bg-[#c41e0e]'>
+              className=''>
               {paymentMethod === "CASH"
                 ? "Xác nhận đã thu tiền"
-                : `Tạo link PayOS ${totalAmount.toLocaleString()} ₫`}
+                : `Tạo thanh toán`}
             </Button>
           </div>
         </div>

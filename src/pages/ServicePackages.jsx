@@ -33,7 +33,6 @@ export default function ServicePackages() {
 
   const [form, setForm] = useState({
     partTypeId: "",
-    code: "",
     remedies: "REPAIR",
     name: "",
     laborCost: "",
@@ -46,7 +45,6 @@ export default function ServicePackages() {
   const resetForm = () => {
     setForm({
       partTypeId: "",
-      code: "",
       remedies: "REPAIR",
       name: "",
       laborCost: "",
@@ -382,14 +380,14 @@ export default function ServicePackages() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label>Mã (tùy chọn)</Label>
                 <Input
                   value={form.code}
                   onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
                   placeholder="VD: PriceSV-00001"
                 />
-              </div>
+              </div> */}
               <div className="space-y-2">
                 <Label>Tên dịch vụ <span className="text-red-500">*</span></Label>
                 <Input
@@ -526,14 +524,14 @@ export default function ServicePackages() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label>Mã</Label>
                 <Input
                   value={form.code}
                   onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
                   placeholder="VD: PriceSV-00001"
                 />
-              </div>
+              </div> */}
               <div className="space-y-2">
                 <Label>Tên dịch vụ <span className="text-red-500">*</span></Label>
                 <Input 
@@ -682,13 +680,13 @@ export default function ServicePackages() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
+                    {/* <div className="space-y-1.5">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Hash className="h-4 w-4" />
                         <span>Mã dịch vụ</span>
                       </div>
                       <p className="text-base font-semibold text-foreground">{selected?.id || "—"}</p>
-                    </div>
+                    </div> */}
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Tag className="h-4 w-4" />

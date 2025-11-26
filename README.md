@@ -178,6 +178,7 @@ bun install
 ```bash
 npm run dev
 ```
+Build application for development environment
 
 ## 🚀 Scripts
 
@@ -209,6 +210,23 @@ Preview production build locally
 npm run lint
 ```
 Run ESLint to check code quality
+
+## 🔌 API Integration
+
+The system integrates with a REST API backend. Main API endpoints:
+
+- **Authentication**: `/api/v1/auth/*`
+- **Users**: `/api/v1/users/*`
+- **Service Centers**: `/api/v1/service-centers/*`
+- **Appointments**: `/api/v1/appointments/*`
+- **Vehicles**: `/api/v1/vehicles/*`
+- **Warranty/RMA**: `/api/v1/rmas/*`
+- **Part Items**: `/api/v1/part-items/*`
+- **Import/Export Notes**: `/api/v1/import-notes/*`, `/api/v1/export-notes/*`
+- **Campaigns**: `/api/v1/campaigns/*`
+- **Service Packages**: `/api/v1/service-packages/*`
+
+API base URL is configured in `src/api/api.js`.
 
 ## 🌐 Deployment
 
@@ -242,6 +260,6 @@ Ensure the following environment variables are configured:
 This project is developed for educational and commercial purposes. All contributions are welcome!
 
 
-**Developed by**: eMotocare Group
+**Developed by**: eMotocare  
 **Version**: 1.0.0  
 **Last Updated**: 2025

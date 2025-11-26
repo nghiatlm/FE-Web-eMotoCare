@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { Search, Calendar as CalendarIcon, RefreshCw, Eye, X, FileText, Loader2, AlertCircle } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Search, Calendar as CalendarIcon, RefreshCw, Eye, X, FileText, Loader2, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,14 +10,13 @@ import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-import { getMissingParts, deleteMissingPart } from "@/api/missingPartsApi";
+import { getAppointmentsMissingParts } from "@/api/appointmentsApi";
 import { useToast } from "@/hooks/use-toast";
 
 export default function MissingPartsList() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
   const [from, setFrom] = useState(null);
   const [to, setTo] = useState(null);
   const [fromMonth, setFromMonth] = useState(new Date());
@@ -28,6 +27,7 @@ export default function MissingPartsList() {
   const [requests, setRequests] = useState([]);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState(null);
+  const [expandedItems, setExpandedItems] = useState(new Set());
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 10 }, (_, i) => currentYear - i);
@@ -41,19 +41,16 @@ export default function MissingPartsList() {
       const params = {
         page,
         pageSize,
-        ...(search && { search }),
-        ...(status !== "all" && { status }),
-        ...(from && { fromDate: format(from, "yyyy-MM-dd") }),
-        ...(to && { toDate: format(to, "yyyy-MM-dd") }),
+        sortDesc: true,
       };
 
-      const response = await getMissingParts(params);
+      const response = await getAppointmentsMissingParts(params);
       
       console.log("📋 Missing Parts Requests API Response:", response);
       
-      // Handle response structure: { data: { rowDatas: [...], total: ... } }
-      const requestsData = response?.data?.rowDatas || response?.rowDatas || [];
-      const totalCount = response?.data?.total || response?.total || 0;
+      // Handle response structure: { statusCode, success, message, data: [...] }
+      const requestsData = response?.data || [];
+      const totalCount = requestsData.length; // API không trả về total, dùng length tạm thời
       
       setRequests(requestsData);
       setTotal(totalCount);
@@ -70,79 +67,49 @@ export default function MissingPartsList() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, status, from, to, toast]);
+  }, [page, pageSize, toast]);
 
   useEffect(() => {
     fetchMissingParts();
   }, [fetchMissingParts]);
 
-  // Handle cancel/delete request
-  const handleCancelRequest = async (id, code) => {
-    if (!confirm(`Bạn có chắc chắn muốn hủy yêu cầu ${code}?`)) {
-      return;
-    }
-
-    try {
-      await deleteMissingPart(id);
-      toast({
-        title: "Thành công",
-        description: "Đã hủy yêu cầu phụ tùng thiếu",
-      });
-      fetchMissingParts();
-    } catch (err) {
-      console.error("Error canceling request:", err);
-      toast({
-        title: "Lỗi",
-        description: err?.message || err?.data?.message || "Không thể hủy yêu cầu",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const getStatusBadge = (status) => {
-    switch (status?.toUpperCase()) {
-      case "DRAFT":
-        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">Draft</Badge>;
-      case "REQUESTED":
-        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Đã yêu cầu</Badge>;
-      case "APPROVED":
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Đã duyệt</Badge>;
-      case "PENDING":
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Đang đợi phản hồi</Badge>;
-      case "IN_TRANSIT":
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Đang vận chuyển</Badge>;
-      case "COMPLETED":
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Hoàn tất</Badge>;
-      case "REJECTED":
-        return <Badge className="bg-red-900 text-red-100 hover:bg-red-900">Từ chối</Badge>;
-      default:
-        return <Badge variant="secondary">{status || "—"}</Badge>;
-    }
-  };
-
   // Format date from API response
-  const formatRequestDate = (dateString) => {
+  const formatDateTime = (dateString) => {
     if (!dateString) return "—";
     try {
-      return format(new Date(dateString), "dd-MM-yyyy");
+      return format(new Date(dateString), "dd/MM/yyyy HH:mm", { locale: vi });
     } catch (error) {
       return dateString;
     }
   };
 
-  // Get creator name
-  const getCreatorName = (request) => {
-    if (request.creator?.firstName || request.creator?.lastName) {
-      return `${request.creator.firstName || ""} ${request.creator.lastName || ""}`.trim();
+
+  // Get stock status badge
+  const getStockStatusBadge = (stockStatus) => {
+    switch (stockStatus) {
+      case "Có thể điều chuyển":
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Có thể điều chuyển</Badge>;
+      case "Hết hàng":
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Hết hàng</Badge>;
+      default:
+        return <Badge variant="secondary">{stockStatus || "—"}</Badge>;
     }
-    if (request.creatorName) {
-      return request.creatorName;
-    }
-    if (request.createdBy) {
-      return request.createdBy;
-    }
-    return "—";
   };
+
+  // Toggle expand/collapse
+  const toggleExpand = (appointmentId) => {
+    setExpandedItems((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(appointmentId)) {
+        newSet.delete(appointmentId);
+      } else {
+        newSet.add(appointmentId);
+      }
+      return newSet;
+    });
+  };
+
+  const isExpanded = (appointmentId) => expandedItems.has(appointmentId);
 
   const totalPages = Math.ceil(total / pageSize);
 
@@ -169,21 +136,6 @@ export default function MissingPartsList() {
               />
             </div>
 
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Trạng thái" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="DRAFT">Draft</SelectItem>
-                <SelectItem value="REQUESTED">Đã yêu cầu</SelectItem>
-                <SelectItem value="APPROVED">Đã duyệt</SelectItem>
-                <SelectItem value="PENDING">Đang đợi phản hồi</SelectItem>
-                <SelectItem value="IN_TRANSIT">Đang vận chuyển</SelectItem>
-                <SelectItem value="COMPLETED">Hoàn tất</SelectItem>
-                <SelectItem value="REJECTED">Từ chối</SelectItem>
-              </SelectContent>
-            </Select>
 
             <Popover>
               <PopoverTrigger asChild>
@@ -295,12 +247,11 @@ export default function MissingPartsList() {
               </PopoverContent>
             </Popover>
 
-            {(status !== "all" || search || from || to) && (
+            {(search || from || to) && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  setStatus("all");
                   setSearch("");
                   setFrom(null);
                   setTo(null);
@@ -327,7 +278,6 @@ export default function MissingPartsList() {
                 size="icon" 
                 title="Refresh" 
                 onClick={() => {
-                  setStatus("all");
                   setSearch("");
                   setFrom(null);
                   setTo(null);
@@ -345,11 +295,13 @@ export default function MissingPartsList() {
           <table className="w-full text-sm border-separate border-spacing-y-2">
             <thead className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm">
               <tr>
+                <th className="text-left px-5 py-3 w-12 font-semibold text-foreground"></th>
                 <th className="text-left px-5 py-3 w-16 font-semibold text-foreground">STT</th>
-                <th className="text-left px-5 py-3 font-semibold text-foreground">Code</th>
-                <th className="text-left px-5 py-3 font-semibold text-foreground">Ngày gửi</th>
+                <th className="text-left px-5 py-3 font-semibold text-foreground">Mã yêu cầu</th>
+                <th className="text-left px-5 py-3 font-semibold text-foreground">Ngày yêu cầu</th>
                 <th className="text-left px-5 py-3 font-semibold text-foreground">Người tạo</th>
-                <th className="text-left px-5 py-3 font-semibold text-foreground">Trạng thái</th>
+                <th className="text-left px-5 py-3 font-semibold text-foreground">Trung tâm dịch vụ</th>
+                <th className="text-left px-5 py-3 font-semibold text-foreground">Số lượng phụ tùng</th>
                 <th className="text-left px-5 py-3 font-semibold text-foreground">Ghi chú</th>
                 <th className="text-left px-5 py-3 w-40 font-semibold text-foreground">Hành động</th>
               </tr>
@@ -357,7 +309,7 @@ export default function MissingPartsList() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="px-6 py-12 text-center text-muted-foreground" colSpan={7}>
+                  <td className="px-6 py-12 text-center text-muted-foreground" colSpan={9}>
                     <div className="flex items-center justify-center gap-2">
                       <Loader2 className="h-5 w-5 animate-spin text-primary" />
                       <span>Đang tải dữ liệu...</span>
@@ -366,7 +318,7 @@ export default function MissingPartsList() {
                 </tr>
               ) : error ? (
                 <tr>
-                  <td className="px-6 py-12 text-center text-muted-foreground" colSpan={7}>
+                  <td className="px-6 py-12 text-center text-muted-foreground" colSpan={9}>
                     <div className="flex flex-col items-center gap-2">
                       <AlertCircle className="h-8 w-8 text-destructive" />
                       <p className="text-destructive">{error}</p>
@@ -378,62 +330,141 @@ export default function MissingPartsList() {
                 </tr>
               ) : requests.length === 0 ? (
                 <tr>
-                  <td className="px-6 py-12 text-center text-muted-foreground" colSpan={7}>
+                  <td className="px-6 py-12 text-center text-muted-foreground" colSpan={9}>
                     Không có dữ liệu phù hợp
                   </td>
                 </tr>
               ) : (
-                requests.map((req, idx) => (
-                  <tr
-                    key={req.id}
-                    className="bg-card border border-border/60 hover:border-primary/40 hover:shadow-md transition-all duration-200"
-                  >
-                    <td className="px-5 py-4 align-top text-sm font-medium text-muted-foreground">
-                      {(page - 1) * pageSize + idx + 1}
-                    </td>
-                    <td className="px-5 py-4 align-top">
-                      <span className="text-primary font-semibold tracking-wide cursor-pointer hover:underline">
-                        {req.code || "—"}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 align-top">
-                      {formatRequestDate(req.sentDate || req.createdAt || req.requestDate)}
-                    </td>
-                    <td className="px-5 py-4 align-top">
-                      <span className="text-foreground">{getCreatorName(req)}</span>
-                    </td>
-                    <td className="px-5 py-4 align-top">{getStatusBadge(req.status)}</td>
-                    <td className="px-5 py-4 align-top">
-                      <p className="text-sm text-muted-foreground leading-relaxed max-w-md">
-                        {req.note || req.description || "—"}
-                      </p>
-                    </td>
-                    <td className="px-5 py-4 align-top">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1 rounded-full px-3"
-                          onClick={() => navigate(`/manager/missing-parts/${req.id}`)}
-                        >
-                          <Eye className="h-4 w-4" />
-                          Chi tiết
-                        </Button>
-                        {req.status === "DRAFT" && (
+                requests.map((request, idx) => {
+                  const requestId = request.appointmentId || idx;
+                  const isExpandedItem = isExpanded(requestId);
+                  const partsCount = request.details?.length || 0;
+
+                  return (
+                    <>
+                      <tr
+                        key={requestId}
+                        className="bg-card border border-border/60 hover:border-primary/40 hover:shadow-md transition-all duration-200"
+                      >
+                        <td className="px-5 py-4 align-top">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => toggleExpand(requestId)}
+                          >
+                            {isExpandedItem ? (
+                              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </Button>
+                        </td>
+                        <td className="px-5 py-4 align-top text-sm font-medium text-muted-foreground">
+                          {(page - 1) * pageSize + idx + 1}
+                        </td>
+                        <td className="px-5 py-4 align-top">
+                          <span className="text-primary font-semibold tracking-wide">
+                            {request.requestCode || "—"}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 align-top">
+                          <span className="text-foreground">{formatDateTime(request.requestedAt)}</span>
+                        </td>
+                        <td className="px-5 py-4 align-top">
+                          <span className="text-foreground">{request.createdByName || "—"}</span>
+                        </td>
+                        <td className="px-5 py-4 align-top">
+                          <span className="text-foreground">{request.serviceCenterName || "—"}</span>
+                        </td>
+                        <td className="px-5 py-4 align-top">
+                          <Badge variant="outline">{partsCount} mục</Badge>
+                        </td>
+                        <td className="px-5 py-4 align-top">
+                          <p className="text-sm text-muted-foreground leading-relaxed max-w-md">
+                            {request.note || "—"}
+                          </p>
+                        </td>
+                        <td className="px-5 py-4 align-top">
                           <Button
                             size="sm"
                             variant="outline"
-                            className="gap-1 rounded-full px-3 text-destructive hover:text-destructive"
-                            onClick={() => handleCancelRequest(req.id, req.code)}
+                            className="gap-1 rounded-full px-3"
+                            onClick={() => navigate(`/manager/appointments/${request.appointmentId}`)}
                           >
-                            <X className="h-4 w-4" />
-                            Hủy
+                            <Eye className="h-4 w-4" />
+                            Xem lịch hẹn
                           </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                        </td>
+                      </tr>
+                      {isExpandedItem && request.details && request.details.length > 0 && (
+                        <tr key={`${requestId}-details`}>
+                          <td colSpan={9} className="px-5 py-4 bg-muted/20">
+                            <div className="space-y-3">
+                              <h4 className="text-sm font-semibold text-foreground mb-3">
+                                Danh sách phụ tùng ({partsCount} mục)
+                              </h4>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-sm border-separate border-spacing-y-2 table-fixed">
+                                  <thead>
+                                    <tr className="bg-muted/50">
+                                      <th className="text-center px-4 py-2 font-semibold text-foreground w-[150px]">Hình ảnh</th>
+                                      <th className="text-center px-4 py-2 font-semibold text-foreground w-[150px]">Mã phụ tùng</th>
+                                      <th className="text-center px-4 py-2 font-semibold text-foreground w-[200px]">Tên phụ tùng</th>
+                                      <th className="text-center px-4 py-2 font-semibold text-foreground w-[110px]">Số lượng yêu cầu</th>
+                                      <th className="text-center px-4 py-2 font-semibold text-foreground w-[200px]">Trung tâm đề xuất</th>
+                                      <th className="text-center px-4 py-2 font-semibold text-foreground w-[150px]">Tình trạng kho</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {request.details.map((part, partIdx) => (
+                                      <tr
+                                        key={part.index || partIdx}
+                                        className="bg-background border border-border/60 hover:bg-muted/30 transition-colors"
+                                      >
+                                        <td className="px-4 py-3 align-middle text-center">
+                                          {part.image ? (
+                                            <img
+                                              src={part.image}
+                                              alt={part.name}
+                                              className="w-20 h-20 object-cover rounded-lg border border-border mx-auto"
+                                              onError={(e) => {
+                                                e.target.style.display = "none";
+                                              }}
+                                            />
+                                          ) : (
+                                            <div className="w-20 h-20 rounded-lg border border-border bg-muted flex items-center justify-center mx-auto">
+                                              <span className="text-xs text-muted-foreground">No image</span>
+                                            </div>
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-3 align-middle text-center">
+                                          <span className="font-semibold text-foreground">{part.code || "—"}</span>
+                                        </td>
+                                        <td className="px-4 py-3 align-middle text-center">
+                                          <span className="text-foreground break-words">{part.name || "—"}</span>
+                                        </td>
+                                        <td className="px-4 py-3 align-middle text-center">
+                                          <span className="font-medium text-foreground">{part.requestedQty || 0}</span>
+                                        </td>
+                                        <td className="px-4 py-3 align-middle text-center">
+                                          <span className="text-sm text-foreground break-words">{part.suggestCenter || "—"}</span>
+                                        </td>
+                                        <td className="px-4 py-3 align-middle">
+                                          {getStockStatusBadge(part.stockStatus)}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })
               )}
             </tbody>
           </table>

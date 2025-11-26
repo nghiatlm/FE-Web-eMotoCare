@@ -20,13 +20,37 @@ export const AuthProvider = ({ children }) => {
       console.log("Detected role:", roleName);
 
       if (roleName === "ROLE_ADMIN") navigate("/admin");
-      else if (roleName === "ROLE_MANAGER") navigate("/manager");
       else if (roleName === "ROLE_STAFF") navigate("/staff");
+      else if (roleName === "ROLE_MANAGER") navigate("/manager");
       else if (roleName === "ROLE_TECHNICIAN") navigate("/technician");
       else if (roleName === "ROLE_STOREKEEPER") navigate("/storekeeper");
       else navigate("/");
     } catch (error) {
       console.error("Login failed:", error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyOtp = async (otp, email) => {
+    setLoading(true);
+    try {
+      const user = await authService.verifyOtp(otp, email);
+      setUser(user);
+
+      const roleName = user.accountResponse?.roleName;
+      console.log("Detected role:", roleName);
+
+      if (roleName === "ROLE_ADMIN") navigate("/admin");
+      else if (roleName === "ROLE_MANAGER") navigate("/manager");
+      else if (roleName === "ROLE_STAFF") navigate("/staff");
+      else if (roleName === "ROLE_TECHNICIAN") navigate("/technician");
+      else if (roleName === "ROLE_STOREKEEPER") navigate("/storekeeper");
+      else navigate("/");
+      return user;
+    } catch (error) {
+      console.error("Verify OTP failed:", error);
       throw error;
     } finally {
       setLoading(false);
@@ -41,7 +65,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, verifyOtp, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

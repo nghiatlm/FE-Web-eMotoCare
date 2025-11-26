@@ -313,29 +313,29 @@ export default function InventorySummary() {
           <p className="text-muted-foreground">Tổng quan tồn kho phụ tùng</p>
         </div>
 
-        <Card className="mb-6 shadow-sm">
-          <CardHeader className="pb-0">
-            <CardTitle className="text-base font-medium">Tìm kiếm</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-              <div className="lg:col-span-4">
-                <Label className="mb-2 block">Tìm kiếm</Label>
+        <Card className="mb-6 shadow-sm rounded-xl border border-border bg-card">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-end gap-4">
+              {/* Search Input */}
+              <div className="w-[300px]">
+                <Label className="mb-2 block text-sm font-medium">Tìm kiếm</Label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Nhập từ mã/tên phụ tùng..."
-                    className="pl-9"
+                    className="pl-9 border-border"
                   />
                 </div>
               </div>
-              <div className="lg:col-span-3">
-                <Label className="mb-2 block">Trạng thái</Label>
+
+              {/* Status Dropdown */}
+              <div className="min-w-[180px]">
+                <Label className="mb-2 block text-sm font-medium">Trạng thái</Label>
                 <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn trạng thái" />
+                  <SelectTrigger className="border-border">
+                    <SelectValue placeholder="Tất cả" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tất cả</SelectItem>
@@ -344,32 +344,18 @@ export default function InventorySummary() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="lg:col-span-2">
-                <Label className="mb-2 block">Từ</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="date"
-                    value={from}
-                    onChange={(e) => setFrom(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-              </div>
-              <div className="lg:col-span-3">
-                <Label className="mb-2 block">Đến</Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="date"
-                      value={to}
-                      onChange={(e) => setTo(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
-                  <Button className="whitespace-nowrap">Tìm kiếm</Button>
-                </div>
+
+              {/* Search Button */}
+              <div>
+                <Button 
+                  className="bg-red-600 hover:bg-red-700 text-white whitespace-nowrap h-10 px-6"
+                  onClick={() => {
+                    setSearch("");
+                    setStatus("all");
+                  }}
+                >
+                  Tìm kiếm
+                </Button>
               </div>
             </div>
           </CardContent>
