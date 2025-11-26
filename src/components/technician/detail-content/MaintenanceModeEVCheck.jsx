@@ -111,9 +111,9 @@ export default function MaintenanceModeEVCheck({
           const normalizedStatus =
             currentStatus === "INPROGRESS" ? "IN_PROGRESS" : currentStatus;
 
-          // ✅ Nếu status là COMPLETED và có replacePartId, tìm export note status
+          // ✅ Tìm export note status nếu có partItemId (không chỉ khi COMPLETED)
           let exportNoteStatus = null;
-          if (normalizedStatus === "COMPLETED" && partItemId) {
+          if (partItemId) {
             try {
               exportNoteStatus = await findExportNoteStatusByPartItemId(partItemId);
               console.log(`🔍 Detail ${item.id} - partItemId: ${partItemId}, exportNoteStatus:`, exportNoteStatus);
@@ -580,8 +580,8 @@ export default function MaintenanceModeEVCheck({
       render: (_, r, i) => {
         // ✅ Kiểm tra nếu bộ phận là CÒI
         const partName = r.maintenanceStageDetail?.part?.name || r.partName || "";
-        const isCoi = partName.toLowerCase().includes("còi") || 
-                     partName.toLowerCase().includes("coi") ||
+        const isCoi = partName.toLowerCase().includes("Pin") || 
+                     partName.toLowerCase().includes("PIN") ||
                      partName.toLowerCase().includes("horn");
         
         return (
@@ -847,38 +847,35 @@ export default function MaintenanceModeEVCheck({
       title: "Trạng thái phụ tùng",
       width: 150,
       render: (_, r) => {
-        // ✅ Chỉ hiển thị khi status là COMPLETED
-        if (r.status === "COMPLETED") {
-          const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
-          if (!status) return <span style={{ color: "#999" }}>—</span>;
-          
-          // ✅ Format status với Tag và màu sắc
-          const getStatusColor = (s) => {
-            const statusUpper = (s || "").toUpperCase();
-            if (statusUpper === "COMPLETED") return "success";
-            if (statusUpper === "PENDING") return "processing";
-            if (statusUpper === "REJECTED" || statusUpper === "CANCELLED") return "error";
-            return "default";
+        // ✅ Hiển thị exportNoteStatus nếu có (không chỉ khi COMPLETED)
+        const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
+        if (!status) return <span style={{ color: "#999" }}>—</span>;
+        
+        // ✅ Format status với Tag và màu sắc
+        const getStatusColor = (s) => {
+          const statusUpper = (s || "").toUpperCase();
+          if (statusUpper === "COMPLETED") return "success";
+          if (statusUpper === "PENDING") return "processing";
+          if (statusUpper === "REJECTED" || statusUpper === "CANCELLED") return "error";
+          return "default";
+        };
+        
+        const getStatusLabel = (s) => {
+          const statusUpper = (s || "").toUpperCase();
+          const statusMap = {
+            COMPLETED: "Đã xuất",
+            PENDING: "Đang chờ",
+            REJECTED: "Từ chối",
+            CANCELLED: "Hủy",
           };
-          
-          const getStatusLabel = (s) => {
-            const statusUpper = (s || "").toUpperCase();
-            const statusMap = {
-              COMPLETED: "Đã xuất",
-              PENDING: "Đang chờ",
-              REJECTED: "Từ chối",
-              CANCELLED: "Hủy",
-            };
-            return statusMap[statusUpper] || s;
-          };
-          
-          return (
-            <Tag color={getStatusColor(status)}>
-              {getStatusLabel(status)}
-            </Tag>
-          );
-        }
-        return <span style={{ color: "#999" }}>—</span>;
+          return statusMap[statusUpper] || s;
+        };
+        
+        return (
+          <Tag color={getStatusColor(status)}>
+            {getStatusLabel(status)}
+          </Tag>
+        );
       },
     },
   ];

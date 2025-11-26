@@ -217,9 +217,9 @@ export default function RMARepairModeEVCheck({
           const normalizedStatus =
             currentStatus === "INPROGRESS" ? "IN_PROGRESS" : currentStatus;
 
-          // ✅ Nếu status là COMPLETED và có replacePartId, tìm export note status
+          // ✅ Tìm export note status nếu có replacePartId (không chỉ khi COMPLETED)
           let exportNoteStatus = null;
-          if (normalizedStatus === "COMPLETED" && replacePartId) {
+          if (replacePartId) {
             try {
               exportNoteStatus = await findExportNoteStatusByPartItemId(replacePartId);
             } catch (err) {
@@ -664,38 +664,35 @@ export default function RMARepairModeEVCheck({
       title: "Trạng thái phụ tùng",
       width: 150,
       render: (_, r) => {
-        // ✅ Chỉ hiển thị khi status là COMPLETED
-        if (r.status === "COMPLETED") {
-          const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
-          if (!status) return <span style={{ color: "#999" }}>—</span>;
-          
-          // ✅ Format status với Tag và màu sắc
-          const getStatusColor = (s) => {
-            const statusUpper = (s || "").toUpperCase();
-            if (statusUpper === "COMPLETED") return "success";
-            if (statusUpper === "PENDING") return "processing";
-            if (statusUpper === "REJECTED" || statusUpper === "CANCELLED") return "error";
-            return "default";
+        // ✅ Hiển thị exportNoteStatus nếu có (không chỉ khi COMPLETED)
+        const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
+        if (!status) return <span style={{ color: "#999" }}>—</span>;
+        
+        // ✅ Format status với Tag và màu sắc
+        const getStatusColor = (s) => {
+          const statusUpper = (s || "").toUpperCase();
+          if (statusUpper === "COMPLETED") return "success";
+          if (statusUpper === "PENDING") return "processing";
+          if (statusUpper === "REJECTED" || statusUpper === "CANCELLED") return "error";
+          return "default";
+        };
+        
+        const getStatusLabel = (s) => {
+          const statusUpper = (s || "").toUpperCase();
+          const statusMap = {
+            COMPLETED: "Đã xuất",
+            PENDING: "Đang chờ",
+            REJECTED: "Từ chối",
+            CANCELLED: "Hủy",
           };
-          
-          const getStatusLabel = (s) => {
-            const statusUpper = (s || "").toUpperCase();
-            const statusMap = {
-              COMPLETED: "Đã xuất",
-              PENDING: "Đang chờ",
-              REJECTED: "Từ chối",
-              CANCELLED: "Hủy",
-            };
-            return statusMap[statusUpper] || s;
-          };
-          
-          return (
-            <Tag color={getStatusColor(status)}>
-              {getStatusLabel(status)}
-            </Tag>
-          );
-        }
-        return <span style={{ color: "#999" }}>—</span>;
+          return statusMap[statusUpper] || s;
+        };
+        
+        return (
+          <Tag color={getStatusColor(status)}>
+            {getStatusLabel(status)}
+          </Tag>
+        );
       },
     },
   ];

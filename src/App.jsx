@@ -39,6 +39,7 @@ import { TechnicianSidebar } from "./components/technician/TechnicanSidebar";
 import TechnicianDashboard from "./pages/technician/TechnicianDashboard";
 import TechnicianPage from "./pages/technician/TechnicianPage";
 import TechnicianBookingDetailPage from "./pages/technician/TechnicianBookingDetailPage";
+import BatteryDetailPage from "./pages/technician/BatteryDetailPage";
 
 // manager
 import { ManagerSidebar } from "./components/ManagerSidebar";
@@ -72,7 +73,7 @@ const App = () => (
       <Toaster />
       <Sonner />
 
-      <Routes>
+        <Routes>
         {/* Mở web vào thẳng màn login */}
         <Route path="/" element={<Navigate to="/login" replace />} />
 
@@ -82,9 +83,9 @@ const App = () => (
         <Route path="/verify-otp" element={<VerifyOTP />} />
 
         {/* Admin routes */}
-        <Route
+          <Route
           path="/admin/*"
-          element={
+            element={
             <ProtectedRoute allowedRoles={["ROLE_ADMIN"]}>
               <SidebarProvider>
                 <div className="flex min-h-screen w-full">
@@ -206,6 +207,10 @@ const App = () => (
                         path="vehicles/:id"
                         element={<TechnicianBookingDetailPage />}
                       />
+                      <Route
+                        path="battery/:evCheckDetailId"
+                        element={<BatteryDetailPage />}
+                      />
                       <Route path="*" element={<NotFound />} />
                       </Routes>
                     </main>
@@ -313,12 +318,12 @@ const App = () => (
                 </div>
               </SidebarProvider>
             </ProtectedRoute>
-          }
-        />
+            }
+          />
 
         {/* Not found */}
         <Route path="*" element={<NotFound />} />
-      </Routes>
+        </Routes>
     </TooltipProvider>
   </QueryClientProvider>
 );

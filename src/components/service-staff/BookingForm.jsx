@@ -368,11 +368,15 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
       campaignId = values.campaignId;
     }
 
+    // ✅ Chỉ gửi chassisNumber, BE sẽ tự động map customerId và vehicleId
+    if (!values.chassisNumber || values.chassisNumber.trim() === "") {
+      throw new Error("Vui lòng nhập số khung!");
+    }
+
     const payload = {
       serviceCenterId: serviceCenterId,
-      customerId: values.customerId,
+      chassisNumber: values.chassisNumber.trim(), // ✅ Gửi số khung, BE tự map
       vehicleStageId: values.vehicleStageId || null,
-      vehicleId: values.vehicleId,
       slotTime: values.slotTime,
       campaignId: campaignId,
       appointmentDate, // ✅ dùng string local
@@ -406,11 +410,11 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
         initialValues={initialValues}
         size="large">
         
-        {/* ✅ CARD 1: THÔNG TIN KHÁCH HÀNG VÀ XE */}
+        {/* ✅ CARD 1: THÔNG TIN KHÁCH HÀNG VÀ XE - CHỈ NHẬP SỐ KHUNG */}
         <Card
           title={
             <Space>
-              <User size={20} style={{ color: "#ff4d4f" }} />
+              <Car size={20} style={{ color: "#ff4d4f" }} />
               <span>Thông tin khách hàng và xe</span>
             </Space>
           }
@@ -418,64 +422,32 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
           headStyle={{ borderBottom: "1px solid #f0f0f0", padding: "16px 24px" }}
           bodyStyle={{ padding: "24px" }}>
           <Row gutter={[16, 0]}>
-            <Col xs={24} md={12}>
-              <Form.Item
-                label={
-                  <Space>
-                    <User size={16} style={{ color: "#595959" }} />
-                    <span>Khách hàng</span>
-                  </Space>
-                }
-                name='customerId'
-                rules={[{ required: true, message: "Chọn khách hàng!" }]}>
-                <Select
-                  placeholder='Tìm kiếm khách hàng (tên hoặc SĐT)'
-                  showSearch
-                  filterOption={false}
-                  onSearch={handleCustomerSearch}
-                  loading={loadingCustomers}
-                  onChange={(val) => handleCustomerChange(val, true)}
-                  style={{ width: "100%" }}>
-                  {customers.map((c) => {
-                    const phone = c.account && c.account.phone ? c.account.phone : "";
-                    const displayName = c.customerCode
-                      ? `${c.customerCode} - ${c.firstName} ${c.lastName}`
-                      : `${c.firstName || ""} ${c.lastName || ""}`;
-                    const displayText = phone ? `${displayName} (${phone})` : displayName;
-                    
-                    return (
-                      <Option key={c.id} value={c.id}>
-                        {displayText}
-                      </Option>
-                    );
-                  })}
-                </Select>
-              </Form.Item>
-            </Col>
-
-            <Col xs={24} md={12}>
+            <Col xs={24}>
               <Form.Item
                 label={
                   <Space>
                     <Car size={16} style={{ color: "#595959" }} />
-                    <span>Xe</span>
+                    <span>Số khung</span>
                   </Space>
                 }
-                name='vehicleId'
-                rules={[{ required: true, message: "Chọn xe!" }]}>
-                <Select
-                  placeholder='Chọn xe'
-                  loading={loadingVehicles}
-                  disabled={!form.getFieldValue("customerId")}
-                  onChange={handleVehicleChange}
-                  style={{ width: "100%" }}>
-                  {vehicles.map((v) => (
-                    <Option key={v.id} value={v.id}>
-                      {`${v.modelName || "Xe"} - ${v.chassisNumber || ""}`}
-                    </Option>
-                  ))}
-                </Select>
+                name='chassisNumber'
+                rules={[{ required: true, message: "Nhập số khung!" }]}>
+                <Input
+                  placeholder='Nhập số khung và nhấn Enter để xem thông tin'
+                  onPressEnter={(e) => {
+                    // ✅ TODO: Gọi API để lấy thông tin từ BE
+                    console.log("Enter pressed, chassisNumber:", e.target.value);
+                  }}
+                  allowClear
+                  style={{ width: "100%" }}
+                />
               </Form.Item>
+              {/* ✅ Placeholder để hiển thị thông tin sau khi nhập số khung */}
+              <div style={{ marginTop: 16, padding: 16, backgroundColor: "#fafafa", borderRadius: 8, border: "1px dashed #d9d9d9", minHeight: 100 }}>
+                <p style={{ margin: 0, fontSize: 14, color: "#8c8c8c", textAlign: "center" }}>
+                  Nhập số khung và nhấn Enter để hiển thị thông tin khách hàng và xe
+                </p>
+              </div>
             </Col>
           </Row>
         </Card>
@@ -649,13 +621,14 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
             label={
               <Space>
                 <FileText size={16} style={{ color: "#595959" }} />
-                <span>Ghi chú</span>
+                <span>{form.getFieldValue("type") === "REPAIR_TYPE" ? "Tình trạng xe" : "Ghi chú"}</span>
               </Space>
             }
-            name='note'>
+            name='note'
+            rules={form.getFieldValue("type") === "REPAIR_TYPE" ? [{ required: true, message: "Nhập tình trạng xe!" }] : []}>
             <Input.TextArea
               rows={4}
-              placeholder='Nhập ghi chú thêm (nếu có)'
+              placeholder={form.getFieldValue("type") === "REPAIR_TYPE" ? "Nhập tình trạng xe" : "Nhập ghi chú thêm (nếu có)"}
               showCount
               maxLength={500}
             />

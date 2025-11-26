@@ -15,6 +15,7 @@ import { findExportNoteStatusByPartItemId } from "../../../services/exportNotesS
 import { PlusOutlined } from "@ant-design/icons";
 import RMAConfirmationModal from "../../../components/service-staff/RMAConfirmationModal";
 import useEVCheckHub from "../../../hooks/useEVCheckHub.jsx";
+import BatteryDataDisplay from "../BatteryDataDisplay";
 
 const { Option } = Select;
 
@@ -34,6 +35,7 @@ export default function RepairModeEVCheck({
 }) {
   const [details, setDetails] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [autoSavingItems, setAutoSavingItems] = useState(new Set()); // ✅ Track các items đang được tự động lưu
 
   // options Bộ phận (phụ tùng đang gắn trên xe)
   const [vehiclePartOptions, setVehiclePartOptions] = useState([]);
@@ -476,9 +478,9 @@ export default function RepairModeEVCheck({
           const normalizedStatus =
             currentStatus === "INPROGRESS" ? "IN_PROGRESS" : currentStatus;
 
-          // ✅ Nếu status là COMPLETED và có replacePartId, tìm export note status
+          // ✅ Tìm export note status nếu có replacePartId (không chỉ khi COMPLETED)
           let exportNoteStatus = null;
-          if (normalizedStatus === "COMPLETED" && replacePartId) {
+          if (replacePartId) {
             try {
               exportNoteStatus = await findExportNoteStatusByPartItemId(replacePartId);
               console.log(`🔍 Detail ${item.id} - replacePartId: ${replacePartId}, exportNoteStatus:`, exportNoteStatus);
@@ -596,6 +598,65 @@ export default function RepairModeEVCheck({
     evCheckStatus !== "INSPECTION_COMPLETED" &&
     evCheckStatus !== "QUOTE_APPROVED";
 
+  // ✅ Tự động lưu các hạng mục pin khi đã có đủ thông tin
+  useEffect(() => {
+    if (!canEditFields || loading || !evCheckId) return;
+
+    const autoSaveBatteryItems = async () => {
+      for (let i = 0; i < details.length; i++) {
+        const item = details[i];
+        if (!item || !item.partItemId) continue;
+        
+        // ✅ Kiểm tra nếu đang được lưu hoặc đã có ID thật thì bỏ qua
+        const itemKey = `${item.partItemId}-${item.remedies}`;
+        if (autoSavingItems.has(itemKey) || (item.id && !item.id.startsWith("temp_"))) {
+          continue;
+        }
+        
+        // ✅ Kiểm tra nếu là pin
+        const partName = item.partItem?.part?.name || item.displayName || "";
+        const partCode = item.partItem?.part?.code || "";
+        const partNameLower = partName.toLowerCase();
+        const partCodeLower = partCode.toLowerCase();
+        const isBattery = 
+          partNameLower.includes("pin") || 
+          partNameLower.includes("lfp") ||
+          partNameLower.includes("lithium") ||
+          partNameLower.includes("battery") ||
+          partNameLower.includes("ắc quy") ||
+          partCodeLower.includes("pin") ||
+          partCodeLower.includes("lfp");
+        
+        // ✅ Tự động lưu nếu: là pin + có partItemId + có remedies + chưa có ID thật
+        if (isBattery && item.remedies) {
+          console.log("🔋 [RepairMode] Auto-saving battery item:", i);
+          setAutoSavingItems(prev => new Set(prev).add(itemKey));
+          try {
+            await saveSingleItem(i, true); // silent = true
+          } finally {
+            // ✅ Xóa flag sau 2 giây để có thể lưu lại nếu cần
+            setTimeout(() => {
+              setAutoSavingItems(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(itemKey);
+                return newSet;
+              });
+            }, 2000);
+          }
+        }
+      }
+    };
+
+    // ✅ Chỉ chạy khi details thay đổi và có ít nhất 1 item
+    if (details.length > 0) {
+      const timer = setTimeout(() => {
+        autoSaveBatteryItems();
+      }, 1500); // Delay 1.5 giây để tránh lưu quá nhiều lần
+
+      return () => clearTimeout(timer);
+    }
+  }, [details, canEditFields, loading, evCheckId]); // Chỉ chạy khi details, canEditFields, loading hoặc evCheckId thay đổi
+
   const handleChange = (index, field, value) => {
     if (evCheckStatus === "INSPECTION_COMPLETED" && field !== "status") return;
     if (evCheckStatus === "QUOTE_APPROVED" && field !== "status") return;
@@ -623,6 +684,28 @@ export default function RepairModeEVCheck({
         });
       }
       updatePriceService(index, value);
+      
+      // ✅ Tự động lưu nếu là pin và chưa có ID thật
+      const currentRow = details[index];
+      const partName = currentRow?.partItem?.part?.name || currentRow?.displayName || "";
+      const partCode = currentRow?.partItem?.part?.code || "";
+      const partNameLower = partName.toLowerCase();
+      const partCodeLower = partCode.toLowerCase();
+      const isBattery = 
+        partNameLower.includes("pin") || 
+        partNameLower.includes("lfp") ||
+        partNameLower.includes("lithium") ||
+        partNameLower.includes("battery") ||
+        partNameLower.includes("ắc quy") ||
+        partCodeLower.includes("pin") ||
+        partCodeLower.includes("lfp");
+      
+      if (isBattery && currentRow?.partItemId && (!currentRow?.id || currentRow?.id.startsWith("temp_"))) {
+        // ✅ Tự động lưu sau một chút delay để đảm bảo state đã cập nhật
+        setTimeout(async () => {
+          await saveSingleItem(index, true); // silent = true
+        }, 500);
+      }
     }
 
     if (field === "status") {
@@ -634,6 +717,63 @@ export default function RepairModeEVCheck({
   };
 
   const addExtraRow = () => setDetails((prev) => [...prev, createEmptyRow()]);
+
+  // ========= SAVE SINGLE ITEM (Tự động lưu một hạng mục) =========
+  const saveSingleItem = async (index, silent = false) => {
+    const item = details[index];
+    if (!item || !item.partItemId) {
+      if (!silent) toast.warning("Vui lòng chọn Bộ phận trước.");
+      return null;
+    }
+
+    if (!item.remedies) {
+      if (!silent) toast.warning("Vui lòng chọn Biện pháp!");
+      return null;
+    }
+
+    if (!evCheckId) {
+      if (!silent) toast.error("Thiếu EVCheckId!");
+      return null;
+    }
+
+    // ✅ Kiểm tra nếu đã có ID thật thì không cần lưu lại
+    if (item.id && !item.id.startsWith("temp_")) {
+      return item.id;
+    }
+
+    try {
+      const payload = {
+        partItemId: item.partItemId,
+        result: (item.result || "").trim() || "Tốt",
+        remedies: item.remedies ?? "NONE",
+        quantity: Number(item.quantity || 1),
+        unit: item.unit || "cái",
+        pricePart: Number(item.pricePart || 0),
+        priceService: Number(item.priceService || 0),
+        totalAmount: Number(item.totalAmount || 0),
+        status: item.status || "PENDING",
+      };
+
+      if (item.remedies === "REPLACE" && item.replacePartId) {
+        payload.replacePartId = item.replacePartId;
+      }
+
+      if (item.isNew) {
+        payload.evCheckId = evCheckId;
+        const result = await createEVCheckDetailService(payload);
+        // Reload để lấy ID thật
+        await loadRepairDetails();
+        return result?.data?.id || result?.id;
+      } else {
+        await updateEVCheckDetailService(item.id, payload);
+        return item.id;
+      }
+    } catch (err) {
+      console.error("Lỗi khi lưu hạng mục:", err);
+      if (!silent) toast.error("Không thể lưu hạng mục!");
+      return null;
+    }
+  };
 
   // ========= SAVE ALL (GỬI BÁO GIÁ) =========
   const saveAll = async () => {
@@ -897,22 +1037,72 @@ export default function RepairModeEVCheck({
     {
       title: "Kết quả",
       width: 350,
-      render: (_, r, i) => (
-        <Input.TextArea
-          placeholder='Nhập kết quả kiểm tra (mặc định: Tốt, có thể xóa để nhập lại)...'
-          value={r.result ?? ""}
-          onChange={(e) => handleChange(i, "result", e.target.value)}
-          onBlur={(e) => {
-            // ✅ Nếu để trống khi blur, tự động set về "Tốt"
-            if (!e.target.value.trim()) {
-              handleChange(i, "result", "Tốt");
-            }
-          }}
-          disabled={readOnly || !canEditFields}
-          autoSize={{ minRows: 2, maxRows: 8 }}
-          style={{ resize: "none", fontSize: 14, maxWidth: "100%" }}
-        />
-      ),
+      render: (_, r, i) => {
+        // ✅ Kiểm tra nếu bộ phận là PIN (kiểm tra nhiều trường hợp)
+        const partName = r.partItem?.part?.name || r.displayName || "";
+        const partCode = r.partItem?.part?.code || "";
+        const partNameLower = partName.toLowerCase();
+        const partCodeLower = partCode.toLowerCase();
+        
+        // Kiểm tra cả name và code
+        const isBattery = 
+          partNameLower.includes("pin") || 
+          partNameLower.includes("lfp") ||
+          partNameLower.includes("lithium") ||
+          partNameLower.includes("battery") ||
+          partNameLower.includes("ắc quy") ||
+          partCodeLower.includes("pin") ||
+          partCodeLower.includes("lfp");
+        
+        // Debug log để kiểm tra (log tất cả để debug)
+        console.log("🔋 [RepairMode] Checking battery:", {
+          partName,
+          partCode,
+          partNameLower,
+          partCodeLower,
+          isBattery,
+          id: r.id,
+          isTemp: r.id?.startsWith("temp_"),
+          canImport: canEditFields,
+          hasPartItem: !!r.partItem,
+          partItemPart: r.partItem?.part
+        });
+        
+        return (
+          <div className="space-y-2">
+            <Input.TextArea
+              placeholder='Nhập kết quả kiểm tra (mặc định: Tốt, có thể xóa để nhập lại)...'
+              value={r.result ?? ""}
+              onChange={(e) => handleChange(i, "result", e.target.value)}
+              onBlur={(e) => {
+                // ✅ Nếu để trống khi blur, tự động set về "Tốt"
+                if (!e.target.value.trim()) {
+                  handleChange(i, "result", "Tốt");
+                }
+              }}
+              disabled={readOnly || !canEditFields}
+              autoSize={{ minRows: 2, maxRows: 8 }}
+              style={{ resize: "none", fontSize: 14, maxWidth: "100%" }}
+            />
+            {/* ✅ Hiển thị dữ liệu pin nếu bộ phận là PIN */}
+            {isBattery && r.partItemId && (
+              <div className="mt-2 p-2 border rounded bg-gray-50">
+                {/* ✅ Hiển thị component nếu có ID thật */}
+                {r.id && !r.id.startsWith("temp_") ? (
+                  <BatteryDataDisplay 
+                    evCheckDetailId={r.id} 
+                    canImport={canEditFields}
+                  />
+                ) : (
+                  <div className="text-xs text-gray-500 italic p-2 bg-yellow-50 rounded">
+                    💡 Vui lòng chọn biện pháp để tự động lưu hạng mục
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: "Biện pháp",
@@ -1104,38 +1294,35 @@ export default function RepairModeEVCheck({
       title: "Trạng thái phụ tùng",
       width: 150,
       render: (_, r) => {
-        // ✅ Chỉ hiển thị khi status là COMPLETED
-        if (r.status === "COMPLETED") {
-          const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
-          if (!status) return <span style={{ color: "#999" }}>—</span>;
-          
-          // ✅ Format status với Tag và màu sắc
-          const getStatusColor = (s) => {
-            const statusUpper = (s || "").toUpperCase();
-            if (statusUpper === "COMPLETED") return "success";
-            if (statusUpper === "PENDING") return "processing";
-            if (statusUpper === "REJECTED" || statusUpper === "CANCELLED") return "error";
-            return "default";
+        // ✅ Hiển thị exportNoteStatus nếu có (không chỉ khi COMPLETED)
+        const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
+        if (!status) return <span style={{ color: "#999" }}>—</span>;
+        
+        // ✅ Format status với Tag và màu sắc
+        const getStatusColor = (s) => {
+          const statusUpper = (s || "").toUpperCase();
+          if (statusUpper === "COMPLETED") return "success";
+          if (statusUpper === "PENDING") return "processing";
+          if (statusUpper === "REJECTED" || statusUpper === "CANCELLED") return "error";
+          return "default";
+        };
+        
+        const getStatusLabel = (s) => {
+          const statusUpper = (s || "").toUpperCase();
+          const statusMap = {
+            COMPLETED: "Đã xuất",
+            PENDING: "Đang chờ",
+            REJECTED: "Từ chối",
+            CANCELLED: "Hủy",
           };
-          
-          const getStatusLabel = (s) => {
-            const statusUpper = (s || "").toUpperCase();
-            const statusMap = {
-              COMPLETED: "Đã xuất",
-              PENDING: "Đang chờ",
-              REJECTED: "Từ chối",
-              CANCELLED: "Hủy",
-            };
-            return statusMap[statusUpper] || s;
-          };
-          
-          return (
-            <Tag color={getStatusColor(status)}>
-              {getStatusLabel(status)}
-            </Tag>
-          );
-        }
-        return <span style={{ color: "#999" }}>—</span>;
+          return statusMap[statusUpper] || s;
+        };
+        
+        return (
+          <Tag color={getStatusColor(status)}>
+            {getStatusLabel(status)}
+          </Tag>
+        );
       },
     },
   ];
