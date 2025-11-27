@@ -22,6 +22,7 @@ import BranchReport from "./pages/admin/BranchReport";
 import ServicePackages from "./pages/ServicePackages";
 import CreateServicePackage from "./pages/admin/CreateServicePackage";
 import Campaigns from "./pages/Campaigns";
+import CampaignDetail from "./pages/CampaignDetail";
 import CreateCampaign from "./pages/admin/CreateCampaign";
 import NotFound from "./pages/NotFound";
 
@@ -49,6 +50,7 @@ import StaffDetail from "./pages/manager/StaffDetail";
 import WarrantyList from "./pages/manager/WarrantyList";
 import WarrantyDetail from "./pages/manager/WarrantyDetail";
 import MissingPartsList from "./pages/manager/MissingPartsList";
+import MissingPartDetail from "./pages/manager/MissingPartDetail";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import InventorySummary from "./pages/manager/InventorySummary";
 import InventoryDetail from "./pages/manager/InventoryDetail";
@@ -58,6 +60,7 @@ import { StoreKeeperSidebar } from "./components/StoreKeeperSidebar";
 import StorekeeperInventory from "./pages/storekeeper/StorekeeperInventory";
 import StorekeeperAccessoryDetail from "./pages/storekeeper/StorekeeperAccessoryDetail";
 import ImportSlipsPage from "./pages/storekeeper/ImportSlipsPage";
+import ImportNoteDetail from "./pages/storekeeper/ImportNoteDetail";
 import ExportSlipsPage from "./pages/storekeeper/ExportSlipsPage";
 import CreateExportSlipPage from "./pages/storekeeper/CreateExportSlipPage";
 import ExportNoteDetail from "./pages/storekeeper/ExportNoteDetail";
@@ -118,6 +121,10 @@ const App = () => (
                       <Route
                         path="campaigns/new"
                         element={<CreateCampaign />}
+                      />
+                      <Route
+                        path="campaigns/:id"
+                        element={<CampaignDetail />}
                       />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
@@ -224,6 +231,10 @@ const App = () => (
                         element={<ImportSlipsPage />}
                       />
                       <Route
+                        path="import-slips/:id"
+                        element={<ImportNoteDetail />}
+                      />
+                      <Route
                         path="import-slips/create"
                         element={<CreateImportNotePage />}
                       />
@@ -292,6 +303,10 @@ const App = () => (
                         <Route
                           path="missing-parts"
                           element={<MissingPartsList />}
+                        />
+                        <Route
+                          path="missing-parts/:id"
+                          element={<MissingPartDetail />}
                         />
                         <Route path="*" element={<NotFound />} />
                       </Routes>

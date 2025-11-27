@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, Pencil, Check, Building2, User, DollarSign, Calendar, FileText, Package, Tag, Truck } from "lucide-react";
+import { ArrowLeft, Pencil, Check, Building2, User, DollarSign, Calendar, FileText, Package, Tag, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getExportNoteById, getExportNotePartItems, updateExportNote } from "@/api/exportNotesApi";
+import { getExportNoteById, updateExportNote } from "@/api/exportNotesApi";
+import { getPartItems } from "@/api/partitemsApi";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ExportNoteDetail() {
@@ -14,25 +15,19 @@ export default function ExportNoteDetail() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [exportNote, setExportNote] = useState(null);
-  const [partItems, setPartItems] = useState([]);
   const [selectedParts, setSelectedParts] = useState(new Set());
   const [exporting, setExporting] = useState(false);
+  const [serialsByPartId, setSerialsByPartId] = useState({});
+  const [loadingSerials, setLoadingSerials] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [noteRes, itemsRes] = await Promise.all([
-          getExportNoteById(id),
-          getExportNotePartItems(id)
-        ]);
+        const noteRes = await getExportNoteById(id);
 
         if (noteRes.success && noteRes.data) {
           setExportNote(noteRes.data);
-        }
-
-        if (itemsRes.success && itemsRes.data) {
-          setPartItems(itemsRes.data);
         }
       } catch (error) {
         console.error("Error fetching export note detail:", error);
@@ -51,27 +46,83 @@ export default function ExportNoteDetail() {
     }
   }, [id, toast]);
 
-  // Prepare display items - each item is a separate row, using exact API data
-  const displayItems = partItems.map((item) => {
-    const code = item.part?.code || "UNKNOWN";
-    const availableQty = item.part?.quantity || 0;
-    const status = item.part?.status === "ACTIVE" && availableQty > 0 ? "Vẫn còn" : "Hết hàng";
+  useEffect(() => {
+    const fetchSerialNumbers = async () => {
+      if (!exportNote?.exportNoteDetails?.length) return;
+
+      const serviceCenterId = exportNote.serviceCenter?.id;
+      const partIds = Array.from(
+        new Set(
+          exportNote.exportNoteDetails
+            .map((detail) => detail.proposedReplacePartId || detail.proposedReplacePart?.id)
+            .filter(Boolean)
+        )
+      );
+
+      if (partIds.length === 0) return;
+
+      try {
+        setLoadingSerials(true);
+        const serialEntries = await Promise.all(
+          partIds.map(async (partId) => {
+            try {
+              const response = await getPartItems({
+                partId,
+                serviceCenterId,
+                status: "IN_STOCK",
+                pageSize: 50
+              });
+
+              if (response.success && response.data?.rowDatas) {
+                const serials = response.data.rowDatas
+                  .map((item) => item.serialNumber)
+                  .filter(Boolean);
+                return [partId, serials];
+              }
+            } catch (error) {
+              console.error(`Error fetching serials for part ${partId}:`, error);
+            }
+            return [partId, []];
+          })
+        );
+        setSerialsByPartId(Object.fromEntries(serialEntries));
+      } finally {
+        setLoadingSerials(false);
+      }
+    };
+
+    fetchSerialNumbers();
+  }, [exportNote]);
+
+  const exportDetails = exportNote?.exportNoteDetails || [];
+
+  const displayItems = exportDetails.map((detail) => {
+    const part = detail.proposedReplacePart || detail.partItem?.part;
+    const code = part?.code || "UNKNOWN";
+    const exportQty = detail.quantity ?? 0;
+    const status = part?.status === "ACTIVE" ? "Vẫn còn" : "Hết hàng";
+    const partId = detail.proposedReplacePartId || part?.id;
+    const fetchedSerials = partId ? serialsByPartId[partId] || [] : [];
+    const serialNumbers = detail.partItem?.serialNumber
+      ? [detail.partItem.serialNumber]
+      : fetchedSerials;
+    const selectedSerial = serialNumbers.length > 0 ? serialNumbers[0] : null;
     
     return {
-      id: item.id,
+      id: detail.id,
       code,
-      name: item.part?.name || "N/A",
+      name: part?.name || "N/A",
       status,
-      availableQty,
-      serialNumber: item.serialNumber || "—"
+      quantity: exportQty,
+      serialNumber: selectedSerial
     };
   });
 
-  // Calculate totals
+  
   const totals = {
     totalRows: displayItems.length
   };
-
+  
   const togglePartSelection = (itemId) => {
     setSelectedParts(prev => {
       const next = new Set(prev);
@@ -128,17 +179,10 @@ export default function ExportNoteDetail() {
           description: "Xuất kho thành công!",
         });
         
-        const [noteRes, itemsRes] = await Promise.all([
-          getExportNoteById(id),
-          getExportNotePartItems(id)
-        ]);
+        const noteRes = await getExportNoteById(id);
 
         if (noteRes.success && noteRes.data) {
           setExportNote(noteRes.data);
-        }
-
-        if (itemsRes.success && itemsRes.data) {
-          setPartItems(itemsRes.data);
         }
 
         if (window.refreshExportNotes) {
@@ -411,7 +455,7 @@ export default function ExportNoteDetail() {
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Mã</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Tên phụ tùng</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Trạng thái</th>
-                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Tồn khả dụng</th>
+                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Số lượng xuất</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Batch/Serial</th>
                     </tr>
                   </thead>
@@ -447,20 +491,19 @@ export default function ExportNoteDetail() {
                         </td>
                         <td className="py-4 px-6">
                           <span className="inline-flex items-center justify-center px-3 py-1 rounded-lg text-sm font-bold bg-muted text-foreground border border-border">
-                            {item.availableQty}
+                            {item.quantity}
                           </span>
                         </td>
                         <td className="py-4 px-6">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-foreground">{item.serialNumber}</span>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-7 w-7 hover:bg-muted"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
+                          {loadingSerials ? (
+                            <span className="text-xs text-muted-foreground">Đang tải serial...</span>
+                          ) : item.serialNumber ? (
+                            <Badge variant="secondary" className="bg-muted text-foreground border-border">
+                              {item.serialNumber}
+                            </Badge>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Chưa có serial khả dụng</span>
+                          )}
                         </td>
                       </tr>
                     ))}

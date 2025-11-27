@@ -1,35 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Eye, PackagePlus, Edit } from "lucide-react";
+import { Eye, Edit } from "lucide-react";
 import { getImportNotes } from "@/api/importNotesApi";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useServiceCenter } from "@/hooks/useServiceCenter";
+import { useNavigate } from "react-router-dom";
 
-const statusBadge = (status) => {
-  const base = "inline-flex px-3 py-1 rounded-full text-xs font-medium";
-  const statusUpper = (status || "").toUpperCase();
-  switch (statusUpper) {
-    case "COMPLETED":
-      return `${base} bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400`;
-    case "PENDING":
-      return `${base} bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400`;
-    case "CANCELLED":
-      return `${base} bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400`;
-    default:
-      return `${base} bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400`;
-  }
-};
-
-const getStatusLabel = (status) => {
-  const statusMap = {
-    PENDING: "Chờ xử lý",
-    COMPLETED: "Hoàn thành",
-    CANCELLED: "Đã hủy"
-  };
-  return statusMap[status?.toUpperCase()] || status || "N/A";
-};
-
-export default function ImportSlipsTable({ search = "", status = "" }) {
+export default function ImportSlipsTable({ search = "" }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -37,6 +14,7 @@ export default function ImportSlipsTable({ search = "", status = "" }) {
   const [total, setTotal] = useState(0);
   const [error, setError] = useState(null);
   const { serviceCenterId } = useServiceCenter();
+  const navigate = useNavigate();
 
   const fetchImportNotes = async () => {
     try {
@@ -84,7 +62,6 @@ export default function ImportSlipsTable({ search = "", status = "" }) {
             totalValue: item.totalAmout || item.totalAmount || 0, // Note: API has typo "totalAmout"
             importByName: importByName,
             serviceCenterName: serviceCenterName,
-            status: item.importNoteStatus || item.status || "PENDING",
             rawData: item
           };
         });
@@ -129,17 +106,6 @@ export default function ImportSlipsTable({ search = "", status = "" }) {
     const q = search.trim().toLowerCase();
     let result = rows;
 
-    if (status && status !== "all") {
-      // Map UI status to API status
-      const statusMap = {
-        "pending": "PENDING",
-        "completed": "COMPLETED",
-        "cancelled": "CANCELLED"
-      };
-      const apiStatus = statusMap[status.toLowerCase()] || status.toUpperCase();
-      result = result.filter((r) => (r.status || "").toUpperCase() === apiStatus);
-    }
-
     if (q) {
       result = result.filter((r) =>
         [r.id, r.supplier, r.importFrom, r.importByName, r.serviceCenterName].join(" ").toLowerCase().includes(q)
@@ -147,7 +113,7 @@ export default function ImportSlipsTable({ search = "", status = "" }) {
     }
 
     return result;
-  }, [rows, search, status]);
+  }, [rows, search]);
 
   // Loading state
   if (loading) {
@@ -189,15 +155,14 @@ export default function ImportSlipsTable({ search = "", status = "" }) {
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Số mặt hàng</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Tổng giá trị</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Người nhập</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Trạng thái</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && !loading ? (
               <tr>
-                <td colSpan="11" className="py-12 px-6 text-center text-sm text-muted-foreground">
-                  {search || status ? "Không tìm thấy phiếu nhập phù hợp" : "Chưa có phiếu nhập nào"}
+                <td colSpan="7" className="py-12 px-6 text-center text-sm text-muted-foreground">
+                  {search ? "Không tìm thấy phiếu nhập phù hợp" : "Chưa có phiếu nhập nào"}
                 </td>
               </tr>
             ) : (
@@ -221,18 +186,18 @@ export default function ImportSlipsTable({ search = "", status = "" }) {
                   </td>
                   <td className="py-4 px-6 text-sm text-foreground">{slip.importByName}</td>
                   <td className="py-4 px-6">
-                    <span className={statusBadge(slip.status)}>
-                      {getStatusLabel(slip.status)}
-                    </span>
-                  </td>
-                  <td className="py-4 px-6">
                     <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                        onClick={() => window?.openViewImportSlip?.(slip)}
+                        onClick={() => {
+                          if (slip.rawData?.id) {
+                            navigate(`/storekeeper/import-slips/${slip.rawData.id}`);
+                          }
+                        }}
                         title="Xem chi tiết"
+                        disabled={!slip.rawData?.id}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>

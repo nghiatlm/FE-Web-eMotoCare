@@ -17,7 +17,7 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
     try {
       setLoading(true);
       setError(null);
-      const response = await getExportNotes(page, pageSize);
+      const response = await getExportNotes({ page, pageSize });
       
       if (response.success && response.data) {
         // Transform API data to match UI format

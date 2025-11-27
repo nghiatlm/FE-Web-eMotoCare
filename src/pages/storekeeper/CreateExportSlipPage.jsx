@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileUp, ArrowLeft, Loader2, CheckSquare, Square, Search } from "lucide-react";
+import { FileUp, ArrowLeft, Loader2, CheckSquare, Square, Search, Package, Building2, CircleDollarSign, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 export default function CreateExportSlipPage() {
   const navigate = useNavigate();
@@ -44,20 +45,8 @@ export default function CreateExportSlipPage() {
     totalQuantity: 0,
     totalValue: 0,
     note: "",
-    exportById: "",
-    serviceCenterId: "",
-    exportNoteStatus: "PENDING",
     partItemId: []
   });
-
-  useEffect(() => {
-    if (serviceCenterId) {
-      setFormData(prev => ({ ...prev, serviceCenterId }));
-    }
-    if (staffId) {
-      setFormData(prev => ({ ...prev, exportById: staffId }));
-    }
-  }, [serviceCenterId, staffId]);
 
   // State để lưu tất cả service centers (chưa lọc)
   const [allServiceCenters, setAllServiceCenters] = useState([]);
@@ -195,6 +184,26 @@ export default function CreateExportSlipPage() {
     }));
   }, [selectedPartItemsData.totalQty, selectedPartItemsData.totalVal, selectedPartItemIds]);
 
+  const selectedDestination = useMemo(
+    () => serviceCenters.find((center) => center.id === formData.exportTo),
+    [serviceCenters, formData.exportTo],
+  );
+
+  const currencyFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat("vi-VN", {
+        style: "currency",
+        currency: "VND",
+        maximumFractionDigits: 0,
+      }),
+    [],
+  );
+
+  const formattedTotalValue = useMemo(
+    () => currencyFormatter.format(formData.totalValue || 0),
+    [currencyFormatter, formData.totalValue],
+  );
+
   // Handle part item selection
   const handlePartItemToggle = (partItemId) => {
     setSelectedPartItemIds(prev => {
@@ -229,6 +238,15 @@ export default function CreateExportSlipPage() {
   };
 
   const handleSubmit = async () => {
+    if (!serviceCenterId || !staffId) {
+      toast({
+        title: "Thiếu thông tin",
+        description: "Không xác định được người xuất hoặc trung tâm dịch vụ.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Validate exportTo
     if (!formData.exportTo || formData.exportTo === "") {
       toast({
@@ -260,7 +278,7 @@ export default function CreateExportSlipPage() {
         serviceCenterId: serviceCenterId,
         totalValue: formData.totalValue,
         note: formData.note,
-        partItemId: formData.partItemId,
+        partItemId: formData.partItemId
       };
       console.log(createData);
       const response = await createExportNote(createData);
@@ -287,41 +305,105 @@ export default function CreateExportSlipPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="p-8 max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-6 flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/storekeeper/export-slips")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
-              <FileUp className="h-8 w-8 text-primary" />
-              Tạo phiếu xuất mới
-            </h1>
-            <p className="text-muted-foreground">
-              Điền thông tin để tạo phiếu xuất mới
-            </p>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.08),_transparent_45%)]">
+      <div className="mx-auto max-w-6xl px-4 py-10 space-y-8">
+        <div className="rounded-3xl border border-border/60 bg-card/80 shadow-xl shadow-primary/5 backdrop-blur-sm">
+          <div className="flex flex-wrap items-center gap-4 px-6 py-5">
+            <Button
+              variant="outline"
+              size="icon"
+              className="rounded-full border-primary/30 text-primary hover:bg-primary/10"
+              onClick={() => navigate("/storekeeper/export-slips")}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div className="min-w-[240px] flex-1">
+              <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground/80">Kho GreenWheel</p>
+              <h1 className="mt-1 flex items-center gap-2 text-3xl font-bold text-foreground">
+                Tạo phiếu xuất mới
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Chọn chi nhánh nhận cùng phụ tùng cần xuất. Hệ thống tự tính số lượng và giá trị.
+              </p>
+            </div>
+            <div className="hidden items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary sm:flex">
+              <FileUp className="h-4 w-4" />
+              Phiếu xuất kho
+            </div>
           </div>
         </div>
 
-        <div className="space-y-6">
-          {/* Form Fields */}
-          <Card>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground/80">Phụ tùng đã chọn</p>
+                <p className="mt-1 text-2xl font-bold text-foreground">{selectedPartItemIds.length}</p>
+              </div>
+              <div className="rounded-full bg-primary/10 p-3 text-primary">
+                <Package className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Cần chọn tối thiểu 1 phụ tùng để tạo phiếu.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground/80">Tổng số lượng</p>
+                <p className="mt-1 text-2xl font-bold text-foreground">{formData.totalQuantity}</p>
+              </div>
+              <div className="rounded-full bg-emerald-100/60 p-3 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-300">
+                <Target className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">Tự động cập nhật theo phụ tùng đã chọn.</p>
+          </div>
+
+          <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground/80">Tổng giá trị</p>
+                <p className="mt-1 text-2xl font-bold text-foreground">{formattedTotalValue}</p>
+              </div>
+              <div className="rounded-full bg-amber-100/60 p-3 text-amber-600 dark:bg-amber-400/10 dark:text-amber-300">
+                <CircleDollarSign className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">Giá trị dựa trên giá phụ tùng trong kho.</p>
+          </div>
+
+          <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground/80">Điểm nhận</p>
+                <p className="mt-1 text-lg font-semibold text-foreground">
+                  {selectedDestination?.name || selectedDestination?.code || "Chưa chọn"}
+                </p>
+              </div>
+              <div className="rounded-full bg-blue-100/70 p-3 text-blue-600 dark:bg-blue-400/10 dark:text-blue-300">
+                <Building2 className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">Vui lòng chọn chi nhánh nhận phụ tùng.</p>
+          </div>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-3">
+          <Card className="lg:col-span-2 border-border/60 shadow-lg shadow-black/5">
             <CardHeader>
               <CardTitle>Thông tin phiếu xuất</CardTitle>
-              <CardDescription>Nhập các thông tin cơ bản của phiếu xuất</CardDescription>
+              <CardDescription>Điền thông tin cơ bản trước khi xác nhận.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <CardContent className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="type" className="text-sm font-semibold">Loại *</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(value) => setFormData({ ...formData, type: value })}
-                  >
-                    <SelectTrigger id="type">
-                      <SelectValue placeholder="Chọn loại" />
+                  <Label htmlFor="type" className="text-sm font-semibold">Loại phiếu *</Label>
+                  <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+                    <SelectTrigger id="type" className="h-12 text-base">
+                      <SelectValue placeholder="Chọn loại phiếu" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="REPLACEMENT">Thay thế</SelectItem>
@@ -329,105 +411,51 @@ export default function CreateExportSlipPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                
                 <div className="space-y-2">
-                  <Label htmlFor="exportNoteStatus" className="text-sm font-semibold">Trạng thái *</Label>
+                  <Label htmlFor="exportTo" className="text-sm font-semibold">Chi nhánh nhận *</Label>
                   <Select
-                    value={formData.exportNoteStatus}
-                    onValueChange={(value) => setFormData({ ...formData, exportNoteStatus: value })}
+                    value={formData.exportTo}
+                    onValueChange={(value) => setFormData({ ...formData, exportTo: value })}
+                    disabled={serviceCenters.length === 0}
                   >
-                    <SelectTrigger id="exportNoteStatus">
-                      <SelectValue placeholder="Chọn trạng thái" />
+                    <SelectTrigger id="exportTo" className="h-12 text-left">
+                      <SelectValue placeholder={serviceCenters.length === 0 ? "Đang tải danh sách..." : "Chọn chi nhánh nhận"} />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PENDING">Chờ xử lý</SelectItem>
-                      <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
-                      <SelectItem value="CANCELLED">Đã hủy</SelectItem>
+                    <SelectContent className="max-h-[320px]">
+                      {serviceCenters.length > 0 ? (
+                        serviceCenters.map((center) => (
+                          <SelectItem key={center.id} value={center.id}>
+                            <div className="flex flex-col gap-1 text-left">
+                              <span className="font-medium">{center.name || center.code || "Chi nhánh"}</span>
+                              {center.address && <span className="text-xs text-muted-foreground">{center.address}</span>}
+                            </div>
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                          {loadingServiceCenters ? "Đang tải..." : "Không có chi nhánh nào"}
+                        </div>
+                      )}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">Hệ thống tự ẩn chi nhánh hiện tại để tránh chọn nhầm.</p>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="exportTo" className="text-sm font-semibold">Chi nhánh nhận *</Label>
-                <Select
-                  value={formData.exportTo}
-                  onValueChange={(value) => setFormData({ ...formData, exportTo: value })}
-                  disabled={serviceCenters.length === 0}
-                >
-                  <SelectTrigger id="exportTo">
-                    <SelectValue placeholder={serviceCenters.length === 0 ? "Đang tải..." : "Chọn chi nhánh nhận"}>
-                      {formData.exportTo && (() => {
-                        const selectedCenter = serviceCenters.find(c => c.id === formData.exportTo);
-                        return selectedCenter ? (
-                          <div className="flex flex-col gap-0.5 text-left">
-                            <span className="font-medium">{selectedCenter.name || selectedCenter.code || "Chi nhánh"}</span>
-                            {selectedCenter.address && (
-                              <span className="text-xs text-muted-foreground">{selectedCenter.address}</span>
-                            )}
-                          </div>
-                        ) : null;
-                      })()}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[300px]">
-                    {serviceCenters.length > 0 ? (
-                      serviceCenters.map((center) => (
-                        <SelectItem 
-                          key={center.id} 
-                          value={center.id}
-                        >
-                          <div className="flex flex-col gap-1 py-1">
-                            <span className="font-medium">
-                              {center.name || center.code || "Chi nhánh"}
-                            </span>
-                            {center.address && (
-                              <span className="text-xs text-muted-foreground">
-                                {center.address}
-                              </span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                        {loadingServiceCenters ? "Đang tải..." : "Không có chi nhánh nào"}
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Chọn chi nhánh sẽ nhận phụ tùng
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="totalQuantity" className="text-sm font-semibold">Tổng số lượng *</Label>
-                  <Input
-                    id="totalQuantity"
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={formData.totalQuantity}
-                    readOnly
-                    className="bg-muted"
-                  />
-                  <p className="text-xs text-muted-foreground">Tự động tính từ phụ tùng đã chọn</p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2 rounded-2xl border border-border/70 p-4">
+                  <Label htmlFor="totalQuantity" className="text-sm font-semibold">Tổng số lượng</Label>
+                  <Input id="totalQuantity" type="number" min="0" value={formData.totalQuantity} readOnly className="bg-muted" />
+                  <p className="text-xs text-muted-foreground">
+                    Tính theo tổng phụ tùng đang được chọn ở kho bên dưới.
+                  </p>
                 </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="totalValue" className="text-sm font-semibold">Tổng giá trị *</Label>
-                  <Input
-                    id="totalValue"
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={formData.totalValue}
-                    readOnly
-                    className="bg-muted"
-                  />
-                  <p className="text-xs text-muted-foreground">Tự động tính từ phụ tùng đã chọn</p>
+                <div className="space-y-2 rounded-2xl border border-border/70 p-4">
+                  <Label htmlFor="totalValue" className="text-sm font-semibold">Tổng giá trị (VND)</Label>
+                  <Input id="totalValue" type="text" value={formattedTotalValue} readOnly className="bg-muted font-semibold" />
+                  <p className="text-xs text-muted-foreground">
+                    Tự động quy đổi theo đơn giá từng phụ tùng.
+                  </p>
                 </div>
               </div>
 
@@ -435,166 +463,171 @@ export default function CreateExportSlipPage() {
                 <Label htmlFor="note" className="text-sm font-semibold">Ghi chú</Label>
                 <Textarea
                   id="note"
-                  placeholder="Nhập ghi chú cho phiếu xuất..."
+                  placeholder="Nhập hướng dẫn hoặc lưu ý cho phiếu xuất..."
                   value={formData.note}
                   onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                  rows={3}
+                  rows={4}
                 />
               </div>
             </CardContent>
           </Card>
 
-          {/* Part Items Selection */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Chọn phụ tùng *</CardTitle>
-                  <CardDescription>Chọn các phụ tùng cần xuất</CardDescription>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSelectAllPartItems}
-                  disabled={filteredPartItems.length === 0}
-                >
-                  {filteredPartItems.length > 0 && filteredPartItems.every(item => selectedPartItemIds.includes(item.id))
-                    ? "Bỏ chọn tất cả"
-                    : "Chọn tất cả"}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {/* Search Input */}
-              <div className="mb-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Tìm kiếm phụ tùng theo tên, mã, serial..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-              </div>
+        </div>
 
-              <div className="border rounded-lg max-h-96 overflow-y-auto">
-                {loadingPartItems ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    <span className="ml-2 text-sm text-muted-foreground">Đang tải phụ tùng...</span>
-                  </div>
-                ) : filteredPartItems.length === 0 ? (
-                  <div className="py-8 text-center text-sm text-muted-foreground">
-                    {searchTerm ? "Không tìm thấy phụ tùng nào" : "Không có phụ tùng nào"}
-                  </div>
+        <Card className="border-border/70 shadow-xl shadow-black/5">
+          <CardHeader className="space-y-6">
+            <div>
+              <CardTitle>Kho phụ tùng</CardTitle>
+              <CardDescription>Chọn phụ tùng cần xuất, có thể lọc theo tên, mã hoặc serial.</CardDescription>
+            </div>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Tìm phụ tùng theo tên, mã, serial..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="border-dashed"
+                onClick={handleSelectAllPartItems}
+                disabled={filteredPartItems.length === 0}
+              >
+                {filteredPartItems.length > 0 && filteredPartItems.every((item) => selectedPartItemIds.includes(item.id))
+                  ? "Bỏ chọn tất cả"
+                  : "Chọn tất cả đang lọc"}
+              </Button>
+              <Badge variant="secondary" className="w-fit rounded-full bg-primary/10 text-primary">
+                {selectedPartItemIds.length} đã chọn
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {loadingPartItems ? (
+              <div className="flex items-center justify-center rounded-2xl border border-dashed border-border/70 py-10 text-sm text-muted-foreground">
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Đang tải danh sách phụ tùng...
+              </div>
+            ) : filteredPartItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 py-12 text-center text-sm text-muted-foreground">
+                {searchTerm ? (
+                  <>
+                    <p className="font-medium">Không tìm thấy phụ tùng phù hợp</p>
+                    <p className="text-xs">Thử từ khóa khác hoặc xoá bộ lọc.</p>
+                  </>
                 ) : (
-                  <div className="divide-y">
-                    {filteredPartItems.map((item) => {
-                      const isSelected = selectedPartItemIds.includes(item.id);
-                      const partImage = item.part?.image;
-                      return (
-                        <div
-                          key={item.id}
-                          className="p-3 hover:bg-muted/50 cursor-pointer transition-colors"
-                          onClick={() => handlePartItemToggle(item.id)}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="mt-1">
-                              {isSelected ? (
-                                <CheckSquare className="h-5 w-5 text-primary" />
-                              ) : (
-                                <Square className="h-5 w-5 text-muted-foreground" />
-                              )}
-                            </div>
-                            
-                            {partImage ? (
-                              <img
-                                src={partImage}
-                                alt={item.part?.name || item.part?.code || "Phụ tùng"}
-                                className="h-16 w-16 rounded-lg object-cover border border-border/60 shadow-sm flex-shrink-0"
-                                onError={(e) => {
-                                  e.target.style.display = 'none';
-                                }}
-                              />
-                            ) : (
-                              <div className="h-16 w-16 rounded-lg border border-dashed border-border/60 flex items-center justify-center text-xs text-muted-foreground bg-muted/30 flex-shrink-0">
-                                N/A
-                              </div>
-                            )}
-                            
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-semibold text-primary">{item.part?.code || "—"}</span>
-                                <Badge variant="outline" className="text-xs">
-                                  {item.quantity || 1} bộ
-                                </Badge>
-                                <Badge variant="secondary" className="text-xs">
-                                  {new Intl.NumberFormat("vi-VN", {
-                                    style: "currency",
-                                    currency: "VND",
-                                    maximumFractionDigits: 0,
-                                  }).format(item.price || 0)}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-foreground mt-1">{item.part?.name || "—"}</p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Serial: {item.serialNumber || "—"}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <>
+                    <p className="font-medium">Kho chưa có phụ tùng khả dụng</p>
+                    <p className="text-xs">Vui lòng kiểm tra lại sau.</p>
+                  </>
                 )}
               </div>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2">
+                {filteredPartItems.map((item) => {
+                  const isSelected = selectedPartItemIds.includes(item.id);
+                  const partImage = item.part?.image;
+                  return (
+                    <button
+                      type="button"
+                      key={item.id}
+                      onClick={() => handlePartItemToggle(item.id)}
+                      aria-pressed={isSelected}
+                      className={cn(
+                        "rounded-2xl border px-4 py-3 text-left transition-all",
+                        "hover:border-primary/50 hover:bg-muted/40",
+                        isSelected ? "border-primary bg-primary/5 shadow-lg shadow-primary/20" : "border-border/60 bg-card",
+                      )}
+                    >
+                      <div className="flex gap-3">
+                        <div className="relative">
+                          {partImage ? (
+                            <img
+                              src={partImage}
+                              alt={item.part?.name || item.part?.code || "Phụ tùng"}
+                              className="h-20 w-20 rounded-xl border border-border/60 object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <div className="flex h-20 w-20 items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/30 text-xs text-muted-foreground">
+                              N/A
+                            </div>
+                          )}
+                          <span
+                            className={cn(
+                              "absolute right-1 top-1 rounded-full border bg-card/80 p-1 text-muted-foreground",
+                              isSelected ? "border-primary text-primary" : "border-border/60",
+                            )}
+                          >
+                            {isSelected ? <CheckSquare className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5" />}
+                          </span>
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-semibold text-foreground">
+                              {item.part?.name || "Phụ tùng chưa có tên"}
+                            </p>
+                            <Badge variant="outline" className="text-xs">
+                              {item.quantity || 1} bộ
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground">Mã: {item.part?.code || "—"}</p>
+                          <p className="text-sm font-semibold text-primary">
+                            {currencyFormatter.format(item.price || 0)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">Serial: {item.serialNumber || "—"}</p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
-              {partItems.length > 0 && (
-                <div className="mt-4 p-2 bg-muted/50 rounded-lg">
-                  <p className="text-sm text-muted-foreground">
-                    {searchTerm 
-                      ? `Hiển thị ${filteredPartItems.length} / ${partItems.length} phụ tùng`
-                      : `Tổng cộng: ${partItems.length} phụ tùng`}
-                  </p>
-                </div>
-              )}
+            {partItems.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between rounded-2xl border border-dashed border-border/70 px-4 py-3 text-sm text-muted-foreground">
+                <span>
+                  {searchTerm
+                    ? `Hiển thị ${filteredPartItems.length} / ${partItems.length} phụ tùng`
+                    : `Tổng cộng: ${partItems.length} phụ tùng`}
+                </span>
+                {selectedPartItemIds.length > 0 && (
+                  <span className="font-medium text-primary">Đã chọn {selectedPartItemIds.length} phụ tùng</span>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-              {selectedPartItemIds.length > 0 && (
-                <div className="mt-2 p-2 bg-primary/10 rounded-lg">
-                  <p className="text-sm font-medium text-primary">
-                    Đã chọn {selectedPartItemIds.length} phụ tùng
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-4">
-            <Button 
-              variant="outline" 
-              onClick={() => navigate("/storekeeper/export-slips")}
-              disabled={creating}
-            >
-              Hủy
-            </Button>
-            <Button 
-              className="bg-primary hover:bg-primary/90"
-              onClick={handleSubmit}
-              disabled={creating}
-            >
-              {creating ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Đang tạo...
-                </>
-              ) : (
-                "Tạo phiếu xuất"
-              )}
-            </Button>
-          </div>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <Button
+            variant="ghost"
+            className="min-w-[140px]"
+            onClick={() => navigate("/storekeeper/export-slips")}
+            disabled={creating}
+          >
+            Hủy
+          </Button>
+          <Button
+            className="min-w-[180px] bg-primary hover:bg-primary/90"
+            onClick={handleSubmit}
+            disabled={creating}
+          >
+            {creating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Đang tạo...
+              </>
+            ) : (
+              "Tạo phiếu xuất"
+            )}
+          </Button>
         </div>
       </div>
     </div>
