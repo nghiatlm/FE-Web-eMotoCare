@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getExportNoteById, updateExportNote } from "@/api/exportNotesApi";
+import { getExportNoteById, updateExportNote, updateExportNoteDetail } from "@/api/exportNotesApi";
 import { getServiceCenterInventories } from "@/api/serviceCenterInventoriesApi";
 import { useToast } from "@/hooks/use-toast";
 
@@ -122,6 +122,7 @@ export default function ExportNoteDetail() {
     
     return {
       id: detail.id,
+      partItemId: detail.partItem?.id,
       code,
       name: part?.name || "N/A",
       status,
@@ -158,6 +159,15 @@ export default function ExportNoteDetail() {
       return;
     }
 
+    if (selectedParts.size === 0) {
+      toast({
+        title: "Cảnh báo",
+        description: "Vui lòng chọn ít nhất một phụ tùng để xuất",
+        variant: "default"
+      });
+      return;
+    }
+
     const currentStatus = exportNote.exportNoteStatus || exportNote.status;
     if (currentStatus === "COMPLETED") {
       toast({
@@ -171,38 +181,58 @@ export default function ExportNoteDetail() {
     try {
       setExporting(true);
       
-      const updateData = {
-        code: exportNote.code,
-        exportDate: exportNote.exportDate || new Date().toISOString(),
-        type: exportNote.type,
-        exportTo: exportNote.exportTo || "",
-        totalQuantity: exportNote.totalQuantity || 0,
-        totalValue: exportNote.totalValue || 0,
-        note: exportNote.note || "",
-        exportById: exportNote.exportBy?.id || "93eae610-2ea0-4e9e-89b5-cb20e3f22811",
-        serviceCenterId: exportNote.serviceCenter?.id || "a805546d-b31d-11f0-9e95-c4efbb30f085",
-        exportNoteStatus: "COMPLETED"
-      };
-        console.log(updateData);
-      const response = await updateExportNote(id, updateData);
-      console.log(response);
-      if (response.success || response.statusCode === 200) {
+      // Lấy các detail đã chọn
+      const selectedDetails = displayItems.filter(item => selectedParts.has(item.id));
+      
+      // Call API update cho từng detail đã chọn
+      const updatePromises = selectedDetails.map(async (item) => {
+        if (!item.partItemId) {
+          console.warn(`Detail ${item.id} không có partItemId`);
+          return null;
+        }
+
+        const updateData = {
+          partItemId: item.partItemId,
+          status: "COMPLETED"
+        };
+
+        try {
+          const response = await updateExportNoteDetail(item.id, updateData);
+          return { success: true, detailId: item.id, response };
+        } catch (error) {
+          console.error(`Error updating detail ${item.id}:`, error);
+          return { success: false, detailId: item.id, error };
+        }
+      });
+
+      const results = await Promise.all(updatePromises);
+      const successCount = results.filter(r => r && r.success).length;
+      const failCount = results.length - successCount;
+
+      if (failCount > 0) {
+        toast({
+          title: "Cảnh báo",
+          description: `Đã cập nhật ${successCount} phụ tùng, ${failCount} phụ tùng thất bại`,
+          variant: "default"
+        });
+      } else {
         toast({
           title: "Thành công",
-          description: "Xuất kho thành công!",
+          description: `Đã xuất ${successCount} phụ tùng thành công!`,
         });
-        
-        const noteRes = await getExportNoteById(id);
+      }
 
-        if (noteRes.success && noteRes.data) {
-          setExportNote(noteRes.data);
-        }
+      // Refresh data
+      const noteRes = await getExportNoteById(id);
+      if (noteRes.success && noteRes.data) {
+        setExportNote(noteRes.data);
+      }
 
-        if (window.refreshExportNotes) {
-          window.refreshExportNotes();
-        }
-      } else {
-        throw new Error(response.message || "Cập nhật thất bại");
+      // Clear selection
+      setSelectedParts(new Set());
+
+      if (window.refreshExportNotes) {
+        window.refreshExportNotes();
       }
     } catch (error) {
       console.error("Error exporting warehouse:", error);
