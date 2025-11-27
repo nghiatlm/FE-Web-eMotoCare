@@ -57,20 +57,19 @@ export default function CreateImportNotePage() {
     quantity: 1,
     serialNumber: "",
     price: 0,
-    warrantyPeriod: 0, // months
+    warrantyPeriod: 0, 
     warrantyStartDate: null,
     type: "SUPPLIER",
-    // Thông tin part mới (nếu partId = null)
     newPartName: "",
     newPartImage: "",
   });
   const [hasManufacturerWarranty, setHasManufacturerWarranty] = useState(false);
+  const isTransferType = form.type === "TRANSFER_IN";
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Lấy thông tin staff để có serviceCenterId & staffId
   useEffect(() => {
     const fetchStaffInfo = async () => {
       try {
@@ -98,7 +97,6 @@ export default function CreateImportNotePage() {
     }
   }, [user]);
 
-  // Lấy danh sách phụ tùng
   const fetchParts = useCallback(async () => {
     try {
       setLoadingParts(true);
@@ -123,7 +121,6 @@ export default function CreateImportNotePage() {
     fetchParts();
   }, [fetchParts]);
 
-  // Lấy danh sách PartItem theo partId từ API /v1/part-items
   const fetchPartItemsForPart = useCallback(
     async (partId) => {
       if (!partId || partItemsByPart[partId]) return;
@@ -142,7 +139,6 @@ export default function CreateImportNotePage() {
     [partItemsByPart],
   );
 
-  // Lấy danh sách loại phụ tùng (Part Type)
   useEffect(() => {
     const fetchPartTypesData = async () => {
       try {
@@ -184,7 +180,6 @@ export default function CreateImportNotePage() {
   }, [selectedPart, partItemsByPart]);
 
   const handleSubmit = async () => {
-    // Nếu không chọn part (part mới), cần nhập tên part
     if (!selectedPartId && !form.newPartName?.trim()) {
       toast({
         title: "Thiếu thông tin",
@@ -194,7 +189,6 @@ export default function CreateImportNotePage() {
       return;
     }
 
-    // Nếu chọn part, phải có partTypeId
     if (selectedPartId && !selectedPartTypeId) {
       toast({
         title: "Thiếu thông tin",
@@ -204,7 +198,6 @@ export default function CreateImportNotePage() {
       return;
     }
 
-    // Nếu là part mới, phải có partTypeId
     if (!selectedPartId && !selectedPartTypeId) {
       toast({
         title: "Thiếu thông tin",
@@ -255,7 +248,6 @@ export default function CreateImportNotePage() {
         warantyEndDate = endDate.toISOString();
       }
 
-      // Xác định partId: null nếu là part mới, hoặc selectedPartId nếu chọn part có sẵn
       const partId = selectedPartId || null;
       
       // Xác định name và image: từ selectedPart nếu có, hoặc từ form nếu là part mới
@@ -370,12 +362,12 @@ export default function CreateImportNotePage() {
                     <SelectValue placeholder="Chọn loại phiếu" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="SUPPLIER">SUPPLIER - Nhập hàng</SelectItem>
-                    <SelectItem value="TRANSFER_IN">TRANSFER_IN - Nhận điều chuyển</SelectItem>
+                    <SelectItem value="SUPPLIER">Nhập hàng</SelectItem>
+                    <SelectItem value="TRANSFER_IN">Nhận điều chuyển</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Chọn nguồn nhập: nhập từ nhà cung cấp (SUPPLIER) hoặc nhận điều chuyển (TRANSFER_IN).
+                  Chọn nguồn nhập: nhập từ nhà cung cấp hoặc nhận điều chuyển.
                 </p>
               </div>
               <div className="space-y-2">
@@ -391,7 +383,6 @@ export default function CreateImportNotePage() {
             </CardContent>
           </Card>
 
-          {/* Phụ tùng & bảo hành */}
           <Card className="lg:col-span-2 border-border/70 shadow-sm">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -403,7 +394,6 @@ export default function CreateImportNotePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Part type + part */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="partType">Loại phụ tùng *</Label>
@@ -545,7 +535,6 @@ export default function CreateImportNotePage() {
                 </div>
               </div>
 
-              {/* Form nhập thông tin part mới (khi không chọn part có sẵn) */}
               {!selectedPartId && selectedPartTypeId && (
                 <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4 space-y-4">
                   <div className="flex items-center gap-2">
@@ -575,7 +564,6 @@ export default function CreateImportNotePage() {
                 </div>
               )}
 
-              {/* Xác định có bảo hành hãng hay không */}
               <div className="space-y-2">
                 <div className="flex items-start gap-2">
                   <Checkbox
@@ -598,7 +586,6 @@ export default function CreateImportNotePage() {
                 </div>
               </div>
 
-              {/* Nhập số serial (chỉ khi có bảo hành hãng) */}
               {hasManufacturerWarranty && (
                 <div className="space-y-2">
                   <Label htmlFor="serialNumber">Số serial *</Label>
@@ -611,7 +598,6 @@ export default function CreateImportNotePage() {
                 </div>
               )}
 
-              {/* Selected part preview */}
               {selectedPart && (
                 <div className="rounded-lg border border-dashed border-border/70 bg-muted/40 p-4 flex gap-4 items-start">
                   {selectedPart.image ? (
@@ -701,7 +687,7 @@ export default function CreateImportNotePage() {
                 </div>
               </div>
 
-              {hasManufacturerWarranty && (
+              {isTransferType && (
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
@@ -775,7 +761,6 @@ export default function CreateImportNotePage() {
           </Card>
         </div>
 
-        {/* Actions */}
         <div className="flex justify-end gap-3 pt-2">
           <Button
             type="button"

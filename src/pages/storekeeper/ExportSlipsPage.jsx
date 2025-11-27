@@ -34,10 +34,9 @@ export default function ExportSlipsPage() {
     note: "",
     exportById: "",
     serviceCenterId: "",
-    exportNoteStatus: "PENDING"
+    exportNoteStatus: ""
   });
 
-  // Helper functions để format tên hiển thị
   const getTypeLabel = (type) => {
     const typeMap = {
       REPLACEMENT: "Thay thế",
@@ -66,7 +65,6 @@ export default function ExportSlipsPage() {
 
   useEffect(() => {
     window.openViewExportSlip = async (slip) => {
-      // Navigate to detail page instead of opening dialog
       if (slip?.rawData?.id) {
         navigate(`/storekeeper/export-slips/${slip.rawData.id}`);
       } else {
@@ -101,7 +99,6 @@ export default function ExportSlipsPage() {
           if (response.success && response.data) {
             const data = response.data;
             setExportNoteDetail(data);
-            // Populate form
             setEditFormData({
               code: data.code || "",
               exportDate: data.exportDate ? new Date(data.exportDate).toISOString().slice(0, 16) : "",

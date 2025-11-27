@@ -278,7 +278,8 @@ export default function CreateExportSlipPage() {
         serviceCenterId: serviceCenterId,
         totalValue: formData.totalValue,
         note: formData.note,
-        partItemId: formData.partItemId
+        partItemId: formData.partItemId,
+        exportNoteStatus: "PROCESSING"
       };
       console.log(createData);
       const response = await createExportNote(createData);
