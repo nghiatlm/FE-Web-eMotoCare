@@ -23,9 +23,7 @@ export default function ImportSlipsTable({ search = "" }) {
       const response = await getImportNotes(page, pageSize, serviceCenterId);
       
       if (response.success && response.data) {
-        // Transform API data to match UI format
         const transformedRows = response.data.rowDatas.map(item => {
-          // Format date
           const importDate = item.importDate 
             ? new Date(item.importDate).toLocaleString('vi-VN', {
                 year: 'numeric',
@@ -36,20 +34,16 @@ export default function ImportSlipsTable({ search = "" }) {
               })
             : "";
 
-          // Get importBy name
           const importByName = item.importBy 
             ? `${item.importBy.firstName || ""} ${item.importBy.lastName || ""}`.trim() || item.importBy.staffCode || "N/A"
             : "N/A";
 
-          // Get service center name
           const serviceCenterName = item.serviceCenter
             ? item.serviceCenter.name || item.serviceCenter.code || "N/A"
             : "N/A";
 
-          // Get type label
           const typeLabel = item.type === "SUPPLIER" ? "Nhà cung cấp" : item.type || "N/A";
 
-          // Count part items (if partItemId exists in rawData, otherwise 0)
           const totalItems = item.partItemId?.length || item.partItems?.length || 0;
 
           return {
@@ -59,7 +53,7 @@ export default function ImportSlipsTable({ search = "" }) {
             supplier: item.supplier || "N/A",
             type: typeLabel,
             totalItems: totalItems,
-            totalValue: item.totalAmout || item.totalAmount || 0, // Note: API has typo "totalAmout"
+            totalValue: item.totalAmout || item.totalAmount || 0, 
             importByName: importByName,
             serviceCenterName: serviceCenterName,
             rawData: item
@@ -115,7 +109,6 @@ export default function ImportSlipsTable({ search = "" }) {
     return result;
   }, [rows, search]);
 
-  // Loading state
   if (loading) {
     return (
       <div className="bg-card rounded-lg border border-border overflow-hidden">

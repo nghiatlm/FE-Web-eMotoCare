@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getExportNoteById, updateExportNote } from "@/api/exportNotesApi";
-import { getPartItems } from "@/api/partitemsApi";
+import { getServiceCenterInventories } from "@/api/serviceCenterInventoriesApi";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ExportNoteDetail() {
@@ -17,7 +17,7 @@ export default function ExportNoteDetail() {
   const [exportNote, setExportNote] = useState(null);
   const [selectedParts, setSelectedParts] = useState(new Set());
   const [exporting, setExporting] = useState(false);
-  const [serialsByPartId, setSerialsByPartId] = useState({});
+  const [serialsByPartCode, setSerialsByPartCode] = useState({});
   const [loadingSerials, setLoadingSerials] = useState(false);
 
   useEffect(() => {
@@ -50,42 +50,56 @@ export default function ExportNoteDetail() {
     const fetchSerialNumbers = async () => {
       if (!exportNote?.exportNoteDetails?.length) return;
 
-      const serviceCenterId = exportNote.serviceCenter?.id;
-      const partIds = Array.from(
+      const partCodes = Array.from(
         new Set(
           exportNote.exportNoteDetails
-            .map((detail) => detail.proposedReplacePartId || detail.proposedReplacePart?.id)
+            .map((detail) => {
+              const part = detail.proposedReplacePart || detail.partItem?.part;
+              return part?.code;
+            })
             .filter(Boolean)
         )
       );
 
-      if (partIds.length === 0) return;
+      if (partCodes.length === 0) return;
 
       try {
         setLoadingSerials(true);
         const serialEntries = await Promise.all(
-          partIds.map(async (partId) => {
+          partCodes.map(async (partCode) => {
             try {
-              const response = await getPartItems({
-                partId,
-                serviceCenterId,
-                status: "IN_STOCK",
-                pageSize: 50
+              const response = await getServiceCenterInventories({
+                page: 1,
+                pageSize: 100,
+                search: partCode,
               });
 
-              if (response.success && response.data?.rowDatas) {
-                const serials = response.data.rowDatas
-                  .map((item) => item.serialNumber)
-                  .filter(Boolean);
-                return [partId, serials];
-              }
+              const inventories = response?.data?.rowDatas || [];
+              const targetCode = (partCode || "").toLowerCase();
+
+              const allSerials = [];
+              inventories.forEach((inventory) => {
+                const matchedItems = (inventory.partItems || []).filter(
+                  (item) => (item?.part?.code || "").toLowerCase() === targetCode
+                );
+                matchedItems.forEach((item) => {
+                  if (item.serialNumber) {
+                    allSerials.push({
+                      serialNumber: item.serialNumber,
+                      quantity: item.quantity || 0,
+                    });
+                  }
+                });
+              });
+
+              return [partCode, allSerials];
             } catch (error) {
-              console.error(`Error fetching serials for part ${partId}:`, error);
+              console.error(`Error fetching serials for part ${partCode}:`, error);
             }
-            return [partId, []];
+            return [partCode, []];
           })
         );
-        setSerialsByPartId(Object.fromEntries(serialEntries));
+        setSerialsByPartCode(Object.fromEntries(serialEntries));
       } finally {
         setLoadingSerials(false);
       }
@@ -101,12 +115,10 @@ export default function ExportNoteDetail() {
     const code = part?.code || "UNKNOWN";
     const exportQty = detail.quantity ?? 0;
     const status = part?.status === "ACTIVE" ? "Vẫn còn" : "Hết hàng";
-    const partId = detail.proposedReplacePartId || part?.id;
-    const fetchedSerials = partId ? serialsByPartId[partId] || [] : [];
+    const fetchedSerials = serialsByPartCode[code] || [];
     const serialNumbers = detail.partItem?.serialNumber
       ? [detail.partItem.serialNumber]
-      : fetchedSerials;
-    const selectedSerial = serialNumbers.length > 0 ? serialNumbers[0] : null;
+      : fetchedSerials.map((s) => s.serialNumber);
     
     return {
       id: detail.id,
@@ -114,7 +126,8 @@ export default function ExportNoteDetail() {
       name: part?.name || "N/A",
       status,
       quantity: exportQty,
-      serialNumber: selectedSerial
+      serialNumbers: serialNumbers,
+      allSerials: fetchedSerials
     };
   });
 
@@ -486,9 +499,9 @@ export default function ExportNoteDetail() {
                           <td className="py-4 px-6">
                             {loadingSerials ? (
                               <span className="text-xs text-muted-foreground">Đang tải serial...</span>
-                            ) : item.serialNumber ? (
+                            ) : item.serialNumbers && item.serialNumbers.length > 0 ? (
                               <Badge variant="secondary" className="bg-muted text-foreground border-border">
-                                {item.serialNumber}
+                                {item.serialNumbers[0]}
                               </Badge>
                             ) : (
                               <span className="text-sm text-muted-foreground">Chưa có serial khả dụng</span>

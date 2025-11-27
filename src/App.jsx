@@ -10,6 +10,8 @@ import { AdminSidebar } from "@/components/AdminSidebar";
 import Login from "./pages/login/Login";
 import ForgotPassword from "./pages/login/ForgotPassword";
 import VerifyOTP from "./pages/login/VerifyOTP";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentFailed from "./pages/PaymentFailed";
 
 // admin
 import WarrantyClaims from "./pages/WarrantyClaims";
@@ -82,6 +84,10 @@ const App = () => (
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/verify-otp" element={<VerifyOTP />} />
+        
+        {/* Public routes */}
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/payment-failed" element={<PaymentFailed />} />
 
         {/* Admin routes */}
         <Route
