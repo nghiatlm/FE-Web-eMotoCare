@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getExportNoteById, updateExportNote, updateExportNoteDetail } from "@/api/exportNotesApi";
 import { getServiceCenterInventories } from "@/api/serviceCenterInventoriesApi";
+import { getPartItems } from "@/api/partitemsApi";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ExportNoteDetail() {
@@ -118,11 +119,21 @@ export default function ExportNoteDetail() {
     const fetchedSerials = serialsByPartCode[code] || [];
     const serialNumbers = detail.partItem?.serialNumber
       ? [detail.partItem.serialNumber]
+      : detail.serialNumber
+      ? [detail.serialNumber]
       : fetchedSerials.map((s) => s.serialNumber);
-    
+
     return {
       id: detail.id,
-      partItemId: detail.partItem?.id,
+      partItemId: detail.partItem?.id || detail.partItemId || null,
+      proposedReplacePartId: detail.proposedReplacePartId || detail.proposedReplacePart?.id || null,
+      serviceCenterId:
+        detail.serviceCenterId ||
+        detail.partItem?.serviceCenterId ||
+        detail.proposedReplacePart?.serviceCenterId ||
+        exportNote.serviceCenterId ||
+        exportNote.serviceCenter?.id ||
+        null,
       code,
       name: part?.name || "N/A",
       status,
@@ -183,14 +194,51 @@ export default function ExportNoteDetail() {
       
       // Lấy các detail đã chọn
       const selectedDetails = displayItems.filter(item => selectedParts.has(item.id));
-      
-      // Call API update cho từng detail đã chọn
-      const updatePromises = selectedDetails.map(async (item) => {
-        if (!item.partItemId) {
-          console.warn(`Detail ${item.id} không có partItemId`);
-          return null;
+
+      const missingPartItems = [];
+
+      for (const item of selectedDetails) {
+        if (item.partItemId) continue;
+
+        if (!item.proposedReplacePartId || !item.serviceCenterId) {
+          missingPartItems.push(item);
+          continue;
         }
 
+        try {
+          const response = await getPartItems({
+            partId: item.proposedReplacePartId,
+            serviceCenterId: item.serviceCenterId,
+            status: "IN_STOCK",
+            page: 1,
+            pageSize: 1,
+          });
+
+          const rows = response?.data?.rowDatas || response?.data || response?.rowDatas || response || [];
+          const firstItem = Array.isArray(rows) ? rows[0] : null;
+          if (firstItem?.id) {
+            item.partItemId = firstItem.id;
+          } else {
+            missingPartItems.push(item);
+          }
+        } catch (error) {
+          console.error("Error fetching part item for export detail:", item.id, error);
+          missingPartItems.push(item);
+        }
+      }
+      
+      if (missingPartItems.length > 0) {
+        toast({
+          title: "Thiếu dữ liệu",
+          description: "Một số phụ tùng chưa có part item khả dụng. Vui lòng kiểm tra lại chi tiết phiếu hoặc tồn kho.",
+          variant: "destructive",
+        });
+        setExporting(false);
+        return;
+      }
+
+      // Call API update cho từng detail đã chọn
+      const updatePromises = selectedDetails.map(async (item) => {
         const updateData = {
           partItemId: item.partItemId,
           status: "COMPLETED"

@@ -10,8 +10,11 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import ImportSlipsTable from "@/components/ImportSlipsTable";
 import { getImportNoteById, updateImportNote, createImportNote } from "@/api/importNotesApi";
-import { getPartItems, getPartItemsByServiceCenter } from "@/api/partitemsApi";
+import { getPartItemsByServiceCenter } from "@/api/partitemsApi";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/contexts/AuthContext";
+import { getStaffByAccountId } from "@/api/staffsApi";
+import { getServiceCenterById } from "@/api/serviceCentersApi";
 
 export default function ImportSlipsPage() {
   const navigate = useNavigate();
@@ -23,6 +26,11 @@ export default function ImportSlipsPage() {
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [branchInfo, setBranchInfo] = useState(null);
+  const [branchLoading, setBranchLoading] = useState(false);
+  const [serviceCenterId, setServiceCenterId] = useState(null);
+  const [staffId, setStaffId] = useState("");
 
   // Edit form state
   const [editFormData, setEditFormData] = useState({
@@ -38,13 +46,13 @@ export default function ImportSlipsPage() {
 
   // Create form state
   const [createFormData, setCreateFormData] = useState({
-    importFrom: "Bảo Trân",
-    supplier: "Bảo Trân",
+    importFrom: "",
+    supplier: "",
     type: "SUPPLIER",
     totalQuantity: 0,
     totalAmout: 0,
-    importById: "a7797a1f-c9d9-4b6b-a06f-d26bdc54e917",
-    serviceCenterId: "a805546d-b31d-11f0-9e95-c4efbb30f085",
+    importById: "",
+    serviceCenterId: "",
     partItemId: [],
     note: ""
   });
@@ -54,10 +62,111 @@ export default function ImportSlipsPage() {
   const [loadingPartItems, setLoadingPartItems] = useState(false);
   const [selectedPartItemIds, setSelectedPartItemIds] = useState([]);
   const [partItemsTotal, setPartItemsTotal] = useState(0);
-  
-  // Hardcoded IDs (user sẽ set cứng)
-  const [importById] = useState("a7797a1f-c9d9-4b6b-a06f-d26bdc54e917"); // staffId
-  const [serviceCenterId] = useState("a805546d-b31d-11f0-9e95-c4efbb30f085"); // serviceCenterId
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchBranchInfo = async () => {
+      if (!user?.accountResponse?.id) {
+        if (isMounted) {
+          setBranchInfo(null);
+          setServiceCenterId(null);
+          setStaffId("");
+        }
+        return;
+      }
+
+      try {
+        setBranchLoading(true);
+        const response = await getStaffByAccountId(user.accountResponse.id, { pageSize: 1 });
+        const payload =
+          response?.data?.rowDatas ||
+          response?.data?.data ||
+          response?.data ||
+          response?.rowDatas ||
+          response;
+        const staff = Array.isArray(payload) ? payload[0] : payload;
+
+        if (!staff) {
+          if (isMounted) {
+            setBranchInfo(null);
+            setServiceCenterId(null);
+            setStaffId("");
+          }
+          return;
+        }
+
+        const staffIdentifier = staff.id || staff.staffId || staff.accountId || "";
+        if (isMounted) {
+          setStaffId(staffIdentifier);
+        }
+
+        let serviceCenter = staff.serviceCenter || null;
+        const resolvedServiceCenterId = staff.serviceCenterId || serviceCenter?.id || null;
+
+        if (!serviceCenter && resolvedServiceCenterId) {
+          try {
+            const centerRes = await getServiceCenterById(resolvedServiceCenterId);
+            serviceCenter = centerRes?.data || centerRes;
+          } catch (error) {
+            console.error("Error fetching service center info:", error);
+          }
+        }
+
+        if (isMounted) {
+          setServiceCenterId(serviceCenter?.id || resolvedServiceCenterId || null);
+          const managerName =
+            serviceCenter?.managerName ||
+            [staff.firstName, staff.lastName].filter(Boolean).join(" ").trim() ||
+            staff.managerName ||
+            staff.fullName ||
+            "—";
+
+          setBranchInfo({
+            id: serviceCenter?.code || serviceCenter?.id || resolvedServiceCenterId || "—",
+            name: serviceCenter?.name || serviceCenter?.code || staff.serviceCenterName || "Chi nhánh của tôi",
+            address: serviceCenter?.address || staff.serviceCenterAddress || "Chưa có địa chỉ",
+            manager: managerName,
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching branch info:", error);
+        if (isMounted) {
+          setBranchInfo(null);
+          setServiceCenterId(null);
+          setStaffId("");
+        }
+      } finally {
+        if (isMounted) {
+          setBranchLoading(false);
+        }
+      }
+    };
+
+    fetchBranchInfo();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (staffId) {
+      setCreateFormData((prev) => ({
+        ...prev,
+        importById: staffId,
+      }));
+    }
+  }, [staffId]);
+
+  useEffect(() => {
+    if (serviceCenterId) {
+      setCreateFormData((prev) => ({
+        ...prev,
+        serviceCenterId,
+      }));
+    }
+  }, [serviceCenterId]);
 
   // Fetch part items
   const fetchPartItems = useCallback(async () => {
@@ -210,26 +319,41 @@ export default function ImportSlipsPage() {
           
           {/* Chi nhánh hiện tại */}
           <div className="p-4 bg-card rounded-lg border border-border">
-            <div className="flex items-center justify-between">
-              <div className="flex items-start gap-3">
-                <Building2 className="h-5 w-5 text-primary mt-1" />
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-foreground">{currentBranch.name}</span>
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
-                      Chi nhánh của tôi
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <MapPin className="h-3 w-3" />
-                    <span>{currentBranch.address}</span>
-                  </div>
-                  <div className="text-sm text-muted-foreground mt-1">
-                    Quản lý: <span className="font-medium text-foreground">{currentBranch.manager}</span>
+            {branchLoading ? (
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+                <div className="space-y-2 w-full">
+                  <div className="h-4 bg-muted rounded animate-pulse w-1/3" />
+                  <div className="h-3 bg-muted rounded animate-pulse w-1/2" />
+                  <div className="h-3 bg-muted rounded animate-pulse w-1/4" />
+                </div>
+              </div>
+            ) : branchInfo ? (
+              <div className="flex items-center justify-between gap-6 flex-wrap">
+                <div className="flex items-start gap-3">
+                  <Building2 className="h-5 w-5 text-primary mt-1" />
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold text-foreground">{branchInfo.name}</span>
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                        Chi nhánh của tôi
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <MapPin className="h-3 w-3" />
+                      <span>{branchInfo.address}</span>
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      Quản lý: <span className="font-medium text-foreground">{branchInfo.manager}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                Không tìm thấy thông tin chi nhánh. Vui lòng kiểm tra lại tài khoản của bạn.
+              </div>
+            )}
           </div>
         </div>
 
@@ -484,8 +608,8 @@ export default function ImportSlipsPage() {
             type: "SUPPLIER",
             totalQuantity: 0,
             totalAmout: 0,
-            importById,
-            serviceCenterId,
+          importById: staffId || "",
+          serviceCenterId: serviceCenterId || "",
             partItemId: [],
             note: ""
           });
@@ -710,8 +834,8 @@ export default function ImportSlipsPage() {
                     totalQuantity: calculatedTotalQuantity,
                     totalAmout: calculatedTotalAmount,
                     partItemId: selectedPartItemIds,
-                    importById: createFormData.importById,
-                    serviceCenterId: createFormData.serviceCenterId,
+                    importById: createFormData.importById || staffId || "",
+                    serviceCenterId: createFormData.serviceCenterId || serviceCenterId || "",
                   };
                   if (createFormData.note?.trim()) {
                     createData.note = createFormData.note.trim();
@@ -732,8 +856,8 @@ export default function ImportSlipsPage() {
                       type: "SUPPLIER",
                       totalQuantity: 0,
                       totalAmout: 0,
-                      importById,
-                      serviceCenterId,
+                      importById: staffId || "",
+                      serviceCenterId: serviceCenterId || "",
                       partItemId: [],
                       note: ""
                     });

@@ -11,6 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import ExportSlipsTable from "@/components/ExportSlipsTable";
 import { getExportNoteById, updateExportNote } from "@/api/exportNotesApi";
+import { useAuth } from "@/contexts/AuthContext";
+import { getStaffByAccountId } from "@/api/staffsApi";
+import { getServiceCenterById } from "@/api/serviceCentersApi";
 
 export default function ExportSlipsPage() {
   const navigate = useNavigate();
@@ -23,6 +26,9 @@ export default function ExportSlipsPage() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [branchInfo, setBranchInfo] = useState(null);
+  const [branchLoading, setBranchLoading] = useState(false);
   
   const [editFormData, setEditFormData] = useState({
     code: "",
@@ -56,12 +62,81 @@ export default function ExportSlipsPage() {
     return statusMap[status] || status;
   };
 
-  const currentBranch = {
-    id: "BR-001",
-    name: "GreenWheel - Chi nhánh Hồ Chí Minh",
-    address: "123 Đường Lê Lợi, Quận 1, TP.HCM",
-    manager: "Dũng"
-  };
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchBranchInfo = async () => {
+      if (!user?.accountResponse?.id) {
+        if (isMounted) {
+          setBranchInfo(null);
+        }
+        return;
+      }
+
+      try {
+        setBranchLoading(true);
+        const response = await getStaffByAccountId(user.accountResponse.id, { pageSize: 1 });
+        const payload =
+          response?.data?.rowDatas ||
+          response?.data?.data ||
+          response?.data ||
+          response?.rowDatas ||
+          response;
+        const staff = Array.isArray(payload) ? payload[0] : payload;
+
+        if (!staff) {
+          if (isMounted) {
+            setBranchInfo(null);
+          }
+          return;
+        }
+
+        let serviceCenter = staff.serviceCenter;
+
+        if (!serviceCenter && staff.serviceCenterId) {
+          try {
+            const centerRes = await getServiceCenterById(staff.serviceCenterId);
+            serviceCenter = centerRes?.data || centerRes;
+          } catch (error) {
+            console.error("Error fetching service center:", error);
+          }
+        }
+
+        const managerName =
+          [staff.firstName, staff.lastName].filter(Boolean).join(" ") ||
+          staff.fullName ||
+          staff.name ||
+          staff.managerName ||
+          user?.fullName ||
+          "—";
+
+        if (isMounted) {
+          setBranchInfo({
+            id: serviceCenter?.code || serviceCenter?.id || staff.serviceCenterId || "—",
+            name: serviceCenter?.name || staff.serviceCenterName || "Chưa xác định",
+            address: serviceCenter?.address || staff.serviceCenterAddress || "Chưa có địa chỉ",
+            manager: managerName,
+            phone: serviceCenter?.phone || serviceCenter?.contactNumber || staff.serviceCenterPhone || null,
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching branch info:", error);
+        if (isMounted) {
+          setBranchInfo(null);
+        }
+      } finally {
+        if (isMounted) {
+          setBranchLoading(false);
+        }
+      }
+    };
+
+    fetchBranchInfo();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   useEffect(() => {
     window.openViewExportSlip = async (slip) => {
@@ -153,26 +228,41 @@ export default function ExportSlipsPage() {
           <p className="text-muted-foreground mb-4">Quản lý các phiếu xuất hàng cho appointments</p>
           
           <div className="p-4 bg-card rounded-lg border border-border">
-            <div className="flex items-center justify-between">
-              <div className="flex items-start gap-3">
-                <Building2 className="h-5 w-5 text-primary mt-1" />
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-foreground">{currentBranch.name}</span>
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
-                      Chi nhánh của tôi
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <MapPin className="h-3 w-3" />
-                    <span>{currentBranch.address}</span>
-                  </div>
-                  <div className="text-sm text-muted-foreground mt-1">
-                    Quản lý: <span className="font-medium text-foreground">{currentBranch.manager}</span>
+            {branchLoading ? (
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+                <div className="space-y-2 w-full">
+                  <div className="h-4 bg-muted rounded animate-pulse w-1/3" />
+                  <div className="h-3 bg-muted rounded animate-pulse w-1/2" />
+                  <div className="h-3 bg-muted rounded animate-pulse w-1/4" />
+                </div>
+              </div>
+            ) : branchInfo ? (
+              <div className="flex items-center justify-between gap-6 flex-wrap">
+                <div className="flex items-start gap-3">
+                  <Building2 className="h-5 w-5 text-primary mt-1" />
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold text-foreground">{branchInfo.name}</span>
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                        Chi nhánh của tôi
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <MapPin className="h-3 w-3" />
+                      <span>{branchInfo.address}</span>
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      Quản lý: <span className="font-medium text-foreground">{branchInfo.manager}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                Không tìm thấy thông tin chi nhánh. Vui lòng đảm bảo tài khoản có gán trung tâm dịch vụ.
+              </div>
+            )}
           </div>
         </div>
 

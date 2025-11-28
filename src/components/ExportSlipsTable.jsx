@@ -239,7 +239,7 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
                         <Eye className="h-3.5 w-3.5" />
                         Chi tiết
                       </Button>
-                      <Button
+                      {/* <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-primary/10 dark:hover:bg-primary/20 transition-colors"
@@ -256,7 +256,7 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
                       >
                         <Printer className="h-3.5 w-3.5" />
                         In phiếu
-                      </Button>
+                      </Button> */}
                     </div>
                   </td>
                 </tr>
