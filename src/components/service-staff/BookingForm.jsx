@@ -1,7 +1,7 @@
 // src/components/service-staff/BookingForm.jsx
 import { useEffect, useState, useRef } from "react";
-import { Form, InputNumber, DatePicker, Button, Select, Input, Card, Divider, Row, Col, Space } from "antd";
-import { User, Car, Calendar, Clock, FileText, Settings, Wrench } from "lucide-react";
+import { Form, InputNumber, DatePicker, Button, Select, Input, Card, Divider, Row, Col, Space, Descriptions, Tag, Spin } from "antd";
+import { User, Car, Calendar, Clock, FileText, Settings, Wrench, Search, Phone, Mail, MapPin, Hash } from "lucide-react";
 import dayjs from "dayjs";
 
 import { getCustomersService } from "../../services/customerService";
@@ -10,6 +10,7 @@ import { getVehiclesByCustomerService } from "../../services/vehicleService";
 import { getVehicleStagesService } from "../../services/vehicleStageService";
 import { fetchServiceStaff } from "../../services/staffsService";
 import { getCampaignsService } from "../../services/campaignService";
+import { getVehicleInfoFromChassisService } from "../../services/appointmentService";
 
 const { Option } = Select;
 
@@ -51,6 +52,11 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
   // ✅ ServiceCenterId của nhân viên hiện tại
   const [currentServiceCenterId, setCurrentServiceCenterId] = useState(null);
 
+  // ✅ State để track xem đã load thông tin từ số khung chưa
+  const [isChassisNumberLoaded, setIsChassisNumberLoaded] = useState(false);
+  const [loadingChassis, setLoadingChassis] = useState(false);
+  const [vehicleInfo, setVehicleInfo] = useState(null);
+
   // ====== RESET FORM KHI resetKey THAY ĐỔI ======
   useEffect(() => {
     if (resetKey !== undefined) {
@@ -59,6 +65,10 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
       setAvailableSlots([]);
       setVehicleStages([]);
       setCustomerSearchText("");
+      // ✅ Reset các state liên quan đến số khung
+      setVehicleInfo(null);
+      setIsChassisNumberLoaded(false);
+      setLoadingChassis(false);
     }
   }, [resetKey, form]);
 
@@ -73,6 +83,66 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
 
   // ✅ Debounce timer ref
   const searchTimeoutRef = useRef(null);
+
+  // ✅ Hàm gọi API để lấy thông tin từ số khung
+  const handleChassisNumberLookup = async (chassisNumber) => {
+    if (!chassisNumber || chassisNumber.trim() === "") {
+      return;
+    }
+
+    try {
+      setLoadingChassis(true);
+      const response = await getVehicleInfoFromChassisService(chassisNumber.trim());
+      
+      console.log("📦 API Response:", response);
+      
+      // ✅ Response structure có thể là:
+      // 1. { statusCode, success, message, data: { customer, vehicle, vehicleStage } }
+      // 2. { customer, vehicle, vehicleStage } (trực tiếp)
+      let customer, vehicle, vehicleStage;
+      
+      if (response && response.success && response.data) {
+        // Case 1: Có wrapper { success, data }
+        ({ customer, vehicle, vehicleStage } = response.data);
+      } else if (response && (response.customer || response.vehicle || response.vehicleStage)) {
+        // Case 2: Trực tiếp { customer, vehicle, vehicleStage }
+        ({ customer, vehicle, vehicleStage } = response);
+      } else {
+        throw new Error("Không tìm thấy thông tin từ số khung. Response structure không đúng.");
+      }
+      
+      console.log("✅ Customer:", customer);
+      console.log("✅ Vehicle:", vehicle);
+      console.log("✅ VehicleStage:", vehicleStage);
+      
+        // ✅ Lưu thông tin để hiển thị
+        setVehicleInfo({ customer, vehicle, vehicleStage });
+        
+        // ✅ Set giá trị vào form (giữ lại chassisNumber để submit)
+        form.setFieldsValue({ 
+          chassisNumber: chassisNumber.trim(),
+          ...(customer?.id && { customerId: customer.id }),
+          ...(vehicle?.id && { vehicleId: vehicle.id }),
+          ...(vehicleStage?.id && { vehicleStageId: vehicleStage.id }),
+        });
+        
+        // ✅ Load vehicle stages nếu có vehicleId
+        if (vehicle?.id) {
+          loadVehicleStages(vehicle.id);
+        }
+        
+        // ✅ Enable các form items khác
+        setIsChassisNumberLoaded(true);
+        console.log("✅ isChassisNumberLoaded set to true");
+    } catch (error) {
+      console.error("❌ Lỗi lấy thông tin từ số khung:", error);
+      setVehicleInfo(null);
+      setIsChassisNumberLoaded(false);
+      // ✅ Có thể thêm toast notification ở đây
+    } finally {
+      setLoadingChassis(false);
+    }
+  };
 
   // ====== LOAD CUSTOMERS VỚI SEARCH ======
   const loadCustomers = async (searchText = "") => {
@@ -253,7 +323,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
   const handleDateChange = (date) => {
     const centerId = form.getFieldValue("serviceCenterId") || currentServiceCenterId;
     if (centerId) {
-      buildSlots(centerId, date);
+    buildSlots(centerId, date);
     }
   };
 
@@ -368,21 +438,31 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
       campaignId = values.campaignId;
     }
 
+    // ✅ Lấy customerId và vehicleId từ form (đã được set khi load thông tin từ số khung)
+    const customerId = values.customerId || form.getFieldValue("customerId");
+    const vehicleId = values.vehicleId || form.getFieldValue("vehicleId");
+    
     // ✅ Chỉ gửi chassisNumber, BE sẽ tự động map customerId và vehicleId
     if (!values.chassisNumber || values.chassisNumber.trim() === "") {
       throw new Error("Vui lòng nhập số khung!");
     }
 
+    // ✅ Chỉ gửi vehicleStageId khi type là MAINTENANCE_TYPE
+    const vehicleStageId = appointmentType === "MAINTENANCE_TYPE" 
+      ? (values.vehicleStageId || form.getFieldValue("vehicleStageId") || null)
+      : null;
+
     const payload = {
       serviceCenterId: serviceCenterId,
-      chassisNumber: values.chassisNumber.trim(), // ✅ Gửi số khung, BE tự map
-      vehicleStageId: values.vehicleStageId || null,
+      customerId: customerId || null, // ✅ Gửi customerId từ API response
+      vehicleId: vehicleId || null, // ✅ Gửi vehicleId từ API response
+      vehicleStageId: vehicleStageId, // ✅ Chỉ gửi khi type là MAINTENANCE_TYPE
       slotTime: values.slotTime,
       campaignId: campaignId,
       appointmentDate, // ✅ dùng string local
       estimatedCost: values.estimatedCost || 0,
       actualCost: 0,
-      // ✅ Không set status, để backend tự set mặc định là PENDING
+      status: "PENDING", // ✅ Set status mặc định
       type: appointmentType,
       note: values.note || "",
     };
@@ -402,11 +482,11 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
   };
 
   return (
-    <div style={{ padding: "24px", maxWidth: "900px", margin: "0 auto" }}>
-      <Form
-        layout='vertical'
-        form={form}
-        onFinish={handleFinish}
+    <div style={{ padding: "24px", width: "100%", margin: "0 auto" }}>
+    <Form
+      layout='vertical'
+      form={form}
+      onFinish={handleFinish}
         initialValues={initialValues}
         size="large">
         
@@ -423,31 +503,213 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
           bodyStyle={{ padding: "24px" }}>
           <Row gutter={[16, 0]}>
             <Col xs={24}>
-              <Form.Item
-                label={
-                  <Space>
-                    <Car size={16} style={{ color: "#595959" }} />
-                    <span>Số khung</span>
+              {/* ✅ Ẩn input số khung sau khi đã load thông tin */}
+              {!isChassisNumberLoaded && (
+      <Form.Item
+                  label={
+                    <Space>
+                      <Car size={16} style={{ color: "#595959" }} />
+                      <span>Số khung</span>
+                    </Space>
+                  }
+                  name='chassisNumber'
+                  rules={[{ required: !isChassisNumberLoaded, message: "Nhập số khung!" }]}>
+                  <Row gutter={[8, 0]}>
+                    <Col flex="auto">
+                      <Input
+                        placeholder='Nhập số khung'
+                        allowClear
+                        size="large"
+                        disabled={loadingChassis}
+                        onPressEnter={(e) => {
+                          const chassisNumber = e.target.value;
+                          handleChassisNumberLookup(chassisNumber);
+                        }}
+                      />
+                    </Col>
+                    <Col>
+                      <Button
+                        type="primary"
+                        icon={<Search size={16} />}
+                        size="large"
+                        danger
+                        loading={loadingChassis}
+                        onClick={() => {
+                          const chassisNumber = form.getFieldValue("chassisNumber");
+                          handleChassisNumberLookup(chassisNumber);
+                        }}
+                        style={{
+                          height: "40px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          whiteSpace: "nowrap",
+                          backgroundColor: "#ff4d4f",
+                          borderColor: "#ff4d4f",
+                        }}>
+                        Tìm kiếm
+                      </Button>
+                    </Col>
+                  </Row>
+      </Form.Item>
+              )}
+              
+              {/* ✅ Hidden field để giữ chassisNumber khi đã load thông tin */}
+              {isChassisNumberLoaded && (
+                <Form.Item name='chassisNumber' hidden>
+                  <Input type='hidden' />
+      </Form.Item>
+              )}
+              
+              {/* ✅ Hiển thị thông tin sau khi nhập số khung */}
+              {loadingChassis ? (
+                <div style={{ marginTop: 16, padding: 32, backgroundColor: "#fafafa", borderRadius: 8, border: "1px dashed #d9d9d9", minHeight: 120, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Space direction="vertical" align="center" size="middle">
+                    <Spin size="large" />
+                    <p style={{ margin: 0, fontSize: 14, color: "#8c8c8c" }}>Đang tìm kiếm thông tin...</p>
                   </Space>
-                }
-                name='chassisNumber'
-                rules={[{ required: true, message: "Nhập số khung!" }]}>
-                <Input
-                  placeholder='Nhập số khung và nhấn Enter để xem thông tin'
-                  onPressEnter={(e) => {
-                    // ✅ TODO: Gọi API để lấy thông tin từ BE
-                    console.log("Enter pressed, chassisNumber:", e.target.value);
-                  }}
-                  allowClear
-                  style={{ width: "100%" }}
-                />
-              </Form.Item>
-              {/* ✅ Placeholder để hiển thị thông tin sau khi nhập số khung */}
-              <div style={{ marginTop: 16, padding: 16, backgroundColor: "#fafafa", borderRadius: 8, border: "1px dashed #d9d9d9", minHeight: 100 }}>
-                <p style={{ margin: 0, fontSize: 14, color: "#8c8c8c", textAlign: "center" }}>
-                  Nhập số khung và nhấn Enter để hiển thị thông tin khách hàng và xe
-                </p>
-              </div>
+                </div>
+              ) : vehicleInfo ? (
+                <div style={{ marginTop: 16 }}>
+                  <Row gutter={[16, 16]}>
+                    {/* Thông tin khách hàng */}
+                    {vehicleInfo.customer && (
+                      <Col xs={24} md={12}>
+                        <Card 
+                          title={
+                            <Space>
+                              <div style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: "#e6f7ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <User size={20} style={{ color: "#1890ff" }} />
+                              </div>
+                              <span style={{ fontWeight: 600, fontSize: 16 }}>Thông tin khách hàng</span>
+                            </Space>
+                          }
+                          style={{ borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}
+                          headStyle={{ borderBottom: "1px solid #f0f0f0", padding: "18px 24px", backgroundColor: "#fafafa" }}
+                          bodyStyle={{ padding: "24px" }}>
+                          <Descriptions column={1} size="middle" colon={false}>
+                            <Descriptions.Item 
+                              label={
+                                <Space size={6}>
+                                  <User size={16} style={{ color: "#595959" }} />
+                                  <span style={{ fontWeight: 500 }}>Họ tên</span>
+                                </Space>
+                              }>
+                              <span style={{ fontWeight: 500, fontSize: 15 }}>
+                                {vehicleInfo.customer.firstName} {vehicleInfo.customer.lastName}
+                              </span>
+                            </Descriptions.Item>
+                            <Descriptions.Item 
+                              label={
+                                <Space size={6}>
+                                  <Hash size={16} style={{ color: "#595959" }} />
+                                  <span style={{ fontWeight: 500 }}>Mã KH</span>
+                                </Space>
+                              }>
+                              <Tag color="blue" style={{ fontSize: 13, padding: "4px 12px" }}>
+                                {vehicleInfo.customer.customerCode}
+                              </Tag>
+                            </Descriptions.Item>
+                            <Descriptions.Item 
+                              label={
+                                <Space size={6}>
+                                  <Phone size={16} style={{ color: "#595959" }} />
+                                  <span style={{ fontWeight: 500 }}>SĐT</span>
+                                </Space>
+                              }>
+                              {vehicleInfo.customer.account?.phone || "N/A"}
+                            </Descriptions.Item>
+                            <Descriptions.Item 
+                              label={
+                                <Space size={6}>
+                                  <Mail size={16} style={{ color: "#595959" }} />
+                                  <span style={{ fontWeight: 500 }}>Email</span>
+                                </Space>
+                              }>
+                              {vehicleInfo.customer.account?.email || "N/A"}
+                            </Descriptions.Item>
+                       
+                          </Descriptions>
+                        </Card>
+                      </Col>
+                    )}
+                    
+                    {/* Thông tin xe */}
+                    {vehicleInfo.vehicle && (
+                      <Col xs={24} md={12}>
+                        <Card 
+                          title={
+                            <Space>
+                              <div style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: "#fff7e6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <Car size={20} style={{ color: "#fa8c16" }} />
+                              </div>
+                              <span style={{ fontWeight: 600, fontSize: 16 }}>Thông tin xe</span>
+                            </Space>
+                          }
+                          style={{ borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}
+                          headStyle={{ borderBottom: "1px solid #f0f0f0", padding: "18px 24px", backgroundColor: "#fafafa" }}
+                          bodyStyle={{ padding: "24px" }}>
+                          <Descriptions column={1} size="middle" colon={false}>
+                            <Descriptions.Item 
+                              label={
+                                <Space size={6}>
+                                  <Car size={16} style={{ color: "#595959" }} />
+                                  <span style={{ fontWeight: 500 }}>Mẫu xe</span>
+                                </Space>
+                              }>
+                              <span style={{ fontWeight: 500, fontSize: 15 }}>{vehicleInfo.vehicle.modelName || "N/A"}</span>
+                            </Descriptions.Item>
+                            <Descriptions.Item 
+                              label={
+                                <Space size={6}>
+                                  <Hash size={16} style={{ color: "#595959" }} />
+                                  <span style={{ fontWeight: 500 }}>Số khung</span>
+                                </Space>
+                              }>
+                              <Tag color="orange" style={{ fontSize: 13, padding: "4px 12px" }}>
+                                {vehicleInfo.vehicle.chassisNumber || "N/A"}
+                              </Tag>
+                            </Descriptions.Item>
+                            <Descriptions.Item 
+                              label={
+                                <Space size={6}>
+                                  <Hash size={16} style={{ color: "#595959" }} />
+                                  <span style={{ fontWeight: 500 }}>Số máy</span>
+                                </Space>
+                              }>
+                              {vehicleInfo.vehicle.engineNumber || "N/A"}
+                            </Descriptions.Item>
+                            <Descriptions.Item 
+                              label={
+                                <Space size={6}>
+                                  <Car size={16} style={{ color: "#595959" }} />
+                                  <span style={{ fontWeight: 500 }}>Màu sắc</span>
+                                </Space>
+                              }>
+                              <Tag color="purple" style={{ fontSize: 13, padding: "4px 12px" }}>
+                                {vehicleInfo.vehicle.color || "N/A"}
+                              </Tag>
+                            </Descriptions.Item>
+                          </Descriptions>
+                        </Card>
+                      </Col>
+                    )}
+                    
+                   
+                  </Row>
+                </div>
+              ) : (
+                <div style={{ marginTop: 16, padding: 32, backgroundColor: "#fafafa", borderRadius: 8, border: "1px dashed #d9d9d9", minHeight: 120, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Space direction="vertical" align="center" size="middle">
+                    <div style={{ width: 56, height: 56, borderRadius: "50%", backgroundColor: "#e6f7ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Search size={28} style={{ color: "#1890ff" }} />
+                    </div>
+                    <p style={{ margin: 0, fontSize: 14, color: "#8c8c8c", textAlign: "center", maxWidth: 300 }}>
+                      Nhập số khung và nhấn nút "Tìm kiếm" để hiển thị thông tin khách hàng và xe
+                    </p>
+                  </Space>
+                </div>
+              )}
             </Col>
           </Row>
         </Card>
@@ -455,8 +717,11 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
         {/* ✅ TRUNG TÂM DỊCH VỤ - Ẩn field, tự động set từ staff */}
         <Form.Item name='serviceCenterId' hidden>
           <Input type='hidden' />
-        </Form.Item>
+      </Form.Item>
 
+        {/* ✅ Ẩn tất cả form items khi chưa nhập số khung */}
+        {isChassisNumberLoaded && (
+          <>
         {/* ✅ CARD 2: THỜI GIAN HẸN */}
         <Card
           title={
@@ -470,46 +735,47 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
           bodyStyle={{ padding: "24px" }}>
           <Row gutter={[16, 0]}>
             <Col xs={24} md={12}>
-              <Form.Item
+      <Form.Item
                 label={
                   <Space>
                     <Calendar size={16} style={{ color: "#595959" }} />
                     <span>Ngày hẹn</span>
                   </Space>
                 }
-                name='appointmentDate'
-                rules={[{ required: true, message: "Chọn ngày hẹn!" }]}>
+        name='appointmentDate'
+        rules={[{ required: true, message: "Chọn ngày hẹn!" }]}>
                 <DatePicker
                   style={{ width: "100%" }}
                   onChange={handleDateChange}
                   format="DD/MM/YYYY"
                   placeholder="Chọn ngày hẹn"
                   disabledDate={disabledDate}
+                  disabled={!isChassisNumberLoaded}
                 />
-              </Form.Item>
+      </Form.Item>
             </Col>
 
             <Col xs={24} md={12}>
-              <Form.Item
+      <Form.Item
                 label={
                   <Space>
                     <Clock size={16} style={{ color: "#595959" }} />
                     <span>Khung giờ</span>
                   </Space>
                 }
-                name='slotTime'
-                rules={[{ required: true, message: "Chọn khung giờ!" }]}>
-                <Select
+        name='slotTime'
+        rules={[{ required: true, message: "Chọn khung giờ!" }]}>
+        <Select
                   placeholder="Chọn khung giờ"
-                  disabled={!availableSlots.length}
+                  disabled={!isChassisNumberLoaded || !availableSlots.length}
                   style={{ width: "100%" }}>
-                  {availableSlots.map((slot) => (
-                    <Option key={slot.id} value={slot.slotTime}>
+          {availableSlots.map((slot) => (
+            <Option key={slot.id} value={slot.slotTime}>
                       {SLOT_LABEL_MAP[slot.slotTime] || slot.slotTime}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
+            </Option>
+          ))}
+        </Select>
+      </Form.Item>
             </Col>
           </Row>
         </Card>
@@ -539,10 +805,11 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
                   allowClear
                   placeholder='Chọn loại dịch vụ'
                   onChange={handleTypeChange}
+                  disabled={!isChassisNumberLoaded}
                   style={{ width: "100%" }}>
-                  <Option value='MAINTENANCE_TYPE'>Bảo dưỡng</Option>
-                  <Option value='REPAIR_TYPE'>Sửa chữa</Option>
-                  <Option value='WARRANTY_TYPE'>Bảo hành</Option>
+          <Option value='MAINTENANCE_TYPE'>Bảo dưỡng</Option>
+          <Option value='REPAIR_TYPE'>Sửa chữa</Option>
+          <Option value='WARRANTY_TYPE'>Bảo hành</Option>
                   <Option value='CAMPAIGN_TYPE'>Chiến dịch</Option>
                 </Select>
               </Form.Item>
@@ -565,6 +832,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
                     placeholder='Chọn chiến dịch'
                     loading={loadingCampaigns}
                     onChange={handleCampaignChange}
+                    disabled={!isChassisNumberLoaded}
                     style={{ width: "100%" }}>
                     {campaigns.map((campaign) => {
                       // ✅ Lấy campaignId từ id (đã được map trong service)
@@ -598,7 +866,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
                   <Select
                     placeholder='Chọn mốc bảo dưỡng'
                     loading={loadingVehicleStages}
-                    disabled={!form.getFieldValue("vehicleId")}
+                    disabled={!isChassisNumberLoaded || !form.getFieldValue("vehicleId")}
                     style={{ width: "100%" }}>
                     {vehicleStages.map((stage) => (
                       <Option key={stage.id} value={stage.id}>
@@ -609,8 +877,8 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
                           : ""}
                       </Option>
                     ))}
-                  </Select>
-                </Form.Item>
+        </Select>
+      </Form.Item>
               </Col>
             )}
           </Row>
@@ -631,6 +899,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
               placeholder={form.getFieldValue("type") === "REPAIR_TYPE" ? "Nhập tình trạng xe" : "Nhập ghi chú thêm (nếu có)"}
               showCount
               maxLength={500}
+              disabled={!isChassisNumberLoaded}
             />
           </Form.Item>
         </Card>
@@ -642,6 +911,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
           loading={loading}
           block
           size="large"
+          disabled={!isChassisNumberLoaded}
           style={{
             height: "48px",
             fontSize: "16px",
@@ -651,9 +921,11 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
             backgroundColor: "#ff4d4f",
             borderColor: "#ff4d4f",
           }}>
-          Tạo lịch hẹn
-        </Button>
-      </Form>
+        Tạo lịch hẹn
+      </Button>
+          </>
+        )}
+    </Form>
     </div>
   );
 };

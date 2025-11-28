@@ -130,7 +130,7 @@ export default function MaintenanceModeEVCheck({
             replacePartId: partItemId,
             partName: partItemName,
             result: item.result ?? "Tốt", // ✅ Mặc định "Tốt"
-            remedies: item.remedies ?? item.solution ?? "",
+            remedies: item.remedies ?? item.solution ?? "NONE", // ✅ Mặc định "NONE" (Bôi trơn)
             warranty: item.warranty ?? false,
             quantity: item.quantity ?? 1,
             unit: item.unit ?? "cái",
@@ -217,12 +217,12 @@ export default function MaintenanceModeEVCheck({
     }
   };
 
-  const updateLaborCostForRow = async (rowIndex, remedies) => {
+  const updateLaborCostForRow = async (recordId, remedies) => {
     try {
       const labor = await getLaborCostByRemediesService(remedies);
       setEvCheckDetails((prev) =>
-        prev.map((row, i) => {
-          if (i !== rowIndex) return row;
+        prev.map((row) => {
+          if (row.id !== recordId) return row;
           const priceService = Number(labor || 0);
           const pricePart = Number(row.pricePart || 0);
           const validPart = row.remedies === "REPLACE" ? pricePart : 0;
@@ -351,13 +351,13 @@ export default function MaintenanceModeEVCheck({
   }, [initialEvCheckStatus]);
 
   // -------- Bảng (cho Maintenance) --------
-  const handleChange = (index, field, value) => {
+  const handleChange = (recordId, field, value) => {
     if (evCheckStatus === "INSPECTION_COMPLETED") return;
     if (evCheckStatus === "QUOTE_APPROVED" && field !== "status") return;
 
     // ✅ Ngăn chọn REPLACE hoặc REPAIR khi còn bảo hành
     if (field === "remedies" && (value === "REPLACE" || value === "REPAIR")) {
-      const currentRow = evCheckDetails[index];
+      const currentRow = evCheckDetails.find((r) => r.id === recordId);
       if (checkWarrantyStatus(currentRow?.partItem)) {
         toast.error(
           "Bộ phận đang trong thời gian bảo hành. Chỉ cho phép 'Kiểm tra' hoặc 'Bôi trơn'."
@@ -367,8 +367,8 @@ export default function MaintenanceModeEVCheck({
     }
 
     setEvCheckDetails((prev) =>
-      prev.map((row, i) => {
-        if (i !== index) return row;
+      prev.map((row) => {
+        if (row.id !== recordId) return row;
         const updated = { ...row };
 
         if (["pricePart", "priceService"].includes(field)) {
@@ -395,7 +395,7 @@ export default function MaintenanceModeEVCheck({
             value === "REPLACE" ? Number(updated.pricePart || 0) : 0;
           updated.totalAmount =
             validPricePart + Number(updated.priceService || 0);
-          updateLaborCostForRow(i, value);
+          updateLaborCostForRow(recordId, value);
           return updated;
         }
 
@@ -410,9 +410,8 @@ export default function MaintenanceModeEVCheck({
     );
 
     if (field === "status") {
-      const detailId = evCheckDetails[index]?.id;
-      if (detailId)
-        setStatusChanges((prev) => ({ ...prev, [detailId]: value }));
+      if (recordId)
+        setStatusChanges((prev) => ({ ...prev, [recordId]: value }));
     }
   };
 
@@ -444,7 +443,7 @@ export default function MaintenanceModeEVCheck({
 
         const payload = {
           result: (item.result || "").trim() || "Tốt", // ✅ Nếu rỗng thì mặc định "Tốt"
-          remedies: item.remedies ?? "",
+          remedies: item.remedies ?? "NONE", // ✅ Mặc định "NONE" (Bôi trơn)
           warranty: item.warranty,
           quantity: Number(item.quantity),
           unit: item.unit,
@@ -589,11 +588,11 @@ export default function MaintenanceModeEVCheck({
             <Input.TextArea
               placeholder='Nhập kết quả kiểm tra (mặc định: Tốt, có thể xóa để nhập lại)...'
               value={r.result ?? ""}
-              onChange={(e) => handleChange(i, "result", e.target.value)}
+              onChange={(e) => handleChange(r.id, "result", e.target.value)}
               onBlur={(e) => {
                 // ✅ Nếu để trống khi blur, tự động set về "Tốt"
                 if (!e.target.value.trim()) {
-                  handleChange(i, "result", "Tốt");
+                  handleChange(r.id, "result", "Tốt");
                 }
               }}
               disabled={!canEditFields}
@@ -618,12 +617,33 @@ export default function MaintenanceModeEVCheck({
       width: 110,
       render: (_, r, i) => {
         const isWarranty = checkWarrantyStatus(r.partItem);
+        
+        // ✅ Map remedies sang label tiếng Việt
+        const getRemediesLabel = (remedies) => {
+          const map = {
+            REPLACE: "Thay thế",
+            REPAIR: "Sửa chữa",
+            CHECK: "Kiểm tra",
+            NONE: "Bôi trơn",
+            LUBBR: "Bôi trơn",
+            LUB: "Bôi trơn",
+            LUBRICATE: "Bôi trơn",
+          };
+          // ✅ Normalize: chuyển về uppercase và remove spaces
+          const normalized = (remedies || "").toString().toUpperCase().trim();
+          return map[normalized] || "Bôi trơn"; // ✅ Mặc định "Bôi trơn"
+        };
+
+        const remediesValue = r.remedies || "NONE";
+        const remediesLabel = getRemediesLabel(remediesValue);
+
         return (
           <Select
             placeholder='Chọn'
-            value={r.remedies}
+            value={{ value: remediesValue, label: remediesLabel }}
+            labelInValue // ✅ Dùng labelInValue để hiển thị label thay vì value
             style={{ width: 100 }}
-            onChange={(v) => handleChange(i, "remedies", v)}
+            onChange={(v) => handleChange(r.id, "remedies", v.value || v)} // ✅ Lấy value từ object, dùng r.id thay vì i
             disabled={!canEditFields}>
             <Option value='NONE'>Bôi trơn</Option>
             {/* ✅ Nếu đang bảo hành thì không cho chọn "Thay thế" và "Sửa chữa" */}
@@ -703,8 +723,8 @@ export default function MaintenanceModeEVCheck({
                 const price = selected?.price || 0;
 
                 setEvCheckDetails((prev) =>
-                  prev.map((row, idx) => {
-                    if (idx !== i) return row;
+                  prev.map((row) => {
+                    if (row.id !== r.id) return row;
                     return {
                       ...row,
                       replacePartId: partItemId,
@@ -727,8 +747,8 @@ export default function MaintenanceModeEVCheck({
                     const apiLabel = apiSerial ? `${apiName} (${apiSerial})` : apiName || data.serialNumber || partItemId;
 
                     setEvCheckDetails((prev) =>
-                      prev.map((row, idx) => {
-                        if (idx !== i) return row;
+                      prev.map((row) => {
+                        if (row.id !== r.id) return row;
                         return {
                           ...row,
                           pricePart: apiPrice,
@@ -802,7 +822,7 @@ export default function MaintenanceModeEVCheck({
         <Input
           type='number'
           value={r.quantity}
-          onChange={(e) => handleChange(i, "quantity", e.target.value)}
+          onChange={(e) => handleChange(r.id, "quantity", e.target.value)}
           disabled={!canEditFields}
           style={{ width: 60 }}
         />
@@ -818,7 +838,7 @@ export default function MaintenanceModeEVCheck({
         return (
           <Input
             value={r.pricePart}
-            onChange={(e) => handleChange(i, "pricePart", e.target.value)}
+            onChange={(e) => handleChange(r.id, "pricePart", e.target.value)}
             disabled={!canEditFields}
             style={{ fontSize: 12 }}
           />
@@ -831,7 +851,7 @@ export default function MaintenanceModeEVCheck({
       render: (_, r, i) => (
         <Input
           value={r.priceService}
-          onChange={(e) => handleChange(i, "priceService", e.target.value)}
+          onChange={(e) => handleChange(r.id, "priceService", e.target.value)}
           disabled={!canEditFields}
           style={{ fontSize: 12 }}
         />
@@ -922,7 +942,7 @@ export default function MaintenanceModeEVCheck({
             checked={r.status === "COMPLETED"}
             onChange={(e) => {
               handleChange(
-                i,
+                r.id,
                 "status",
                 e.target.checked ? "COMPLETED" : "PENDING"
               );
@@ -939,7 +959,7 @@ export default function MaintenanceModeEVCheck({
             }}
             onClick={() => {
               if (r.status !== "COMPLETED" && !readOnly) {
-                handleChange(i, "status", "COMPLETED");
+                handleChange(r.id, "status", "COMPLETED");
               }
             }}>
             {stat.label}
@@ -994,6 +1014,7 @@ export default function MaintenanceModeEVCheck({
         const item = evCheckDetails.find((d) => d.id === id);
         return item && !hasRMA(item) && isRMAEligible(item);
       });
+      console.log("🔍 RMA Selection Changed:", { selectedKeys, validKeys, size: validKeys.length });
       setSelectedRMAItems(new Set(validKeys));
     },
     getCheckboxProps: (record) => ({
@@ -1017,12 +1038,10 @@ export default function MaintenanceModeEVCheck({
         </div>
       ) : (
         <>
-          {/* ✅ Nút Tạo RMA ở trên bảng (chỉ cho staff) */}
+          {/* ✅ Nút Tạo RMA ở trên bảng (chỉ cho staff) - chỉ hiện khi có item được chọn */}
           {readOnly &&
-            (evCheckStatus === "QUOTE_APPROVED" ||
-              evCheckStatus === "REPAIR_IN_PROGRESS" ||
-              evCheckStatus === "REPAIR_COMPLETED" ||
-              evCheckStatus === "COMPLETED") && (
+            selectedRMAItems.size > 0 &&
+            evCheckDetails.length > 0 && (
               <div className='flex justify-between items-center mb-4'>
                 <h4 className='text-base font-semibold text-gray-700'>Danh sách hạng mục bảo dưỡng</h4>
                 <Button
