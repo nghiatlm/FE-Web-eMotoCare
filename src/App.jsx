@@ -23,9 +23,11 @@ import BranchDetail from "./pages/admin/BranchDetail";
 import BranchReport from "./pages/admin/BranchReport";
 import ServicePackages from "./pages/ServicePackages";
 import CreateServicePackage from "./pages/admin/CreateServicePackage";
+import PartTypeDetail from "./pages/admin/PartTypeDetail";
 import Campaigns from "./pages/Campaigns";
 import CampaignDetail from "./pages/CampaignDetail";
 import CreateCampaign from "./pages/admin/CreateCampaign";
+import SyncOEMData from "./pages/admin/SyncOEMData";
 import NotFound from "./pages/NotFound";
 
 // service staff
@@ -123,6 +125,10 @@ const App = () => (
                         path="service-packages/create"
                         element={<CreateServicePackage />}
                       />
+                      <Route
+                        path="service-packages/part-type/:id"
+                        element={<PartTypeDetail />}
+                      />
                       <Route path="campaigns" element={<Campaigns />} />
                       <Route
                         path="campaigns/new"
@@ -131,6 +137,10 @@ const App = () => (
                       <Route
                         path="campaigns/:id"
                         element={<CampaignDetail />}
+                      />
+                      <Route
+                        path="sync-oem"
+                        element={<SyncOEMData />}
                       />
                       <Route path="*" element={<NotFound />} />
                     </Routes>

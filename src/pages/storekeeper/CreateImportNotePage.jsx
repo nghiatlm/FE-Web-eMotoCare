@@ -66,6 +66,13 @@ export default function CreateImportNotePage() {
   const [hasManufacturerWarranty, setHasManufacturerWarranty] = useState(false);
   const isTransferType = form.type === "TRANSFER_IN";
 
+  // Helper function to get today's date without time
+  const getTodayDateOnly = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  };
+
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
@@ -174,11 +181,6 @@ export default function CreateImportNotePage() {
     [filteredParts, parts, selectedPartId],
   );
 
-  const selectedPartItems = useMemo(() => {
-    if (!selectedPart) return [];
-    return partItemsByPart[selectedPart.id] || [];
-  }, [selectedPart, partItemsByPart]);
-
   const handleSubmit = async () => {
     if (!selectedPartId && !form.newPartName?.trim()) {
       toast({
@@ -250,7 +252,6 @@ export default function CreateImportNotePage() {
 
       const partId = selectedPartId || null;
       
-      // Xác định name và image: từ selectedPart nếu có, hoặc từ form nếu là part mới
       const partName = selectedPart?.name || form.newPartName?.trim() || "";
       const partImage = selectedPart?.image || form.newPartImage?.trim() || "";
 
@@ -266,7 +267,7 @@ export default function CreateImportNotePage() {
         note: form.note || undefined,
         partRequest: {
           partTypeId: selectedPartTypeId || null,
-          partId: partId, // Có thể null nếu là part mới
+          partId: partId,
           name: partName,
           image: partImage,
           partItemRequest: [
@@ -274,7 +275,7 @@ export default function CreateImportNotePage() {
               quantity: Number(form.quantity) || 0,
               serialNumber: hasManufacturerWarranty ? form.serialNumber : null,
               price: basePrice,
-              warrantyPeriod: hasManufacturerWarranty ? warrantyPeriod : 0,
+              warrantyPeriod: warrantyPeriod,
               warantyStartDate,
               warantyEndDate,
               isManufacturerWarranty: hasManufacturerWarranty,
@@ -311,7 +312,7 @@ export default function CreateImportNotePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="p-6 sm:p-8 max-w-6xl mx-auto space-y-6">
+      <div className="p-6 sm:p-8 max-w-6xl mx-auto space-y-6 pb-20">
         {/* Header */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -340,8 +341,7 @@ export default function CreateImportNotePage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Thông tin phiếu nhập */}
-          <Card className="lg:col-span-1 border-border/70 shadow-sm">
+          <Card className="lg:col-span-1 border-border/70 shadow-sm lg:sticky lg:top-20 lg:self-start">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <FileDown className="h-4 w-4 text-primary" />
@@ -669,7 +669,6 @@ export default function CreateImportNotePage() {
                 <div className="space-y-2">
                   <Label htmlFor="warrantyPeriod">
                     Thời gian bảo hành (tháng)
-                    {hasManufacturerWarranty ? " *" : ""}
                   </Label>
                   <Input
                     id="warrantyPeriod"
@@ -682,7 +681,6 @@ export default function CreateImportNotePage() {
                         e.target.value ? parseInt(e.target.value) : 0,
                       )
                     }
-                    disabled={!hasManufacturerWarranty}
                   />
                 </div>
               </div>
@@ -698,16 +696,14 @@ export default function CreateImportNotePage() {
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !form.warrantyStartDate && "text-muted-foreground",
-                          )}
+                          className="w-full justify-start text-left font-normal"
                         >
                           <Calendar className="mr-2 h-4 w-4" />
-                          {form.warrantyStartDate ? (
-                            format(new Date(form.warrantyStartDate), "dd/MM/yyyy")
-                          ) : (
-                            <span>Chọn ngày (mặc định: hôm nay)</span>
+                          {format(
+                            form.warrantyStartDate
+                              ? new Date(form.warrantyStartDate)
+                              : new Date(),
+                            "dd/MM/yyyy"
                           )}
                         </Button>
                       </PopoverTrigger>
@@ -726,6 +722,16 @@ export default function CreateImportNotePage() {
                             )
                           }
                           initialFocus
+                          disabled={(date) => {
+                            const today = getTodayDateOnly();
+                            const dateOnly = new Date(date);
+                            dateOnly.setHours(0, 0, 0, 0);
+                            return dateOnly < today;
+                          }}
+                          classNames={{
+                            day_disabled: "hidden",
+                            cell: "[&:has(.hidden)]:hidden",
+                          }}
                         />
                       </PopoverContent>
                     </Popover>
@@ -737,18 +743,14 @@ export default function CreateImportNotePage() {
                   <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm space-y-1">
                     <p className="font-semibold text-foreground">Ngày hết hạn bảo hành</p>
                     <p className="text-primary text-base font-bold">
-                      {form.warrantyPeriod > 0 ? (
-                        format(
-                          addMonths(
-                            form.warrantyStartDate
-                              ? new Date(form.warrantyStartDate)
-                              : new Date(),
-                            form.warrantyPeriod
-                          ),
-                          "dd/MM/yyyy"
-                        )
-                      ) : (
-                        "Chưa xác định (nhập thời gian bảo hành để xem)"
+                      {format(
+                        addMonths(
+                          form.warrantyStartDate
+                            ? new Date(form.warrantyStartDate)
+                            : new Date(),
+                          form.warrantyPeriod || 0
+                        ),
+                        "dd/MM/yyyy"
                       )}
                     </p>
                     <p className="text-xs text-muted-foreground">
