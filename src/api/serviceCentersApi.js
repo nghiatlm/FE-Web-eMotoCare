@@ -32,7 +32,6 @@ export const updateServiceCenter = (id, body) => api.put(`${BASE_URL}/${id}`, bo
 export const changeServiceCenterStatus = (id, status) =>
   api.put(`${BASE_URL}/${id}/status`, { status }, { headers: { Authorization: `Bearer ${token}` } });
 
-// Service Center Slots API
 const SLOTS_BASE_URL = "/v1/service-centerslots";
 
 export const createServiceCenterSlot = (serviceCenterId, slotData) => {
