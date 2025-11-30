@@ -34,7 +34,7 @@ export default function CreateExportSlipPage() {
   
   const [serviceCenters, setServiceCenters] = useState([]);
   const [loadingServiceCenters, setLoadingServiceCenters] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     code: "",
     type: "REPLACEMENT",
@@ -69,7 +69,11 @@ export default function CreateExportSlipPage() {
       }
     };
 
-    fetchServiceCenters();
+    // Wrap trong try-catch để tránh unhandled promise rejection
+    fetchServiceCenters().catch((error) => {
+      // Error đã được handle trong fetchServiceCenters, chỉ log thôi
+      console.error("Unhandled error in fetchServiceCenters:", error);
+    });
   }, [toast]);
 
   useEffect(() => {
@@ -86,30 +90,32 @@ export default function CreateExportSlipPage() {
   }, [serviceCenterId, allServiceCenters]);
 
   const fetchPartItems = useCallback(async () => {
+    if (!serviceCenterId) {
+      console.warn("Không có serviceCenterId, không thể fetch part items");
+      setPartItems([]);
+      return;
+    }
+
     try {
       setLoadingPartItems(true);
 
       const response = await getPartItemsByServiceCenter(serviceCenterId);
       
       let items = [];
-      let total = 0;
       
       if (Array.isArray(response?.data)) {
         items = response.data;
-        total = response.data.length;
-      } else if (response?.data?.rowDatas) {
-        items = response.data.rowDatas;
-        total = response.data.total || response.data.rowDatas.length;
       } else if (Array.isArray(response)) {
         items = response;
-        total = response.length;
+      } else if (response?.data?.rowDatas) {
+        items = response.data.rowDatas;
       } else if (response?.rowDatas) {
         items = response.rowDatas;
-        total = response.total || response.rowDatas.length;
       }
 
-      setPartItems(items);
+      setPartItems(items || []);
     } catch (error) {
+      console.error("❌ Error fetching part items:", error);
       toast({
         title: "Lỗi",
         description: error?.message || error?.data?.message || "Không thể tải danh sách phụ tùng",
@@ -123,7 +129,11 @@ export default function CreateExportSlipPage() {
 
   useEffect(() => {
     if (serviceCenterId) {
-      fetchPartItems();
+      // Wrap trong try-catch để tránh unhandled promise rejection
+      fetchPartItems().catch((error) => {
+        console.error("Error in fetchPartItems:", error);
+        // Error đã được handle trong fetchPartItems, chỉ log thôi
+      });
     }
   }, [serviceCenterId, fetchPartItems]);
 
@@ -159,11 +169,6 @@ export default function CreateExportSlipPage() {
       partItemId: selectedPartItemIds,
     }));
   }, [selectedPartItemsData.totalQty, selectedPartItemsData.totalVal, selectedPartItemIds]);
-
-  const selectedDestination = useMemo(
-    () => serviceCenters.find((center) => center.id === formData.exportTo),
-    [serviceCenters, formData.exportTo],
-  );
 
   const currencyFormatter = useMemo(
     () =>

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Package, Wrench, Info, Hash, FileText, Plus, Loader2, Calendar as CalendarIcon, DollarSign, Tag, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Package, Wrench, Info, Hash, FileText, Plus, Loader2, Calendar as CalendarIcon, DollarSign, Tag, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,8 +10,10 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { getPartTypeById } from "@/api/partsApi";
-import { getPriceServices, createPriceService } from "@/api/priceServicesApi";
+import { getPriceServices, createPriceService, updatePriceService, getPriceServiceById } from "@/api/priceServicesApi";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -26,9 +28,25 @@ export default function PartTypeDetail() {
   const [loading, setLoading] = useState(true);
   const [servicePackages, setServicePackages] = useState([]);
   const [loadingPackages, setLoadingPackages] = useState(false);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+  
+  // Edit dialog state
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingPriceService, setEditingPriceService] = useState(null);
+  const [loadingEdit, setLoadingEdit] = useState(false);
+  const [editForm, setEditForm] = useState({
+    partTypeId: "",
+    remedies: "REPAIR",
+    name: "",
+    laborCost: "",
+    effectiveDate: null,
+    effectiveTime: "",
+    price: "",
+    description: "",
+  });
+  const [editErrors, setEditErrors] = useState({});
 
   // Form state - partTypeId tự động từ URL params
   const [form, setForm] = useState({
@@ -355,6 +373,125 @@ export default function PartTypeDetail() {
     setShowForm(false);
   };
 
+  // Handle open edit dialog
+  const handleOpenEditDialog = async (priceService) => {
+    try {
+      setLoadingEdit(true);
+      setIsEditDialogOpen(true);
+      setEditingPriceService(priceService);
+      
+      // Fetch full price service data
+      const response = await getPriceServiceById(priceService.id || priceService.rawData?.id);
+      const data = response?.data || response || priceService.rawData || priceService;
+      
+      // Parse effective date and time
+      let effectiveDate = null;
+      let effectiveTime = "";
+      if (data.effectiveDate) {
+        const dateObj = new Date(data.effectiveDate);
+        effectiveDate = dateObj;
+        effectiveTime = dateObj.toTimeString().slice(0, 5); // HH:mm
+      }
+      
+      setEditForm({
+        partTypeId: data.partTypeId || id,
+        remedies: data.remedies || "REPAIR",
+        name: data.name || "",
+        laborCost: data.laborCost?.toString() || "",
+        effectiveDate: effectiveDate,
+        effectiveTime: effectiveTime,
+        price: data.price?.toString() || "",
+        description: data.description || "",
+      });
+      setEditErrors({});
+    } catch (error) {
+      console.error("Error loading price service:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải thông tin bảng giá dịch vụ",
+        variant: "destructive"
+      });
+      setIsEditDialogOpen(false);
+    } finally {
+      setLoadingEdit(false);
+    }
+  };
+
+  // Handle edit submit
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!editingPriceService) return;
+    
+    // Validate
+    const newErrors = {};
+    if (!editForm.name || !editForm.name.trim()) {
+      newErrors.name = "Vui lòng nhập tên dịch vụ";
+    }
+    if (!editForm.price || !editForm.price.trim()) {
+      newErrors.price = "Vui lòng nhập giá dịch vụ";
+    } else {
+      const priceNum = parseInt(editForm.price);
+      if (isNaN(priceNum) || priceNum <= 0) {
+        newErrors.price = "Giá phải là số hợp lệ và lớn hơn 0";
+      }
+    }
+    
+    if (Object.keys(newErrors).length > 0) {
+      setEditErrors(newErrors);
+      return;
+    }
+
+    try {
+      setLoadingEdit(true);
+      
+      let effectiveDateISO = new Date().toISOString();
+      if (editForm.effectiveDate) {
+        const dateStr = format(editForm.effectiveDate, "yyyy-MM-dd");
+        const timeStr = editForm.effectiveTime || "00:00";
+        effectiveDateISO = new Date(`${dateStr}T${timeStr}:00`).toISOString();
+      }
+
+      const payload = {
+        partTypeId: editForm.partTypeId,
+        remedies: editForm.remedies || "REPAIR",
+        name: editForm.name.trim(),
+        laborCost: parseInt(editForm.laborCost) || 0,
+        effectiveDate: effectiveDateISO,
+        price: parseInt(editForm.price) || 0,
+        description: editForm.description?.trim() || ""
+      };
+
+      const priceServiceId = editingPriceService.id || editingPriceService.rawData?.id;
+      const response = await updatePriceService(priceServiceId, payload);
+
+      if (response?.success || response?.statusCode === 200) {
+        toast({
+          title: "Thành công",
+          description: response?.message || "Cập nhật bảng giá dịch vụ thành công",
+        });
+        
+        setIsEditDialogOpen(false);
+        setEditingPriceService(null);
+        
+        // Refresh service packages list
+        await fetchServicePackages();
+      } else {
+        throw new Error(response?.message || "Cập nhật thất bại");
+      }
+    } catch (error) {
+      console.error("Error updating price service:", error);
+      const errorMessage = error?.response?.data?.message || error?.message || error?.data?.message || "Không thể cập nhật bảng giá dịch vụ. Vui lòng thử lại.";
+      toast({
+        title: "Lỗi",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingEdit(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -400,16 +537,7 @@ export default function PartTypeDetail() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Hash className="h-4 w-4" />
-                  <span>Mã loại phụ tùng</span>
-                </div>
-                <p className="text-base font-mono font-semibold text-foreground">
-                  {partType.id || "—"}
-                </p>
-              </div>
-              <div className="space-y-1.5">
+            <div className="space-y-1.5">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Package className="h-4 w-4" />
                   <span>Tên loại phụ tùng</span>
@@ -418,8 +546,7 @@ export default function PartTypeDetail() {
                   {partType.name || "—"}
                 </p>
               </div>
-            </div>
-            <div className="space-y-1.5">
+              <div className="space-y-1.5">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <FileText className="h-4 w-4" />
                 <span>Mô tả</span>
@@ -428,6 +555,7 @@ export default function PartTypeDetail() {
                 {partType.description || "Không có mô tả"}
               </p>
             </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -435,32 +563,39 @@ export default function PartTypeDetail() {
         <Card className="mb-6">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
+              <CardTitle 
+                className="text-lg flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
+                onClick={() => {
+                  if (!showForm) {
+                    setShowForm(true);
+                    // Scroll to form sau khi mở
+                    setTimeout(() => {
+                      document.querySelector('[data-form-card]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 100);
+                  }
+                }}
+              >
                 <Plus className="h-5 w-5 text-primary" />
                 Tạo gói dịch vụ mới
               </CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowForm(!showForm)}
-                className="gap-2"
-              >
-                {showForm ? (
-                  <>
-                    <ChevronUp className="h-4 w-4" />
-                    Thu gọn
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="h-4 w-4" />
-                    Mở rộng
-                  </>
-                )}
-              </Button>
+              {showForm && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowForm(false);
+                  }}
+                  className="gap-2"
+                >
+                  <ChevronUp className="h-4 w-4" />
+                  Thu gọn
+                </Button>
+              )}
             </div>
           </CardHeader>
           {showForm && (
-            <CardContent>
+            <CardContent data-form-card>
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Loại phụ tùng - Disabled vì tự động */}
                 <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
@@ -696,6 +831,7 @@ export default function PartTypeDetail() {
                       <TableHead>Chi phí lao động (VNĐ)</TableHead>
                       <TableHead>Ngày hiệu lực</TableHead>
                       <TableHead>Mô tả</TableHead>
+                      <TableHead className="text-right">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -717,6 +853,16 @@ export default function PartTypeDetail() {
                         <TableCell className="max-w-xs truncate">
                           {pkg.description || "—"}
                         </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenEditDialog(pkg)}
+                            className="h-8 w-8"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -725,6 +871,180 @@ export default function PartTypeDetail() {
             )}
           </CardContent>
         </Card>
+
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Chỉnh sửa bảng giá dịch vụ</DialogTitle>
+              <DialogDescription>
+                Cập nhật thông tin bảng giá dịch vụ
+              </DialogDescription>
+            </DialogHeader>
+            
+            {loadingEdit ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : (
+              <form onSubmit={handleEditSubmit} className="space-y-4">
+                {/* Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-name">
+                    Tên dịch vụ <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="edit-name"
+                    value={editForm.name}
+                    onChange={(e) => {
+                      setEditForm({ ...editForm, name: e.target.value });
+                      if (editErrors.name) {
+                        setEditErrors({ ...editErrors, name: null });
+                      }
+                    }}
+                    placeholder="Nhập tên dịch vụ"
+                    className={editErrors.name ? "border-red-500" : ""}
+                  />
+                  {editErrors.name && (
+                    <p className="text-sm text-red-500">{editErrors.name}</p>
+                  )}
+                </div>
+
+                {/* Remedies */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-remedies">Loại dịch vụ</Label>
+                  <Select
+                    value={editForm.remedies}
+                    onValueChange={(value) => setEditForm({ ...editForm, remedies: value })}
+                  >
+                    <SelectTrigger id="edit-remedies">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="REPAIR">Sửa chữa</SelectItem>
+                      <SelectItem value="REPLACE">Thay thế</SelectItem>
+                      <SelectItem value="CHECK">Kiểm tra</SelectItem>
+                      <SelectItem value="NONE">Không có</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Price */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-price">
+                    Giá (VNĐ) <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="edit-price"
+                    type="number"
+                    value={editForm.price}
+                    onChange={(e) => {
+                      setEditForm({ ...editForm, price: e.target.value });
+                      if (editErrors.price) {
+                        setEditErrors({ ...editErrors, price: null });
+                      }
+                    }}
+                    placeholder="Nhập giá"
+                    min="0"
+                    className={editErrors.price ? "border-red-500" : ""}
+                  />
+                  {editErrors.price && (
+                    <p className="text-sm text-red-500">{editErrors.price}</p>
+                  )}
+                </div>
+
+                {/* Labor Cost */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-laborCost">Chi phí lao động (VNĐ)</Label>
+                  <Input
+                    id="edit-laborCost"
+                    type="number"
+                    value={editForm.laborCost}
+                    onChange={(e) => setEditForm({ ...editForm, laborCost: e.target.value })}
+                    placeholder="Nhập chi phí lao động"
+                    min="0"
+                  />
+                </div>
+
+                {/* Effective Date & Time */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Ngày hiệu lực</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !editForm.effectiveDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {editForm.effectiveDate ? (
+                            format(editForm.effectiveDate, "dd/MM/yyyy", { locale: vi })
+                          ) : (
+                            <span>Chọn ngày</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarComponent
+                          mode="single"
+                          selected={editForm.effectiveDate}
+                          onSelect={(date) => setEditForm({ ...editForm, effectiveDate: date })}
+                          initialFocus
+                          locale={vi}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-time">Giờ</Label>
+                    <Input
+                      id="edit-time"
+                      type="time"
+                      value={editForm.effectiveTime}
+                      onChange={(e) => setEditForm({ ...editForm, effectiveTime: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-description">Mô tả</Label>
+                  <Textarea
+                    id="edit-description"
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                    placeholder="Nhập mô tả"
+                    rows={3}
+                  />
+                </div>
+
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsEditDialogOpen(false)}
+                    disabled={loadingEdit}
+                  >
+                    Hủy
+                  </Button>
+                  <Button type="submit" disabled={loadingEdit}>
+                    {loadingEdit ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Đang cập nhật...
+                      </>
+                    ) : (
+                      "Cập nhật"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

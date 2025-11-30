@@ -302,9 +302,9 @@ export default function Campaigns() {
             <table className="w-full">
               <thead>
                 <tr className="bg-gradient-to-r from-red-50 via-red-50/90 to-red-100/50 dark:from-red-950/20 dark:via-red-950/15 dark:to-red-900/10 border-b-2 border-red-200/60 dark:border-red-800/30">
-                  <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  {/* <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     Mã campaign
-                  </th>
+                  </th> */}
                   <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     Tên campaign
                   </th>
@@ -352,9 +352,9 @@ export default function Campaigns() {
                         index % 2 === 0 ? "bg-white hover:bg-slate-50/50" : "bg-slate-50/30 hover:bg-slate-50"
                       }`}
                     >
-                      <td className="py-5 px-6 text-center">
+                      {/* <td className="py-5 px-6 text-center">
                         <span className="font-bold text-primary text-sm">{campaign.id}</span>
-                      </td>
+                      </td> */}
                       <td className="py-5 px-6 text-center">
                         <div className="space-y-1 max-w-xs mx-auto">
                           <p className="font-semibold text-slate-900 text-sm leading-tight">{campaign.name}</p>

@@ -25,7 +25,7 @@ import {
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 
-import { ArrowLeft, FileDown, Package, Calendar, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, FileDown, Package, Calendar, Image as ImageIcon, Plus, Trash2, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { format, addMonths } from "date-fns";
@@ -64,7 +64,25 @@ export default function CreateImportNotePage() {
     newPartImage: "",
   });
   const [hasManufacturerWarranty, setHasManufacturerWarranty] = useState(false);
+  const [warrantyDateError, setWarrantyDateError] = useState("");
   const isTransferType = form.type === "TRANSFER_IN";
+  
+  // Danh sách các phụ tùng đã thêm
+  const [addedParts, setAddedParts] = useState([]);
+  
+  // Form hiện tại cho phụ tùng đang nhập
+  const [currentPartForm, setCurrentPartForm] = useState({
+    partTypeId: "",
+    partId: "",
+    partName: "",
+    partImage: "",
+    quantity: 1,
+    serialNumber: "",
+    price: 0,
+    warrantyPeriod: 0,
+    warrantyStartDate: null,
+    hasManufacturerWarranty: false,
+  });
 
   // Helper function to get today's date without time
   const getTodayDateOnly = () => {
@@ -181,7 +199,18 @@ export default function CreateImportNotePage() {
     [filteredParts, parts, selectedPartId],
   );
 
-  const handleSubmit = async () => {
+  // Thêm phụ tùng vào danh sách
+  const handleAddPartToList = () => {
+    // Validate
+    if (!selectedPartTypeId) {
+      toast({
+        title: "Thiếu thông tin",
+        description: "Vui lòng chọn loại phụ tùng.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!selectedPartId && !form.newPartName?.trim()) {
       toast({
         title: "Thiếu thông tin",
@@ -191,28 +220,69 @@ export default function CreateImportNotePage() {
       return;
     }
 
-    if (selectedPartId && !selectedPartTypeId) {
-      toast({
-        title: "Thiếu thông tin",
-        description: "Vui lòng chọn loại phụ tùng trước khi chọn phụ tùng.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!selectedPartId && !selectedPartTypeId) {
-      toast({
-        title: "Thiếu thông tin",
-        description: "Vui lòng chọn loại phụ tùng.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (hasManufacturerWarranty && !form.serialNumber) {
+    if (hasManufacturerWarranty && !form.serialNumber?.trim()) {
       toast({
         title: "Thiếu thông tin",
         description: "Phiếu nhập có bảo hành hãng, vui lòng nhập số serial.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const partId = selectedPartId || null;
+    const partName = selectedPart?.name || form.newPartName?.trim() || "";
+    const partImage = selectedPart?.image || form.newPartImage?.trim() || "";
+
+    const newPart = {
+      id: Date.now().toString(), // Temporary ID
+      partTypeId: selectedPartTypeId,
+      partId: partId,
+      partName: partName,
+      partImage: partImage,
+      quantity: Number(form.quantity) || 1,
+      serialNumber: hasManufacturerWarranty ? form.serialNumber : null,
+      price: Number(form.price) || 0,
+      warrantyPeriod: Number(form.warrantyPeriod) || 0,
+      warrantyStartDate: form.warrantyStartDate,
+      hasManufacturerWarranty: hasManufacturerWarranty,
+      selectedPart: selectedPart, // Lưu lại để hiển thị
+    };
+
+    setAddedParts([...addedParts, newPart]);
+
+    // Reset form
+    setSelectedPartId("");
+    setSelectedPartTypeId("");
+    setForm({
+      ...form,
+      quantity: 1,
+      serialNumber: "",
+      price: 0,
+      warrantyPeriod: 0,
+      warrantyStartDate: null,
+      newPartName: "",
+      newPartImage: "",
+    });
+    setHasManufacturerWarranty(false);
+    setWarrantyDateError("");
+    
+    toast({
+      title: "Thành công",
+      description: "Đã thêm phụ tùng vào danh sách.",
+    });
+  };
+
+  // Xóa phụ tùng khỏi danh sách
+  const handleRemovePart = (partId) => {
+    setAddedParts(addedParts.filter((p) => p.id !== partId));
+  };
+
+  const handleSubmit = async () => {
+    // Kiểm tra danh sách phụ tùng đã thêm
+    if (addedParts.length === 0) {
+      toast({
+        title: "Thiếu thông tin",
+        description: "Vui lòng thêm ít nhất một phụ tùng vào danh sách trước khi tạo phiếu nhập.",
         variant: "destructive",
       });
       return;
@@ -230,34 +300,72 @@ export default function CreateImportNotePage() {
     try {
       setLoading(true);
 
-      const warrantyPeriod = Number(form.warrantyPeriod) || 0;
-      const basePrice = Number(form.price) || 0;
-
-      let warantyStartDate = null;
-      let warantyEndDate = null;
-
-      if (hasManufacturerWarranty) {
-        const start = form.warrantyStartDate
-          ? new Date(form.warrantyStartDate)
-          : new Date();
-        warantyStartDate = start.toISOString();
-
-        let endDate = start;
-        if (warrantyPeriod > 0) {
-          endDate = new Date(start);
-          endDate.setMonth(endDate.getMonth() + warrantyPeriod);
-        }
-        warantyEndDate = endDate.toISOString();
-      }
-
-      const partId = selectedPartId || null;
-      
-      const partName = selectedPart?.name || form.newPartName?.trim() || "";
-      const partImage = selectedPart?.image || form.newPartImage?.trim() || "";
-
       const importFromValue = form.importFrom?.trim() || "Chưa xác định";
       const supplierValue = form.supplier?.trim() || "Chưa xác định";
 
+      // Tạo partItemRequest cho tất cả các phụ tùng
+      // Tất cả sẽ được gộp vào một partRequest với partItemRequest là array
+      const partItemRequests = addedParts.flatMap((part) => {
+        const warrantyPeriod = Number(part.warrantyPeriod) || 0;
+        const basePrice = Number(part.price) || 0;
+        const quantity = Number(part.quantity) || 1;
+
+        let warantyStartDate = null;
+        let warantyEndDate = null;
+
+        if (part.hasManufacturerWarranty) {
+          const start = part.warrantyStartDate
+            ? new Date(part.warrantyStartDate)
+            : new Date();
+          warantyStartDate = start.toISOString();
+
+          let endDate = start;
+          if (warrantyPeriod > 0) {
+            endDate = new Date(start);
+            endDate.setMonth(endDate.getMonth() + warrantyPeriod);
+          }
+          warantyEndDate = endDate.toISOString();
+        }
+
+        // Nếu có serialNumber và quantity > 1, tạo từng item riêng
+        // Nếu không có serialNumber hoặc quantity = 1, gộp thành 1 item
+        if (part.hasManufacturerWarranty && part.serialNumber && quantity > 1) {
+          // Tạo từng item với serialNumber khác nhau
+          const items = [];
+          for (let i = 0; i < quantity; i++) {
+            items.push({
+              partId: part.partId || null,
+              quantity: 1,
+              serialNumber: `${part.serialNumber}-${i + 1}`,
+              price: basePrice,
+              warrantyPeriod: warrantyPeriod,
+              warantyStartDate,
+              warantyEndDate,
+              isManufacturerWarranty: true,
+            });
+          }
+          return items;
+        } else {
+          // Gộp thành 1 item
+          return [{
+            partId: part.partId || null,
+            quantity: quantity,
+            serialNumber: part.hasManufacturerWarranty && part.serialNumber ? part.serialNumber : null,
+            price: basePrice,
+            warrantyPeriod: warrantyPeriod,
+            warantyStartDate,
+            warantyEndDate,
+            isManufacturerWarranty: part.hasManufacturerWarranty,
+          }];
+        }
+      });
+
+      // Lấy thông tin part đầu tiên để làm partRequest chính
+      // (hoặc có thể để null nếu có nhiều part khác nhau)
+      const firstPart = addedParts[0];
+      const hasMultipleParts = addedParts.some(p => p.partId !== firstPart.partId);
+
+      // Tạo payload với một partRequest chứa tất cả partItemRequest
       const payload = {
         type: form.type || "SUPPLIER",
         importById: staffId,
@@ -266,30 +374,22 @@ export default function CreateImportNotePage() {
         supplier: supplierValue,
         note: form.note || undefined,
         partRequest: {
-          partTypeId: selectedPartTypeId || null,
-          partId: partId,
-          name: partName,
-          image: partImage,
-          partItemRequest: [
-            {
-              quantity: Number(form.quantity) || 0,
-              serialNumber: hasManufacturerWarranty ? form.serialNumber : null,
-              price: basePrice,
-              warrantyPeriod: warrantyPeriod,
-              warantyStartDate,
-              warantyEndDate,
-              isManufacturerWarranty: hasManufacturerWarranty,
-            },
-          ],
+          partTypeId: hasMultipleParts ? null : (firstPart.partTypeId || null),
+          partId: hasMultipleParts ? null : (firstPart.partId || null),
+          name: hasMultipleParts ? "" : (firstPart.partName || ""),
+          image: hasMultipleParts ? "" : (firstPart.partImage || ""),
+          partItemRequest: partItemRequests, // Array chứa tất cả partItem của nhiều part
         },
       };
+
+      console.log("📤 Creating import note with payload:", payload);
 
       const response = await createImportNote(payload);
 
       if (response?.success || response?.statusCode === 200) {
         toast({
           title: "Thành công",
-          description: response?.message || "Tạo phiếu nhập thành công.",
+          description: response?.message || `Đã tạo thành công phiếu nhập với ${addedParts.length} phụ tùng.`,
         });
         navigate("/storekeeper/import-slips");
       } else {
@@ -334,7 +434,7 @@ export default function CreateImportNotePage() {
                 </h1>
               </div>
               <p className="text-muted-foreground text-sm sm:text-base">
-                Tạo phiếu nhập phụ tùng cho kho, kèm thông tin số lượng và bảo hành.
+                Tạo phiếu nhập phụ tùng cho kho. Bạn có thể thêm một hoặc nhiều phụ tùng vào phiếu nhập.
               </p>
             </div>
           </div>
@@ -390,7 +490,7 @@ export default function CreateImportNotePage() {
                 Phụ tùng & thông tin bảo hành
               </CardTitle>
               <CardDescription>
-                Chọn phụ tùng và thiết lập số lượng, giá, thời gian bảo hành.
+                Chọn phụ tùng và thiết lập số lượng, giá, thời gian bảo hành. Bạn có thể thêm nhiều phụ tùng vào danh sách trước khi tạo phiếu nhập.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -715,29 +815,41 @@ export default function CreateImportNotePage() {
                               ? new Date(form.warrantyStartDate)
                               : new Date()
                           }
-                          onSelect={(date) =>
+                          onSelect={(date) => {
+                            if (!date) {
+                              handleChange("warrantyStartDate", null);
+                              setWarrantyDateError("");
+                              return;
+                            }
+                            
+                            const today = getTodayDateOnly();
+                            const selectedDate = new Date(date);
+                            selectedDate.setHours(0, 0, 0, 0);
+                            
+                            if (selectedDate < today) {
+                              setWarrantyDateError("Không thể chọn ngày trong quá khứ. Vui lòng chọn ngày hôm nay hoặc ngày trong tương lai.");
+                              return;
+                            }
+                            
+                            setWarrantyDateError("");
                             handleChange(
                               "warrantyStartDate",
-                              date ? date.toISOString() : null,
-                            )
-                          }
+                              date.toISOString()
+                            );
+                          }}
                           initialFocus
-                          disabled={(date) => {
-                            const today = getTodayDateOnly();
-                            const dateOnly = new Date(date);
-                            dateOnly.setHours(0, 0, 0, 0);
-                            return dateOnly < today;
-                          }}
-                          classNames={{
-                            day_disabled: "hidden",
-                            cell: "[&:has(.hidden)]:hidden",
-                          }}
                         />
                       </PopoverContent>
                     </Popover>
-                    <p className="text-xs text-muted-foreground">
-                      Nếu không chọn, hệ thống sẽ dùng ngày hiện tại làm ngày bắt đầu bảo hành.
-                    </p>
+                    {warrantyDateError ? (
+                      <p className="text-xs text-red-500">
+                        {warrantyDateError}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Nếu không chọn, hệ thống sẽ dùng ngày hiện tại làm ngày bắt đầu bảo hành.
+                      </p>
+                    )}
                   </div>
 
                   <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm space-y-1">
@@ -759,9 +871,108 @@ export default function CreateImportNotePage() {
                   </div>
                 </div>
               )}
+
+              {/* Nút thêm phụ tùng vào danh sách */}
+              <div className="flex justify-end pt-4 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleAddPartToList}
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Thêm vào danh sách
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Danh sách phụ tùng đã thêm */}
+        {addedParts.length > 0 && (
+          <Card className="border-border/70 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Package className="h-4 w-4 text-primary" />
+                Danh sách phụ tùng đã thêm ({addedParts.length})
+              </CardTitle>
+              <CardDescription>
+                Xem lại danh sách phụ tùng đã thêm. Tất cả phụ tùng sẽ được nhập vào một phiếu nhập.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border/60">
+                      <th className="text-left py-3 px-4 font-semibold">STT</th>
+                      <th className="text-left py-3 px-4 font-semibold">Tên phụ tùng</th>
+                      <th className="text-left py-3 px-4 font-semibold">Loại</th>
+                      <th className="text-left py-3 px-4 font-semibold">Số lượng</th>
+                      <th className="text-left py-3 px-4 font-semibold">Đơn giá</th>
+                      <th className="text-left py-3 px-4 font-semibold">Serial</th>
+                      <th className="text-left py-3 px-4 font-semibold">Bảo hành</th>
+                      <th className="text-right py-3 px-4 font-semibold">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {addedParts.map((part, index) => (
+                      <tr key={part.id} className="border-b border-border/40 hover:bg-muted/30">
+                        <td className="py-3 px-4">{index + 1}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-3">
+                            {part.partImage && (
+                              <img
+                                src={part.partImage}
+                                alt={part.partName}
+                                className="h-10 w-10 rounded-md object-cover border border-border/60"
+                                onError={(e) => {
+                                  e.target.style.display = "none";
+                                }}
+                              />
+                            )}
+                            <span className="font-medium">{part.partName}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground">
+                          {partTypes.find((pt) => pt.id === part.partTypeId)?.name || "—"}
+                        </td>
+                        <td className="py-3 px-4">{part.quantity}</td>
+                        <td className="py-3 px-4">
+                          {new Intl.NumberFormat("vi-VN").format(part.price)}₫
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground">
+                          {part.serialNumber || "—"}
+                        </td>
+                        <td className="py-3 px-4">
+                          {part.hasManufacturerWarranty ? (
+                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                              {part.warrantyPeriod} tháng
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex justify-end">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemovePart(part.id)}
+                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="flex justify-end gap-3 pt-2">
           <Button
@@ -776,9 +987,11 @@ export default function CreateImportNotePage() {
             type="button"
             className="bg-primary hover:bg-primary/90"
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={loading || addedParts.length === 0}
           >
-            {loading ? "Đang tạo..." : "Tạo phiếu nhập"}
+            {loading 
+              ? "Đang tạo phiếu nhập..." 
+              : "Tạo phiếu nhập"}
           </Button>
         </div>
       </div>

@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { getImportNoteById } from "@/api/importNotesApi";
+import { getPartItemById } from "@/api/partitemsApi";
 
 const typeMap = {
   SUPPLIER: "Nhập từ nhà cung cấp",
@@ -53,6 +54,8 @@ export default function ImportNoteDetail() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [importNote, setImportNote] = useState(null);
+  const [partItemsDetails, setPartItemsDetails] = useState({}); // Lưu chi tiết partItem theo partItemId
+  const [loadingPartItems, setLoadingPartItems] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -90,6 +93,48 @@ export default function ImportNoteDetail() {
       active = false;
     };
   }, [id, toast]);
+
+  // Fetch partItem details cho mỗi detail
+  useEffect(() => {
+    const fetchPartItemsDetails = async () => {
+      if (!importNote?.importNoteDetails?.length) return;
+
+      const partItemIds = importNote.importNoteDetails
+        .map(detail => detail.partItemId)
+        .filter(Boolean);
+
+      if (partItemIds.length === 0) return;
+
+      try {
+        setLoadingPartItems(true);
+        const partItemsMap = {};
+
+        // Fetch từng partItem
+        await Promise.all(
+          partItemIds.map(async (partItemId) => {
+            try {
+              const response = await getPartItemById(partItemId);
+              const partItemData = response?.data || response;
+              
+              if (partItemData) {
+                partItemsMap[partItemId] = partItemData;
+              }
+            } catch (error) {
+              console.error(`Error fetching partItem ${partItemId}:`, error);
+            }
+          })
+        );
+
+        setPartItemsDetails(partItemsMap);
+      } catch (error) {
+        console.error("Error fetching partItems details:", error);
+      } finally {
+        setLoadingPartItems(false);
+      }
+    };
+
+    fetchPartItemsDetails();
+  }, [importNote]);
 
   const details = useMemo(() => importNote?.importNoteDetails || [], [importNote]);
   const totalQuantity = useMemo(() => {
@@ -162,12 +207,6 @@ export default function ImportNoteDetail() {
       label: "Người nhập",
       value: importerName,
       subText: importNote.importBy?.staffCode ? `Mã: ${importNote.importBy.staffCode}` : undefined
-    },
-    {
-      icon: Package,
-      label: "Nhà cung cấp / Nguồn",
-      value: importNote.supplier || importNote.importFrom || "—",
-      subText: importNote.importFrom && importNote.supplier ? `Nguồn: ${importNote.importFrom}` : undefined
     },
     {
       icon: ClipboardList,
@@ -260,7 +299,7 @@ export default function ImportNoteDetail() {
                   <thead>
                     <tr className="bg-gradient-to-r from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-b-2 border-red-200/50 dark:border-red-800/30">
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">#</th>
-                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Mã</th>
+                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Hình ảnh</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Tên phụ tùng</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Serial/Batch</th>
                       <th className="text-right py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Số lượng</th>
@@ -277,10 +316,22 @@ export default function ImportNoteDetail() {
                       </tr>
                     ) : (
                       details.map((detail, idx) => {
-                        const part = detail.partItem?.part;
+                        // Lấy partItem từ partItemsDetails đã fetch hoặc từ detail
+                        const partItemDetail = detail.partItemId 
+                          ? (partItemsDetails[detail.partItemId] || detail.partItem)
+                          : detail.partItem;
+                        
+                        // Lấy part từ partItem
+                        const part = partItemDetail?.part || detail.partItem?.part;
                         const code = part?.code || detail.partItem?.code || "—";
                         const name = part?.name || detail.partItem?.name || "N/A";
-                        const serial = detail.partItem?.serialNumber || detail.partItemId || "—";
+                        
+                        // Lấy hình ảnh từ part
+                        const image = part?.image || null;
+                        
+                        // Lấy serial number từ partItem
+                        const serial = partItemDetail?.serialNumber || detail.partItem?.serialNumber || detail.partItemId || "—";
+                        
                         const qty = detail.quantity || 0;
                         const unitPrice = formatCurrency(detail.unitPrice || 0);
                         const total = formatCurrency(detail.totalPrice || (detail.unitPrice || 0) * qty);
@@ -294,7 +345,26 @@ export default function ImportNoteDetail() {
                             } hover:bg-rose-50/80`}
                           >
                             <td className="py-4 px-6 text-sm font-medium text-foreground">{idx + 1}</td>
-                            <td className="py-4 px-6 text-sm font-bold text-primary">{code}</td>
+                            <td className="py-4 px-6">
+                              {loadingPartItems ? (
+                                <div className="h-12 w-12 rounded-lg border border-dashed border-border/60 flex items-center justify-center">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                                </div>
+                              ) : image ? (
+                                <img
+                                  src={image}
+                                  alt={name}
+                                  className="h-12 w-12 rounded-lg object-cover border border-border/60"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                />
+                              ) : (
+                                <div className="h-12 w-12 rounded-lg border border-dashed border-border/60 flex items-center justify-center text-xs text-muted-foreground">
+                                  N/A
+                                </div>
+                              )}
+                            </td>
                             <td className="py-4 px-6 text-sm text-foreground">{name}</td>
                             <td className="py-4 px-6 text-sm text-muted-foreground">{serial}</td>
                             <td className="py-4 px-6 text-sm font-semibold text-right text-foreground">{qty}</td>

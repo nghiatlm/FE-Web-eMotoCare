@@ -23,18 +23,18 @@ export function AdminSidebar() {
         <>
             <style>{`
                 [data-sidebar="sidebar"] {
-                    background: #166534 !important;
-                    --sidebar-accent-foreground: #166534 !important;
-                    --sidebar-primary: #166534 !important;
-                    --sidebar-ring: #166534 !important;
+                    background: #c52020 !important;
+                    --sidebar-accent-foreground: #c52020 !important;
+                    --sidebar-primary: #c52020 !important;
+                    --sidebar-ring: #c52020 !important;
                 }
                 [data-sidebar="sidebar"] [data-active="true"] {
-                    color: #166534 !important;
+                    color: #c52020 !important;
                 }
                 [data-sidebar="sidebar"] [data-sidebar="menu-button"][data-active="true"],
                 [data-sidebar="sidebar"] [data-sidebar="menu-button"][data-active="true"] span,
                 [data-sidebar="sidebar"] [data-sidebar="menu-button"][data-active="true"] svg {
-                    color: #166534 !important;
+                    color: #c52020 !important;
                 }
                 :root {
                     --sidebar-width: 20rem !important;
@@ -43,7 +43,7 @@ export function AdminSidebar() {
             <Sidebar 
                 collapsible="icon" 
             >
-                <SidebarHeader className="p-4 border-b border-green-800/30 dark:border-green-800/50">
+                <SidebarHeader className="p-4 border-b border-red-800/30 dark:border-red-800/50">
                     <div className="flex items-center justify-center">
                         <img 
                             src="/logowhite.png" 
@@ -68,11 +68,11 @@ export function AdminSidebar() {
                                     className={cn(
                                         "gap-3 rounded-lg transition-all text-base",
                                         isActive 
-                                            ? "bg-green-100 !text-[#166534] font-semibold shadow-lg hover:bg-green-200 [&>svg]:!text-[#166534] [&>span]:!text-[#166534]" 
-                                            : "text-white/90 hover:bg-green-900/50 hover:text-white"
+                                            ? "bg-red-100 !text-[#c52020] font-semibold shadow-lg hover:bg-red-200 [&>svg]:!text-[#c52020] [&>span]:!text-[#c52020]" 
+                                            : "text-white/90 hover:bg-red-900/50 hover:text-white"
                                     )}
                                     >
-                                        <NavLink to={item.url} className={isActive ? "[&_svg]:!text-[#166534] [&_span]:!text-[#166534]" : ""}>
+                                        <NavLink to={item.url} className={isActive ? "[&_svg]:!text-[#c52020] [&_span]:!text-[#c52020]" : ""}>
                                             <item.icon className="h-5 w-5 flex-shrink-0" />
                                             {!isCollapsed && <span>{item.title}</span>}
                                         </NavLink>
@@ -83,7 +83,7 @@ export function AdminSidebar() {
                     </SidebarMenu>
                 </SidebarContent>
 
-                <SidebarFooter className="p-3 border-t border-green-800/30 dark:border-green-800/50">
+                <SidebarFooter className="p-3 border-t border-red-800/30 dark:border-red-800/50">
                     <SidebarMenu>
                         <SidebarMenuItem>
                             <SidebarMenuButton
@@ -92,7 +92,7 @@ export function AdminSidebar() {
                                     window.location.href = "/login";
                                 }}
                                 tooltip="Đăng xuất"
-                                className="gap-3 rounded-lg text-white/90 hover:bg-green-900/50 hover:text-white transition-all text-base"
+                                className="gap-3 rounded-lg text-white/90 hover:bg-red-900/50 hover:text-white transition-all text-base"
                             >
                                 <LogOut className="h-5 w-5 flex-shrink-0" />
                                 {!isCollapsed && <span>Đăng xuất</span>}
