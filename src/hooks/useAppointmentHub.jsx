@@ -1,141 +1,165 @@
 import { useEffect, useRef } from "react";
 import * as signalR from "@microsoft/signalr";
 
-/**
- * Hook để kết nối SignalR và listen updates cho Appointment/Booking
- * Khi có appointment mới hoặc cập nhật, sẽ tự động reload danh sách booking
- * 
- * @param {Function} onUpdate - Callback khi nhận được update (sẽ gọi để reload data)
- */
 export default function useAppointmentHub(onUpdate) {
   const connectionRef = useRef(null);
   const onUpdateRef = useRef(onUpdate);
 
-  // ✅ Cập nhật ref khi onUpdate thay đổi (tránh stale closure)
   useEffect(() => {
     onUpdateRef.current = onUpdate;
   }, [onUpdate]);
 
   useEffect(() => {
-    // ✅ Lấy API base URL từ env
-    let API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-    
-    // ✅ Nếu không có env, dùng URL mặc định
-    if (!API_BASE_URL) {
-      API_BASE_URL = "https://bemodernestate.site";
-      console.warn("⚠️ VITE_API_BASE_URL not set in .env file");
-      console.warn("⚠️ Using default URL:", API_BASE_URL);
-    }
-    
-    // ✅ Loại bỏ `/api` khỏi URL vì hub URL không có `/api`
-    let baseUrl = API_BASE_URL.replace(/\/api\/?$/, "");
+    // nếu hub AllowAnonymous thì token cũng được, không có cũng không sao
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const token = user?.token;
+
+    // base URL có /api thì bỏ đi
+    let API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://bemodernestate.site/api";
+    const baseUrl = API_BASE_URL.replace(/\/api\/?$/, "");
     const hubUrl = `${baseUrl}/hubs/notifyappointment`;
 
     console.log("🔌 Connecting to Appointment SignalR hub:", hubUrl);
 
-    // Lấy token từ localStorage
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    const token = user?.token || "";
-
-    // Tạo connection - theo code mẫu: skipNegotiation: true
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(hubUrl, {
-        accessTokenFactory: () => token || "",
-        skipNegotiation: true,
-        transport: signalR.HttpTransportType.WebSockets,
+        // hub AllowAnonymous nên không bắt buộc, nhưng để cũng được
+        accessTokenFactory: token ? () => token : undefined,
+        // 🔒 CHỈ dùng LongPolling cho chắc, giống mobile
+        transport: signalR.HttpTransportType.LongPolling,
       })
       .withAutomaticReconnect()
+      .configureLogging(signalR.LogLevel.Information)
       .build();
 
     connectionRef.current = connection;
 
-    // ✅ Listen for updates - Backend gửi các event: ReceiveCreate, ReceiveUpdate, ReceiveApproved, ReceiveDelete
     const handleReceiveCreate = (entity, data) => {
-      console.log("📩 ReceiveCreate:", entity, data);
-      if (entity === "Appointment") {
-        console.log("🔄 Appointment created, reloading bookings...");
-        if (onUpdateRef.current && typeof onUpdateRef.current === "function") {
-          onUpdateRef.current();
+      console.log("📩 [useAppointmentHub] ReceiveCreate:", { entity, data, hasCallback: !!onUpdateRef.current });
+      if (onUpdateRef.current) {
+        try {
+          // ✅ Truyền entity và data vào callback nếu callback chấp nhận tham số
+          if (onUpdateRef.current.length > 0) {
+            console.log("📩 [useAppointmentHub] Calling callback with params:", { entity, data });
+            onUpdateRef.current(entity, data);
+          } else {
+            console.log("📩 [useAppointmentHub] Calling callback without params");
+            onUpdateRef.current();
+          }
+        } catch (error) {
+          console.error("❌ [useAppointmentHub] Error in callback:", error);
         }
+      } else {
+        console.warn("⚠️ [useAppointmentHub] No callback registered");
       }
     };
 
     const handleReceiveUpdate = (entity, data) => {
-      console.log("📩 ReceiveUpdate:", entity, data);
-      if (entity === "Appointment") {
-        console.log("🔄 Appointment updated, reloading bookings...");
-        if (onUpdateRef.current && typeof onUpdateRef.current === "function") {
-          onUpdateRef.current();
+      console.log("📩 [useAppointmentHub] ReceiveUpdate:", { entity, data, hasCallback: !!onUpdateRef.current });
+      if (onUpdateRef.current) {
+        try {
+          // ✅ Truyền entity và data vào callback nếu callback chấp nhận tham số
+          if (onUpdateRef.current.length > 0) {
+            console.log("📩 [useAppointmentHub] Calling callback with params:", { entity, data });
+            onUpdateRef.current(entity, data);
+          } else {
+            console.log("📩 [useAppointmentHub] Calling callback without params");
+            onUpdateRef.current();
+          }
+        } catch (error) {
+          console.error("❌ [useAppointmentHub] Error in callback:", error);
         }
+      } else {
+        console.warn("⚠️ [useAppointmentHub] No callback registered");
       }
     };
 
-    const handleReceiveApproved = (entity, data) => {
-      console.log("📩 ReceiveApproved:", entity, data);
-      if (entity === "Appointment") {
-        console.log("🔄 Appointment approved, reloading bookings...");
-        if (onUpdateRef.current && typeof onUpdateRef.current === "function") {
-          onUpdateRef.current();
-        }
-      }
-    };
-
-    const handleReceiveDelete = (entity, data) => {
-      console.log("📩 ReceiveDelete:", entity, data);
-      if (entity === "Appointment") {
-        console.log("🔄 Appointment deleted, reloading bookings...");
-        if (onUpdateRef.current && typeof onUpdateRef.current === "function") {
-          onUpdateRef.current();
-        }
-      }
-    };
-
-    // Start connection - đơn giản như code mẫu
-    connection.start()
-      .then(() => {
-        console.log("✅ Connected to Appointment SignalR hub");
-        console.log("📡 Connection ID:", connection.connectionId);
-        console.log("📡 Transport:", connection.connection?.transport?.name || "Unknown");
-      })
-      .catch(err => {
-        console.error("❌ Appointment SignalR connection error:", err);
-        console.warn("ℹ️ Real-time updates are disabled. App will continue to work normally.");
-        console.warn("ℹ️ Reload page to see new bookings.");
-      });
-
-    // ✅ Listen các event từ backend: ReceiveCreate, ReceiveUpdate, ReceiveApproved, ReceiveDelete
+    // ✅ Đăng ký listeners trước khi start
     connection.on("ReceiveCreate", handleReceiveCreate);
     connection.on("ReceiveUpdate", handleReceiveUpdate);
-    connection.on("ReceiveApproved", handleReceiveApproved);
-    connection.on("ReceiveDelete", handleReceiveDelete);
-
-    // Handle reconnection
-    connection.onreconnecting((error) => {
-      console.log("🔄 SignalR reconnecting...", error);
+    connection.on("ReceiveApproved", handleReceiveUpdate);
+    connection.on("ReceiveDelete", (entity, data) => {
+      console.log("📩 ReceiveDelete:", entity, data);
+      if (onUpdateRef.current) {
+        // ✅ Truyền entity và data vào callback nếu callback chấp nhận tham số
+        if (onUpdateRef.current.length > 0) {
+          onUpdateRef.current(entity, data);
+        } else {
+          onUpdateRef.current();
+        }
+      }
     });
 
-    connection.onreconnected((connectionId) => {
-      console.log("✅ SignalR reconnected:", connectionId);
-    });
+    connection.onreconnected((id) => console.log("✅ SignalR reconnected:", id));
+    connection.onreconnecting((e) => console.log("🔄 SignalR reconnecting...", e));
+    connection.onclose((e) => console.log("❌ SignalR connection closed:", e));
 
-    connection.onclose((error) => {
-      console.log("❌ SignalR connection closed:", error);
-    });
-
-    // Cleanup
-    return () => {
-      if (connectionRef.current) {
-        console.log("🔌 Disconnecting from SignalR hub");
-        connectionRef.current.off("ReceiveCreate", handleReceiveCreate);
-        connectionRef.current.off("ReceiveUpdate", handleReceiveUpdate);
-        connectionRef.current.off("ReceiveApproved", handleReceiveApproved);
-        connectionRef.current.off("ReceiveDelete", handleReceiveDelete);
-        connectionRef.current.stop();
-        connectionRef.current = null;
+    // ✅ Start connection và xử lý lỗi
+    const startConnection = async () => {
+      try {
+        await connection.start();
+        console.log("✅ Connected to Appointment SignalR hub");
+        console.log("📡 Connection ID:", connection.connectionId);
+      } catch (err) {
+        // ✅ Ignore AbortError (xảy ra khi cleanup được gọi trước khi start hoàn tất)
+        if (err.name === "AbortError" || 
+            err.message?.includes("AbortError") || 
+            err.message?.includes("stop() was called") ||
+            err.message?.includes("Failed to start the HttpConnection before stop()")) {
+          console.log("ℹ️ [useAppointmentHub] Connection start aborted (cleanup called)");
+          return;
+        }
+        
+        // ✅ Xử lý lỗi 404 - endpoint không tồn tại
+        if (err.message?.includes("404") || err.statusCode === 404) {
+          console.warn("⚠️ [useAppointmentHub] Endpoint not found (404). Hub URL:", hubUrl);
+          console.warn("ℹ️ Backend may need to configure SignalR route for appointments.");
+          console.warn("ℹ️ Real-time updates disabled, app vẫn chạy bình thường.");
+          return;
+        }
+        
+        console.error("❌ Appointment SignalR connection error:", err);
+        console.warn("ℹ️ Real-time updates disabled, app vẫn chạy bình thường.");
       }
     };
-  }, []); // ✅ Chỉ chạy một lần khi component mount
+
+    startConnection();
+
+    // ✅ Cleanup function
+    return () => {
+      if (connectionRef.current) {
+        console.log("🔌 [useAppointmentHub] Cleanup: Disconnecting from SignalR hub");
+        
+        const currentConnection = connectionRef.current;
+        connectionRef.current = null; // ✅ Set null trước để tránh race condition
+        
+        try {
+          // ✅ Kiểm tra state và cleanup
+          if (currentConnection.state !== signalR.HubConnectionState.Disconnected) {
+            currentConnection.off("ReceiveCreate", handleReceiveCreate);
+            currentConnection.off("ReceiveUpdate", handleReceiveUpdate);
+            currentConnection.off("ReceiveApproved", handleReceiveUpdate);
+            currentConnection.off("ReceiveDelete");
+            
+            // ✅ Stop và ignore AbortError
+            currentConnection.stop().catch(err => {
+              // ✅ Ignore các lỗi khi cleanup (có thể connection đã đóng)
+              if (!err.message?.includes("AbortError") && 
+                  !err.message?.includes("stop() was called") &&
+                  !err.message?.includes("Cannot start")) {
+                console.warn("⚠️ [useAppointmentHub] Error during stop:", err.message);
+              }
+            });
+          }
+        } catch (err) {
+          // ✅ Ignore cleanup errors
+          if (!err.message?.includes("AbortError")) {
+            console.warn("⚠️ [useAppointmentHub] Cleanup error:", err.message);
+          }
+        }
+      }
+    };
+  }, []);
 
   return connectionRef.current;
 }
-

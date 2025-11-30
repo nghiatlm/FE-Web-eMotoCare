@@ -3,6 +3,7 @@ import { Drawer, Button, Tag, Divider, Select } from "antd";
 import { toast } from "@/components/ui/sonner";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
+import { UserPlus, UserCheck } from "lucide-react";
 
 import { fetchTechnicians } from "../../services/staffsService";
 import MaintenanceContent from "./detail-content/MaintenanceContent";
@@ -246,26 +247,61 @@ export default function BookingDetailDrawer({
 
           {/* ASSIGN TECHNICIAN */}
           {status === "CHECKED_IN" && !booking.technician && (
-            <section className='bg-white rounded-2xl shadow-md p-5 mb-6 border'>
-              <h3 className='font-semibold mb-3 border-b pb-2 text-[#d4380d]'>
+            <section style={{ 
+              marginBottom: 24, 
+              padding: 20, 
+              background: "#ffffff", 
+              borderRadius: 8,
+              border: "1px solid #f0f0f0"
+            }}>
+              <h3 style={{ 
+                marginBottom: 16, 
+                fontSize: 16, 
+                fontWeight: 600,
+                color: "#262626",
+                paddingBottom: 12,
+                borderBottom: "1px solid #f0f0f0",
+                display: "flex",
+                alignItems: "center",
+                gap: 8
+              }}>
+                <UserPlus size={16} color="#595959" />
                 Chọn kỹ thuật viên
               </h3>
-              <Select
-                style={{ width: "100%" }}
-                placeholder='Chọn kỹ thuật viên'
-                loading={loadingTechs}
-                value={selectedTechnician?.id}
-                options={technicians.map((t) => ({
-                  value: t.id,
-                  label: `${t.firstName} ${t.lastName}`,
-                }))}
-                onChange={(value) =>
-                  setSelectedTechnician(technicians.find((t) => t.id === value))
-                }
-              />
+              <div style={{ marginBottom: 16 }}>
+                <Select
+                  style={{ width: "100%" }}
+                  placeholder='Chọn kỹ thuật viên'
+                  loading={loadingTechs}
+                  value={selectedTechnician?.id}
+                  options={technicians.map((t) => ({
+                    value: t.id,
+                    label: `${t.firstName} ${t.lastName}${t.staffCode ? ` (${t.staffCode})` : ''}`,
+                  }))}
+                  onChange={(value) =>
+                    setSelectedTechnician(technicians.find((t) => t.id === value))
+                  }
+                />
+              </div>
+              {selectedTechnician && (
+                <div style={{
+                  padding: "12px 16px",
+                  background: "#ffffff",
+                  borderRadius: 6,
+                  border: "1px solid #f0f0f0",
+                  marginBottom: 16
+                }}>
+                  <p style={{ margin: 0, fontSize: 14, color: "#595959" }}>
+                    Đã chọn: <strong>{selectedTechnician.firstName} {selectedTechnician.lastName}</strong>
+                    {selectedTechnician.staffCode && ` (${selectedTechnician.staffCode})`}
+                  </p>
+                </div>
+              )}
               <Button
                 type='primary'
-                className='mt-4'
+                block
+                disabled={!selectedTechnician || loadingTechs}
+                loading={loadingTechs}
                 onClick={handleAssignTechnician}>
                 Xác nhận kỹ thuật viên
               </Button>
@@ -273,13 +309,34 @@ export default function BookingDetailDrawer({
           )}
 
           {booking.technician && (
-            <section className='bg-white rounded-2xl shadow-md p-5 mb-6 border'>
-              <h3 className='font-semibold mb-3 border-b pb-2 text-[#d4380d]'>
+            <section style={{
+              background: "#ffffff",
+              borderRadius: 8,
+              padding: 20,
+              marginBottom: 24,
+              border: "1px solid #f0f0f0"
+            }}>
+              <h3 style={{ 
+                marginBottom: 12, 
+                fontSize: 16, 
+                fontWeight: 600,
+                color: "#262626",
+                paddingBottom: 12,
+                borderBottom: "1px solid #f0f0f0",
+                display: "flex",
+                alignItems: "center",
+                gap: 8
+              }}>
+                <UserCheck size={16} color="#595959" />
                 Kỹ thuật viên phụ trách
               </h3>
-              <p className='text-sm'>
-                <strong>Tên:</strong> {booking.technician.firstName}{" "}
-                {booking.technician.lastName}
+              <p style={{ margin: 0, fontSize: 15, color: "#262626" }}>
+                <strong>{booking.technician.firstName} {booking.technician.lastName}</strong>
+                {booking.technician.staffCode && (
+                  <span style={{ color: "#8c8c8c", marginLeft: 8 }}>
+                    ({booking.technician.staffCode})
+                  </span>
+                )}
               </p>
             </section>
           )}
@@ -320,7 +377,7 @@ export default function BookingDetailDrawer({
             {status === "PENDING" && (
               <>
                 <Button danger onClick={() => handleChangeStatus("CANCELED")}>
-                  Từ chối
+                  Hủy
                 </Button>
                 <Button
                   type='primary'
@@ -328,6 +385,11 @@ export default function BookingDetailDrawer({
                   Chấp nhận
                 </Button>
               </>
+            )}
+            {(status === "APPROVED" || status === "CHECKED_IN") && (
+              <Button danger onClick={() => handleChangeStatus("CANCELED")}>
+                Hủy lịch hẹn
+              </Button>
             )}
             {status === "REPAIR_COMPLETED" && (
               <Button

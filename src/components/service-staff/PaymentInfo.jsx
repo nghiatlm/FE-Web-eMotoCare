@@ -174,7 +174,6 @@ const PaymentInfo = ({ booking, onOpenPayment }) => {
       <Card
         title={
           <span className='flex items-center gap-2'>
-            <DollarSign style={{ color: "#ff4d4f" }} />
             <span>Thông tin thanh toán</span>
           </span>
         }>

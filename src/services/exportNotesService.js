@@ -1,4 +1,4 @@
-import { getExportNotes, getExportNotePartItems } from "../api/exportNotesApi";
+import { getExportNotes, getExportNotePartItems, getExportStatusByAppointmentAndPart } from "../api/exportNotesApi";
 
 /**
  * Lấy danh sách export notes
@@ -82,6 +82,39 @@ export const findExportNoteStatusByPartItemId = async (partItemId) => {
     return null;
   } catch (error) {
     console.error("Lỗi tìm export note status:", error);
+    return null;
+  }
+};
+
+/**
+ * ✅ Lấy export note status theo appointmentCode và proposedPartId (API mới)
+ */
+export const getExportStatusByAppointmentCodeAndPartId = async (appointmentCode, proposedPartId) => {
+  if (!appointmentCode || !proposedPartId) {
+    console.warn("⚠️ Thiếu appointmentCode hoặc proposedPartId để lấy export status");
+    return null;
+  }
+  
+  try {
+    const res = await getExportStatusByAppointmentAndPart(appointmentCode, proposedPartId);
+    
+    // ✅ Parse response: có thể là string status hoặc object có status
+    let status = null;
+    if (typeof res === 'string') {
+      status = res;
+    } else if (res?.data) {
+      status = res.data?.status || res.data?.exportNoteStatus || res.data;
+    } else if (res?.status) {
+      status = res.status;
+    } else if (res?.exportNoteStatus) {
+      status = res.exportNoteStatus;
+    }
+    
+    console.log(`✅ Lấy export status cho appointmentCode ${appointmentCode}, proposedPartId ${proposedPartId}:`, status);
+    return status;
+  } catch (error) {
+    console.error(`❌ Lỗi lấy export status cho appointmentCode ${appointmentCode}, proposedPartId ${proposedPartId}:`, error);
+    // ✅ Không throw error, chỉ log và return null
     return null;
   }
 };

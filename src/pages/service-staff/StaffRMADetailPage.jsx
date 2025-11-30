@@ -4,7 +4,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Spin, Button } from "antd";
 import { toast } from "@/components/ui/sonner";
 import { ArrowLeft } from "lucide-react";
-import { getRMAService, getRMADetailsService, getCustomerByRMAService } from "../../services/rmaService";
+import { getRMAService, getCustomerByRMAService } from "../../services/rmaService";
+import { getRmaById } from "../../api/rmasApi";
 import RMADetails from "../../components/service-staff/RMADetails";
 
 export default function StaffRMADetailPage() {
@@ -27,38 +28,30 @@ export default function StaffRMADetailPage() {
   const loadRMAData = async () => {
     setLoading(true);
     try {
-      // Load RMA info
-      const rmaData = await getRMAService();
-      let rmaList = rmaData?.rowDatas || rmaData?.data?.rowDatas || (Array.isArray(rmaData) ? rmaData : []);
-      if (!Array.isArray(rmaList)) rmaList = [];
-
-      const foundRMA = rmaList.find((r) => r.id === rmaId);
-      if (!foundRMA) {
+      // ✅ Load RMA info từ API mới: /api/v1/rmas/{rmaId}
+      const response = await getRmaById(rmaId);
+      const rmaData = response?.data?.data || response?.data || response;
+      
+      if (!rmaData) {
         toast.error("Không tìm thấy RMA");
         navigate("/staff/warranty");
         return;
       }
 
-      // Load customer for RMA
-      let rmaWithCustomer = foundRMA;
+      // ✅ Lấy rmaDetails từ response (response có rmaDetails array)
+      const detailsList = rmaData?.rmaDetails || [];
+      
+      // ✅ Load customer for RMA (nếu cần)
+      let rmaWithCustomer = rmaData;
       try {
         const customer = await getCustomerByRMAService(rmaId);
-        rmaWithCustomer = { ...foundRMA, customer };
+        rmaWithCustomer = { ...rmaData, customer };
       } catch (e) {
         console.error("Không load được customer cho RMA", e);
       }
 
       setRma(rmaWithCustomer);
-
-      // Load RMA details
-      const detailsData = await getRMADetailsService({ rmaId });
-      let detailsList =
-        detailsData?.rowDatas ||
-        detailsData?.data?.rowDatas ||
-        (Array.isArray(detailsData) ? detailsData : []);
-
-      if (!Array.isArray(detailsList)) detailsList = [];
-      setRmaDetails(detailsList);
+      setRmaDetails(Array.isArray(detailsList) ? detailsList : []);
     } catch (err) {
       console.error("❌ Lỗi khi tải dữ liệu RMA:", err);
       toast.error("Không thể tải dữ liệu RMA");

@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import RepairModeEVCheck from "../../components/technician/detail-content/RepairModeEVCheck";
 import RMARepairModeEVCheck from "../../components/technician/detail-content/RMARepairModeEVCheck";
 import MaintenanceModeEVCheck from "../../components/technician/detail-content/MaintenanceModeEVCheck";
+import CampaignModeEVCheck from "../../components/technician/detail-content/CampaignModeEVCheck";
 import {
   SERVICE_TYPE_MAP,
   SERVICE_TYPE_COLORS,
@@ -362,6 +363,22 @@ export default function TechnicianBookingDetailPage({
               />
             );
           })()}
+        </Card>
+      ) : isCampaign ? (
+        <Card
+          style={{ marginBottom: 24, borderRadius: 8 }}
+          bodyStyle={{ padding: "24px", maxHeight: "600px", overflow: "auto" }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: "#d4380d", borderBottom: "1px solid #f0f0f0", paddingBottom: 12 }}>
+            Phiếu kiểm tra chiến dịch
+          </h3>
+          <CampaignModeEVCheck
+            key={`campaign-${evCheckId || "empty"}-${refreshKey}`}
+            booking={booking}
+            evCheckId={evCheckId}
+            onRefresh={() => setRefreshKey((prev) => prev + 1)}
+            readOnly={readOnly}
+            forceEmpty={!evCheckId}
+          />
         </Card>
       ) : isMaintenance && evCheckId && (hasOdometer || readOnly) ? (
         <Card

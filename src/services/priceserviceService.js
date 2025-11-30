@@ -31,38 +31,61 @@ export const fetchPriceServices = async (params = {}) => {
 };
 
 /**
- * 🔹 Lấy laborCost theo remedies ("REPAIR" hoặc "REPLACE")
+ * 🔹 Lấy laborCost theo partTypeId và remedies ("REPAIR" hoặc "REPLACE")
  * - Dùng cache để tối ưu
  * - Lọc phần tử mới nhất theo effectiveDate nếu có nhiều bản ghi
- * @param {('REPAIR'|'REPLACE')} remedies
+ * @param {string} partTypeId - ID của loại phụ tùng
+ * @param {('REPAIR'|'REPLACE')} remedies - Biện pháp sửa chữa
  * @returns {Promise<number>} laborCost hoặc 0 nếu không có
  */
-export const getLaborCostByRemediesService = async (remedies) => {
+export const getLaborCostByRemediesService = async (partTypeId, remedies) => {
   if (!remedies) return 0;
+  if (!partTypeId) {
+    console.warn("⚠️ getLaborCostByRemediesService: thiếu partTypeId, trả về 0");
+    return 0;
+  }
 
-  // Nếu đã cache thì trả về luôn
-  if (laborCostCache.has(remedies)) return laborCostCache.get(remedies);
+  // ✅ Tạo cache key từ partTypeId và remedies
+  const cacheKey = `${partTypeId}_${remedies}`;
+  if (laborCostCache.has(cacheKey)) return laborCostCache.get(cacheKey);
 
   try {
-    const res = await getPriceServices({ page: 1, pageSize: 50, remedies });
+    // ✅ Gọi API với partTypeId và remedies
+    console.log(`📞 [getLaborCostByRemediesService] Gọi API với partTypeId: ${partTypeId}, remedies: ${remedies}`);
+    const res = await getPriceServices({ 
+      page: 1, 
+      pageSize: 50, 
+      partTypeId,
+      remedies 
+    });
+    console.log(`📥 [getLaborCostByRemediesService] API Response:`, res);
+    
     const rows =
       res?.data?.data?.rowDatas || res?.data?.rowDatas || res?.data || [];
+    console.log(`📋 [getLaborCostByRemediesService] Tổng số rows: ${rows.length}`);
 
-    const filtered = rows.filter((r) => r.remedies === remedies);
+    // ✅ Filter theo cả partTypeId và remedies
+    const filtered = rows.filter(
+      (r) => r.partTypeId === partTypeId && r.remedies === remedies
+    );
+    console.log(`🔍 [getLaborCostByRemediesService] Sau khi filter: ${filtered.length} rows`);
+    
     if (filtered.length === 0) {
-      laborCostCache.set(remedies, 0);
+      console.warn(`⚠️ [getLaborCostByRemediesService] Không tìm thấy price service cho partTypeId: ${partTypeId}, remedies: ${remedies}`);
+      laborCostCache.set(cacheKey, 0);
       return 0;
     }
 
-    // Lấy bản mới nhất theo effectiveDate
+    // ✅ Lấy bản mới nhất theo effectiveDate
     const latest = [...filtered].sort(
       (a, b) =>
-        new Date(b.effectiveDate).getTime() -
-        new Date(a.effectiveDate).getTime()
+        new Date(b.effectiveDate || 0).getTime() -
+        new Date(a.effectiveDate || 0).getTime()
     )[0];
 
     const cost = Number(latest?.laborCost || 0);
-    laborCostCache.set(remedies, cost);
+    console.log(`✅ [getLaborCostByRemediesService] Đã lấy được laborCost: ${cost} từ price service:`, latest);
+    laborCostCache.set(cacheKey, cost);
     return cost;
   } catch (err) {
     console.error("❌ getLaborCostByRemediesService error:", err);

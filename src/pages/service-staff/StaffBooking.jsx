@@ -59,8 +59,6 @@ const StaffBooking = () => {
     setOpenQRModal(false);
   };
 
-  // ✅ Cập nhật trạng thái
-
   return (
     <div style={{ padding: 24, width: "100%", margin: "0 auto" }}>
       {/* ✅ HEADER */}

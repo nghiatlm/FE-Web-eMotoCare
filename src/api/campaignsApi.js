@@ -1,6 +1,6 @@
 import api from "./api";
 
-const BASE_URL = "/v1/campaigns";
+const BASE_URL = "/v1/programs";
 
 /**
  * Lấy danh sách campaigns
@@ -16,7 +16,7 @@ const BASE_URL = "/v1/campaigns";
  */
 export const getCampaigns = (params = {}) => {
   const queryParams = {
-    page: params.page || 1,
+    pageCurrent: params.pageCurrent || params.page || 1,
     pageSize: params.pageSize || 10,
     ...(params.search && { search: params.search }),
     ...(params.status && { status: params.status }),

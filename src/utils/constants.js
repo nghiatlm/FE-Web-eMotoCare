@@ -50,5 +50,5 @@ export const SERVICE_TYPE_COLORS = {
   WARRANTY_TYPE: "green",
   RECALL_TYPE: "magenta",
   RMA_TYPE: "gold",
-  CAMPAIGN_TYPE: "orange",
+  CAMPAIGN_TYPE: "purple",
 };

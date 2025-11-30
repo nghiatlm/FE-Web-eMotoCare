@@ -2,9 +2,9 @@ import { STATUS_COLORS, STATUS_MAP } from "../../utils/constants";
 import { Button, Tag, Divider, Select, Card, Spin } from "antd";
 import { toast } from "@/components/ui/sonner";
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, UserPlus, UserCheck } from "lucide-react";
 
 import { fetchTechnicians } from "../../services/staffsService";
 import TechnicianBookingDetailDrawer from "../../components/technician/TechnicanBookingDetailDrawer";
@@ -12,6 +12,7 @@ import {
   changeAppointmentStatusService,
   approveAppointmentService,
 } from "../../services/appointmentService";
+import { getAppointmentById } from "../../api/appointmentsApi";
 
 import {
   createEVCheckService,
@@ -21,14 +22,19 @@ import {
 import Payment from "../../components/service-staff/Payment";
 import PaymentInfo from "../../components/service-staff/PaymentInfo";
 import { useBookings } from "../../hooks/useBookings";
+import useAppointmentHub from "../../hooks/useAppointmentHub";
 
 export default function StaffBookingDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { data, loading, updateStatus } = useBookings();
+  const { data, loading, updateStatus, fetchBookings } = useBookings();
   
   // Tìm booking từ danh sách đã có
-  const booking = data.find(b => b.id === id);
+  const bookingFromList = data.find(b => b.id === id);
+  
+  // ✅ State riêng cho booking detail để có thể reload độc lập
+  const [booking, setBooking] = useState(bookingFromList);
+  const [loadingBooking, setLoadingBooking] = useState(false);
   
   const [technicians, setTechnicians] = useState([]);
   const [selectedTechnician, setSelectedTechnician] = useState(null);
@@ -38,10 +44,75 @@ export default function StaffBookingDetailPage() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [technicianFromEVCheck, setTechnicianFromEVCheck] = useState(null);
 
+  // ✅ Ref để lưu loadBookingDetail function
+  const loadBookingDetailRef = useRef(null);
+
+  // ✅ Load booking detail từ API
+  const loadBookingDetail = useCallback(async () => {
+    if (!id) return;
+    
+    try {
+      setLoadingBooking(true);
+      console.log("🔄 [StaffBookingDetailPage] Loading booking detail for ID:", id);
+      const res = await getAppointmentById(id);
+      const bookingData = res?.data?.data || res?.data || res;
+      if (bookingData) {
+        setBooking(bookingData);
+        console.log("✅ [StaffBookingDetailPage] Loaded booking detail - Status:", bookingData.status, "ID:", bookingData.id);
+      } else {
+        console.warn("⚠️ [StaffBookingDetailPage] No booking data found");
+      }
+    } catch (error) {
+      console.error("❌ [StaffBookingDetailPage] Lỗi load booking detail:", error);
+    } finally {
+      setLoadingBooking(false);
+    }
+  }, [id]);
+
+  // ✅ Lưu function vào ref để dùng trong SignalR callback
+  useEffect(() => {
+    loadBookingDetailRef.current = loadBookingDetail;
+  }, [loadBookingDetail]);
+
+  // ✅ Load booking detail khi component mount hoặc id thay đổi
+  useEffect(() => {
+    loadBookingDetail();
+  }, [loadBookingDetail]);
+
+  // ✅ Cập nhật booking khi bookingFromList thay đổi (từ useBookings)
+  useEffect(() => {
+    if (bookingFromList) {
+      setBooking(bookingFromList);
+    }
+  }, [bookingFromList]);
+
   const status = booking?.status?.toUpperCase();
   
   // ✅ Lấy technician từ booking hoặc từ EVCheck
   const currentTechnician = booking?.technician || technicianFromEVCheck;
+
+  // ✅ Kết nối SignalR để nhận real-time updates cho appointment
+  useAppointmentHub((entity, data) => {
+    console.log("🔄 [StaffBookingDetailPage] SignalR: Appointment updated", { 
+      entity, 
+      data, 
+      currentId: id,
+      appointmentId: data?.id || data?.appointmentId || null
+    });
+    
+    // ✅ Luôn reload booking detail khi nhận được SignalR update
+    console.log("✅ [StaffBookingDetailPage] SignalR: Reloading booking detail...");
+    
+    // ✅ Reload booking detail từ ref để tránh stale closure
+    if (loadBookingDetailRef.current) {
+      loadBookingDetailRef.current();
+    }
+    
+    // ✅ Cũng reload danh sách để đồng bộ
+    if (fetchBookings) {
+      fetchBookings();
+    }
+  });
 
   useEffect(() => {
     const loadTechs = async () => {
@@ -85,7 +156,7 @@ export default function StaffBookingDetailPage() {
   }, [booking]);
 
   // ✅ Hiển thị loading khi đang load dữ liệu
-  if (loading) {
+  if (loading || loadingBooking) {
     return (
       <div style={{ padding: 24, display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
         <Spin size="large" />
@@ -258,28 +329,61 @@ export default function StaffBookingDetailPage() {
 
           {/* ASSIGN TECHNICIAN */}
           {status === "CHECKED_IN" && !currentTechnician && (
-            <Card
-              style={{ marginBottom: 24, borderRadius: 8 }}
-              bodyStyle={{ padding: "24px" }}>
-              <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: "#d4380d", borderBottom: "1px solid #f0f0f0", paddingBottom: 12 }}>
+            <Card 
+              style={{ 
+                marginBottom: 24,
+                borderRadius: 8,
+                border: "1px solid #f0f0f0"
+              }}
+              bodyStyle={{ padding: "20px" }}>
+              <h3 style={{ 
+                marginBottom: 16, 
+                fontSize: 16, 
+                fontWeight: 600,
+                color: "#262626",
+                paddingBottom: 12,
+                borderBottom: "1px solid #f0f0f0",
+                display: "flex",
+                alignItems: "center",
+                gap: 8
+              }}>
+                <UserPlus size={16} color="#595959" />
                 Chọn kỹ thuật viên
               </h3>
-              <Select
-                style={{ width: "100%" }}
-                placeholder='Chọn kỹ thuật viên'
-                loading={loadingTechs}
-                value={selectedTechnician?.id}
-                options={technicians.map((t) => ({
-                  value: t.id,
-                  label: `${t.firstName} ${t.lastName}`,
-                }))}
-                onChange={(value) =>
-                  setSelectedTechnician(technicians.find((t) => t.id === value))
-                }
-              />
+              <div style={{ marginBottom: 16 }}>
+                <Select
+                  style={{ width: "100%" }}
+                  placeholder='Chọn kỹ thuật viên'
+                  loading={loadingTechs}
+                  value={selectedTechnician?.id}
+                  options={technicians.map((t) => ({
+                    value: t.id,
+                    label: `${t.firstName} ${t.lastName}${t.staffCode ? ` (${t.staffCode})` : ''}`,
+                  }))}
+                  onChange={(value) =>
+                    setSelectedTechnician(technicians.find((t) => t.id === value))
+                  }
+                />
+              </div>
+              {selectedTechnician && (
+                <div style={{
+                  padding: "12px 16px",
+                  background: "#ffffff",
+                  borderRadius: 6,
+                  border: "1px solid #f0f0f0",
+                  marginBottom: 16
+                }}>
+                  <p style={{ margin: 0, fontSize: 14, color: "#595959" }}>
+                    Đã chọn: <strong>{selectedTechnician.firstName} {selectedTechnician.lastName}</strong>
+                    {selectedTechnician.staffCode && ` (${selectedTechnician.staffCode})`}
+                  </p>
+                </div>
+              )}
               <Button
                 type='primary'
-                style={{ marginTop: 16 }}
+                block
+                disabled={!selectedTechnician || loadingTechs}
+                loading={loadingTechs}
                 onClick={handleAssignTechnician}>
                 Xác nhận kỹ thuật viên
               </Button>
@@ -287,15 +391,34 @@ export default function StaffBookingDetailPage() {
           )}
 
           {currentTechnician && (
-            <Card
-              style={{ marginBottom: 24, borderRadius: 8 }}
-              bodyStyle={{ padding: "24px" }}>
-              <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: "#d4380d", borderBottom: "1px solid #f0f0f0", paddingBottom: 12 }}>
+            <Card 
+              style={{ 
+                marginBottom: 24,
+                borderRadius: 8,
+                border: "1px solid #f0f0f0"
+              }}
+              bodyStyle={{ padding: "20px" }}>
+              <h3 style={{ 
+                marginBottom: 12, 
+                fontSize: 16, 
+                fontWeight: 600,
+                color: "#262626",
+                paddingBottom: 12,
+                borderBottom: "1px solid #f0f0f0",
+                display: "flex",
+                alignItems: "center",
+                gap: 8
+              }}>
+                <UserCheck size={16} color="#595959" />
                 Kỹ thuật viên phụ trách
               </h3>
-              <p style={{ margin: 0 }}>
-                <strong>Tên:</strong> {currentTechnician.firstName}{" "}
-                {currentTechnician.lastName}
+              <p style={{ margin: 0, fontSize: 15, color: "#262626" }}>
+                <strong>{currentTechnician.firstName} {currentTechnician.lastName}</strong>
+                {currentTechnician.staffCode && (
+                  <span style={{ color: "#8c8c8c", marginLeft: 8 }}>
+                    ({currentTechnician.staffCode})
+                  </span>
+                )}
               </p>
             </Card>
           )}
@@ -338,7 +461,7 @@ export default function StaffBookingDetailPage() {
             {status === "PENDING" && (
               <>
                 <Button danger onClick={() => handleChangeStatus("CANCELED")}>
-                  Từ chối
+                  Hủy
                 </Button>
                 <Button
                   type='primary'
@@ -347,6 +470,11 @@ export default function StaffBookingDetailPage() {
                   Chấp nhận
                 </Button>
               </>
+            )}
+            {(status === "APPROVED" || status === "CHECKED_IN") && (
+              <Button danger onClick={() => handleChangeStatus("CANCELED")}>
+                Hủy lịch hẹn
+              </Button>
             )}
             {status === "REPAIR_COMPLETED" && (
               <Button

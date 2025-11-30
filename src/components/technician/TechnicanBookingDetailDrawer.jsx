@@ -1,7 +1,9 @@
 // src/components/technician/TechnicianBookingDetailDrawer.jsx
 import { useState, useEffect } from "react";
 import RepairModeEVCheck from "./detail-content/RepairModeEVCheck";
+import RMARepairModeEVCheck from "./detail-content/RMARepairModeEVCheck";
 import MaintenanceModeEVCheck from "./detail-content/MaintenanceModeEVCheck";
+import CampaignModeEVCheck from "./detail-content/CampaignModeEVCheck";
 import {
   SERVICE_TYPE_MAP,
   SERVICE_TYPE_COLORS,
@@ -282,10 +284,41 @@ export default function TechnicianBookingDetailDrawer({
           <h3 className='font-semibold text-base mb-3 border-b pb-2 text-orange-600'>
             Phiếu sửa chữa
           </h3>
-          <RepairModeEVCheck
-            key={`repair-${evCheckId || "empty"}-${refreshKey}`}
+          {/* ✅ Kiểm tra note: nếu có "lịch thay" và "rma" thì dùng RMARepairModeEVCheck */}
+          {(() => {
+            const note = (booking?.note || "").toLowerCase();
+            const isRMABooking = note.includes("lịch thay") && note.includes("rma");
+            return isRMABooking ? (
+              <RMARepairModeEVCheck
+                key={`rma-repair-${evCheckId || "empty"}-${refreshKey}`}
+                booking={booking}
+                evCheckId={evCheckId}
+                onRefresh={() => setRefreshKey((prev) => prev + 1)}
+                readOnly={readOnly}
+                forceEmpty={!evCheckId}
+              />
+            ) : (
+              <RepairModeEVCheck
+                key={`repair-${evCheckId || "empty"}-${refreshKey}`}
+                booking={booking}
+                evCheckId={evCheckId}
+                onRefresh={() => setRefreshKey((prev) => prev + 1)}
+                readOnly={readOnly}
+                forceEmpty={!evCheckId}
+              />
+            );
+          })()}
+        </section>
+      ) : isCampaign ? (
+        <section className='bg-white rounded-xl shadow p-5 border border-orange-200 max-h-96 overflow-auto'>
+          <h3 className='font-semibold text-base mb-3 border-b pb-2 text-orange-600'>
+            Phiếu kiểm tra chiến dịch
+          </h3>
+          <CampaignModeEVCheck
+            key={`campaign-${evCheckId || "empty"}-${refreshKey}`}
             booking={booking}
             evCheckId={evCheckId}
+            evCheckStatus={evCheckStatus}
             onRefresh={() => setRefreshKey((prev) => prev + 1)}
             readOnly={readOnly}
             forceEmpty={!evCheckId}

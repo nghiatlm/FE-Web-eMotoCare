@@ -29,7 +29,7 @@ const SLOT_LABEL_MAP = {
 
 const DEFAULT_TYPE = "MAINTENANCE_TYPE";
 
-const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => {
+const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipChassisNumber = false }) => {
   const [form] = Form.useForm();
   const [customers, setCustomers] = useState([]);
   const [centers, setCenters] = useState([]);
@@ -45,16 +45,16 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
   const [vehicleStages, setVehicleStages] = useState([]);
   const [loadingVehicleStages, setLoadingVehicleStages] = useState(false);
 
-  // ✅ Danh sách campaigns
+  // ✅ Danh sách campaigns và recalls
   const [campaigns, setCampaigns] = useState([]);
+  const [recalls, setRecalls] = useState([]);
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
 
   // ✅ ServiceCenterId của nhân viên hiện tại
   const [currentServiceCenterId, setCurrentServiceCenterId] = useState(null);
 
   // ✅ State để track xem đã load thông tin từ số khung chưa
-  const [isChassisNumberLoaded, setIsChassisNumberLoaded] = useState(false);
-  const [loadingChassis, setLoadingChassis] = useState(false);
+  const [isChassisNumberLoaded, setIsChassisNumberLoaded] = useState(skipChassisNumber);
   const [vehicleInfo, setVehicleInfo] = useState(null);
 
   // ====== RESET FORM KHI resetKey THAY ĐỔI ======
@@ -67,8 +67,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
       setCustomerSearchText("");
       // ✅ Reset các state liên quan đến số khung
       setVehicleInfo(null);
-      setIsChassisNumberLoaded(false);
-      setLoadingChassis(false);
+      setIsChassisNumberLoaded(skipChassisNumber);
     }
   }, [resetKey, form]);
 
@@ -83,6 +82,31 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
 
   // ✅ Debounce timer ref
   const searchTimeoutRef = useRef(null);
+  
+  // ====== SET INITIAL VALUES VÀ TỰ ĐỘNG LOAD THÔNG TIN NẾU CÓ TỪ RMA ======
+  useEffect(() => {
+    if (skipChassisNumber && initialValues?.customerId && initialValues?.vehicleId && initialValues?.chassisNumber) {
+      // ✅ Tự động set vehicleInfo từ initialValues (từ RMA) với đầy đủ thông tin
+      setVehicleInfo({
+        customer: initialValues.customer || {
+          id: initialValues.customerId,
+        },
+        vehicle: initialValues.vehicle || {
+          id: initialValues.vehicleId,
+          chassisNumber: initialValues.chassisNumber,
+        },
+      });
+      setIsChassisNumberLoaded(true);
+      form.setFieldsValue({
+        customerId: initialValues.customerId,
+        vehicleId: initialValues.vehicleId,
+        chassisNumber: initialValues.chassisNumber,
+        ...initialValues,
+      });
+    } else if (initialValues) {
+      form.setFieldsValue(initialValues);
+    }
+  }, [initialValues, skipChassisNumber, form]);
 
   // ✅ Hàm gọi API để lấy thông tin từ số khung
   const handleChassisNumberLookup = async (chassisNumber) => {
@@ -91,7 +115,6 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
     }
 
     try {
-      setLoadingChassis(true);
       const response = await getVehicleInfoFromChassisService(chassisNumber.trim());
       
       console.log("📦 API Response:", response);
@@ -139,8 +162,6 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
       setVehicleInfo(null);
       setIsChassisNumberLoaded(false);
       // ✅ Có thể thêm toast notification ở đây
-    } finally {
-      setLoadingChassis(false);
     }
   };
 
@@ -369,19 +390,27 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
     loadVehicleStages(vehicleId, type);
   };
 
-  // ✅ Load campaigns
+  // ✅ Load campaigns và recalls (programs)
   const loadCampaigns = async () => {
     try {
       setLoadingCampaigns(true);
-      const campaignsList = await getCampaignsService({
+      const programsList = await getCampaignsService({
         page: 1,
         pageSize: 100,
-        status: "ACTIVE", // Chỉ lấy campaigns đang active
+        status: "ACTIVE", // Chỉ lấy programs đang active
       });
-      setCampaigns(Array.isArray(campaignsList) ? campaignsList : []);
+      
+      // ✅ Tách ra thành campaigns và recalls dựa trên type
+      const allPrograms = Array.isArray(programsList) ? programsList : [];
+      const campaignsList = allPrograms.filter(p => p.type === "CAMPAIGN" || !p.type); // ✅ Fallback: nếu không có type thì coi như campaign
+      const recallsList = allPrograms.filter(p => p.type === "RECALL");
+      
+      setCampaigns(campaignsList);
+      setRecalls(recallsList);
     } catch (err) {
-      console.error("Lỗi load chiến dịch:", err);
+      console.error("Lỗi load chiến dịch và triệu hồi:", err);
       setCampaigns([]);
+      setRecalls([]);
     } finally {
       setLoadingCampaigns(false);
     }
@@ -397,25 +426,48 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
       form.setFieldsValue({ vehicleStageId: undefined });
     }
     
-    // ✅ Nếu không phải campaign, clear campaignId
+    // ✅ Nếu không phải campaign, clear programId
     if (type !== "CAMPAIGN_TYPE") {
-      form.setFieldsValue({ campaignId: undefined });
+      form.setFieldsValue({ programId: undefined });
+    }
+    
+    // ✅ Nếu không phải recall, clear recallId
+    if (type !== "RECALL_TYPE") {
+      form.setFieldsValue({ recallId: undefined });
     }
   };
 
   // ✅ Khi chọn campaign
-  const handleCampaignChange = (campaignId) => {
-    if (campaignId) {
+  const handleCampaignChange = (programId) => {
+    if (programId) {
       // ✅ Tự động set type = CAMPAIGN_TYPE khi chọn campaign
       form.setFieldsValue({ 
         type: "CAMPAIGN_TYPE",
-        campaignId: campaignId 
+        programId: programId,
+        recallId: undefined // ✅ Clear recallId khi chọn campaign
       });
       // ✅ Clear vehicleStageId khi chọn campaign (vì không dùng cho campaign)
       form.setFieldsValue({ vehicleStageId: undefined });
     } else {
-      // ✅ Clear campaignId khi bỏ chọn
-      form.setFieldsValue({ campaignId: undefined });
+      // ✅ Clear programId khi bỏ chọn
+      form.setFieldsValue({ programId: undefined });
+    }
+  };
+
+  // ✅ Khi chọn recall
+  const handleRecallChange = (recallId) => {
+    if (recallId) {
+      // ✅ Tự động set type = RECALL_TYPE khi chọn recall
+      form.setFieldsValue({ 
+        type: "RECALL_TYPE",
+        recallId: recallId,
+        programId: undefined // ✅ Clear programId khi chọn recall
+      });
+      // ✅ Clear vehicleStageId khi chọn recall (vì không dùng cho recall)
+      form.setFieldsValue({ vehicleStageId: undefined });
+    } else {
+      // ✅ Clear recallId khi bỏ chọn
+      form.setFieldsValue({ recallId: undefined });
     }
   };
 
@@ -428,14 +480,20 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
     // ✅ Đảm bảo serviceCenterId luôn có giá trị (từ staff hoặc form)
     const serviceCenterId = values.serviceCenterId || currentServiceCenterId;
 
-    // ✅ Xác định type và campaignId
+    // ✅ Xác định type và programId (dùng programId cho cả campaign và recall)
     let appointmentType = values.type || DEFAULT_TYPE;
-    let campaignId = null;
+    let programId = null;
     
-    // ✅ Nếu có campaignId, đảm bảo type = CAMPAIGN_TYPE
-    if (values.campaignId) {
+    // ✅ Nếu có programId, đảm bảo type = CAMPAIGN_TYPE
+    if (values.programId) {
       appointmentType = "CAMPAIGN_TYPE";
-      campaignId = values.campaignId;
+      programId = values.programId;
+    }
+    
+    // ✅ Nếu có recallId, đảm bảo type = RECALL_TYPE (nhưng vẫn gửi vào programId)
+    if (values.recallId) {
+      appointmentType = "RECALL_TYPE";
+      programId = values.recallId; // ✅ Dùng programId cho cả recall, chỉ khác type
     }
 
     // ✅ Lấy customerId và vehicleId từ form (đã được set khi load thông tin từ số khung)
@@ -458,7 +516,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
       vehicleId: vehicleId || null, // ✅ Gửi vehicleId từ API response
       vehicleStageId: vehicleStageId, // ✅ Chỉ gửi khi type là MAINTENANCE_TYPE
       slotTime: values.slotTime,
-      campaignId: campaignId,
+      campaignId: programId, // ✅ Tên field là campaignId (theo backend), giá trị là id của program
       appointmentDate, // ✅ dùng string local
       estimatedCost: values.estimatedCost || 0,
       actualCost: 0,
@@ -520,7 +578,6 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
                         placeholder='Nhập số khung'
                         allowClear
                         size="large"
-                        disabled={loadingChassis}
                         onPressEnter={(e) => {
                           const chassisNumber = e.target.value;
                           handleChassisNumberLookup(chassisNumber);
@@ -533,7 +590,6 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
                         icon={<Search size={16} />}
                         size="large"
                         danger
-                        loading={loadingChassis}
                         onClick={() => {
                           const chassisNumber = form.getFieldValue("chassisNumber");
                           handleChassisNumberLookup(chassisNumber);
@@ -562,14 +618,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
               )}
               
               {/* ✅ Hiển thị thông tin sau khi nhập số khung */}
-              {loadingChassis ? (
-                <div style={{ marginTop: 16, padding: 32, backgroundColor: "#fafafa", borderRadius: 8, border: "1px dashed #d9d9d9", minHeight: 120, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Space direction="vertical" align="center" size="middle">
-                    <Spin size="large" />
-                    <p style={{ margin: 0, fontSize: 14, color: "#8c8c8c" }}>Đang tìm kiếm thông tin...</p>
-                  </Space>
-                </div>
-              ) : vehicleInfo ? (
+              {vehicleInfo ? (
                 <div style={{ marginTop: 16 }}>
                   <Row gutter={[16, 16]}>
                     {/* Thông tin khách hàng */}
@@ -698,18 +747,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
                    
                   </Row>
                 </div>
-              ) : (
-                <div style={{ marginTop: 16, padding: 32, backgroundColor: "#fafafa", borderRadius: 8, border: "1px dashed #d9d9d9", minHeight: 120, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Space direction="vertical" align="center" size="middle">
-                    <div style={{ width: 56, height: 56, borderRadius: "50%", backgroundColor: "#e6f7ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <Search size={28} style={{ color: "#1890ff" }} />
-                    </div>
-                    <p style={{ margin: 0, fontSize: 14, color: "#8c8c8c", textAlign: "center", maxWidth: 300 }}>
-                      Nhập số khung và nhấn nút "Tìm kiếm" để hiển thị thông tin khách hàng và xe
-                    </p>
-                  </Space>
-                </div>
-              )}
+              ) : null}
             </Col>
           </Row>
         </Card>
@@ -811,12 +849,13 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
           <Option value='REPAIR_TYPE'>Sửa chữa</Option>
           <Option value='WARRANTY_TYPE'>Bảo hành</Option>
                   <Option value='CAMPAIGN_TYPE'>Chiến dịch</Option>
+                  <Option value='RECALL_TYPE'>Triệu hồi</Option>
                 </Select>
               </Form.Item>
             </Col>
 
             {/* ✅ CAMPAIGN - Chỉ hiện khi type = CAMPAIGN_TYPE hoặc đã chọn campaign */}
-            {(form.getFieldValue("type") === "CAMPAIGN_TYPE" || form.getFieldValue("campaignId")) && (
+            {(form.getFieldValue("type") === "CAMPAIGN_TYPE" || form.getFieldValue("programId")) && (
               <Col xs={24} md={12}>
                 <Form.Item
                   label={
@@ -825,7 +864,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
                       <span>Chiến dịch</span>
                     </Space>
                   }
-                  name='campaignId'
+                  name='programId'
                   rules={form.getFieldValue("type") === "CAMPAIGN_TYPE" ? [{ required: true, message: "Chọn campaign!" }] : []}
                   tooltip='Chọn chiến dịch cho lịch hẹn'>
                   <Select
@@ -835,13 +874,49 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
                     disabled={!isChassisNumberLoaded}
                     style={{ width: "100%" }}>
                     {campaigns.map((campaign) => {
-                      // ✅ Lấy campaignId từ id (đã được map trong service)
-                      const campaignId = campaign.id;
+                      // ✅ Lấy programId từ id (đã được map trong service)
+                      const programId = campaign.id;
                       return (
-                        <Option key={campaignId} value={campaignId}>
-                          {campaign.name || campaign.code || campaignId}
+                        <Option key={programId} value={programId}>
+                          {campaign.title || campaign.name || campaign.code || programId}
                           {campaign.startDate && campaign.endDate
                             ? ` (${new Date(campaign.startDate).toLocaleDateString("vi-VN")} - ${new Date(campaign.endDate).toLocaleDateString("vi-VN")})`
+                            : ""}
+                        </Option>
+                      );
+                    })}
+                  </Select>
+                </Form.Item>
+              </Col>
+            )}
+
+            {/* ✅ RECALL - Chỉ hiện khi type = RECALL_TYPE hoặc đã chọn recall */}
+            {(form.getFieldValue("type") === "RECALL_TYPE" || form.getFieldValue("recallId")) && (
+              <Col xs={24} md={12}>
+                <Form.Item
+                  label={
+                    <Space>
+                      <FileText size={16} style={{ color: "#595959" }} />
+                      <span>Triệu hồi</span>
+                    </Space>
+                  }
+                  name='recallId'
+                  rules={form.getFieldValue("type") === "RECALL_TYPE" ? [{ required: true, message: "Chọn triệu hồi!" }] : []}
+                  tooltip='Chọn chương trình triệu hồi cho lịch hẹn'>
+                  <Select
+                    placeholder='Chọn chương trình triệu hồi'
+                    loading={loadingCampaigns}
+                    onChange={handleRecallChange}
+                    disabled={!isChassisNumberLoaded}
+                    style={{ width: "100%" }}>
+                    {recalls.map((recall) => {
+                      // ✅ Lấy recallId từ id
+                      const recallId = recall.id;
+                      return (
+                        <Option key={recallId} value={recallId}>
+                          {recall.title || recall.name || recall.code || recallId}
+                          {recall.startDate && recall.endDate
+                            ? ` (${new Date(recall.startDate).toLocaleDateString("vi-VN")} - ${new Date(recall.endDate).toLocaleDateString("vi-VN")})`
                             : ""}
                         </Option>
                       );
@@ -892,8 +967,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey }) => 
                 <span>{form.getFieldValue("type") === "REPAIR_TYPE" ? "Tình trạng xe" : "Ghi chú"}</span>
               </Space>
             }
-            name='note'
-            rules={form.getFieldValue("type") === "REPAIR_TYPE" ? [{ required: true, message: "Nhập tình trạng xe!" }] : []}>
+            name='note'>
             <Input.TextArea
               rows={4}
               placeholder={form.getFieldValue("type") === "REPAIR_TYPE" ? "Nhập tình trạng xe" : "Nhập ghi chú thêm (nếu có)"}
