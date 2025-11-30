@@ -3,8 +3,17 @@ import api from "./api";
 const BASE_URL = "/v1/import-notes";
 const user = JSON.parse(localStorage.getItem("user"));
 const token = user?.token;
-export const getImportNotes = (page = 1, pageSize = 10) => {
-  return api.get(`${BASE_URL}?page=${page}&pageSize=${pageSize}`, { headers: { Authorization: `Bearer ${token}` } });
+export const getImportNotes = (page = 1, pageSize = 10, serviceCenterId = null) => {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    pageSize: pageSize.toString(),
+  });
+  
+  if (serviceCenterId) {
+    params.append('serviceCenterId', serviceCenterId);
+  }
+  
+  return api.get(`${BASE_URL}?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } });
 };
 
 export const getImportNoteById = (importNoteId) => {

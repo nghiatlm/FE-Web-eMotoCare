@@ -2,11 +2,39 @@ import api from "./api";
 const BASE_URL = "/v1/export-notes";
 const user = JSON.parse(localStorage.getItem("user"));
 const token = user?.token;
-export const getExportNotes = (page = 1, pageSize = 10) => {
-  return api.get(`${BASE_URL}?page=${page}&pageSize=${pageSize}`, {
+
+export const getExportNotes = (params = {}) => {
+  const {
+    page = 1,
+    pageSize = 10,
+    status,
+    serviceCenterId,
+    code,
+    outOfStock
+  } = typeof params === "object" ? params : {};
+
+  const queryParams = {
+    page,
+    pageSize,
+    ...(status && { status }),
+    ...(serviceCenterId && { serviceCenterId }),
+    ...(code && { code }),
+    ...(typeof outOfStock !== "undefined" && { outOfStock })
+  };
+
+  return api.get(BASE_URL, {
+    params: queryParams,
     headers: {
       Authorization: `Bearer ${token}`
     }
+  });
+};
+
+export const getExportNoteOutOfStockById = (id) => {
+  return api.get(`${BASE_URL}/out-of-stock/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
 };
 
@@ -44,6 +72,14 @@ export const deleteExportNote = (exportNoteId) => {
 
 export const getExportNotePartItems = (exportNoteId) => {
   return api.get(`${BASE_URL}/${exportNoteId}/part-items`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+};
+
+export const updateExportNoteDetail = (detailId, detailData) => {
+  return api.put(`/v1/export-note-details/${detailId}`, detailData, {
     headers: {
       Authorization: `Bearer ${token}`
     }

@@ -178,7 +178,6 @@ bun install
 ```bash
 npm run dev
 ```
-Build application for development environment
 
 ## 🚀 Scripts
 

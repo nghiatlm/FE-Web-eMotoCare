@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Eye, Printer, Edit, FileUp } from "lucide-react";
 import { getExportNotes } from "@/api/exportNotesApi";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { useServiceCenter } from "@/hooks/useServiceCenter";
 
 export default function ExportSlipsTable({ search = "", status = "", woCode = "" }) {
   const [rows, setRows] = useState([]);
@@ -12,12 +13,21 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
   const [pageSize] = useState(10);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState(null);
+  const { serviceCenterId } = useServiceCenter();
 
   const fetchExportNotes = async () => {
+    if (!serviceCenterId) return;
+    
     try {
       setLoading(true);
       setError(null);
-      const response = await getExportNotes(page, pageSize);
+      const params = {
+        page,
+        pageSize,
+        ...(status && { status }),
+        ...(serviceCenterId && { serviceCenterId }),
+      };
+      const response = await getExportNotes(params);
       
       if (response.success && response.data) {
         // Transform API data to match UI format
@@ -43,8 +53,11 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
   };
 
   useEffect(() => {
-    fetchExportNotes();
-  }, [page, pageSize]);
+    if (serviceCenterId) {
+      fetchExportNotes();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pageSize, status, serviceCenterId]);
 
   useEffect(() => {
     const applyAddSlip = (slip) => {
@@ -116,10 +129,10 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
     );
   }
 
-  // Helper function to format status
   const getStatusLabel = (status) => {
     const statusMap = {
       PENDING: "Chờ duyệt",
+      PROCESSING: "Đang xử lý",
       APPROVED: "Đã duyệt",
       EXPORTING: "Đang xuất",
       COMPLETED: "Hoàn thành",
@@ -131,6 +144,7 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
   const getStatusBadgeClass = (status) => {
     const classMap = {
       PENDING: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700",
+      PROCESSING: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-300 dark:border-blue-700",
       APPROVED: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-300 dark:border-blue-700",
       EXPORTING: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-300 dark:border-purple-700",
       COMPLETED: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-300 dark:border-green-700",
@@ -238,7 +252,7 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
                         <Eye className="h-3.5 w-3.5" />
                         Chi tiết
                       </Button>
-                      <Button
+                      {/* <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-primary/10 dark:hover:bg-primary/20 transition-colors"
@@ -255,7 +269,7 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
                       >
                         <Printer className="h-3.5 w-3.5" />
                         In phiếu
-                      </Button>
+                      </Button> */}
                     </div>
                   </td>
                 </tr>

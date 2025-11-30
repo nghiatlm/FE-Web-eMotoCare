@@ -138,6 +138,13 @@ export default function WarrantyDetail() {
       ...prev,
       [key]: month
     }));
+  };
+
+  // Chuẩn hóa ngày về nửa đêm UTC để không bị lệch múi giờ khi gửi lên server
+  const toUtcDateISOString = (value) => {
+    if (!value) return null;
+    const dateObj = value instanceof Date ? value : new Date(value);
+    return new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())).toISOString();
   }; 
 
   const fetchRmaDetail = useCallback(async () => {
@@ -603,7 +610,7 @@ export default function WarrantyDetail() {
           const startDate = new Date(warrantyStart);
           const endDate = new Date(startDate);
           endDate.setMonth(endDate.getMonth() + parseInt(warrantyPeriod));
-          updatedForm.replacePartWarrantyEnd = endDate.toISOString();
+          updatedForm.replacePartWarrantyEnd = toUtcDateISOString(endDate);
         } else {
           updatedForm.replacePartWarrantyEnd = null;
         }
@@ -625,7 +632,7 @@ export default function WarrantyDetail() {
     setUpdatingDetailId(detailId);
     try {
       // Tính toán warantyStartDate từ releaseDateRMA hoặc ngày hiện tại
-      const releaseDate = formData.releaseDateRMA || detail.releaseDateRMA || new Date().toISOString();
+      const releaseDate = formData.releaseDateRMA || detail.releaseDateRMA || toUtcDateISOString(new Date());
       const warrantyStartDate = formData.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || releaseDate;
       
       // Tính toán warantyEndDate từ warrantyStartDate + warrantyPeriod
@@ -635,7 +642,7 @@ export default function WarrantyDetail() {
         const startDate = new Date(warrantyStartDate);
         const endDate = new Date(startDate);
         endDate.setMonth(endDate.getMonth() + parseInt(warrantyPeriod));
-        warrantyEndDate = endDate.toISOString();
+        warrantyEndDate = toUtcDateISOString(endDate);
       } else {
         warrantyEndDate = formData.replacePartWarrantyEnd || detail.replacePart?.warantyEndDate || null;
       }
@@ -1363,7 +1370,7 @@ export default function WarrantyDetail() {
                                                           : undefined
                                                     }
                                                     onSelect={(date) => {
-                                                      const dateISO = date ? date.toISOString() : null;
+                                                      const dateISO = toUtcDateISOString(date);
                                                       handleFormChange(detailId, "releaseDateRMA", dateISO);
                                                     }}
                                                     month={getDatePickerMonth(detailId, "releaseDateRMA", detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA)}
@@ -1433,7 +1440,7 @@ export default function WarrantyDetail() {
                                                           : undefined
                                                     }
                                                     onSelect={(date) => {
-                                                      const dateISO = date ? date.toISOString() : null;
+                                                      const dateISO = toUtcDateISOString(date);
                                                       handleFormChange(detailId, "expirationDateRMA", dateISO);
                                                     }}
                                                     month={getDatePickerMonth(detailId, "expirationDateRMA", detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA)}
@@ -1588,7 +1595,7 @@ export default function WarrantyDetail() {
                                                                   : undefined
                                                         }
                                                         onSelect={(date) => {
-                                                          const dateISO = date ? date.toISOString() : null;
+                                                          const dateISO = toUtcDateISOString(date);
                                                           handleFormChange(detailId, "replacePartWarrantyStart", dateISO);
                                                         }}
                                                         month={getDatePickerMonth(detailId, "replacePartWarrantyStart", detailForms[detailId]?.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA)}

@@ -28,7 +28,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, FileDown, Package, Calendar, Image as ImageIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, addMonths } from "date-fns";
 
 export default function CreateImportNotePage() {
   const navigate = useNavigate();
@@ -57,16 +57,26 @@ export default function CreateImportNotePage() {
     quantity: 1,
     serialNumber: "",
     price: 0,
-    warrantyPeriod: 0, // months
+    warrantyPeriod: 0, 
     warrantyStartDate: null,
+    type: "SUPPLIER",
+    newPartName: "",
+    newPartImage: "",
   });
   const [hasManufacturerWarranty, setHasManufacturerWarranty] = useState(false);
+  const isTransferType = form.type === "TRANSFER_IN";
+
+  // Helper function to get today's date without time
+  const getTodayDateOnly = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  };
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Lấy thông tin staff để có serviceCenterId & staffId
   useEffect(() => {
     const fetchStaffInfo = async () => {
       try {
@@ -94,7 +104,6 @@ export default function CreateImportNotePage() {
     }
   }, [user]);
 
-  // Lấy danh sách phụ tùng
   const fetchParts = useCallback(async () => {
     try {
       setLoadingParts(true);
@@ -119,7 +128,6 @@ export default function CreateImportNotePage() {
     fetchParts();
   }, [fetchParts]);
 
-  // Lấy danh sách PartItem theo partId từ API /v1/part-items
   const fetchPartItemsForPart = useCallback(
     async (partId) => {
       if (!partId || partItemsByPart[partId]) return;
@@ -138,7 +146,6 @@ export default function CreateImportNotePage() {
     [partItemsByPart],
   );
 
-  // Lấy danh sách loại phụ tùng (Part Type)
   useEffect(() => {
     const fetchPartTypesData = async () => {
       try {
@@ -174,25 +181,29 @@ export default function CreateImportNotePage() {
     [filteredParts, parts, selectedPartId],
   );
 
-  const selectedPartItems = useMemo(() => {
-    if (!selectedPart) return [];
-    return partItemsByPart[selectedPart.id] || [];
-  }, [selectedPart, partItemsByPart]);
-
   const handleSubmit = async () => {
-    if (!form.importFrom || !form.supplier) {
+    if (!selectedPartId && !form.newPartName?.trim()) {
       toast({
         title: "Thiếu thông tin",
-        description: "Vui lòng nhập đầy đủ Nguồn nhập và Nhà cung cấp.",
+        description: "Vui lòng chọn phụ tùng có sẵn hoặc nhập tên phụ tùng mới.",
         variant: "destructive",
       });
       return;
     }
 
-    if (!selectedPartId) {
+    if (selectedPartId && !selectedPartTypeId) {
       toast({
         title: "Thiếu thông tin",
-        description: "Vui lòng chọn một phụ tùng.",
+        description: "Vui lòng chọn loại phụ tùng trước khi chọn phụ tùng.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedPartId && !selectedPartTypeId) {
+      toast({
+        title: "Thiếu thông tin",
+        description: "Vui lòng chọn loại phụ tùng.",
         variant: "destructive",
       });
       return;
@@ -239,28 +250,32 @@ export default function CreateImportNotePage() {
         warantyEndDate = endDate.toISOString();
       }
 
+      const partId = selectedPartId || null;
+      
+      const partName = selectedPart?.name || form.newPartName?.trim() || "";
+      const partImage = selectedPart?.image || form.newPartImage?.trim() || "";
+
+      const importFromValue = form.importFrom?.trim() || "Chưa xác định";
+      const supplierValue = form.supplier?.trim() || "Chưa xác định";
+
       const payload = {
-        type: "SUPPLIER",
+        type: form.type || "SUPPLIER",
         importById: staffId,
         serviceCenterId,
-        importFrom: form.importFrom,
-        supplier: form.supplier,
+        importFrom: importFromValue,
+        supplier: supplierValue,
         note: form.note || undefined,
         partRequest: {
-          partTypeId:
-            selectedPart?.partType?.id ||
-            selectedPart?.partTypeId ||
-            selectedPartTypeId ||
-            null,
-          partId: selectedPart?.id || selectedPartId,
-          name: selectedPart?.name || "",
-          image: selectedPart?.image || "",
+          partTypeId: selectedPartTypeId || null,
+          partId: partId,
+          name: partName,
+          image: partImage,
           partItemRequest: [
             {
               quantity: Number(form.quantity) || 0,
               serialNumber: hasManufacturerWarranty ? form.serialNumber : null,
               price: basePrice,
-              warrantyPeriod: hasManufacturerWarranty ? warrantyPeriod : 0,
+              warrantyPeriod: warrantyPeriod,
               warantyStartDate,
               warantyEndDate,
               isManufacturerWarranty: hasManufacturerWarranty,
@@ -297,7 +312,7 @@ export default function CreateImportNotePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="p-6 sm:p-8 max-w-6xl mx-auto space-y-6">
+      <div className="p-6 sm:p-8 max-w-6xl mx-auto space-y-6 pb-20">
         {/* Header */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -326,8 +341,7 @@ export default function CreateImportNotePage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Thông tin phiếu nhập */}
-          <Card className="lg:col-span-1 border-border/70 shadow-sm">
+          <Card className="lg:col-span-1 border-border/70 shadow-sm lg:sticky lg:top-20 lg:self-start">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <FileDown className="h-4 w-4 text-primary" />
@@ -339,31 +353,22 @@ export default function CreateImportNotePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="importFrom">Nguồn nhập *</Label>
-                <Input
-                  id="importFrom"
-                  value={form.importFrom}
-                  onChange={(e) => handleChange("importFrom", e.target.value)}
-                  placeholder="Tên nhà cung cấp / hãng gửi"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="supplier">Nhà cung cấp *</Label>
-                <Input
-                  id="supplier"
-                  value={form.supplier}
-                  onChange={(e) => handleChange("supplier", e.target.value)}
-                  placeholder="Nhập tên nhà cung cấp"
-                />
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="type">Loại phiếu</Label>
-                <Input
-                  id="type"
-                  value="Nhập hàng"
-                  disabled
-                  className="bg-muted"
-                />
+                <Select
+                  value={form.type}
+                  onValueChange={(value) => handleChange("type", value)}
+                >
+                  <SelectTrigger id="type" className="bg-background">
+                    <SelectValue placeholder="Chọn loại phiếu" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SUPPLIER">Nhập hàng</SelectItem>
+                    <SelectItem value="TRANSFER_IN">Nhận điều chuyển</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Chọn nguồn nhập: nhập từ nhà cung cấp hoặc nhận điều chuyển.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="note">Ghi chú</Label>
@@ -378,7 +383,6 @@ export default function CreateImportNotePage() {
             </CardContent>
           </Card>
 
-          {/* Phụ tùng & bảo hành */}
           <Card className="lg:col-span-2 border-border/70 shadow-sm">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -390,7 +394,6 @@ export default function CreateImportNotePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Part type + part */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="partType">Loại phụ tùng *</Label>
@@ -456,6 +459,8 @@ export default function CreateImportNotePage() {
                       >
                         {selectedPart
                           ? selectedPart.name || "Phụ tùng"
+                          : selectedPartId === "" && selectedPartTypeId
+                          ? "Tạo phụ tùng mới"
                           : loadingParts
                             ? "Đang tải danh sách phụ tùng..."
                             : filteredParts.length === 0
@@ -469,6 +474,27 @@ export default function CreateImportNotePage() {
                         <CommandList>
                           <CommandEmpty>Không tìm thấy phụ tùng.</CommandEmpty>
                           <CommandGroup>
+                            <CommandItem
+                              value="new-part"
+                              onSelect={() => {
+                                setSelectedPartId("");
+                                setOpenPartPopover(false);
+                              }}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="h-9 w-9 rounded-md border border-dashed border-primary/60 flex items-center justify-center bg-primary/5 text-primary flex-shrink-0 text-[10px]">
+                                  +
+                                </div>
+                                <div className="flex flex-col text-left">
+                                  <span className="font-medium text-sm text-primary">
+                                    Tạo phụ tùng mới
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    Phụ tùng chưa có trong hệ thống
+                                  </span>
+                                </div>
+                              </div>
+                            </CommandItem>
                             {filteredParts.map((part) => (
                               <CommandItem
                                 key={part.id}
@@ -509,7 +535,35 @@ export default function CreateImportNotePage() {
                 </div>
               </div>
 
-              {/* Xác định có bảo hành hãng hay không */}
+              {!selectedPartId && selectedPartTypeId && (
+                <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-primary" />
+                    <Label className="text-sm font-semibold text-primary">
+                      Thông tin phụ tùng mới
+                    </Label>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="newPartName">Tên phụ tùng *</Label>
+                    <Input
+                      id="newPartName"
+                      value={form.newPartName}
+                      onChange={(e) => handleChange("newPartName", e.target.value)}
+                      placeholder="Nhập tên phụ tùng mới"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="newPartImage">Hình ảnh (URL)</Label>
+                    <Input
+                      id="newPartImage"
+                      value={form.newPartImage}
+                      onChange={(e) => handleChange("newPartImage", e.target.value)}
+                      placeholder="Nhập URL hình ảnh (tùy chọn)"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <div className="flex items-start gap-2">
                   <Checkbox
@@ -532,7 +586,6 @@ export default function CreateImportNotePage() {
                 </div>
               </div>
 
-              {/* Nhập số serial (chỉ khi có bảo hành hãng) */}
               {hasManufacturerWarranty && (
                 <div className="space-y-2">
                   <Label htmlFor="serialNumber">Số serial *</Label>
@@ -545,7 +598,6 @@ export default function CreateImportNotePage() {
                 </div>
               )}
 
-              {/* Selected part preview */}
               {selectedPart && (
                 <div className="rounded-lg border border-dashed border-border/70 bg-muted/40 p-4 flex gap-4 items-start">
                   {selectedPart.image ? (
@@ -617,7 +669,6 @@ export default function CreateImportNotePage() {
                 <div className="space-y-2">
                   <Label htmlFor="warrantyPeriod">
                     Thời gian bảo hành (tháng)
-                    {hasManufacturerWarranty ? " *" : ""}
                   </Label>
                   <Input
                     id="warrantyPeriod"
@@ -630,62 +681,88 @@ export default function CreateImportNotePage() {
                         e.target.value ? parseInt(e.target.value) : 0,
                       )
                     }
-                    disabled={!hasManufacturerWarranty}
                   />
                 </div>
               </div>
 
-              {hasManufacturerWarranty && (
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    Ngày bắt đầu bảo hành
-                  </Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !form.warrantyStartDate && "text-muted-foreground",
-                        )}
-                      >
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {form.warrantyStartDate ? (
-                          format(form.warrantyStartDate, "dd/MM/yyyy")
-                        ) : (
-                          <span>Chọn ngày (mặc định: hôm nay)</span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={
+              {isTransferType && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      Ngày bắt đầu bảo hành
+                    </Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal"
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {format(
+                            form.warrantyStartDate
+                              ? new Date(form.warrantyStartDate)
+                              : new Date(),
+                            "dd/MM/yyyy"
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarComponent
+                          mode="single"
+                          selected={
+                            form.warrantyStartDate
+                              ? new Date(form.warrantyStartDate)
+                              : new Date()
+                          }
+                          onSelect={(date) =>
+                            handleChange(
+                              "warrantyStartDate",
+                              date ? date.toISOString() : null,
+                            )
+                          }
+                          initialFocus
+                          disabled={(date) => {
+                            const today = getTodayDateOnly();
+                            const dateOnly = new Date(date);
+                            dateOnly.setHours(0, 0, 0, 0);
+                            return dateOnly < today;
+                          }}
+                          classNames={{
+                            day_disabled: "hidden",
+                            cell: "[&:has(.hidden)]:hidden",
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <p className="text-xs text-muted-foreground">
+                      Nếu không chọn, hệ thống sẽ dùng ngày hiện tại làm ngày bắt đầu bảo hành.
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm space-y-1">
+                    <p className="font-semibold text-foreground">Ngày hết hạn bảo hành</p>
+                    <p className="text-primary text-base font-bold">
+                      {format(
+                        addMonths(
                           form.warrantyStartDate
                             ? new Date(form.warrantyStartDate)
-                            : new Date()
-                        }
-                        onSelect={(date) =>
-                          handleChange(
-                            "warrantyStartDate",
-                            date ? date : null,
-                          )
-                        }
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <p className="text-xs text-muted-foreground">
-                    Nếu không chọn, hệ thống sẽ dùng ngày hiện tại làm ngày bắt đầu bảo hành.
-                  </p>
+                            : new Date(),
+                          form.warrantyPeriod || 0
+                        ),
+                        "dd/MM/yyyy"
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Tự động tính bằng cách cộng thời gian bảo hành vào ngày bắt đầu.
+                    </p>
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Actions */}
         <div className="flex justify-end gap-3 pt-2">
           <Button
             type="button"

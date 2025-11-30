@@ -10,7 +10,7 @@ import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-import { getAppointmentsMissingParts } from "@/api/appointmentsApi";
+import { getExportNotes } from "@/api/exportNotesApi";
 import { useToast } from "@/hooks/use-toast";
 
 export default function MissingPartsList() {
@@ -41,19 +41,45 @@ export default function MissingPartsList() {
       const params = {
         page,
         pageSize,
-        sortDesc: true,
+        outOfStock: true,
       };
 
-      const response = await getAppointmentsMissingParts(params);
+      const response = await getExportNotes(params);
       
       console.log("📋 Missing Parts Requests API Response:", response);
       
-      // Handle response structure: { statusCode, success, message, data: [...] }
-      const requestsData = response?.data || [];
-      const totalCount = requestsData.length; // API không trả về total, dùng length tạm thời
-      
-      setRequests(requestsData);
-      setTotal(totalCount);
+      const rowDatas = response?.data?.rowDatas || [];
+      const transformed = rowDatas.map((note, idx) => {
+        const exportBy = note.exportBy;
+        const creatorName = exportBy
+          ? `${exportBy.firstName || ""} ${exportBy.lastName || ""}`.trim() || exportBy.staffCode || "—"
+          : "—";
+        const details = (note.exportNoteDetails || []).map((detail, detailIdx) => {
+          const part = detail.proposedReplacePart || detail.partItem?.part;
+          return {
+            index: detail.id || detailIdx,
+            image: part?.image || null,
+            code: part?.code || "—",
+            name: part?.name || "—",
+            requestedQty: detail.quantity || 0,
+            suggestCenter: note.serviceCenter?.name || note.serviceCenter?.code || "—",
+            stockStatus: "Hết hàng",
+          };
+        });
+
+        return {
+          id: note.id || idx,
+          appointmentId: note.appointmentId || null,
+          requestCode: note.code || note.id,
+          requestedAt: note.exportDate || note.createdAt,
+          createdByName: creatorName,
+          serviceCenterName: note.serviceCenter?.name || note.serviceCenter?.code || "—",
+          note: note.note || "—",
+          details,
+        };
+      });
+      setRequests(transformed);
+      setTotal(response?.data?.total ?? transformed.length);
     } catch (err) {
       console.error("Error fetching missing parts requests:", err);
       setError("Không thể tải danh sách yêu cầu phụ tùng thiếu. Vui lòng thử lại sau.");
@@ -336,7 +362,7 @@ export default function MissingPartsList() {
                 </tr>
               ) : (
                 requests.map((request, idx) => {
-                  const requestId = request.appointmentId || idx;
+                  const requestId = request.id || request.appointmentId || idx;
                   const isExpandedItem = isExpanded(requestId);
                   const partsCount = request.details?.length || 0;
 
@@ -390,10 +416,10 @@ export default function MissingPartsList() {
                             size="sm"
                             variant="outline"
                             className="gap-1 rounded-full px-3"
-                            onClick={() => navigate(`/manager/appointments/${request.appointmentId}`)}
+                            onClick={() => navigate(`/manager/missing-parts/${request.id}`)}
                           >
                             <Eye className="h-4 w-4" />
-                            Xem lịch hẹn
+                            Xem chi tiết
                           </Button>
                         </td>
                       </tr>
