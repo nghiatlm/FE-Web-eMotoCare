@@ -145,6 +145,7 @@ export default function MaintenanceModeEVCheck({
           item?.maintenanceStageDetail?.part?.name ||
           "";
 
+        // ✅ Giá phụ tùng lấy từ bộ phận có sẵn trên xe (partItem.price), không lấy từ phụ tùng thay thế
         const pricePart = Number(item?.partItem?.price ?? item?.pricePart ?? 0);
         const currentStatus = item.status || "PENDING";
         const normalizedStatus =
@@ -994,9 +995,12 @@ export default function MaintenanceModeEVCheck({
                 }
               }}
               onChange={(opt) => {
+                // ✅ Giá phụ tùng luôn lấy từ bộ phận có sẵn trên xe (partItem.price)
+                const partItemPrice = Number(r?.partItem?.price || r?.pricePart || 0);
+                
                 if (!opt) {
                   handleChange(r.id, "proposedReplacePart", null);
-                  handleChange(r.id, "pricePart", 0);
+                  handleChange(r.id, "pricePart", partItemPrice); // ✅ Giữ giá từ bộ phận có sẵn trên xe
                   return;
                 }
                 
@@ -1006,13 +1010,12 @@ export default function MaintenanceModeEVCheck({
                 // ✅ Tìm trong danh sách phụ tùng đề xuất bằng partId
                 const selected = allSuggestedParts.find((p) => p.id === partId);
                 
-                const price = selected?.price || 0;
                 const fullLabel = opt.label || selected?.name || "";
 
                 // ✅ Lưu partId (Part template) vào proposedReplacePartId - giống repair mode
                 handleChange(r.id, "proposedReplacePart", { value: partId, label: fullLabel });
                 handleChange(r.id, "replacePartName", fullLabel);
-                handleChange(r.id, "pricePart", price);
+                handleChange(r.id, "pricePart", partItemPrice); // ✅ Luôn lấy giá từ bộ phận có sẵn trên xe
               }}
               options={allSuggestedParts.map((p) => {
                 // ✅ Hiển thị tên và code (Part template không có serialNumber) - giống repair mode

@@ -571,16 +571,20 @@ export default function RepairModeEVCheck({
             }
           }
 
+        // ✅ Giá phụ tùng lấy từ bộ phận có sẵn trên xe (partItem), không lấy từ phụ tùng thay thế
+        const partItemForPrice = item.partItem || partOption?.partItem || null;
+        const pricePart = Number(partItemForPrice?.price || item.pricePart || 0);
+
         return {
           ...item,
           partItemId,
           displayName: partOption?.label || partItemId || "",
-          partItem: item.partItem || partOption?.partItem || null,
+          partItem: partItemForPrice,
           proposedReplacePartId: replacePartId,
             replacePartName: replacePartName || "", // ✅ Không fallback về ID, chỉ dùng name
             result: item.result ?? "Tốt", // ✅ Mặc định "Tốt"
           remedies: item.remedies || "NONE",
-          pricePart: Number(item.pricePart || 0),
+          pricePart: pricePart,
           priceService: Number(item.priceService || 0),
           totalAmount: Number(item.totalAmount || 0),
           quantity: Number(item.quantity || 1),
@@ -1055,16 +1059,18 @@ export default function RepairModeEVCheck({
             // nếu bộ phận đang BHH thì clear phụ tùng thay thế
             const isWarranty = checkWarrantyStatus(partItem);
 
+            // ✅ Giá phụ tùng lấy từ bộ phận có sẵn trên xe (partItem.price)
+            const partPrice = Number(partItem?.price || 0);
+
             updateRow(i, {
               displayName: sel?.label || "",
-              // ✅ Không set giá từ bộ phận gắn trên xe, chỉ set khi chọn phụ tùng thay thế
-              pricePart: 0,
+              pricePart: partPrice,
               partItem,
               ...(isWarranty
                 ? {
                     replacePartId: "",
                     replacePartName: "",
-                    pricePart: 0,
+                    pricePart: partPrice, // ✅ Vẫn giữ giá từ partItem
                   }
                 : {}),
             });
@@ -1379,25 +1385,31 @@ export default function RepairModeEVCheck({
               }}
             onChange={(opt) => {
               if (!opt) {
+                // ✅ Khi xóa phụ tùng thay thế, giữ nguyên giá từ bộ phận có sẵn trên xe
+                const currentRow = details[i];
+                const partItemPrice = Number(currentRow?.partItem?.price || 0);
                 updateRow(i, {
                   proposedReplacePartId: "",
                   replacePartName: "",
-                  pricePart: 0,
+                  pricePart: partItemPrice, // ✅ Giữ giá từ bộ phận có sẵn trên xe
                 });
                 return;
               }
                 // ✅ Tìm trong danh sách phụ tùng đề xuất
                 const selected = allSuggestedParts.find((p) => p.id === opt.value);
-                const price = selected?.price || 0;
                 
                 // ✅ Lưu label đầy đủ (có serialNumber) từ opt.label
                 // opt.label đã được format: "Tên (Serial)" hoặc "Tên"
                 const fullLabel = opt.label || selected?.name || "";
 
+                // ✅ Giữ nguyên giá từ bộ phận có sẵn trên xe, không lấy từ phụ tùng thay thế
+                const currentRow = details[i];
+                const partItemPrice = Number(currentRow?.partItem?.price || 0);
+
               updateRow(i, {
                 proposedReplacePartId: opt.value,
                   replacePartName: fullLabel, // ✅ Lưu label đầy đủ với code (Part template)
-                  pricePart: price,
+                  pricePart: partItemPrice, // ✅ Luôn lấy giá từ bộ phận có sẵn trên xe
               });
             }}
               options={allSuggestedParts.map((p) => {
