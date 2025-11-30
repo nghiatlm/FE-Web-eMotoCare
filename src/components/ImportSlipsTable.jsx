@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Eye, Edit } from "lucide-react";
 import { getImportNotes } from "@/api/importNotesApi";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
@@ -32,7 +33,7 @@ export default function ImportSlipsTable({ search = "" }) {
                 hour: '2-digit',
                 minute: '2-digit'
               })
-            : "";
+            : "N/A";
 
           const importByName = item.importBy 
             ? `${item.importBy.firstName || ""} ${item.importBy.lastName || ""}`.trim() || item.importBy.staffCode || "N/A"
@@ -42,21 +43,30 @@ export default function ImportSlipsTable({ search = "" }) {
             ? item.serviceCenter.name || item.serviceCenter.code || "N/A"
             : "N/A";
 
-          const typeLabel = item.type === "SUPPLIER" ? "Nhà cung cấp" : item.type || "N/A";
+          // Map type labels
+          const typeLabelMap = {
+            "SUPPLIER": "Nhà cung cấp",
+            "TRANSFER_IN": "Nhận điều chuyển",
+            "WARRANTY_RETURN": "Hoàn kho bảo hành"
+          };
+          const typeLabel = typeLabelMap[item.type] || item.type || "N/A";
 
-          const totalItems = item.partItemId?.length || item.partItems?.length || 0;
+          // Tính số mặt hàng từ importNoteDetails
+          const totalItems = item.importNoteDetails?.length || 0;
+
+          // Format supplier/importFrom
+          const supplierDisplay = item.supplier || item.importFrom || "—";
 
           return {
-            id: item.code || item.id,
+            code: item.code, // Dùng code làm id cho navigation
             importDate: importDate,
-            importFrom: item.importFrom || "N/A",
-            supplier: item.supplier || "N/A",
+            supplier: supplierDisplay,
             type: typeLabel,
             totalItems: totalItems,
             totalValue: item.totalAmout || item.totalAmount || 0, 
             importByName: importByName,
             serviceCenterName: serviceCenterName,
-            rawData: item
+            rawData: item // Giữ rawData để navigate và edit
           };
         });
         
@@ -81,7 +91,7 @@ export default function ImportSlipsTable({ search = "" }) {
   useEffect(() => {
     const applyAddSlip = (slip) => {
       setRows((prev) => {
-        const exists = prev.some((r) => r.id === slip.id);
+        const exists = prev.some((r) => (r.code || r.id) === (slip.code || slip.id));
         if (exists) return prev;
         return [slip, ...prev];
       });
@@ -102,7 +112,7 @@ export default function ImportSlipsTable({ search = "" }) {
 
     if (q) {
       result = result.filter((r) =>
-        [r.id, r.supplier, r.importFrom, r.importByName, r.serviceCenterName].join(" ").toLowerCase().includes(q)
+        [r.code, r.supplier, r.importByName, r.serviceCenterName, r.type].join(" ").toLowerCase().includes(q)
       );
     }
 
@@ -144,8 +154,7 @@ export default function ImportSlipsTable({ search = "" }) {
             <tr className="bg-muted/50 border-b border-border">
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Mã phiếu</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Ngày nhập</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Nhà cung cấp</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Số mặt hàng</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Loại</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Tổng giá trị</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Người nhập</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Thao tác</th>
@@ -154,22 +163,25 @@ export default function ImportSlipsTable({ search = "" }) {
           <tbody>
             {filtered.length === 0 && !loading ? (
               <tr>
-                <td colSpan="7" className="py-12 px-6 text-center text-sm text-muted-foreground">
+                <td colSpan="8" className="py-12 px-6 text-center text-sm text-muted-foreground">
                   {search ? "Không tìm thấy phiếu nhập phù hợp" : "Chưa có phiếu nhập nào"}
                 </td>
               </tr>
             ) : (
               filtered.map((slip, i) => (
                 <tr
-                  key={slip.id}
+                  key={slip.code || slip.rawData?.id || i}
                   className={`border-b border-border hover:bg-muted/30 transition-colors ${
                     i % 2 === 0 ? "bg-card" : "bg-muted/10"
                   }`}
                 >
-                  <td className="py-4 px-6 text-sm font-medium text-foreground">{slip.id}</td>
-                  <td className="py-4 px-6 text-sm text-foreground">{slip.importDate || "N/A"}</td>
-                  <td className="py-4 px-6 text-sm text-foreground">{slip.supplier}</td>
-                  <td className="py-4 px-6 text-sm text-foreground">{slip.totalItems}</td>
+                  <td className="py-4 px-6 text-sm font-semibold text-primary">{slip.code || "—"}</td>
+                  <td className="py-4 px-6 text-sm text-foreground">{slip.importDate}</td>
+                  <td className="py-4 px-6">
+                    <Badge variant="outline" className="text-xs">
+                      {slip.type}
+                    </Badge>
+                  </td>
                   <td className="py-4 px-6 text-sm font-medium text-foreground">
                     {new Intl.NumberFormat("vi-VN", {
                       style: "currency",

@@ -26,7 +26,7 @@ export default function PartTypeDetail() {
   const [loading, setLoading] = useState(true);
   const [servicePackages, setServicePackages] = useState([]);
   const [loadingPackages, setLoadingPackages] = useState(false);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -400,16 +400,7 @@ export default function PartTypeDetail() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Hash className="h-4 w-4" />
-                  <span>Mã loại phụ tùng</span>
-                </div>
-                <p className="text-base font-mono font-semibold text-foreground">
-                  {partType.id || "—"}
-                </p>
-              </div>
-              <div className="space-y-1.5">
+            <div className="space-y-1.5">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Package className="h-4 w-4" />
                   <span>Tên loại phụ tùng</span>
@@ -418,8 +409,7 @@ export default function PartTypeDetail() {
                   {partType.name || "—"}
                 </p>
               </div>
-            </div>
-            <div className="space-y-1.5">
+              <div className="space-y-1.5">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <FileText className="h-4 w-4" />
                 <span>Mô tả</span>
@@ -428,6 +418,7 @@ export default function PartTypeDetail() {
                 {partType.description || "Không có mô tả"}
               </p>
             </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -435,32 +426,39 @@ export default function PartTypeDetail() {
         <Card className="mb-6">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
+              <CardTitle 
+                className="text-lg flex items-center gap-2 cursor-pointer hover:text-primary transition-colors select-none"
+                onClick={() => {
+                  if (!showForm) {
+                    setShowForm(true);
+                    // Scroll to form sau khi mở
+                    setTimeout(() => {
+                      document.querySelector('[data-form-card]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 100);
+                  }
+                }}
+              >
                 <Plus className="h-5 w-5 text-primary" />
                 Tạo gói dịch vụ mới
               </CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowForm(!showForm)}
-                className="gap-2"
-              >
-                {showForm ? (
-                  <>
-                    <ChevronUp className="h-4 w-4" />
-                    Thu gọn
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="h-4 w-4" />
-                    Mở rộng
-                  </>
-                )}
-              </Button>
+              {showForm && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowForm(false);
+                  }}
+                  className="gap-2"
+                >
+                  <ChevronUp className="h-4 w-4" />
+                  Thu gọn
+                </Button>
+              )}
             </div>
           </CardHeader>
           {showForm && (
-            <CardContent>
+            <CardContent data-form-card>
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Loại phụ tùng - Disabled vì tự động */}
                 <div className="rounded-xl border border-border/60 bg-muted/30 p-4">

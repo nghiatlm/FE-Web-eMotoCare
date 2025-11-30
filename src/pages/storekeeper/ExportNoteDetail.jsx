@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Pencil, Check, Building2, User, DollarSign, Calendar, FileText, Package, Tag, Truck } from "lucide-react";
+import { ArrowLeft, Pencil, Check, Building2, User, DollarSign, Calendar, FileText, Package, Tag, Truck, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getExportNoteById, updateExportNote, updateExportNoteDetail } from "@/api/exportNotesApi";
-import { getServiceCenterInventories } from "@/api/serviceCenterInventoriesApi";
 import { getPartItems } from "@/api/partitemsApi";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,8 +17,9 @@ export default function ExportNoteDetail() {
   const [exportNote, setExportNote] = useState(null);
   const [selectedParts, setSelectedParts] = useState(new Set());
   const [exporting, setExporting] = useState(false);
-  const [serialsByPartCode, setSerialsByPartCode] = useState({});
-  const [loadingSerials, setLoadingSerials] = useState(false);
+  const [partItemsByPartId, setPartItemsByPartId] = useState({}); // Lưu part items theo partId
+  const [loadingPartItems, setLoadingPartItems] = useState({}); // Loading state cho từng part
+  const [expandedPartIds, setExpandedPartIds] = useState(new Set()); // Track expanded parts
 
   useEffect(() => {
     const fetchData = async () => {
@@ -47,99 +47,132 @@ export default function ExportNoteDetail() {
     }
   }, [id, toast]);
 
+  // Fetch part items cho mỗi proposedReplacePart
   useEffect(() => {
-    const fetchSerialNumbers = async () => {
+    const fetchPartItemsForParts = async () => {
       if (!exportNote?.exportNoteDetails?.length) return;
 
-      const partCodes = Array.from(
+      const serviceCenterId = exportNote.serviceCenterId || exportNote.serviceCenter?.id;
+      if (!serviceCenterId) {
+        console.warn("⚠️ Không có serviceCenterId trong exportNote");
+        return;
+      }
+
+      // Lấy danh sách unique partIds từ proposedReplacePart
+      const partIds = Array.from(
         new Set(
           exportNote.exportNoteDetails
-            .map((detail) => {
-              const part = detail.proposedReplacePart || detail.partItem?.part;
-              return part?.code;
-            })
+            .map((detail) => detail.proposedReplacePart?.id || detail.proposedReplacePartId)
             .filter(Boolean)
         )
       );
 
-      if (partCodes.length === 0) return;
+      if (partIds.length === 0) return;
 
       try {
-        setLoadingSerials(true);
-        const serialEntries = await Promise.all(
-          partCodes.map(async (partCode) => {
+        // Set loading cho tất cả parts
+        const loadingState = {};
+        partIds.forEach(partId => {
+          loadingState[partId] = true;
+        });
+        setLoadingPartItems(loadingState);
+
+        // Fetch part items cho mỗi partId
+        const partItemsMap = {};
+        await Promise.all(
+          partIds.map(async (partId) => {
             try {
-              const response = await getServiceCenterInventories({
+              const response = await getPartItems({
+                partId: partId,
+                serviceCenterId: serviceCenterId,
                 page: 1,
                 pageSize: 100,
-                search: partCode,
               });
 
-              const inventories = response?.data?.rowDatas || [];
-              const targetCode = (partCode || "").toLowerCase();
-
-              const allSerials = [];
-              inventories.forEach((inventory) => {
-                const matchedItems = (inventory.partItems || []).filter(
-                  (item) => (item?.part?.code || "").toLowerCase() === targetCode
-                );
-                matchedItems.forEach((item) => {
-                  if (item.serialNumber) {
-                    allSerials.push({
-                      serialNumber: item.serialNumber,
-                      quantity: item.quantity || 0,
-                    });
-                  }
-                });
-              });
-
-              return [partCode, allSerials];
+              const rowDatas = response?.data?.rowDatas || [];
+              partItemsMap[partId] = rowDatas || [];
+              
+              console.log(`✅ Fetched ${rowDatas.length} part items cho partId: ${partId}`);
             } catch (error) {
-              console.error(`Error fetching serials for part ${partCode}:`, error);
+              console.error(`❌ Error fetching part items for partId ${partId}:`, error);
+              partItemsMap[partId] = [];
+            } finally {
+              setLoadingPartItems(prev => ({ ...prev, [partId]: false }));
             }
-            return [partCode, []];
           })
         );
-        setSerialsByPartCode(Object.fromEntries(serialEntries));
-      } finally {
-        setLoadingSerials(false);
+
+        setPartItemsByPartId(partItemsMap);
+      } catch (error) {
+        console.error("Error fetching part items:", error);
       }
     };
 
-    fetchSerialNumbers();
+    fetchPartItemsForParts();
   }, [exportNote]);
 
   const exportDetails = exportNote?.exportNoteDetails || [];
 
-  const displayItems = exportDetails.map((detail) => {
-    const part = detail.proposedReplacePart || detail.partItem?.part;
-    const code = part?.code || "UNKNOWN";
-    const exportQty = detail.quantity ?? 0;
-    const status = part?.status === "ACTIVE" ? "Vẫn còn" : "Hết hàng";
-    const fetchedSerials = serialsByPartCode[code] || [];
-    const serialNumbers = detail.partItem?.serialNumber
-      ? [detail.partItem.serialNumber]
-      : detail.serialNumber
-      ? [detail.serialNumber]
-      : fetchedSerials.map((s) => s.serialNumber);
+  // Group by proposedReplacePart - hiển thị tất cả parts (kể cả không có part items)
+  const displayParts = exportDetails.reduce((acc, detail) => {
+    const partId = detail.proposedReplacePart?.id || detail.proposedReplacePartId;
+    if (!partId) return acc;
 
+    if (!acc[partId]) {
+      const part = detail.proposedReplacePart;
+      
+      // Lấy part items từ state theo partId
+      const partItems = partItemsByPartId[partId] || [];
+      
+      acc[partId] = {
+        partId,
+        part: part,
+        code: part?.code || "UNKNOWN",
+        name: part?.name || "N/A",
+        image: part?.image || null,
+        status: part?.status || "INACTIVE", // Lưu status gốc để dùng hàm getPartStatusLabel
+        partType: part?.partType?.name || part?.partType || "N/A", // Loại phụ tùng
+        partItems: partItems, // Part items từ API
+        details: []
+      };
+    }
+    acc[partId].details.push(detail);
+    return acc;
+  }, {});
+
+  // Hàm chuyển status sang tiếng Việt
+  const getDetailStatusLabel = (status) => {
+    const statusMap = {
+      "STOCK_NOT_FOUND": "Chưa tìm thấy",
+      "STOCK_FOUND": "Đã tìm thấy",
+      "COMPLETED": "Hoàn thành"
+    };
+    return statusMap[status] || status || "Chưa tìm thấy";
+  };
+
+  // Hàm chuyển trạng thái part sang tiếng Việt
+  const getPartStatusLabel = (status) => {
+    if (status === "ACTIVE") return "Khả dụng";
+    if (status === "INACTIVE") return "Không khả dụng";
+    return status || "N/A";
+  };
+
+  const displayItems = Object.values(displayParts).map((partData) => {
+    // Lấy status từ detail (ưu tiên status từ API)
+    const detailStatus = partData.details[0]?.status || "STOCK_NOT_FOUND";
+    
     return {
-      id: detail.id,
-      partItemId: detail.partItem?.id || detail.partItemId || null,
-      proposedReplacePartId: detail.proposedReplacePartId || detail.proposedReplacePart?.id || null,
-      serviceCenterId:
-        detail.serviceCenterId ||
-        detail.partItem?.serviceCenterId ||
-        detail.proposedReplacePart?.serviceCenterId ||
-        exportNote.serviceCenterId ||
-        exportNote.serviceCenter?.id ||
-        null,
-      code,
-      name: part?.name || "N/A",
-      status,
-      quantity: exportQty,
-      serialNumbers: serialNumbers,
-      allSerials: fetchedSerials
+      id: `part-${partData.partId}`,
+      partId: partData.partId,
+      code: partData.code,
+      name: partData.name,
+      image: partData.image,
+      status: partData.status,
+      partType: partData.partType, // Loại phụ tùng
+      partItems: partData.partItems,
+      details: partData.details,
+      totalQuantity: partData.details.reduce((sum, d) => sum + (d.quantity || 0), 0),
+      detailStatus: detailStatus // Dùng trực tiếp status từ API
     };
   });
 
@@ -147,15 +180,54 @@ export default function ExportNoteDetail() {
   const totals = {
     totalRows: displayItems.length
   };
+
+  const toggleExpandPart = (partId) => {
+    setExpandedPartIds(prev => {
+      const next = new Set(prev);
+      if (next.has(partId)) {
+        next.delete(partId);
+      } else {
+        next.add(partId);
+      }
+      return next;
+    });
+  };
   
   const togglePartSelection = (itemId) => {
     setSelectedParts(prev => {
       const next = new Set(prev);
-      if (next.has(itemId)) {
+      const isSelected = next.has(itemId);
+      
+      // Tìm item được chọn/bỏ chọn
+      const item = displayItems.find(i => i.id === itemId);
+      
+      if (isSelected) {
+        // Bỏ chọn
         next.delete(itemId);
+        console.log("❌ Bỏ chọn part item:", {
+          detailId: itemId,
+          partItemId: item?.partItemId,
+          partName: item?.name,
+          partCode: item?.code,
+          quantity: item?.quantity,
+          status: item?.status
+        });
       } else {
         next.add(itemId);
+        console.log("✅ Chọn part item:", {
+          detailId: itemId,
+          partItemId: item?.partItemId,
+          partName: item?.name,
+          partCode: item?.code,
+          quantity: item?.quantity,
+          status: item?.status,
+          proposedReplacePartId: item?.proposedReplacePartId,
+          serviceCenterId: item?.serviceCenterId,
+          serialNumbers: item?.serialNumbers,
+          fullItem: item
+        });
       }
+      
       return next;
     });
   };
@@ -192,64 +264,109 @@ export default function ExportNoteDetail() {
     try {
       setExporting(true);
       
-      // Lấy các detail đã chọn
-      const selectedDetails = displayItems.filter(item => selectedParts.has(item.id));
-
-      const missingPartItems = [];
-
-      for (const item of selectedDetails) {
-        if (item.partItemId) continue;
-
-        if (!item.proposedReplacePartId || !item.serviceCenterId) {
-          missingPartItems.push(item);
-          continue;
-        }
-
-        try {
-          const response = await getPartItems({
-            partId: item.proposedReplacePartId,
-            serviceCenterId: item.serviceCenterId,
-            status: "IN_STOCK",
-            page: 1,
-            pageSize: 1,
-          });
-
-          const rows = response?.data?.rowDatas || response?.data || response?.rowDatas || response || [];
-          const firstItem = Array.isArray(rows) ? rows[0] : null;
-          if (firstItem?.id) {
-            item.partItemId = firstItem.id;
-          } else {
-            missingPartItems.push(item);
-          }
-        } catch (error) {
-          console.error("Error fetching part item for export detail:", item.id, error);
-          missingPartItems.push(item);
-        }
-      }
-      
-      if (missingPartItems.length > 0) {
+      // Lấy serviceCenterId từ exportNote để đảm bảo chỉ lấy part items trong kho của thủ kho
+      const serviceCenterId = exportNote.serviceCenterId || exportNote.serviceCenter?.id;
+      if (!serviceCenterId) {
         toast({
-          title: "Thiếu dữ liệu",
-          description: "Một số phụ tùng chưa có part item khả dụng. Vui lòng kiểm tra lại chi tiết phiếu hoặc tồn kho.",
+          title: "Lỗi",
+          description: "Không tìm thấy thông tin kho của bạn. Vui lòng thử lại.",
           variant: "destructive",
         });
         setExporting(false);
         return;
       }
+      
+      console.log("🔍 Xuất kho với serviceCenterId:", serviceCenterId);
+      console.log("📦 Selected part item IDs:", Array.from(selectedParts));
+      
+      if (selectedParts.size === 0) {
+        toast({
+          title: "Cảnh báo",
+          description: "Vui lòng chọn ít nhất một phụ tùng để xuất kho.",
+          variant: "default",
+        });
+        setExporting(false);
+        return;
+      }
 
-      // Call API update cho từng detail đã chọn
-      const updatePromises = selectedDetails.map(async (item) => {
+      // Tìm partItem và export note detail tương ứng
+      const updatesToProcess = [];
+      const usedDetailIds = new Set(); // Track các detail đã được map
+      
+      for (const partItemId of selectedParts) {
+        // Tìm partItem từ partItemsByPartId
+        let foundPartItem = null;
+        let foundPartId = null;
+        
+        for (const [partId, partItems] of Object.entries(partItemsByPartId)) {
+          const partItem = partItems.find(pi => pi.id === partItemId);
+          if (partItem) {
+            foundPartItem = partItem;
+            foundPartId = partId;
+            break;
+          }
+        }
+        
+        if (!foundPartItem) {
+          console.warn(`⚠️ Không tìm thấy partItem với id: ${partItemId}`);
+          continue;
+        }
+        
+        // Tìm export note detail chưa có partItemId (status = "STOCK_NOT_FOUND") và chưa được map
+        const availableDetail = exportDetails.find(detail => {
+          const detailPartId = detail.proposedReplacePart?.id || detail.proposedReplacePartId;
+          return detailPartId === foundPartId && 
+                 !detail.partItemId && 
+                 detail.status === "STOCK_NOT_FOUND" &&
+                 !usedDetailIds.has(detail.id);
+        });
+        
+        if (!availableDetail) {
+          console.warn(`⚠️ Không tìm thấy export note detail cần update cho partItem ${partItemId} (part: ${foundPartId})`);
+          continue;
+        }
+        
+        // Đánh dấu detail đã được map
+        usedDetailIds.add(availableDetail.id);
+        
+        updatesToProcess.push({
+          detailId: availableDetail.id,
+          partItemId: partItemId,
+          partItem: foundPartItem,
+          detail: availableDetail
+        });
+      }
+      
+      if (updatesToProcess.length === 0) {
+        toast({
+          title: "Cảnh báo",
+          description: "Không có phụ tùng nào có thể xuất kho. Có thể tất cả đã được xử lý.",
+          variant: "default",
+        });
+        setExporting(false);
+        return;
+      }
+      
+      console.log(`📝 Sẽ update ${updatesToProcess.length} export note details:`, updatesToProcess);
+
+      const updatePromises = updatesToProcess.map(async ({ detailId, partItemId }) => {
         const updateData = {
-          partItemId: item.partItemId,
+          partItemId: partItemId,
           status: "COMPLETED"
         };
 
         try {
-          const response = await updateExportNoteDetail(item.id, updateData);
-          return { success: true, detailId: item.id, response };
+          const response = await updateExportNoteDetail(detailId, updateData);
+          console.log(`✅ Updated detail ${detailId} với partItemId ${partItemId}`, response);
+          return { success: true, detailId, partItemId, response };
         } catch (error) {
-          console.error(`Error updating detail ${item.id}:`, error);
-          return { success: false, detailId: item.id, error };
+          console.error(`❌ Error updating detail ${detailId}:`, error);
+          return { 
+            success: false, 
+            detailId, 
+            partItemId,
+            error: error?.response?.data?.message || error?.message || "Lỗi không xác định" 
+          };
         }
       });
 
@@ -455,10 +572,15 @@ export default function ExportNoteDetail() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {selectedParts.size > 0 && (
+              <div className="px-4 py-2 rounded-lg bg-primary/10 text-primary font-semibold text-sm">
+                Đã chọn: {selectedParts.size} phụ tùng
+              </div>
+            )}
             <Button 
               className="gap-2 bg-green-600 hover:bg-green-700 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleExportWarehouse}
-              disabled={exporting || (exportNote?.exportNoteStatus || exportNote?.status) === "COMPLETED"}
+              disabled={exporting || (exportNote?.exportNoteStatus || exportNote?.status) === "COMPLETED" || selectedParts.size === 0}
             >
               <Truck className="h-4 w-4" />
               {exporting ? "Đang xuất kho..." : "Xuất kho"}
@@ -517,83 +639,199 @@ export default function ExportNoteDetail() {
                 <table className="w-full">
                   <thead>
                     <tr className="bg-gradient-to-r from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-b-2 border-red-200/50 dark:border-red-800/30">
-                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider w-12">
-                        <Checkbox
-                          checked={selectedParts.size === totals.totalRows && totals.totalRows > 0}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedParts(new Set(displayItems.map(item => item.id)));
-                            } else {
-                              setSelectedParts(new Set());
-                            }
-                          }}
-                        />
-                      </th>
+                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider w-12"></th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Mã</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Tên phụ tùng</th>
+                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Loại phụ tùng</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Trạng thái</th>
+                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Trạng thái kho</th>
+                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Số lượng tồn kho</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Số lượng xuất</th>
-                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Batch/Serial</th>
+                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Chọn</th>
                     </tr>
                   </thead>
                   <tbody>
                     {displayItems.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-10 px-6 text-center text-sm text-muted-foreground">
-                          Không có phụ tùng nào cần xuất.
+                        <td colSpan={9} className="py-10 px-6 text-center text-sm text-muted-foreground">
+                          {Object.values(loadingPartItems).some(loading => loading) ? "Đang tải dữ liệu..." : "Không có phụ tùng nào cần xuất."}
                         </td>
                       </tr>
                     ) : (
-                      displayItems.map((item, idx) => (
-                        <tr
-                          key={item.id}
-                          className={`border-b border-border transition-all duration-200 ${
-                            idx % 2 === 0
-                              ? "bg-gradient-to-r from-white to-rose-50/60 dark:from-card dark:to-red-950/10"
-                              : "bg-white dark:bg-card"
-                          } hover:bg-rose-50/80`}
-                        >
-                          <td className="py-4 px-6">
-                            <Checkbox
-                              checked={selectedParts.has(item.id)}
-                              onCheckedChange={() => togglePartSelection(item.id)}
-                            />
-                          </td>
-                          <td className="py-4 px-6 text-sm font-bold text-primary">{item.code}</td>
-                          <td className="py-4 px-6 text-sm font-medium text-foreground">{item.name}</td>
-                          <td className="py-4 px-6">
-                            <Badge
-                              variant="secondary"
-                              className={
-                                item.status === "Vẫn còn"
-                                  ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 border border-green-300 dark:border-green-700"
-                                  : "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400 border border-orange-300 dark:border-orange-700"
-                              }
+                      displayItems.map((item, idx) => {
+                        const isExpanded = expandedPartIds.has(item.partId);
+                        const partItems = item.partItems || [];
+                        
+                        return (
+                          <>
+                            {/* Part Row */}
+                            <tr
+                              key={item.id}
+                              className={`border-b border-border transition-all duration-200 cursor-pointer ${
+                                idx % 2 === 0
+                                  ? "bg-gradient-to-r from-white to-rose-50/60 dark:from-card dark:to-red-950/10"
+                                  : "bg-white dark:bg-card"
+                              } hover:bg-rose-50/80`}
+                              onClick={() => toggleExpandPart(item.partId)}
                             >
-                              {item.status}
-                            </Badge>
-                          </td>
-                          <td className="py-4 px-6 text-sm font-bold text-foreground">{item.quantity}</td>
-                          <td className="py-4 px-6">
-                            {loadingSerials ? (
-                              <span className="text-xs text-muted-foreground">Đang tải serial...</span>
-                            ) : item.serialNumbers && item.serialNumbers.length > 0 ? (
-                              <Badge variant="secondary" className="bg-muted text-foreground border-border">
-                                {item.serialNumbers[0]}
-                              </Badge>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">Chưa có serial khả dụng</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))
+                              <td className="py-4 px-6">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleExpandPart(item.partId);
+                                  }}
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </td>
+                              <td className="py-4 px-6">
+                                <div className="flex items-center gap-3">
+                                  {item.image ? (
+                                    <img
+                                      src={item.image}
+                                      alt={item.name}
+                                      className="h-12 w-12 rounded-lg object-cover border border-border/60"
+                                    />
+                                  ) : (
+                                    <div className="h-12 w-12 rounded-lg border border-dashed border-border/60 flex items-center justify-center text-xs text-muted-foreground">
+                                      N/A
+                                    </div>
+                                  )}
+                                  <span className="text-sm font-bold text-primary">{item.code}</span>
+                                </div>
+                              </td>
+                              <td className="py-4 px-6 text-sm font-medium text-foreground">{item.name}</td>
+                              <td className="py-4 px-6 text-sm text-muted-foreground">
+                                {item.partType || "N/A"}
+                              </td>
+                              <td className="py-4 px-6">
+                                <Badge
+                                  variant="secondary"
+                                  className={
+                                    item.status === "ACTIVE"
+                                      ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 border border-green-300 dark:border-green-700"
+                                      : "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400 border border-gray-300 dark:border-gray-700"
+                                  }
+                                >
+                                  {getPartStatusLabel(item.status)}
+                                </Badge>
+                              </td>
+                              <td className="py-4 px-6">
+                                <Badge
+                                  variant="secondary"
+                                  className={
+                                    item.detailStatus === "STOCK_FOUND" || item.detailStatus === "COMPLETED"
+                                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-300 dark:border-blue-700"
+                                      : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400 border border-red-300 dark:border-red-700"
+                                  }
+                                >
+                                  {getDetailStatusLabel(item.detailStatus)}
+                                </Badge>
+                              </td>
+                              <td className="py-4 px-6 text-sm font-bold text-foreground">
+                                {loadingPartItems[item.partId] ? (
+                                  <span className="text-xs text-muted-foreground">Đang tải...</span>
+                                ) : (
+                                  <Badge variant="secondary">
+                                    {partItems.reduce((sum, pi) => sum + (pi.quantity || 0), 0)} bộ
+                                  </Badge>
+                                )}
+                              </td>
+                              <td className="py-4 px-6 text-sm font-bold text-foreground">{item.totalQuantity}</td>
+                              <td className="py-4 px-6"></td>
+                            </tr>
+                            {/* Part Items Rows (Expanded) */}
+                            {isExpanded && partItems.map((partItem, pIdx) => (
+                              <tr
+                                key={`${item.partId}-${partItem.id || pIdx}`}
+                                className="bg-muted/30 border-b border-border/50"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <td className="py-3 px-6"></td>
+                                <td className="py-3 px-6 pl-12">
+                                  <div className="flex flex-col gap-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-muted-foreground">└─</span>
+                                      <span className="text-xs text-muted-foreground">Số serial:</span>
+                                    </div>
+                                    <div className="pl-6">
+                                      <span className="text-xs font-bold text-primary">{partItem.serialNumber || partItem.id || "N/A"}</span>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="py-3 px-6 text-xs">
+                                  <div className="flex flex-col gap-1">
+                                    <span className="text-muted-foreground">{partItem.part?.name || item.name}</span>
+                                    {partItem.serialNumber && (
+                                      <span className="text-xs text-primary font-medium">Serial: {partItem.serialNumber}</span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-6 text-xs text-muted-foreground">
+                                  {partItem.part?.partType?.name || partItem.part?.partType || item.partType || "N/A"}
+                                </td>
+                                <td className="py-3 px-6">
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-xs ${
+                                      partItem.part?.status === "ACTIVE"
+                                        ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 border-green-300 dark:border-green-700"
+                                        : "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400 border-gray-300 dark:border-gray-700"
+                                    }`}
+                                  >
+                                    {getPartStatusLabel(partItem.part?.status)}
+                                  </Badge>
+                                </td>
+                                <td className="py-3 px-6">
+                                  {/* Để trống - partItem không có trạng thái kho */}
+                                </td>
+                                <td className="py-3 px-6 text-xs font-medium">
+                                  <Badge variant="secondary" className="text-xs">
+                                    {partItem.quantity || 0} bộ
+                                  </Badge>
+                                </td>
+                                <td className="py-3 px-6 text-xs text-muted-foreground">
+                                  {/* Để trống - partItem không có số lượng xuất */}
+                                </td>
+                                <td className="py-3 px-6">
+                                  <Checkbox
+                                    checked={selectedParts.has(partItem.id)}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setSelectedParts(prev => new Set([...prev, partItem.id]));
+                                      } else {
+                                        setSelectedParts(prev => {
+                                          const next = new Set(prev);
+                                          next.delete(partItem.id);
+                                          return next;
+                                        });
+                                      }
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                          </>
+                        );
+                      })
                     )}
                   </tbody>
                   {/* Summary Footer */}
                   <tfoot className="bg-muted/50 border-t-2 border-border">
                     <tr>
-                      <td colSpan={6} className="py-4 px-6 text-sm font-bold text-foreground">
-                        Tổng số dòng: <span className="text-foreground">{totals.totalRows}</span>
+                      <td colSpan={9} className="py-4 px-6 text-sm font-bold text-foreground">
+                        Tổng số phụ tùng: <span className="text-foreground">{totals.totalRows}</span>
+                        {selectedParts.size > 0 && (
+                          <span className="ml-4 text-primary">• Đã chọn: {selectedParts.size} phụ tùng</span>
+                        )}
                       </td>
                     </tr>
                   </tfoot>

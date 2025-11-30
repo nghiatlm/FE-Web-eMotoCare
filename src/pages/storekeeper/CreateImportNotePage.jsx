@@ -64,6 +64,7 @@ export default function CreateImportNotePage() {
     newPartImage: "",
   });
   const [hasManufacturerWarranty, setHasManufacturerWarranty] = useState(false);
+  const [warrantyDateError, setWarrantyDateError] = useState("");
   const isTransferType = form.type === "TRANSFER_IN";
 
   // Helper function to get today's date without time
@@ -252,6 +253,7 @@ export default function CreateImportNotePage() {
 
       const partId = selectedPartId || null;
       
+      // Lấy name và image từ part (ưu tiên từ selectedPart)
       const partName = selectedPart?.name || form.newPartName?.trim() || "";
       const partImage = selectedPart?.image || form.newPartImage?.trim() || "";
 
@@ -715,29 +717,41 @@ export default function CreateImportNotePage() {
                               ? new Date(form.warrantyStartDate)
                               : new Date()
                           }
-                          onSelect={(date) =>
+                          onSelect={(date) => {
+                            if (!date) {
+                              handleChange("warrantyStartDate", null);
+                              setWarrantyDateError("");
+                              return;
+                            }
+                            
+                            const today = getTodayDateOnly();
+                            const selectedDate = new Date(date);
+                            selectedDate.setHours(0, 0, 0, 0);
+                            
+                            if (selectedDate < today) {
+                              setWarrantyDateError("Không thể chọn ngày trong quá khứ. Vui lòng chọn ngày hôm nay hoặc ngày trong tương lai.");
+                              return;
+                            }
+                            
+                            setWarrantyDateError("");
                             handleChange(
                               "warrantyStartDate",
-                              date ? date.toISOString() : null,
-                            )
-                          }
+                              date.toISOString()
+                            );
+                          }}
                           initialFocus
-                          disabled={(date) => {
-                            const today = getTodayDateOnly();
-                            const dateOnly = new Date(date);
-                            dateOnly.setHours(0, 0, 0, 0);
-                            return dateOnly < today;
-                          }}
-                          classNames={{
-                            day_disabled: "hidden",
-                            cell: "[&:has(.hidden)]:hidden",
-                          }}
                         />
                       </PopoverContent>
                     </Popover>
-                    <p className="text-xs text-muted-foreground">
-                      Nếu không chọn, hệ thống sẽ dùng ngày hiện tại làm ngày bắt đầu bảo hành.
-                    </p>
+                    {warrantyDateError ? (
+                      <p className="text-xs text-red-500">
+                        {warrantyDateError}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Nếu không chọn, hệ thống sẽ dùng ngày hiện tại làm ngày bắt đầu bảo hành.
+                      </p>
+                    )}
                   </div>
 
                   <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm space-y-1">

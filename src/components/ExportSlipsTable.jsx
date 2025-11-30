@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Eye, Printer, Edit, FileUp } from "lucide-react";
 import { getExportNotes } from "@/api/exportNotesApi";
+import { getServiceCenters } from "@/api/serviceCentersApi";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useServiceCenter } from "@/hooks/useServiceCenter";
 
@@ -13,6 +14,7 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
   const [pageSize] = useState(10);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState(null);
+  const [serviceCenters, setServiceCenters] = useState([]);
   const { serviceCenterId } = useServiceCenter();
 
   const fetchExportNotes = async () => {
@@ -52,6 +54,20 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
     }
   };
 
+  // Fetch service centers để map ID sang tên
+  useEffect(() => {
+    const fetchServiceCenters = async () => {
+      try {
+        const response = await getServiceCenters({ page: 1, pageSize: 100 });
+        const centers = response?.data?.rowDatas || response?.data || [];
+        setServiceCenters(centers);
+      } catch (error) {
+        console.error("Error fetching service centers:", error);
+      }
+    };
+    fetchServiceCenters();
+  }, []);
+
   useEffect(() => {
     if (serviceCenterId) {
       fetchExportNotes();
@@ -77,6 +93,31 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
     };
   }, []);
 
+  // Tạo map từ ID sang tên để tra cứu nhanh - phải đặt trước early returns
+  const centerMap = useMemo(() => {
+    const map = new Map();
+    serviceCenters.forEach(center => {
+      if (center.id) {
+        map.set(String(center.id), center.name || center.code || String(center.id));
+      }
+    });
+    return map;
+  }, [serviceCenters]);
+
+  // Map exportTo (ID) sang tên chi nhánh - phải đặt trước early returns
+  const getServiceCenterName = (exportTo) => {
+    if (!exportTo) return "N/A";
+    
+    // Luôn tìm trong map trước (theo ID)
+    const centerName = centerMap.get(String(exportTo));
+    if (centerName) {
+      return centerName;
+    }
+    
+    // Nếu không tìm thấy trong map, có thể đã là tên rồi, trả về giá trị gốc
+    return exportTo;
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     let result = rows;
@@ -90,13 +131,38 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
     }
 
     if (q) {
-      result = result.filter((r) =>
-        [r.id, r.exportTo].join(" ").toLowerCase().includes(q)
-      );
+      result = result.filter((r) => {
+        const exportToName = getServiceCenterName(r.exportTo);
+        return [r.id, r.exportTo, exportToName].join(" ").toLowerCase().includes(q);
+      });
     }
 
     return result;
-  }, [rows, search, status, woCode]);
+  }, [rows, search, status, woCode, centerMap]);
+
+  const getStatusLabel = (status) => {
+    const statusMap = {
+      PENDING: "Chờ duyệt",
+      PROCESSING: "Đang xử lý",
+      APPROVED: "Đã duyệt",
+      EXPORTING: "Đang xuất",
+      COMPLETED: "Hoàn thành",
+      CANCELLED: "Đã hủy"
+    };
+    return statusMap[status] || status;
+  };
+
+  const getStatusBadgeClass = (status) => {
+    const classMap = {
+      PENDING: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700",
+      PROCESSING: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-300 dark:border-blue-700",
+      APPROVED: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-300 dark:border-blue-700",
+      EXPORTING: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-300 dark:border-purple-700",
+      COMPLETED: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-300 dark:border-green-700",
+      CANCELLED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-300 dark:border-red-700"
+    };
+    return classMap[status] || "bg-muted text-muted-foreground border-border";
+  };
 
   // Loading state
   if (loading) {
@@ -128,30 +194,6 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
       </div>
     );
   }
-
-  const getStatusLabel = (status) => {
-    const statusMap = {
-      PENDING: "Chờ duyệt",
-      PROCESSING: "Đang xử lý",
-      APPROVED: "Đã duyệt",
-      EXPORTING: "Đang xuất",
-      COMPLETED: "Hoàn thành",
-      CANCELLED: "Đã hủy"
-    };
-    return statusMap[status] || status;
-  };
-
-  const getStatusBadgeClass = (status) => {
-    const classMap = {
-      PENDING: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700",
-      PROCESSING: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-300 dark:border-blue-700",
-      APPROVED: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-300 dark:border-blue-700",
-      EXPORTING: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-300 dark:border-purple-700",
-      COMPLETED: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-300 dark:border-green-700",
-      CANCELLED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-300 dark:border-red-700"
-    };
-    return classMap[status] || "bg-muted text-muted-foreground border-border";
-  };
 
   return (
     <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
@@ -210,7 +252,7 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
                   </td>
                   <td className="py-4 px-6 text-center">
                     <div className="flex items-center justify-center">
-                      <span className="text-sm text-foreground/90">{slip.exportTo}</span>
+                      <span className="text-sm text-foreground/90">{getServiceCenterName(slip.exportTo)}</span>
                     </div>
                   </td>
                   <td className="py-4 px-6 text-center">

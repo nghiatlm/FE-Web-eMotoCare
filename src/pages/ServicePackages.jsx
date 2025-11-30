@@ -68,12 +68,10 @@ export default function ServicePackages() {
     );
   }, [partTypes, search]);
 
-  // Navigate to detail page
   const handleViewDetail = (partType) => {
     navigate(`/admin/service-packages/part-type/${partType.id}`);
   };
 
-  // Calculate STT
   const getStt = (index) => {
     return (page - 1) * pageSize + index + 1;
   };
@@ -122,7 +120,7 @@ export default function ServicePackages() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-20">STT</TableHead>
-                        <TableHead>Mã</TableHead>
+                          {/* <TableHead>Mã</TableHead> */}
                         <TableHead>Tên loại phụ tùng</TableHead>
                         <TableHead>Trạng thái</TableHead>
                         <TableHead className="text-right">Thao tác</TableHead>
@@ -139,7 +137,7 @@ export default function ServicePackages() {
                         filteredPartTypes.map((partType, index) => (
                           <TableRow key={partType.id}>
                             <TableCell>{getStt(index)}</TableCell>
-                            <TableCell className="font-mono text-sm">{partType.id}</TableCell>
+                            {/* <TableCell className="font-mono text-sm">{partType.id}</TableCell> */}
                             <TableCell>
                               <div>
                                 <p className="font-medium">{partType.name}</p>
