@@ -15,12 +15,13 @@ import {
   Phone,
   ChevronDown,
   ChevronUp,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { getExportNoteOutOfStockById } from "@/api/exportNotesApi";
+import { getExportNoteOutOfStockById, updateExportNoteDetail } from "@/api/exportNotesApi";
 import { getServiceCenterInventories } from "@/api/serviceCenterInventoriesApi";
 
 const statusClassMap = {
@@ -66,6 +67,7 @@ export default function MissingPartDetail() {
   const [availabilityData, setAvailabilityData] = useState({});
   const [availabilityLoading, setAvailabilityLoading] = useState({});
   const [expandedBranches, setExpandedBranches] = useState({});
+  const [updatingStatus, setUpdatingStatus] = useState({}); // Track updating status for each detail
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -99,13 +101,14 @@ export default function MissingPartDetail() {
     if (!exportNote?.exportNoteDetails) return [];
     return exportNote.exportNoteDetails
       .map((detail) => ({
-        id: detail.id,
+        id: detail.id, // This is the detailId (export note detail ID)
         code: detail.proposedReplacePart?.code || "—",
         name: detail.proposedReplacePart?.name || "—",
         description: detail.proposedReplacePart?.description || "—",
         quantity: detail.quantity || 0,
         status: detail.status || "OUT_OF_STOCK",
         partId: detail.proposedReplacePartId || detail.proposedReplacePart?.id,
+        detailId: detail.id, // Explicitly save detailId for API calls
       }))
       .filter((item) => item.code !== "—" || item.name !== "—");
   }, [exportNote]);
@@ -201,6 +204,59 @@ export default function MissingPartDetail() {
       }
       return { ...prev, [partId]: Array.from(current) };
     });
+  };
+
+  const handleUpdateStatus = async (detailId) => {
+    if (!detailId) {
+      toast({
+        title: "Lỗi",
+        description: "Không tìm thấy ID chi tiết phiếu xuất.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setUpdatingStatus((prev) => ({ ...prev, [detailId]: true }));
+      
+      const updateData = {
+        partItemId: null,
+        status: "STOCK_FOUND"
+      };
+
+      const response = await updateExportNoteDetail(detailId, updateData);
+      
+      if (response?.success || response?.statusCode === 200) {
+        toast({
+          title: "Thành công",
+          description: "Đã cập nhật trạng thái phụ tùng thành công.",
+        });
+        
+        // Refresh lại data
+        const fetchDetail = async () => {
+          try {
+            const response = await getExportNoteOutOfStockById(id);
+            if (response.success && response.data) {
+              setExportNote(response.data);
+            }
+          } catch (error) {
+            console.error("Error refreshing export note:", error);
+          }
+        };
+        fetchDetail();
+      } else {
+        throw new Error(response?.message || "Cập nhật thất bại");
+      }
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast({
+        title: "Lỗi",
+        description: error?.response?.data?.message || error?.message || "Không thể cập nhật trạng thái. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingStatus((prev) => ({ ...prev, [detailId]: false }));
+    }
   };
 
   const isBranchExpanded = (partId, branchId) => {
@@ -423,20 +479,32 @@ export default function MissingPartDetail() {
                               </Badge>
                             </td>
                             <td className="py-4 px-6">
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                className={`gap-2 border border-red-200 dark:border-red-900/50 ${
-                                  expandedPartId === item.id
-                                    ? "bg-red-600 text-white hover:bg-red-700"
-                                    : "bg-white text-red-600 hover:bg-red-50"
-                                }`}
-                                onClick={() => handleSearchAvailability(item)}
-                                disabled={availabilityLoading[item.id]}
-                              >
-                                <Search className="h-4 w-4" />
-                                {expandedPartId === item.id ? "Thu gọn" : "Tìm kiếm"}
-                              </Button>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  className={`gap-2 border border-red-200 dark:border-red-900/50 ${
+                                    expandedPartId === item.id
+                                      ? "bg-red-600 text-white hover:bg-red-700"
+                                      : "bg-white text-red-600 hover:bg-red-50"
+                                  }`}
+                                  onClick={() => handleSearchAvailability(item)}
+                                  disabled={availabilityLoading[item.id]}
+                                >
+                                  <Search className="h-4 w-4" />
+                                  {expandedPartId === item.id ? "Thu gọn" : "Tìm kiếm"}
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  className="gap-2 border border-green-200 dark:border-green-900/50 bg-white text-green-600 hover:bg-green-50"
+                                  onClick={() => handleUpdateStatus(item.detailId)}
+                                  disabled={updatingStatus[item.detailId] || item.status === "STOCK_FOUND"}
+                                >
+                                  <RefreshCw className={`h-4 w-4 ${updatingStatus[item.detailId] ? "animate-spin" : ""}`} />
+                                  {updatingStatus[item.detailId] ? "Đang cập nhật..." : "Cập nhật trạng thái"}
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                           {expandedPartId === item.id && (
