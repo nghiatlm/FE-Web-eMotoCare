@@ -423,13 +423,19 @@ export default function RepairModeEVCheck({
     const partId = currentRow?.partItem?.part?.id || null;
     let partTypeId = null;
     
-    if (partId) {
-      // Ưu tiên lấy từ cache
+    // ✅ Ưu tiên 1: Lấy từ _partTypeId nếu có (đã được set khi chọn partItem)
+    if (currentRow?._partTypeId) {
+      partTypeId = currentRow._partTypeId;
+      console.log(`🔍 [updatePriceService] partTypeId from rowData._partTypeId: ${partTypeId}`);
+    }
+    
+    // ✅ Ưu tiên 2: Lấy từ cache nếu có partId
+    if (!partTypeId && partId) {
       partTypeId = partTypeIdCache[partId] || null;
       console.log(`🔍 [updatePriceService] partId: ${partId}, partTypeId from cache: ${partTypeId}`);
     }
     
-    // ✅ Nếu không có trong cache, lấy từ partItem
+    // ✅ Ưu tiên 3: Lấy từ partItem
     if (!partTypeId) {
       partTypeId = currentRow?.partItem?.part?.partType?.id || null;
       console.log(`🔍 [updatePriceService] partTypeId from partItem: ${partTypeId}`);
@@ -569,11 +575,35 @@ export default function RepairModeEVCheck({
         const partItemForPrice = item.partItem || partOption?.partItem || null;
         const pricePart = Number(partItemForPrice?.price || item.pricePart || 0);
         
-        // ✅ Cache partTypeId ngay khi load data - giống maintenance mode (không gọi API)
-        const partIdFromItem = partItemForPrice?.part?.id || null;
-        const partTypeIdFromItem = partItemForPrice?.part?.partType?.id || null;
+        // ✅ Cache partTypeId ngay khi load data - ưu tiên từ vehiclePartOptions (đã được load và cache sẵn)
+        const partIdFromItem = partItemForPrice?.part?.id || partOption?.partId || null;
+        let partTypeIdFromItem = 
+          partItemForPrice?.part?.partType?.id || 
+          partOption?.partItem?.part?.partType?.id || 
+          null;
         
-        // ✅ Chỉ cache nếu có cả partId và partTypeId từ dữ liệu có sẵn (không gọi API)
+        // ✅ Nếu không có partTypeId từ item/option, thử lấy từ cache
+        if (!partTypeIdFromItem && partIdFromItem) {
+          partTypeIdFromItem = partTypeIdCache[partIdFromItem] || null;
+        }
+        
+        // ✅ Nếu vẫn không có, thử lấy từ vehiclePartOptions bằng partItemId
+        if (!partTypeIdFromItem && partItemId) {
+          const vehiclePartOption = vehiclePartOptions.find(p => p.partItemId === partItemId);
+          if (vehiclePartOption) {
+            partTypeIdFromItem = vehiclePartOption?.partItem?.part?.partType?.id || null;
+            // Lấy partId từ vehiclePartOption nếu chưa có
+            const partIdFromOption = vehiclePartOption?.partId || vehiclePartOption?.partItem?.part?.id || null;
+            if (partIdFromOption && partTypeIdFromItem) {
+              setPartTypeIdCache(prev => ({
+                ...prev,
+                [partIdFromOption]: partTypeIdFromItem
+              }));
+            }
+          }
+        }
+        
+        // ✅ Cache partTypeId nếu có cả partId và partTypeId
         if (partIdFromItem && partTypeIdFromItem) {
           setPartTypeIdCache(prev => {
             // ✅ Chỉ set nếu chưa có trong cache
@@ -1076,8 +1106,28 @@ export default function RepairModeEVCheck({
           onChange={(v) => {
             const sel = vehiclePartOptions.find((p) => p.partItemId === v);
             const partItem = sel?.partItem;
+            const part = partItem?.part || {};
+            const partId = sel?.partId || part?.id || null;
 
             handleChange(i, "partItemId", v);
+
+            // ✅ Cache partTypeId nếu có và chưa có trong cache
+            let partTypeId = null;
+            if (partId) {
+              // Ưu tiên lấy từ cache
+              partTypeId = partTypeIdCache[partId] || null;
+              
+              // Nếu không có trong cache, lấy từ part
+              if (!partTypeId && part?.partType?.id) {
+                partTypeId = part.partType.id;
+                // Cache lại để dùng sau
+                setPartTypeIdCache(prev => ({
+                  ...prev,
+                  [partId]: partTypeId
+                }));
+                console.log(`✅ Cached partTypeId when selecting partItem: partId=${partId}, partTypeId=${partTypeId}`);
+              }
+            }
 
             // nếu bộ phận đang BHH thì clear phụ tùng thay thế
             const isWarranty = checkWarrantyStatus(partItem);
@@ -1085,10 +1135,16 @@ export default function RepairModeEVCheck({
             // ✅ Giá phụ tùng lấy từ bộ phận có sẵn trên xe (partItem.price)
             const partPrice = Number(partItem?.price || 0);
 
+            // ✅ Đảm bảo partItem có đầy đủ thông tin part và partType
+            const enrichedPartItem = partItem ? {
+              ...partItem,
+              part: part || partItem.part || null
+            } : null;
+
             const updatedRow = {
               displayName: sel?.label || "",
               pricePart: partPrice,
-              partItem,
+              partItem: enrichedPartItem,
               ...(isWarranty
                 ? {
                     replacePartId: "",
@@ -1103,8 +1159,13 @@ export default function RepairModeEVCheck({
             // ✅ Tự động gọi giá dịch vụ nếu remedies đã là REPAIR hoặc REPLACE
             const currentRemedies = details[i]?.remedies || "NONE";
             if (["REPAIR", "REPLACE"].includes(currentRemedies)) {
-              // ✅ Tạo row data mới với partItem vừa chọn
-              const rowDataWithNewPartItem = { ...details[i], ...updatedRow };
+              // ✅ Tạo row data mới với partItem vừa chọn, đảm bảo có partTypeId
+              const rowDataWithNewPartItem = { 
+                ...details[i], 
+                ...updatedRow,
+                // ✅ Đảm bảo có partTypeId để updatePriceService có thể dùng
+                _partTypeId: partTypeId || part?.partType?.id || null
+              };
               updatePriceService(i, currentRemedies, rowDataWithNewPartItem);
             }
           }}
