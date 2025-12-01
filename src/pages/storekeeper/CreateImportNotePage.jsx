@@ -945,7 +945,7 @@ export default function CreateImportNotePage() {
                           {part.serialNumber || "—"}
                         </td>
                         <td className="py-3 px-4">
-                          {part.hasManufacturerWarranty ? (
+                          {part.warrantyPeriod && part.warrantyPeriod > 0 ? (
                             <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
                               {part.warrantyPeriod} tháng
                             </span>
