@@ -49,14 +49,8 @@ export default function RMARepairModeEVCheck({
   // ========= WARRANTY =========
   const checkWarrantyStatus = (partItem) => {
     if (!partItem) return false;
-    const start = partItem.warantyStartDate
-      ? new Date(partItem.warantyStartDate)
-      : null;
-    const end = partItem.warantyEndDate
-      ? new Date(partItem.warantyEndDate)
-      : null;
-    const now = new Date();
-    return start && end && now >= start && now <= end;
+    // ✅ Lấy từ isManufacturerWarranty thay vì tính từ ngày
+    return partItem.isManufacturerWarranty === true;
   };
 
   // ========= LOAD PHỤ TÙNG THEO XE (BỘ PHẬN) =========
@@ -643,15 +637,8 @@ export default function RMARepairModeEVCheck({
       render: (_, r) => {
         const partItem = r.partItem;
         if (!partItem) return "Không";
-        const start = partItem.warantyStartDate
-          ? new Date(partItem.warantyStartDate)
-          : null;
-        const end = partItem.warantyEndDate
-          ? new Date(partItem.warantyEndDate)
-          : null;
-        const now = new Date();
-        if (!start || !end || now < start || now > end) return "Không";
-        return "BHH";
+        // ✅ Lấy từ isManufacturerWarranty thay vì tính từ ngày
+        return partItem.isManufacturerWarranty === true ? "BHH" : "Không";
       },
     },
     // {
@@ -727,7 +714,8 @@ export default function RMARepairModeEVCheck({
           if (statusUpper === "COMPLETED") return "success";
           if (statusUpper === "PENDING") return "processing";
           if (statusUpper === "REJECTED" || statusUpper === "CANCELLED") return "error";
-          if (statusUpper === "STOCK_NOT_FOUND") return "warning";
+          if (statusUpper === "STOCK_NOT_FOUND") return "danger";
+          if (statusUpper === "STOCK_FOUND") return "warning";
           return "default";
         };
         
@@ -739,6 +727,7 @@ export default function RMARepairModeEVCheck({
             REJECTED: "Từ chối",
             CANCELLED: "Hủy",
             STOCK_NOT_FOUND: "Hết hàng",
+            STOCK_FOUND: "Đợi xuất kho",
           };
           return statusMap[statusUpper] || s;
         };

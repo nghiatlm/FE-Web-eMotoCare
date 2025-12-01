@@ -61,11 +61,11 @@ export default function MaintenanceModeEVCheck({
   // ✅ Pagination state
   const [pagination, setPagination] = useState({
     current: 1,
-    pageSize: 10,
+    pageSize: 8,
     showSizeChanger: true,
     showQuickJumper: true,
     showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} mục`,
-    pageSizeOptions: ['10', '20', '30', '50'],
+    pageSizeOptions: ['8', '10', '20', '30', '50'],
   });
 
   // RMA modal
@@ -367,14 +367,8 @@ export default function MaintenanceModeEVCheck({
   // --------- PHÁT HIỆN RMA (theo dòng) ---------
   const checkWarrantyStatus = (partItem) => {
     if (!partItem) return false;
-    const start = partItem.warantyStartDate
-      ? new Date(partItem.warantyStartDate)
-      : null;
-    const end = partItem.warantyEndDate
-      ? new Date(partItem.warantyEndDate)
-      : null;
-    const now = new Date();
-    return start && end && now >= start && now <= end;
+    // ✅ Lấy từ isManufacturerWarranty thay vì tính từ ngày
+    return partItem.isManufacturerWarranty === true;
   };
 
   // ✅ Kiểm tra item đã có RMA chưa
@@ -811,15 +805,8 @@ export default function MaintenanceModeEVCheck({
       render: (_, r) => {
         const partItem = r.partItem;
         if (!partItem) return "Không";
-        const start = partItem.warantyStartDate
-          ? new Date(partItem.warantyStartDate)
-          : null;
-        const end = partItem.warantyEndDate
-          ? new Date(partItem.warantyEndDate)
-          : null;
-        const now = new Date();
-        if (!start || !end || now < start || now > end) return "Không";
-        return "BHH";
+        // ✅ Lấy từ isManufacturerWarranty thay vì tính từ ngày
+        return partItem.isManufacturerWarranty === true ? "BHH" : "Không";
       },
     },
     {
@@ -1098,7 +1085,8 @@ export default function MaintenanceModeEVCheck({
           if (statusUpper === "COMPLETED") return "success";
           if (statusUpper === "PENDING") return "processing";
           if (statusUpper === "REJECTED" || statusUpper === "CANCELLED") return "error";
-          if (statusUpper === "STOCK_NOT_FOUND") return "warning";
+          if (statusUpper === "STOCK_NOT_FOUND") return "danger";
+          if (statusUpper === "STOCK_FOUND") return "warning";
           return "default";
         };
         
@@ -1110,6 +1098,7 @@ export default function MaintenanceModeEVCheck({
             REJECTED: "Từ chối",
             CANCELLED: "Hủy",
             STOCK_NOT_FOUND: "Hết hàng",
+            STOCK_FOUND: "Đợi xuất kho",
           };
           return statusMap[statusUpper] || s;
         };

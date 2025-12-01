@@ -1183,15 +1183,8 @@ export default function CampaignModeEVCheck({
       render: (_, r) => {
         const partItem = r.partItem;
         if (!partItem) return "Không";
-        const start = partItem.warantyStartDate
-          ? new Date(partItem.warantyStartDate)
-          : null;
-        const end = partItem.warantyEndDate
-          ? new Date(partItem.warantyEndDate)
-          : null;
-        const now = new Date();
-        if (!start || !end || now < start || now > end) return "Không";
-        return "BHH";
+        // ✅ Lấy từ isManufacturerWarranty thay vì tính từ ngày
+        return partItem.isManufacturerWarranty === true ? "BHH" : "Không";
       },
     },
     {
@@ -1279,7 +1272,7 @@ export default function CampaignModeEVCheck({
             REJECTED: "Từ chối",
             CANCELLED: "Hủy",
             STOCK_NOT_FOUND: "Hết hàng",
-            STOCK_FOUND: "Có hàng",
+            STOCK_FOUND: "Đợi xuất kho",
 
           };
           return statusMap[statusUpper] || s;

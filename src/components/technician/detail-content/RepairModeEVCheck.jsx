@@ -68,14 +68,8 @@ export default function RepairModeEVCheck({
   // ========= WARRANTY / RMA =========
   const checkWarrantyStatus = (partItem) => {
     if (!partItem) return false;
-    const start = partItem.warantyStartDate
-      ? new Date(partItem.warantyStartDate)
-      : null;
-    const end = partItem.warantyEndDate
-      ? new Date(partItem.warantyEndDate)
-      : null;
-    const now = new Date();
-    return start && end && now >= start && now <= end;
+    // ✅ Lấy từ isManufacturerWarranty thay vì tính từ ngày
+    return partItem.isManufacturerWarranty === true;
   };
 
   // ✅ Kiểm tra item đã có RMA chưa
@@ -574,6 +568,23 @@ export default function RepairModeEVCheck({
         // ✅ Giá phụ tùng lấy từ bộ phận có sẵn trên xe (partItem), không lấy từ phụ tùng thay thế
         const partItemForPrice = item.partItem || partOption?.partItem || null;
         const pricePart = Number(partItemForPrice?.price || item.pricePart || 0);
+        
+        // ✅ Cache partTypeId ngay khi load data - giống maintenance mode (không gọi API)
+        const partIdFromItem = partItemForPrice?.part?.id || null;
+        const partTypeIdFromItem = partItemForPrice?.part?.partType?.id || null;
+        
+        // ✅ Chỉ cache nếu có cả partId và partTypeId từ dữ liệu có sẵn (không gọi API)
+        if (partIdFromItem && partTypeIdFromItem) {
+          setPartTypeIdCache(prev => {
+            // ✅ Chỉ set nếu chưa có trong cache
+            if (prev[partIdFromItem]) return prev;
+            return {
+              ...prev,
+              [partIdFromItem]: partTypeIdFromItem
+            };
+          });
+          console.log(`✅ Cached partTypeId for partId ${partIdFromItem}:`, partTypeIdFromItem);
+        }
 
         return {
           ...item,
@@ -610,6 +621,18 @@ export default function RepairModeEVCheck({
       if (mapped.length > 0) {
         setDetails(mapped);
         toast.success(`Đã tải ${mapped.length} hạng mục từ DB.`);
+        
+        // ✅ Tự động gọi giá dịch vụ cho các items có remedies là REPAIR hoặc REPLACE
+        mapped.forEach((row, index) => {
+          if (
+            (!row.priceService || Number(row.priceService) === 0) &&
+            ["REPAIR", "REPLACE"].includes(row.remedies) &&
+            row.partItem
+          ) {
+            // ✅ Truyền row data vào để có thể lấy partTypeId
+            updatePriceService(index, row.remedies, row);
+          }
+        });
       } else {
         setDetails(readOnly ? [] : [createEmptyRow()]);
       }
@@ -1062,7 +1085,7 @@ export default function RepairModeEVCheck({
             // ✅ Giá phụ tùng lấy từ bộ phận có sẵn trên xe (partItem.price)
             const partPrice = Number(partItem?.price || 0);
 
-            updateRow(i, {
+            const updatedRow = {
               displayName: sel?.label || "",
               pricePart: partPrice,
               partItem,
@@ -1073,7 +1096,17 @@ export default function RepairModeEVCheck({
                     pricePart: partPrice, // ✅ Vẫn giữ giá từ partItem
                   }
                 : {}),
-            });
+            };
+            
+            updateRow(i, updatedRow);
+            
+            // ✅ Tự động gọi giá dịch vụ nếu remedies đã là REPAIR hoặc REPLACE
+            const currentRemedies = details[i]?.remedies || "NONE";
+            if (["REPAIR", "REPLACE"].includes(currentRemedies)) {
+              // ✅ Tạo row data mới với partItem vừa chọn
+              const rowDataWithNewPartItem = { ...details[i], ...updatedRow };
+              updatePriceService(i, currentRemedies, rowDataWithNewPartItem);
+            }
           }}
           options={vehiclePartOptions}
           loading={vehiclePartLoading}
@@ -1240,15 +1273,8 @@ export default function RepairModeEVCheck({
       render: (_, r) => {
         const partItem = r.partItem;
         if (!partItem) return "Không";
-        const start = partItem.warantyStartDate
-          ? new Date(partItem.warantyStartDate)
-          : null;
-        const end = partItem.warantyEndDate
-          ? new Date(partItem.warantyEndDate)
-          : null;
-        const now = new Date();
-        if (!start || !end || now < start || now > end) return "Không";
-        return "BHH";
+        // ✅ Lấy từ isManufacturerWarranty thay vì tính từ ngày
+        return partItem.isManufacturerWarranty === true ? "BHH" : "Không";
       },
     },
     {
@@ -1491,7 +1517,7 @@ export default function RepairModeEVCheck({
             REJECTED: "Từ chối",
             CANCELLED: "Hủy",
             STOCK_NOT_FOUND: "Hết hàng",
-            STOCK_FOUND: "Có hàng",
+            STOCK_FOUND: "Đợi xuất kho",
 
           };
           return statusMap[statusUpper] || s;
