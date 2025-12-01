@@ -91,3 +91,11 @@ export const getExportStatusByAppointmentAndPart = (appointmentCode, proposedPar
   });
 };
 
+
+export const updateExportNoteDetail = (detailId, detailData) => {
+  return api.put(`/v1/export-note-details/${detailId}`, detailData, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+};
