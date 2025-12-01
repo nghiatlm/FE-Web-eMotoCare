@@ -78,6 +78,20 @@ export const getExportNotePartItems = (exportNoteId) => {
   });
 };
 
+// ✅ Lấy export status theo appointmentCode và proposedPartId
+export const getExportStatusByAppointmentAndPart = (appointmentCode, proposedPartId) => {
+  return api.get(`/v1/export-note-details/export-status`, {
+    params: {
+      appointmentCode,
+      proposedPartId
+    },
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+};
+
+
 export const updateExportNoteDetail = (detailId, detailData) => {
   return api.put(`/v1/export-note-details/${detailId}`, detailData, {
     headers: {
@@ -85,4 +99,3 @@ export const updateExportNoteDetail = (detailId, detailData) => {
     }
   });
 };
-

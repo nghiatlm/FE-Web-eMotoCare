@@ -1,4 +1,6 @@
-// src/components/technician/detail-content/RepairModeEVCheck.jsx
+// src/components/technician/detail-content/CampaignModeEVCheck.jsx
+// Component riêng cho Campaign Mode, dựa trên RepairModeEVCheck
+// Khác biệt: Load program details từ campaignId và so sánh recallPartId với partId để hiển thị tên từ campaign trong cột "Bộ phận"
 import { useState, useEffect, useCallback } from "react";
 import { Table, Input, Select, Button, Spin, Tag, Checkbox, Tooltip } from "antd";
 import { toast } from "@/components/ui/sonner";
@@ -13,9 +15,9 @@ import { fetchVehiclePartItems } from "../../../services/vehiclePartItemService.
 import { getPartItemsService, getPartItemByIdService, getPartItemsByServiceCenterService } from "../../../services/partitemsService.js";
 import { getExportStatusByAppointmentCodeAndPartId } from "../../../services/exportNotesService.js";
 import { PlusOutlined } from "@ant-design/icons";
-import RMAConfirmationModal from "../../../components/service-staff/RMAConfirmationModal";
 import useEVCheckHub from "../../../hooks/useEVCheckHub.jsx";
 import BatteryDataDisplay from "../BatteryDataDisplay";
+import { getCampaignById } from "../../../api/campaignsApi.js";
 
 const { Option } = Select;
 
@@ -25,7 +27,7 @@ const REPAIR_STATUS = {
   COMPLETED: { label: "Đã hoàn thành", color: "success" },
 };
 
-export default function RepairModeEVCheck({
+export default function CampaignModeEVCheck({
   booking,
   evCheckId,
   evCheckStatus: parentEvCheckStatus,
@@ -56,80 +58,57 @@ export default function RepairModeEVCheck({
     parentEvCheckStatus || null
   );
   const [statusChanges, setStatusChanges] = useState({});
-
-  const [isRMAConfirmationOpen, setIsRMAConfirmationOpen] = useState(false);
-  const [currentRMAParts, setCurrentRMAParts] = useState([]);
-  const [selectedRMAItems, setSelectedRMAItems] = useState(new Set()); // ✅ Set các item ID đã chọn để tạo RMA
-  const [isRMASubmitting, setIsRMASubmitting] = useState(false); // ✅ Track trạng thái đang tạo RMA
   
   // ✅ Map export note status theo detail ID
   const [exportNoteStatusMap, setExportNoteStatusMap] = useState({});
+  
+  // ✅ Map recallPartId -> recallPart name từ program details (cho campaign)
+  const [recallPartNameMap, setRecallPartNameMap] = useState({});
+  // ✅ Lưu danh sách recallPartIds từ program details
+  const [recallPartIds, setRecallPartIds] = useState([]);
+  
+  // -------- Load Program Details (Campaign) --------
+  const loadProgramDetails = async () => {
+    const campaignId = booking?.campaignId || null;
+    if (!campaignId) return { recallMap: {}, recallPartIds: [] };
 
-  // ========= WARRANTY / RMA =========
-  const checkWarrantyStatus = (partItem) => {
-    if (!partItem) return false;
-    // ✅ Lấy từ isManufacturerWarranty thay vì tính từ ngày
-    return partItem.isManufacturerWarranty === true;
-  };
+    try {
+      console.log(`🔍 Loading program details cho campaignId: ${campaignId}`);
+      const programRes = await getCampaignById(campaignId);
+      const programData = programRes?.data?.data || programRes?.data || programRes;
+      const programDetails = programData?.programDetails || [];
 
-  // ✅ Kiểm tra item đã có RMA chưa
-  const hasRMA = (row) => {
-    return !!(row.rmaDetail || row.rmaDetailId || row.rmaDetail?.id);
-  };
-
-  // ✅ Cho phép tạo RMA khi: còn bảo hành + có partItem + kết quả khác "Tốt" (hoặc rỗng) + chưa có RMA
-  const isRMAEligible = (row) => {
-    const result = (row.result || "").trim().toLowerCase();
-    // ✅ Kết quả khác "Tốt" hoặc rỗng (technician đã xóa để nhập lại)
-    const isNotGood = result !== "tốt" && result !== "tot" && result !== "";
-    return (
-    checkWarrantyStatus(row.partItem) &&
-      row.partItem &&
-      isNotGood && // ✅ Kết quả khác "Tốt" hoặc rỗng
-      !hasRMA(row) // ✅ Chưa có RMA
-    );
-  };
-
-  // ✅ Toggle chọn/bỏ chọn item cho RMA
-  const toggleRMAItem = (rowId) => {
-    setSelectedRMAItems((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(rowId)) {
-        newSet.delete(rowId);
-      } else {
-        newSet.add(rowId);
+      // ✅ Tạo map recallPartId -> recallPart name
+      const recallMap = {};
+      const recallIds = [];
+      
+      for (const detail of programDetails) {
+        const recallPartId = detail?.recallPartId;
+        if (recallPartId) {
+          recallIds.push(recallPartId);
+          try {
+            const { getPartById } = await import("../../../api/partsApi");
+            const partRes = await getPartById(recallPartId);
+            const partData = partRes?.data?.data || partRes?.data || partRes;
+            const partName = partData?.name || "";
+            const partCode = partData?.code || "";
+            recallMap[recallPartId] = partCode ? `${partName} (${partCode})` : (partName || recallPartId);
+            console.log(`✅ Mapped recallPartId ${recallPartId} -> ${recallMap[recallPartId]}`);
+          } catch (err) {
+            console.error(`❌ Lỗi lấy thông tin recallPart ${recallPartId}:`, err);
+            recallMap[recallPartId] = recallPartId;
+          }
+        }
       }
-      return newSet;
-    });
-  };
-
-  // ✅ Mở modal RMA với các items đã chọn
-  const openRMAModal = () => {
-    if (isRMASubmitting) return; // ✅ Không cho mở nếu đang submit
-    
-    const selectedItems = details.filter((d) => selectedRMAItems.has(d.id) && isRMAEligible(d));
-    
-    if (selectedItems.length === 0) {
-      return toast.warning("Vui lòng chọn ít nhất 1 phụ tùng để tạo RMA.");
+      setRecallPartNameMap(recallMap);
+      setRecallPartIds(recallIds);
+      return { recallMap, recallPartIds: recallIds };
+    } catch (err) {
+      console.error("❌ Lỗi load program details:", err);
+      return { recallMap: {}, recallPartIds: [] };
     }
-
-    const rmaItems = selectedItems.map((row) => ({
-      id: row.id,
-      PhuTungThayThe:
-        row.partName || row.partItem?.part?.name || "Không rõ tên PT",
-      NoiDung: row.result ?? row.remedies,
-      partItem: row.partItem,
-      partName: row.partName,
-      quantity: row.quantity,
-      unit: row.unit,
-      remedies: row.remedies,
-    }));
-
-    setCurrentRMAParts(rmaItems);
-    setIsRMAConfirmationOpen(true);
-    // ✅ Set submitting ngay khi mở modal để disable nút và checkbox
-    setIsRMASubmitting(true);
   };
+
 
   // ========= LOAD PHỤ TÙNG THEO XE (BỘ PHẬN) =========
   useEffect(() => {
@@ -395,7 +374,7 @@ export default function RepairModeEVCheck({
     proposedReplacePartId: "",
     replacePartName: "",
     result: "Tốt", // ✅ Mặc định "Tốt"
-    remedies: "NONE",
+    remedies: "REPLACE",
     pricePart: 0,
     priceService: 0,
     totalAmount: 0,
@@ -405,50 +384,15 @@ export default function RepairModeEVCheck({
   });
 
   // ========= UPDATE GIÁ CÔNG =========
-  const updatePriceService = async (index, remedies, rowData = null) => {
+  const updatePriceService = async (index, remedies) => {
     if (!["REPAIR", "REPLACE"].includes(remedies)) {
       updateRow(index, { priceService: 0 });
       return;
     }
-    
-    // ✅ Lấy row data từ tham số hoặc từ state
-    const currentRow = rowData || details[index];
-    if (!currentRow) {
-      console.warn(`❌ Không tìm thấy row tại index ${index}`);
-      updateRow(index, { priceService: 0 });
-      return;
-    }
-    
-    // ✅ Lấy partTypeId từ cache hoặc từ partItem
-    const partId = currentRow?.partItem?.part?.id || null;
-    let partTypeId = null;
-    
-    if (partId) {
-      // Ưu tiên lấy từ cache
-      partTypeId = partTypeIdCache[partId] || null;
-      console.log(`🔍 [updatePriceService] partId: ${partId}, partTypeId from cache: ${partTypeId}`);
-    }
-    
-    // ✅ Nếu không có trong cache, lấy từ partItem
-    if (!partTypeId) {
-      partTypeId = currentRow?.partItem?.part?.partType?.id || null;
-      console.log(`🔍 [updatePriceService] partTypeId from partItem: ${partTypeId}`);
-    }
-    
-    if (!partTypeId) {
-      console.warn(`❌ Không tìm thấy partTypeId cho bộ phận tại index ${index}, partId: ${partId}`);
-      updateRow(index, { priceService: 0 });
-      return;
-    }
-    
-    console.log(`💰 [updatePriceService] Đang lấy giá dịch vụ cho partTypeId: ${partTypeId}, remedies: ${remedies}`);
-    
     try {
-      const cost = await getLaborCostByRemediesService(partTypeId, remedies);
-      console.log(`✅ [updatePriceService] Đã lấy được giá dịch vụ: ${cost} cho partTypeId: ${partTypeId}, remedies: ${remedies}`);
+      const cost = await getLaborCostByRemediesService(remedies);
       updateRow(index, { priceService: Number(cost || 0) });
     } catch (e) {
-      console.error("❌ Lỗi khi lấy giá dịch vụ:", e);
       updateRow(index, { priceService: 0 });
     }
   };
@@ -471,6 +415,9 @@ export default function RepairModeEVCheck({
     if (!evCheckId || forceEmpty) return;
     setLoading(true);
     try {
+      // ✅ Load program details cho campaign trước
+      const { recallMap: recallPartNameMapLocal, recallPartIds: recallPartIdsList } = await loadProgramDetails();
+      
       const res = await getRepairDetailsList(evCheckId);
 
       console.log("🔍 loadRepairDetails - Full response:", res);
@@ -565,37 +512,42 @@ export default function RepairModeEVCheck({
             }
           }
 
-        // ✅ Giá phụ tùng lấy từ bộ phận có sẵn trên xe (partItem), không lấy từ phụ tùng thay thế
-        const partItemForPrice = item.partItem || partOption?.partItem || null;
-        const pricePart = Number(partItemForPrice?.price || item.pricePart || 0);
-        
-        // ✅ Cache partTypeId ngay khi load data - giống maintenance mode (không gọi API)
-        const partIdFromItem = partItemForPrice?.part?.id || null;
-        const partTypeIdFromItem = partItemForPrice?.part?.partType?.id || null;
-        
-        // ✅ Chỉ cache nếu có cả partId và partTypeId từ dữ liệu có sẵn (không gọi API)
-        if (partIdFromItem && partTypeIdFromItem) {
-          setPartTypeIdCache(prev => {
-            // ✅ Chỉ set nếu chưa có trong cache
-            if (prev[partIdFromItem]) return prev;
-            return {
-              ...prev,
-              [partIdFromItem]: partTypeIdFromItem
-            };
-          });
-          console.log(`✅ Cached partTypeId for partId ${partIdFromItem}:`, partTypeIdFromItem);
-        }
+          // ✅ Cho campaign: So sánh partId với recallPartId và lấy tên từ program details
+          let displayName = partOption?.label || partItemId || "";
+          const partId = partOption?.partId || item.partItem?.part?.id || null;
+          
+          // ✅ Kiểm tra xem partId có khớp với recallPartId không
+          let finalReplacePartId = replacePartId;
+          let finalReplacePartName = replacePartName;
+          
+          // ✅ Campaign: Luôn tự động gán recallPartId nếu partId khớp (gán cứng)
+          if (partId && recallPartIdsList.includes(partId)) {
+            // ✅ Nếu partId khớp với recallPartId, tự động gán vào phụ tùng đề xuất (bất kể có replacePartId hay chưa)
+            finalReplacePartId = partId; // recallPartId = partId
+            finalReplacePartName = recallPartNameMapLocal[partId] || replacePartName || "";
+            displayName = recallPartNameMapLocal[partId] || displayName;
+            console.log(`✅ Campaign: Tự động gán recallPartId ${partId} vào phụ tùng đề xuất cho bộ phận ${partId}`);
+          } else if (partId && recallPartNameMapLocal[partId]) {
+            displayName = recallPartNameMapLocal[partId];
+            console.log(`✅ Campaign: Sử dụng tên từ program details cho partId ${partId}: ${displayName}`);
+          }
+          
+          // ✅ Campaign: Đảm bảo luôn có phụ tùng thay thế nếu partId khớp recallPartId (kể cả khi reload)
+          if (partId && recallPartIdsList.includes(partId) && !finalReplacePartId) {
+            finalReplacePartId = partId;
+            finalReplacePartName = recallPartNameMapLocal[partId] || "";
+          }
 
         return {
           ...item,
           partItemId,
-          displayName: partOption?.label || partItemId || "",
-          partItem: partItemForPrice,
-          proposedReplacePartId: replacePartId,
-            replacePartName: replacePartName || "", // ✅ Không fallback về ID, chỉ dùng name
+          displayName: displayName,
+          partItem: item.partItem || partOption?.partItem || null,
+          proposedReplacePartId: finalReplacePartId || replacePartId,
+            replacePartName: finalReplacePartName || replacePartName || "", // ✅ Không fallback về ID, chỉ dùng name
             result: item.result ?? "Tốt", // ✅ Mặc định "Tốt"
-          remedies: item.remedies || "NONE",
-          pricePart: pricePart,
+          remedies: item.remedies || "REPLACE",
+          pricePart: Number(item.pricePart || 0),
           priceService: Number(item.priceService || 0),
           totalAmount: Number(item.totalAmount || 0),
           quantity: Number(item.quantity || 1),
@@ -618,23 +570,79 @@ export default function RepairModeEVCheck({
 
       console.log("DEBUG: mapped details:", mapped);
 
+      // ✅ Cho campaign: Tự động tìm và gán bộ phận có partId khớp với recallPartId
+      if (recallPartIdsList && recallPartIdsList.length > 0 && vehiclePartOptions.length > 0) {
+        // ✅ Tìm các bộ phận có partId khớp với recallPartId
+        for (const recallPartId of recallPartIdsList) {
+          // Tìm trong vehiclePartOptions xem có bộ phận nào có partId = recallPartId
+          const matchingPart = vehiclePartOptions.find(option => option.partId === recallPartId);
+          
+          if (matchingPart) {
+            // ✅ Kiểm tra xem đã có detail với bộ phận này chưa
+            const existingDetail = mapped.find(d => d.partItemId === matchingPart.partItemId);
+            
+            if (!existingDetail) {
+              // ✅ Nếu chưa có, tự động tạo row mới với bộ phận này
+              const recallPartName = recallPartNameMapLocal[recallPartId] || "";
+              
+              const autoRow = {
+                ...createEmptyRow(),
+                partItemId: matchingPart.partItemId,
+                displayName: recallPartName || matchingPart.label || "",
+                partItem: matchingPart.partItem || null,
+                proposedReplacePartId: recallPartId, // ✅ Gán recallPartId vào phụ tùng đề xuất
+                replacePartName: recallPartName || "",
+                remedies: "REPLACE", // ✅ Tự động set REPLACE
+                pricePart: Number(matchingPart.price || 0),
+              };
+              
+              mapped.push(autoRow);
+              console.log(`✅ Campaign: Tự động tạo row cho recallPartId ${recallPartId}:`, autoRow);
+            } else {
+              // ✅ Nếu đã có detail, tự động gán recallPartId vào phụ tùng đề xuất (gán cứng, luôn gán lại)
+              existingDetail.proposedReplacePartId = recallPartId;
+              existingDetail.replacePartName = recallPartNameMapLocal[recallPartId] || "";
+              if (!existingDetail.remedies || existingDetail.remedies === "NONE" || existingDetail.remedies === "CHECK") {
+                existingDetail.remedies = "REPLACE";
+              }
+              console.log(`✅ Campaign: Tự động gán lại recallPartId ${recallPartId} vào phụ tùng đề xuất cho detail ${existingDetail.id}`);
+            }
+          }
+        }
+      }
+
       if (mapped.length > 0) {
         setDetails(mapped);
         toast.success(`Đã tải ${mapped.length} hạng mục từ DB.`);
-        
-        // ✅ Tự động gọi giá dịch vụ cho các items có remedies là REPAIR hoặc REPLACE
-        mapped.forEach((row, index) => {
-          if (
-            (!row.priceService || Number(row.priceService) === 0) &&
-            ["REPAIR", "REPLACE"].includes(row.remedies) &&
-            row.partItem
-          ) {
-            // ✅ Truyền row data vào để có thể lấy partTypeId
-            updatePriceService(index, row.remedies, row);
-          }
-        });
       } else {
-        setDetails(readOnly ? [] : [createEmptyRow()]);
+        // ✅ Nếu không có detail và có recallPartIds, tự động tạo rows
+        if (!readOnly && recallPartIdsList && recallPartIdsList.length > 0 && vehiclePartOptions.length > 0) {
+          const autoRows = [];
+          for (const recallPartId of recallPartIdsList) {
+            const matchingPart = vehiclePartOptions.find(option => option.partId === recallPartId);
+            if (matchingPart) {
+              const recallPartName = recallPartNameMapLocal[recallPartId] || "";
+              autoRows.push({
+                ...createEmptyRow(),
+                partItemId: matchingPart.partItemId,
+                displayName: recallPartName || matchingPart.label || "",
+                partItem: matchingPart.partItem || null,
+                proposedReplacePartId: recallPartId,
+                replacePartName: recallPartName || "",
+                remedies: "REPLACE",
+                pricePart: Number(matchingPart.price || 0),
+              });
+            }
+          }
+          if (autoRows.length > 0) {
+            setDetails(autoRows);
+            console.log(`✅ Campaign: Tự động tạo ${autoRows.length} rows từ recallPartIds`);
+          } else {
+            setDetails([createEmptyRow()]);
+          }
+        } else {
+          setDetails(readOnly ? [] : [createEmptyRow()]);
+        }
       }
 
       // ✅ Cập nhật status từ BE, ưu tiên status từ BE hơn status hiện tại
@@ -707,119 +715,42 @@ export default function RepairModeEVCheck({
     evCheckStatus !== "INSPECTION_COMPLETED" &&
     evCheckStatus !== "QUOTE_APPROVED";
 
-  // ✅ Tự động lưu các hạng mục pin khi đã có đủ thông tin
-  useEffect(() => {
-    if (!canEditFields || loading || !evCheckId) return;
-
-    const autoSaveBatteryItems = async () => {
-      for (let i = 0; i < details.length; i++) {
-        const item = details[i];
-        if (!item || !item.partItemId) continue;
-        
-        // ✅ Kiểm tra nếu đang được lưu hoặc đã có ID thật thì bỏ qua
-        const itemKey = `${item.partItemId}-${item.remedies}`;
-        if (autoSavingItems.has(itemKey) || (item.id && !item.id.startsWith("temp_"))) {
-          continue;
-        }
-        
-        // ✅ Kiểm tra nếu là pin
-        const partName = item.partItem?.part?.name || item.displayName || "";
-        const partCode = item.partItem?.part?.code || "";
-        const partNameLower = partName.toLowerCase();
-        const partCodeLower = partCode.toLowerCase();
-        const isBattery = 
-          partNameLower.includes("pin") || 
-          partNameLower.includes("lfp") ||
-          partNameLower.includes("lithium") ||
-          partNameLower.includes("battery") ||
-          partNameLower.includes("ắc quy") ||
-          partCodeLower.includes("pin") ||
-          partCodeLower.includes("lfp");
-        
-        // ✅ Tự động lưu nếu: là pin + có partItemId + có remedies + chưa có ID thật
-        if (isBattery && item.remedies) {
-          console.log("🔋 [RepairMode] Auto-saving battery item:", i);
-          setAutoSavingItems(prev => new Set(prev).add(itemKey));
-          try {
-            await saveSingleItem(i, true); // silent = true
-          } finally {
-            // ✅ Xóa flag sau 2 giây để có thể lưu lại nếu cần
-            setTimeout(() => {
-              setAutoSavingItems(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(itemKey);
-                return newSet;
-              });
-            }, 2000);
-          }
-        }
-      }
-    };
-
-    // ✅ Chỉ chạy khi details thay đổi và có ít nhất 1 item
-    if (details.length > 0) {
-      const timer = setTimeout(() => {
-        autoSaveBatteryItems();
-      }, 1500); // Delay 1.5 giây để tránh lưu quá nhiều lần
-
-      return () => clearTimeout(timer);
-    }
-  }, [details, canEditFields, loading, evCheckId]); // Chỉ chạy khi details, canEditFields, loading hoặc evCheckId thay đổi
+  // ✅ Campaign: Không tự động lưu khi chọn biện pháp, chỉ lưu khi gửi báo giá
+  // Để tránh reload trang và mất dữ liệu phụ tùng thay thế
 
   const handleChange = (index, field, value) => {
     if (evCheckStatus === "INSPECTION_COMPLETED" && field !== "status") return;
     if (evCheckStatus === "QUOTE_APPROVED" && field !== "status") return;
     if (!canEditFields && field !== "status") return;
 
-    // ✅ Ngăn chọn REPLACE hoặc REPAIR khi còn bảo hành
-    if (field === "remedies" && (value === "REPLACE" || value === "REPAIR")) {
-      const currentRow = details[index];
-      if (checkWarrantyStatus(currentRow?.partItem)) {
-        toast.error(
-          "Bộ phận đang trong thời gian bảo hành. Chỉ cho phép 'Kiểm tra' hoặc 'Bôi trơn'."
-        );
-        return; // Không cho thay đổi
-      }
-    }
-
-    // ✅ Lấy row hiện tại trước khi update
-    const currentRow = details[index];
-    
     updateRow(index, { [field]: value });
 
     if (field === "remedies") {
+      // ✅ Campaign: Không clear phụ tùng thay thế vì nó tự động từ recallPartId
+      // Chỉ clear pricePart khi không phải REPLACE
+      const currentRow = details[index];
+      const partId = currentRow?.partItem?.part?.id || 
+                     vehiclePartOptions.find(vp => vp.partItemId === currentRow?.partItemId)?.partId || null;
+      
       if (value !== "REPLACE") {
         updateRow(index, {
           pricePart: 0,
-          proposedReplacePartId: "",
-          replacePartName: "",
         });
       }
-      // ✅ Truyền row data đã được update vào updatePriceService
-      const updatedRow = { ...currentRow, [field]: value };
-      updatePriceService(index, value, updatedRow);
       
-      // ✅ Tự động lưu nếu là pin và chưa có ID thật
-      const currentRow = details[index];
-      const partName = currentRow?.partItem?.part?.name || currentRow?.displayName || "";
-      const partCode = currentRow?.partItem?.part?.code || "";
-      const partNameLower = partName.toLowerCase();
-      const partCodeLower = partCode.toLowerCase();
-      const isBattery = 
-        partNameLower.includes("pin") || 
-        partNameLower.includes("lfp") ||
-        partNameLower.includes("lithium") ||
-        partNameLower.includes("battery") ||
-        partNameLower.includes("ắc quy") ||
-        partCodeLower.includes("pin") ||
-        partCodeLower.includes("lfp");
-      
-      if (isBattery && currentRow?.partItemId && (!currentRow?.id || currentRow?.id.startsWith("temp_"))) {
-        // ✅ Tự động lưu sau một chút delay để đảm bảo state đã cập nhật
-        setTimeout(async () => {
-          await saveSingleItem(index, true); // silent = true
-        }, 500);
+      // ✅ Campaign: Đảm bảo phụ tùng thay thế luôn được giữ lại từ recallPartId
+      if (partId && recallPartIds.includes(partId)) {
+        const recallPartName = recallPartNameMap[partId] || currentRow?.replacePartName || "";
+        updateRow(index, {
+          proposedReplacePartId: partId,
+          replacePartName: recallPartName,
+        });
       }
+      
+      updatePriceService(index, value);
+      
+      // ✅ Campaign: Không tự động lưu khi chọn biện pháp, chỉ lưu khi gửi báo giá
+      // Để tránh reload trang và mất dữ liệu phụ tùng thay thế
     }
 
     if (field === "status") {
@@ -859,7 +790,7 @@ export default function RepairModeEVCheck({
       const payload = {
         partItemId: item.partItemId,
         result: (item.result || "").trim() || "Tốt",
-        remedies: item.remedies ?? "NONE",
+        remedies: item.remedies ?? "REPLACE",
         quantity: Number(item.quantity || 1),
         unit: item.unit || "cái",
         pricePart: Number(item.pricePart || 0),
@@ -868,7 +799,9 @@ export default function RepairModeEVCheck({
         status: item.status || "PENDING",
       };
 
-      if (item.remedies === "REPLACE" && item.proposedReplacePartId) {
+      // ✅ Campaign: Luôn gửi proposedReplacePartId nếu có (bất kể biện pháp)
+      // Vì phụ tùng thay thế được gán cứng từ recallPartId
+      if (item.proposedReplacePartId) {
         payload.proposedReplacePartId = item.proposedReplacePartId;
       }
 
@@ -903,12 +836,6 @@ export default function RepairModeEVCheck({
     for (const item of itemsToSave) {
       if (!item.remedies) return toast.warning("Vui lòng chọn Biện pháp!");
 
-      // ✅ Nếu còn bảo hành, không cho chọn REPLACE hoặc REPAIR
-      if ((item.remedies === "REPLACE" || item.remedies === "REPAIR") && checkWarrantyStatus(item.partItem)) {
-        return toast.error(
-          "Bộ phận đang trong thời gian bảo hành. Chỉ cho phép 'Kiểm tra' hoặc 'Bôi trơn'."
-        );
-      }
 
       // Nếu REPLACE nhưng không có proposedReplacePartId -> báo lỗi FE, không call BE
       if (item.remedies === "REPLACE" && !item.proposedReplacePartId) {
@@ -936,7 +863,7 @@ export default function RepairModeEVCheck({
         const payload = {
           partItemId: item.partItemId,
           result: (item.result || "").trim() || "Tốt", // ✅ Nếu rỗng thì mặc định "Tốt"
-          remedies: item.remedies ?? "NONE",
+          remedies: item.remedies ?? "REPLACE",
           quantity: Number(item.quantity || 1),
           unit: item.unit || "cái",
           pricePart: Number(item.pricePart || 0),
@@ -945,7 +872,9 @@ export default function RepairModeEVCheck({
           status: item.status || "PENDING",
         };
 
-        if (item.remedies === "REPLACE" && item.proposedReplacePartId) {
+        // ✅ Campaign: Luôn gửi proposedReplacePartId nếu có (bất kể biện pháp)
+        // Vì phụ tùng thay thế được gán cứng từ recallPartId
+        if (item.proposedReplacePartId) {
           payload.proposedReplacePartId = item.proposedReplacePartId;
         }
 
@@ -1076,37 +1005,27 @@ export default function RepairModeEVCheck({
           onChange={(v) => {
             const sel = vehiclePartOptions.find((p) => p.partItemId === v);
             const partItem = sel?.partItem;
+            const partId = sel?.partId || partItem?.part?.id || null;
 
             handleChange(i, "partItemId", v);
 
-            // nếu bộ phận đang BHH thì clear phụ tùng thay thế
-            const isWarranty = checkWarrantyStatus(partItem);
-
-            // ✅ Giá phụ tùng lấy từ bộ phận có sẵn trên xe (partItem.price)
-            const partPrice = Number(partItem?.price || 0);
-
-            const updatedRow = {
-              displayName: sel?.label || "",
-              pricePart: partPrice,
-              partItem,
-              ...(isWarranty
-                ? {
-                    replacePartId: "",
-                    replacePartName: "",
-                    pricePart: partPrice, // ✅ Vẫn giữ giá từ partItem
-                  }
-                : {}),
-            };
+            // ✅ Campaign: Tự động gán recallPartId vào proposedReplacePartId nếu partId khớp
+            let proposedReplacePartId = "";
+            let replacePartName = "";
             
-            updateRow(i, updatedRow);
-            
-            // ✅ Tự động gọi giá dịch vụ nếu remedies đã là REPAIR hoặc REPLACE
-            const currentRemedies = details[i]?.remedies || "NONE";
-            if (["REPAIR", "REPLACE"].includes(currentRemedies)) {
-              // ✅ Tạo row data mới với partItem vừa chọn
-              const rowDataWithNewPartItem = { ...details[i], ...updatedRow };
-              updatePriceService(i, currentRemedies, rowDataWithNewPartItem);
+            if (partId && recallPartIds.includes(partId)) {
+              proposedReplacePartId = partId; // recallPartId = partId
+              replacePartName = recallPartNameMap[partId] || "";
+              console.log(`✅ Campaign: Tự động gán recallPartId ${partId} vào phụ tùng đề xuất`);
             }
+
+            updateRow(i, {
+              displayName: sel?.label || "",
+              pricePart: sel?.price || 0,
+              partItem,
+              proposedReplacePartId: proposedReplacePartId || r.proposedReplacePartId || "",
+              replacePartName: replacePartName || r.replacePartName || "",
+            });
           }}
           options={vehiclePartOptions}
           loading={vehiclePartLoading}
@@ -1244,8 +1163,6 @@ export default function RepairModeEVCheck({
       title: "Biện pháp",
       width: 110,
       render: (_, r, i) => {
-        const isWarranty = checkWarrantyStatus(r.partItem);
-
         return (
           <Select
             placeholder='Chọn'
@@ -1253,15 +1170,8 @@ export default function RepairModeEVCheck({
             style={{ width: 100 }}
             onChange={(v) => handleChange(i, "remedies", v)}
             disabled={readOnly || !canEditFields}>
-            <Option value='NONE'>Bôi trơn</Option>
-            {/* Nếu đang bảo hành thì không cho chọn "Thay thế" và "Sửa chữa" */}
-            <Option value='REPLACE' disabled={isWarranty}>
-              Thay thế
-            </Option>
-            <Option value='REPAIR' disabled={isWarranty}>
-              Sửa chữa
-            </Option>
-            <Option value='CHECK'>Kiểm tra</Option>
+            <Option value='REPLACE'>Thay thế</Option>
+            <Option value='REPAIR'>Sửa chữa</Option>
           </Select>
         );
       },
@@ -1284,176 +1194,21 @@ export default function RepairModeEVCheck({
         showTitle: false,
       },
       render: (_, r, i) => {
-        const isWarranty = checkWarrantyStatus(r.partItem);
         const replacePartName = r.replacePartName || "";
-
-        // ✅ Nếu còn bảo hành, hiển thị "Còn bảo hành" thay vì Select
-        if (isWarranty) {
-        return (
-            <Tooltip title="Bộ phận còn trong thời gian bảo hành" placement="topLeft">
-              <span style={{ color: "#ff4d4f", fontWeight: 500 }}>
-                Còn bảo hành
+        
+        // ✅ Campaign: Hiển thị recallPartName (tự động từ recallPartId), không cho chọn
+        if (replacePartName) {
+          return (
+            <Tooltip title={replacePartName} placement="topLeft">
+              <span style={{ color: "#1890ff", fontWeight: 500 }}>
+                {replacePartName}
               </span>
             </Tooltip>
           );
         }
-        
-        // ✅ Lấy partTypeId từ bộ phận hiện tại để load phụ tùng đề xuất
-        const modelId = booking?.vehicle?.modelId || null;
-        let partTypeId = null;
-        
-        // ✅ Lấy partId từ r.partItem.part.id hoặc từ vehiclePartOptions
-        let partId = r.partItem?.part?.id || null;
-        if (!partId && r.partItemId) {
-          const vehiclePart = vehiclePartOptions.find(vp => vp.partItemId === r.partItemId);
-          partId = vehiclePart?.partId || null;
-        }
-        
-        // ✅ Lấy partTypeId từ cache hoặc từ r.partItem.part.partType.id
-        if (partId) {
-          partTypeId = partTypeIdCache[partId] || r.partItem?.part?.partType?.id || null;
-        }
-        
-        // ✅ Lấy phụ tùng đề xuất từ cache key: `${modelId}_${partTypeId}`
-        const cacheKey = modelId && partTypeId ? `${modelId}_${partTypeId}` : null;
-        const allSuggestedParts = cacheKey ? (partOptionsMap[cacheKey] || []) : [];
 
         return (
-          <Tooltip title={replacePartName} placement="topLeft">
-          <Select
-            showSearch
-              placeholder="Chọn phụ tùng"
-            value={
-              r.proposedReplacePartId
-                ? { value: r.proposedReplacePartId, label: r.replacePartName || "Đang tải..." }
-                : undefined
-            }
-            labelInValue
-            disabled={
-              readOnly ||
-              !canEditFields ||
-              r.remedies !== "REPLACE" ||
-              isWarranty // 👈 nếu đang bảo hành thì không cho chọn
-            }
-              loading={partLoading}
-              style={{ width: "100%", maxWidth: "100%" }}
-              onDropdownVisibleChange={async (open) => {
-                // ✅ Load suggested parts khi mở dropdown với partTypeId từ bộ phận hiện tại
-                if (open) {
-                  // ✅ Nếu có proposedReplacePartId nhưng chưa có replacePartName, load lại name
-                  // proposedReplacePartId là partId (Part template), không phải partItemId
-                  if (r.proposedReplacePartId && !r.replacePartName) {
-                    try {
-                      // ✅ Gọi getPartById vì proposedReplacePartId là partId (Part template)
-                      const { getPartById } = await import("../../../api/partsApi");
-                      const partDetailRes = await getPartById(r.proposedReplacePartId);
-                      const partDetail = partDetailRes?.data?.data || partDetailRes?.data || partDetailRes;
-                      const partName = partDetail?.name || "";
-                      const code = partDetail?.code || "";
-                      const loadedName = code ? `${partName} (${code})` : (partName || "");
-                      if (loadedName) {
-                        updateRow(i, { replacePartName: loadedName });
-                        console.log(`✅ Đã load replacePartName từ getPartById: ${loadedName}`);
-                      }
-                    } catch (err) {
-                      console.error(`❌ Lỗi load name cho proposedReplacePartId ${r.proposedReplacePartId}:`, err);
-                    }
-                  }
-                  
-                  // ✅ Lấy part.id từ r.partItem.part.id hoặc từ vehiclePartOptions
-                  let partId = r.partItem?.part?.id || null;
-                  
-                  if (!partId && r.partItemId) {
-                    const vehiclePart = vehiclePartOptions.find(vp => vp.partItemId === r.partItemId);
-                    partId = vehiclePart?.partId || null;
-                  }
-                  
-                  // ✅ Lấy partTypeId từ cache trước (đã cache khi load vehiclePartOptions từ API vehicle partitem)
-                  let partTypeId = partId ? partTypeIdCache[partId] : null;
-                  
-                  // ✅ Nếu không có trong cache, thử lấy từ vehiclePartOptions (từ API vehicle partitem)
-                  if (!partTypeId && r.partItemId) {
-                    const vehiclePart = vehiclePartOptions.find(vp => vp.partItemId === r.partItemId);
-                    if (vehiclePart?.partItem?.part?.partType?.id) {
-                      partTypeId = vehiclePart.partItem.part.partType.id;
-                      // ✅ Cache lại nếu tìm thấy
-                      if (partId) {
-                        setPartTypeIdCache(prev => ({
-                          ...prev,
-                          [partId]: partTypeId
-                        }));
-                      }
-                    }
-                  }
-                  
-                  // ✅ Fallback: thử lấy từ r.partItem.part.partType.id
-                  if (!partTypeId) {
-                    partTypeId = r.partItem?.part?.partType?.id || null;
-                  }
-                  
-                  if (partTypeId) {
-                    console.log("✅ Tìm thấy partTypeId:", partTypeId);
-                    // ✅ Đợi loadSuggestedParts hoàn thành để data có sẵn khi render options
-                    try {
-                      await loadSuggestedParts(partTypeId);
-                    } catch (err) {
-                      // ✅ Xử lý lỗi một cách graceful, không hiển thị toast nếu là lỗi 500
-                      if (err?.response?.status !== 500 && err?.statusCode !== 500) {
-                        console.error("Lỗi load phụ tùng đề xuất:", err);
-                      }
-                    }
-                  } else {
-                    console.warn("❌ Không tìm thấy partTypeId cho bộ phận:", r.partItemId);
-                    // ✅ Chỉ hiển thị warning, không phải error
-                    console.warn("⚠️ Không thể load phụ tùng đề xuất vì thiếu partTypeId");
-                  }
-                }
-              }}
-            onChange={(opt) => {
-              if (!opt) {
-                // ✅ Khi xóa phụ tùng thay thế, giữ nguyên giá từ bộ phận có sẵn trên xe
-                const currentRow = details[i];
-                const partItemPrice = Number(currentRow?.partItem?.price || 0);
-                updateRow(i, {
-                  proposedReplacePartId: "",
-                  replacePartName: "",
-                  pricePart: partItemPrice, // ✅ Giữ giá từ bộ phận có sẵn trên xe
-                });
-                return;
-              }
-                // ✅ Tìm trong danh sách phụ tùng đề xuất
-                const selected = allSuggestedParts.find((p) => p.id === opt.value);
-                
-                // ✅ Lưu label đầy đủ (có serialNumber) từ opt.label
-                // opt.label đã được format: "Tên (Serial)" hoặc "Tên"
-                const fullLabel = opt.label || selected?.name || "";
-
-                // ✅ Giữ nguyên giá từ bộ phận có sẵn trên xe, không lấy từ phụ tùng thay thế
-                const currentRow = details[i];
-                const partItemPrice = Number(currentRow?.partItem?.price || 0);
-
-              updateRow(i, {
-                proposedReplacePartId: opt.value,
-                  replacePartName: fullLabel, // ✅ Lưu label đầy đủ với code (Part template)
-                  pricePart: partItemPrice, // ✅ Luôn lấy giá từ bộ phận có sẵn trên xe
-              });
-            }}
-              options={allSuggestedParts.map((p) => {
-                // ✅ Hiển thị tên và code (Part template không có serialNumber)
-                const name = p.name || "";
-                const code = p.code || "";
-                const label = code ? `${name} (${code})` : name;
-                return {
-                  value: p.id,
-                  label: label || p.id,
-                };
-              })}
-            filterOption={(input, opt) =>
-              opt.label.toLowerCase().includes(input.toLowerCase())
-            }
-              dropdownStyle={{ maxWidth: "400px" }}
-          />
-          </Tooltip>
+          <span style={{ color: "#999" }}>Chưa có phụ tùng thay thế</span>
         );
       },
     },
@@ -1601,59 +1356,6 @@ export default function RepairModeEVCheck({
     },
   };
 
-  // ✅ Row selection cho RMA (chỉ cho staff)
-  const eligibleItems = details.filter((r) => isRMAEligible(r));
-  const noEligibleItems = eligibleItems.length === 0; // ✅ Không còn items nào eligible
-  const allSelectedRMAItemsHaveRMA = Array.from(selectedRMAItems).every((id) => {
-    const item = details.find((d) => d.id === id);
-    return item && hasRMA(item);
-  });
-
-  // ✅ Tự động clear selection cho các items đã có RMA sau khi reload data
-  useEffect(() => {
-    if (selectedRMAItems.size === 0) return; // Không cần check nếu không có selection
-    
-    const validSelectedKeys = Array.from(selectedRMAItems).filter((id) => {
-      const item = details.find((d) => d.id === id);
-      // ✅ Loại bỏ items đã có RMA hoặc không còn đủ điều kiện
-      return item && !hasRMA(item) && isRMAEligible(item);
-    });
-
-    // ✅ Nếu có keys không hợp lệ (đã có RMA), clear chúng ngay lập tức
-    if (validSelectedKeys.length !== selectedRMAItems.size) {
-      console.log("🧹 Auto-clearing invalid RMA selections:", {
-        before: selectedRMAItems.size,
-        after: validSelectedKeys.length,
-        removed: selectedRMAItems.size - validSelectedKeys.length
-      });
-      setSelectedRMAItems(new Set(validSelectedKeys));
-    }
-  }, [details]); // ✅ Chỉ check khi details thay đổi (sau khi reload)
-
-  // ✅ Filter selectedRowKeys để chỉ hiển thị những items còn tồn tại và chưa có RMA
-  const validSelectedKeys = Array.from(selectedRMAItems).filter((id) => {
-    const item = details.find((d) => d.id === id);
-    return item && !hasRMA(item) && isRMAEligible(item);
-  });
-
-  const rowSelection = readOnly ? {
-    selectedRowKeys: validSelectedKeys, // ✅ Chỉ hiển thị những keys hợp lệ (chưa có RMA)
-    onChange: (selectedKeys, selectedRows) => {
-      if (isRMASubmitting) return; // ✅ Không cho thay đổi selection khi đang submit
-      
-      // ✅ Chỉ cho phép chọn những items chưa có RMA
-      const validKeys = selectedKeys.filter((id) => {
-        const item = details.find((d) => d.id === id);
-        return item && !hasRMA(item) && isRMAEligible(item);
-      });
-      setSelectedRMAItems(new Set(validKeys));
-    },
-    getCheckboxProps: (record) => ({
-      disabled: isRMASubmitting || hasRMA(record) || !isRMAEligible(record), // ✅ Disable khi đang submit, đã có RMA hoặc không đủ điều kiện
-    }),
-    // ✅ Preserve selected row keys khi data thay đổi (nhưng useEffect sẽ tự động clear)
-    preserveSelectedRowKeys: false, // ✅ Không preserve, để tự động clear khi items có RMA
-  } : undefined;
 
   let columns = baseColumns;
   if (!readOnly && evCheckStatus === "REPAIR_IN_PROGRESS") {
@@ -1673,38 +1375,11 @@ export default function RepairModeEVCheck({
         </div>
       ) : (
         <>
-          {/* ✅ Nút Tạo RMA ở trên bảng (chỉ cho staff) - chỉ hiện khi có items eligible được chọn */}
-          {readOnly &&
-            validSelectedKeys.length > 0 &&
-            (evCheckStatus === "QUOTE_APPROVED" ||
-              evCheckStatus === "REPAIR_IN_PROGRESS" ||
-              evCheckStatus === "REPAIR_COMPLETED" ||
-              evCheckStatus === "COMPLETED") && (
-              <div className='flex justify-between items-center mb-4'>
-                <h4 className='text-base font-semibold text-gray-700'>Danh sách hạng mục sửa chữa</h4>
-                <Button
-                  type='primary'
-                  danger
-                  onClick={openRMAModal}
-                  loading={isRMASubmitting}
-                  disabled={
-                    isRMASubmitting || // ✅ Disable khi đang submit
-                    validSelectedKeys.length === 0 || // ✅ Dùng validSelectedKeys thay vì selectedRMAItems
-                    allSelectedRMAItemsHaveRMA ||
-                    noEligibleItems || // ✅ Disable khi không còn items nào eligible
-                    evCheckStatus === "INSPECTION_COMPLETED" // Disable khi đã gửi báo giá nhưng chưa duyệt
-                  }>
-                  {isRMASubmitting ? "Đang tạo RMA..." : `Tạo RMA (${validSelectedKeys.length} phụ tùng)`}
-                </Button>
-              </div>
-            )}
         <Table
-            key={`rma-table-${selectedRMAItems.size}`} // ✅ Force re-render khi selection thay đổi
           columns={columns}
           dataSource={details}
           rowKey='id'
-            rowSelection={rowSelection} // ✅ Dùng rowSelection thay vì cột RMA
-            scroll={{ x: false }}
+          scroll={{ x: false }}
           pagination={false}
           size='small'
           bordered
@@ -1788,38 +1463,6 @@ export default function RepairModeEVCheck({
       )}
 
 
-      {/* Modal xác nhận RMA – gom nhiều items thành 1 RMA */}
-      <RMAConfirmationModal
-        open={isRMAConfirmationOpen}
-        onClose={() => {
-          // ✅ Cho phép đóng modal, nhưng reset submitting state
-          setIsRMAConfirmationOpen(false);
-          setIsRMASubmitting(false); // ✅ Reset khi đóng modal
-          setSelectedRMAItems(new Set()); // ✅ Clear selection sau khi đóng
-        }}
-        booking={booking}
-        partsForRMA={currentRMAParts}
-        onRMASuccess={() => {
-          // ✅ Clear selection ngay lập tức TRƯỚC KHI đóng modal
-          setSelectedRMAItems(new Set());
-          setIsRMAConfirmationOpen(false);
-          
-          toast.success("Tạo RMA thành công! Đang đồng bộ lại dữ liệu...");
-          
-          // ✅ Reload data sau khi clear selection
-          setTimeout(() => {
-            loadRepairDetails().then(() => {
-              // ✅ Đảm bảo selection được clear sau khi reload
-              setSelectedRMAItems(new Set());
-              // ✅ Reset submitting state sau khi reload xong
-              setIsRMASubmitting(false);
-            }).catch(() => {
-              // ✅ Reset submitting state nếu có lỗi
-              setIsRMASubmitting(false);
-            });
-          }, 100);
-        }}
-      />
     </div>
   );
 }

@@ -18,7 +18,7 @@ import { authService } from "@/services/authService";
 const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, url: "/staff/dashboard" },
   {
-    title: "Booking",
+    title: "Lịch hẹn",
     icon: CalendarCheck,
     url: "/staff/booking",
     subItems: [
@@ -121,7 +121,7 @@ export function StaffSidebar() {
                   }}
                   tooltip="Logout">
                   <LogOut className="h-5 w-5 flex-shrink-0"/>
-                  {!isCollapsed && <span>Logout</span>}
+                  {!isCollapsed && <span>Đăng xuất</span>}
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

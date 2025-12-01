@@ -37,3 +37,13 @@ export const deletePart = (partId) => {
   return api.delete(`${BASE_URL}/${partId}`);
 };
 
+// ✅ Lấy phụ tùng theo model và partType
+export const getPartsByModelAndType = (modelId, partTypeId) => {
+  return api.get(`${BASE_URL}/by-model-and-type`, { 
+    params: { 
+      model: modelId,
+      partTypeId: partTypeId 
+    } 
+  });
+};
+

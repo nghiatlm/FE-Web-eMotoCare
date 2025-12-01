@@ -4,6 +4,7 @@ import {
   getPartItemById, // 🔥 thêm dòng này
   getPartItemsByServiceCenter,
 } from "../api/partitemsApi";
+import { getPartsByModelAndType } from "../api/partsApi";
 
 /**
  * Tìm kiếm Part Items (GET /v1/part-items?search=keyword)
@@ -114,5 +115,59 @@ export const getPartItemsService = async (params = {}) => {
   } catch (error) {
     console.error("Lỗi getPartItemsService:", error);
     return [];
+  }
+};
+
+// ✅ Lấy phụ tùng theo model và partType
+export const getPartsByModelAndTypeService = async (modelId, partTypeId) => {
+  try {
+    const res = await getPartsByModelAndType(modelId, partTypeId);
+    console.log("🔍 getPartsByModelAndTypeService - Full response:", res);
+    
+    // ✅ Axios interceptor đã trả về response.data, nên res = {statusCode, success, message, data: {...}}
+    // ✅ Kiểm tra nếu response có lỗi
+    if (res?.statusCode && res.statusCode !== 200) {
+      throw new Error(res?.message || "Lỗi từ server");
+    }
+    
+    // ✅ Parse response: res.data có thể là array hoặc object có rowDatas
+    let items = [];
+    if (Array.isArray(res)) {
+      items = res;
+    } else if (Array.isArray(res?.data)) {
+      items = res.data;
+    } else if (Array.isArray(res?.data?.rowDatas)) {
+      items = res.data.rowDatas;
+    } else if (res?.data && typeof res.data === 'object' && !Array.isArray(res.data)) {
+      // ✅ Nếu res.data là object, có thể có rowDatas bên trong
+      items = res.data.rowDatas || [];
+    }
+    
+    console.log("🔍 getPartsByModelAndTypeService - Parsed items:", items);
+    
+    // ✅ Normalize data để format giống Part (template, không có serialNumber)
+    const normalized = items.map((item) => {
+      return {
+        id: item.id || item.partId,
+        name: item.name || "",
+        code: item.code || "",
+        partTypeId: item.partType?.id || item.partTypeId || null,
+        price: 0, // Part template không có price
+        serialNumber: "", // Part template không có serialNumber
+        partItemId: null, // Part template không có partItemId
+      };
+    });
+    
+    console.log("🔍 getPartsByModelAndTypeService - Final normalized:", normalized);
+    return normalized;
+  } catch (error) {
+    console.error("Lỗi lấy phụ tùng theo model và partType:", error);
+    // ✅ Axios interceptor đã unwrap error.response.data, nên error có thể là object {statusCode, success, message, data}
+    if (error?.statusCode) {
+      console.error("Error statusCode:", error.statusCode, "message:", error.message);
+    } else if (error?.response) {
+      console.error("Response error:", error.response.status, error.response.data);
+    }
+    throw error;
   }
 };

@@ -4,6 +4,7 @@ import {
   postAppointment,
   getAppointmentById,
   getAppointmentsByTechnician,
+  getFirstVisitVehicleInfo,
 } from "../api/appointmentsApi";
 
 import { fetchServiceStaff } from "./staffsService";
@@ -123,4 +124,18 @@ export const changeAppointmentStatusService = async (
     status: upper,
     ...extra,
   });
+};
+
+// ✅ Lấy thông tin khách hàng/xe từ số khung (first visit)
+export const getVehicleInfoFromChassisService = async (chassisNumber) => {
+  try {
+    const res = await getFirstVisitVehicleInfo(chassisNumber);
+    console.log("🔍 Raw API Response:", res);
+    // ✅ Response từ axios: res.data = { statusCode, success, message, data: {...} }
+    // Return res.data để có thể access response.success, response.data
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi lấy thông tin từ số khung:", error);
+    throw error;
+  }
 };

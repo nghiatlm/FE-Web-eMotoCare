@@ -187,7 +187,8 @@ export default function BookingTable({
       backgroundColor: "#fff",
       borderRadius: 8,
       boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-      overflow: "hidden"
+      overflow: "hidden",
+      width: "100%"
     }}>
       <Table
         columns={columns}
@@ -203,7 +204,7 @@ export default function BookingTable({
         }}
         bordered
         size="middle"
-        scroll={{ x: 'max-content' }}
+        scroll={{ x: false }}
         rowClassName={(record, index) => 
           index % 2 === 0 ? "table-row-light" : "table-row-dark"
         }

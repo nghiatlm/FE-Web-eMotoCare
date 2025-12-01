@@ -61,7 +61,7 @@ export function TechnicianSidebar() {
                   }}
                   tooltip="Logout">
                   <LogOut className="h-5 w-5 flex-shrink-0"/>
-                  {!isCollapsed && <span>Logout</span>}
+                  {!isCollapsed && <span>Đăng xuất </span>}
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

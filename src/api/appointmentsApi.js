@@ -36,3 +36,8 @@ export const getAppointmentsMissingParts = ({ page = 1, pageSize = 10, sortDesc 
   const params = { page, pageSize, sortDesc };
   return api.get(`${BASE_URL}/missing-parts`, { params });
 };
+
+// ✅ Lấy thông tin khách hàng/xe từ số khung (first visit)
+export const getFirstVisitVehicleInfo = (chassisNumber) => {
+  return api.get(`${BASE_URL}/first-visit/vehicle-info`, { params: { chassisNumber } });
+};

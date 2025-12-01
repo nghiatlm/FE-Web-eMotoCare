@@ -5,6 +5,8 @@ import { colorBase } from "../styles/colorBase";
 export const STATUS_MAP = {
   PENDING: "Chờ xử lý",
   APPROVED: "Đã phê duyệt",
+  PROCESSING: "Đang xử lý",
+  APPOINTMENT_BOOKED: "Đã đặt lịch",
   CANCELED: "Đã hủy",
   CHECKED_IN: "Đã check-in",
   QUOTE_APPROVED: "Được xác nhận",
@@ -20,12 +22,15 @@ export const STATUS_MAP = {
 export const STATUS_COLORS = {
   PENDING: colorBase.warning,
   APPROVED: colorBase.info,
+  PROCESSING: "processing", // Màu xanh dương (processing) của Ant Design
+  APPOINTMENT_BOOKED: "cyan", // Màu xanh lơ cho trạng thái đã đặt lịch
   CHECKED_IN: "#a855f7",
   IN_PROGRESS: "#06b6d4",
   QUOTE_APPROVED: "#06b6d4",
   REPAIR_COMPLETED: "#10b981",
   COMPLETED: colorBase.success,
   CANCELED: colorBase.danger,
+  REJECTED: colorBase.danger,
   // IN_SERVICE: "#f59e0b",
 };
 
@@ -45,5 +50,5 @@ export const SERVICE_TYPE_COLORS = {
   WARRANTY_TYPE: "green",
   RECALL_TYPE: "magenta",
   RMA_TYPE: "gold",
-  CAMPAIGN_TYPE: "orange",
+  CAMPAIGN_TYPE: "purple",
 };

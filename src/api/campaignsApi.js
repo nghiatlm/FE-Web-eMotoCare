@@ -1,8 +1,6 @@
 import api from "./api";
 
 const BASE_URL = "/v1/programs";
-const user = JSON.parse(localStorage.getItem("user"));
-const token = user?.token;
 
 /**
  * Lấy danh sách campaigns (programs)

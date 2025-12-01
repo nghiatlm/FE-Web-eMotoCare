@@ -1,29 +1,41 @@
-// src/components/technician/TechnicianBookingDetailDrawer.jsx
+// src/pages/technician/TechnicianBookingDetailPage.jsx
 import { useState, useEffect } from "react";
-import RepairModeEVCheck from "./detail-content/RepairModeEVCheck";
-import RMARepairModeEVCheck from "./detail-content/RMARepairModeEVCheck";
-import MaintenanceModeEVCheck from "./detail-content/MaintenanceModeEVCheck";
-import CampaignModeEVCheck from "./detail-content/CampaignModeEVCheck";
+import { useParams, useNavigate } from "react-router-dom";
+import RepairModeEVCheck from "../../components/technician/detail-content/RepairModeEVCheck";
+import RMARepairModeEVCheck from "../../components/technician/detail-content/RMARepairModeEVCheck";
+import MaintenanceModeEVCheck from "../../components/technician/detail-content/MaintenanceModeEVCheck";
+import CampaignModeEVCheck from "../../components/technician/detail-content/CampaignModeEVCheck";
 import {
   SERVICE_TYPE_MAP,
   SERVICE_TYPE_COLORS,
 } from "../../utils/constants.js";
 
-import { Drawer, Divider, Button, Input, Spin } from "antd";
+import { Card, Divider, Button, Input, Spin } from "antd";
 import { toast } from "@/components/ui/sonner";
+import { ArrowLeft } from "lucide-react";
 
 import {
   fetchEVCheckByAppointmentService,
   updateEVCheckService,
 } from "../../services/evcheckService.js";
+import { useBookings } from "../../hooks/useBookings";
 
-export default function TechnicianBookingDetailDrawer({
-  booking,
-  open,
-  onClose,
+export default function TechnicianBookingDetailPage({
+  bookingId: propBookingId,
+  onBack,
+  readOnly = false,
   initialEVCheckId,
-  readOnly = false, // staff sẽ truyền readOnly = true
 }) {
+  const params = useParams();
+  const navigate = useNavigate();
+  const { data, loading: bookingsLoading } = useBookings();
+  
+  // ✅ Lấy bookingId từ params hoặc props
+  const bookingId = propBookingId || params.id;
+  
+  // ✅ Tìm booking từ danh sách đã có
+  const booking = data.find(b => b.id === bookingId);
+  
   const [loading, setLoading] = useState(false);
   const [km, setKm] = useState("");
   const [evCheckId, setEvCheckId] = useState(null);
@@ -43,16 +55,8 @@ export default function TechnicianBookingDetailDrawer({
 
   // ======== LOAD EV CHECK ========
   useEffect(() => {
-    if (!open) {
-      setKm("");
-      setEvCheckId(null);
-      setEvCheckStatus(null);
-      setHasOdometer(false);
-      setLoading(false);
-      setRefreshKey(0);
-      return;
-    }
-
+    if (!booking) return; // ✅ Đợi booking có trước
+    
     if (initialEVCheckId) {
       setEvCheckId(initialEVCheckId);
       return;
@@ -126,7 +130,7 @@ export default function TechnicianBookingDetailDrawer({
       loadData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, booking?.id, initialEVCheckId, refreshKey]);
+  }, [booking, initialEVCheckId, refreshKey]);
 
   // ======== CẬP NHẬT KM (Maintenance) – CHỈ DÙNG CHO TECHNICIAN =========
   const handleSendKm = async () => {
@@ -162,52 +166,97 @@ export default function TechnicianBookingDetailDrawer({
     }
   };
 
-  if (!booking) return null;
+  // ✅ Hiển thị loading khi đang load dữ liệu
+  if (bookingsLoading || loading) {
+    return (
+      <div style={{ padding: 24, display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  // ✅ Chỉ hiển thị "Không tìm thấy" khi đã load xong mà không có dữ liệu
+  if (!booking) {
+    return (
+      <div style={{ padding: 24 }}>
+        <Card>
+          <div style={{ textAlign: "center", padding: "40px 0" }}>
+            <p style={{ color: "#999" }}>Không tìm thấy lịch hẹn</p>
+            <Button onClick={() => {
+              if (onBack) {
+                onBack();
+              } else {
+                navigate("/technician/vehicles");
+              }
+            }} style={{ marginTop: 16 }}>
+              Quay lại
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <Drawer
-      title={
-        <div className='flex justify-between items-center'>
-          <span className='font-semibold text-lg text-[#c41e0e]'>
-            Chi tiết lịch hẹn: {booking.code}
-          </span>
-        </div>
-      }
-      width='90%'
-      open={open}
-      onClose={onClose}
-      bodyStyle={{ paddingBottom: 80 }}>
+    <div style={{ padding: 24, width: "100%" }}>
+      {/* Header */}
+      <div style={{ marginBottom: 24, display: "flex", alignItems: "center", gap: 16 }}>
+        <Button
+          icon={<ArrowLeft size={16} />}
+          onClick={() => {
+            if (onBack) {
+              onBack();
+            } else {
+              navigate("/technician/vehicles");
+            }
+          }}
+          style={{ color: "#ff4d4f" }}
+        >
+          Quay lại
+        </Button>
+        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#c41e0e" }}>
+          Chi tiết lịch hẹn: {booking.code}
+        </h2>
+      </div>
+
       {/* THÔNG TIN CHUNG */}
-      <section className='bg-white rounded-xl shadow p-5 mb-6 border border-orange-200'>
-        <h3 className='font-semibold text-base mb-3 border-b pb-2 text-orange-600'>
+      <Card
+        style={{ marginBottom: 24, borderRadius: 8 }}
+        bodyStyle={{ padding: "24px" }}>
+        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: "#d4380d", borderBottom: "1px solid #f0f0f0", paddingBottom: 12 }}>
           Thông tin chung
         </h3>
-        <div className='grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700'>
-          <p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px" }}>
+          <div>
             <strong>Mã lịch hẹn:</strong> {booking.code || "—"}
-          </p>
-          <p>
+          </div>
+          <div>
             <strong>Khách hàng:</strong> {booking.customer?.firstName}{" "}
             {booking.customer?.lastName}
-          </p>
-          <p>
+          </div>
+          <div>
             <strong>Ngày hẹn:</strong>{" "}
             {new Date(booking.appointmentDate).toLocaleDateString("vi-VN")}
-          </p>
-          <p>
+          </div>
+          <div>
             <strong>Loại dịch vụ:</strong>{" "}
             <span
-              className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${
-                isMaintenance
-                  ? "bg-blue-100 text-blue-800 border border-blue-300"
+              style={{
+                display: "inline-block",
+                padding: "4px 12px",
+                fontSize: 12,
+                fontWeight: 600,
+                borderRadius: 12,
+                ...(isMaintenance
+                  ? { backgroundColor: "#e6f7ff", color: "#0050b3", border: "1px solid #91d5ff" }
                   : isRepair
-                  ? "bg-purple-100 text-purple-800 border border-purple-300"
+                  ? { backgroundColor: "#f9f0ff", color: "#531dab", border: "1px solid #d3adf7" }
                   : isWarranty
-                  ? "bg-green-100 text-green-800 border border-green-300"
+                  ? { backgroundColor: "#f6ffed", color: "#389e0d", border: "1px solid #b7eb8f" }
                   : isCampaign
-                  ? "bg-orange-100 text-orange-800 border border-orange-300"
-                  : "bg-gray-100 text-gray-800 border border-gray-300"
-              }`}>
+                  ? { backgroundColor: "#fff7e6", color: "#d46b08", border: "1px solid #ffd591" }
+                  : { backgroundColor: "#fafafa", color: "#595959", border: "1px solid #d9d9d9" }),
+              }}>
               {isMaintenance
                 ? "Bảo dưỡng"
                 : isRepair
@@ -218,20 +267,19 @@ export default function TechnicianBookingDetailDrawer({
                 ? "Chiến dịch"
                 : "—"}
             </span>
-          </p>
+          </div>
           {isRepair && chassisNumber && (
-            <p className='col-span-2'>
+            <div style={{ gridColumn: "1 / -1" }}>
               <strong>Số khung (VIN):</strong>{" "}
-              <code className='bg-gray-100 px-2 py-1 rounded text-sm'>
+              <code style={{ backgroundColor: "#f5f5f5", padding: "4px 8px", borderRadius: 4, fontSize: 12 }}>
                 {chassisNumber}
               </code>
-            </p>
+            </div>
           )}
         </div>
-      </section>
+      </Card>
 
       {/* ==== NHẬP KM – CHỈ KỸ THUẬT VIÊN THẤY (readOnly = false) ==== */}
-      {/* ✅ Chỉ hiển thị khi: maintenance + có evCheckId + chưa có odometer + chưa ở trạng thái REPAIR_IN_PROGRESS hoặc các trạng thái sau */}
       {isMaintenance && 
        evCheckId && 
        !hasOdometer && 
@@ -241,47 +289,54 @@ export default function TechnicianBookingDetailDrawer({
        evCheckStatus !== "QUOTE_APPROVED" &&
        evCheckStatus !== "REPAIR_COMPLETED" &&
        evCheckStatus !== "COMPLETED" && (
-        <section className='bg-white rounded-xl shadow p-5 mb-6 border border-orange-200'>
-          <h3 className='font-semibold text-base mb-3 border-b pb-2 text-orange-600'>
+        <Card
+          style={{ marginBottom: 24, borderRadius: 8 }}
+          bodyStyle={{ padding: "24px" }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: "#d4380d", borderBottom: "1px solid #f0f0f0", paddingBottom: 12 }}>
             Cập nhật số km xe đã đi
           </h3>
-          <div className='flex gap-3'>
+          <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
             <Input
               type='number'
               placeholder='Nhập số km'
               value={km}
               onChange={(e) => setKm(e.target.value)}
               disabled={loading}
+              style={{ flex: 1 }}
             />
             <Button type='primary' loading={loading} onClick={handleSendKm}>
               Cập nhật KM
             </Button>
           </div>
-          <p className='mt-2 text-xs text-gray-500'>
+          <p style={{ margin: 0, fontSize: 12, color: "#999" }}>
             EVCheck đã được tạo, nhưng chưa có số KM. Vui lòng nhập KM để hệ
             thống sinh hạng mục bảo dưỡng.
           </p>
-        </section>
+        </Card>
       )}
 
       {/* NẾU MAINTENANCE MÀ CHƯA CÓ EVCheckID LUÔN */}
       {isMaintenance && !evCheckId && (
-        <section className='bg-white p-5 border border-orange-200 rounded-xl mb-6'>
-          <p className='text-gray-500 italic'>
+        <Card
+          style={{ marginBottom: 24, borderRadius: 8 }}
+          bodyStyle={{ padding: "24px", textAlign: "center" }}>
+          <p style={{ color: "#999", fontStyle: "italic" }}>
             Chưa tìm thấy EV Check cho lịch hẹn này. Vui lòng gán kỹ thuật viên
             / tạo EVCheck trước.
           </p>
-        </section>
+        </Card>
       )}
 
       {/* NỘI DUNG CHÍNH */}
       {loading ? (
-        <div className='flex justify-center p-10'>
+        <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
           <Spin />
         </div>
       ) : isRepair && chassisConfirmed ? (
-        <section className='bg-white rounded-xl shadow p-5 border border-orange-200 max-h-96 overflow-auto'>
-          <h3 className='font-semibold text-base mb-3 border-b pb-2 text-orange-600'>
+        <Card
+          style={{ marginBottom: 24, borderRadius: 8 }}
+          bodyStyle={{ padding: "24px", maxHeight: "600px", overflow: "auto" }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: "#d4380d", borderBottom: "1px solid #f0f0f0", paddingBottom: 12 }}>
             Phiếu sửa chữa
           </h3>
           {/* ✅ Kiểm tra note: nếu có "lịch thay" và "rma" thì dùng RMARepairModeEVCheck */}
@@ -308,25 +363,28 @@ export default function TechnicianBookingDetailDrawer({
               />
             );
           })()}
-        </section>
+        </Card>
       ) : isCampaign ? (
-        <section className='bg-white rounded-xl shadow p-5 border border-orange-200 max-h-96 overflow-auto'>
-          <h3 className='font-semibold text-base mb-3 border-b pb-2 text-orange-600'>
+        <Card
+          style={{ marginBottom: 24, borderRadius: 8 }}
+          bodyStyle={{ padding: "24px", maxHeight: "600px", overflow: "auto" }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: "#d4380d", borderBottom: "1px solid #f0f0f0", paddingBottom: 12 }}>
             Phiếu kiểm tra chiến dịch
           </h3>
           <CampaignModeEVCheck
             key={`campaign-${evCheckId || "empty"}-${refreshKey}`}
             booking={booking}
             evCheckId={evCheckId}
-            evCheckStatus={evCheckStatus}
             onRefresh={() => setRefreshKey((prev) => prev + 1)}
             readOnly={readOnly}
             forceEmpty={!evCheckId}
           />
-        </section>
-      ) : isMaintenance && evCheckId && (hasOdometer || readOnly) ? ( // 🔴 staff (readOnly) vẫn được xem bảng dù hasOdometer = false
-        <section className='bg-white rounded-xl shadow p-5 border border-orange-200'>
-          <h3 className='font-semibold text-base mb-3 border-b pb-2 text-orange-600'>
+        </Card>
+      ) : isMaintenance && evCheckId && (hasOdometer || readOnly) ? (
+        <Card
+          style={{ marginBottom: 24, borderRadius: 8 }}
+          bodyStyle={{ padding: "24px" }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: "#d4380d", borderBottom: "1px solid #f0f0f0", paddingBottom: 12 }}>
             {evCheckStatus === "REPAIR_IN_PROGRESS"
               ? "Tiến hành sửa chữa"
               : "Kết quả kiểm tra EVCheck"}
@@ -340,10 +398,11 @@ export default function TechnicianBookingDetailDrawer({
             readOnly={readOnly}
             onRefresh={() => setRefreshKey((prev) => prev + 1)}
           />
-        </section>
+        </Card>
       ) : null}
 
       <Divider />
-    </Drawer>
+    </div>
   );
 }
+

@@ -169,8 +169,9 @@ export default function Campaigns() {
         console.log("🔍 Mapping campaign:", campaign, "ID:", campaign.id);
         const campaignStatus = getCampaignStatus(campaign.startDate, campaign.endDate, campaign.status);
         return {
-          id: campaign.id, // Dùng id từ API, không phải code
-          name: campaign.title || campaign.name, // API trả về title, không phải name
+          id: campaign.id, // ✅ Dùng id từ API response
+          name: campaign.title || campaign.name, // ✅ Ưu tiên title, fallback về name
+          title: campaign.title, // ✅ Giữ nguyên title
           description: campaign.description || "",
           startDate: campaign.startDate,
           endDate: campaign.endDate,
@@ -352,12 +353,12 @@ export default function Campaigns() {
                         index % 2 === 0 ? "bg-white hover:bg-slate-50/50" : "bg-slate-50/30 hover:bg-slate-50"
                       }`}
                     >
-                      {/* <td className="py-5 px-6 text-center">
-                        <span className="font-bold text-primary text-sm">{campaign.id}</span>
-                      </td> */}
+                      <td className="py-5 px-6 text-center">
+                        <span className="font-bold text-primary text-sm">{campaign.title || campaign.name || campaign.id}</span>
+                      </td>
                       <td className="py-5 px-6 text-center">
                         <div className="space-y-1 max-w-xs mx-auto">
-                          <p className="font-semibold text-slate-900 text-sm leading-tight">{campaign.name}</p>
+                          <p className="font-semibold text-slate-900 text-sm leading-tight">{campaign.title || campaign.name || campaign.id}</p>
                           <p className="text-xs text-slate-500 font-medium line-clamp-1">{campaign.description}</p>
                         </div>
                       </td>
