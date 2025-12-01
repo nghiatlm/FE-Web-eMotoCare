@@ -10,6 +10,8 @@ import { AdminSidebar } from "@/components/AdminSidebar";
 import Login from "./pages/login/Login";
 import ForgotPassword from "./pages/login/ForgotPassword";
 import VerifyOTP from "./pages/login/VerifyOTP";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentFailed from "./pages/PaymentFailed";
 
 // admin
 import WarrantyClaims from "./pages/WarrantyClaims";
@@ -21,8 +23,11 @@ import BranchDetail from "./pages/admin/BranchDetail";
 import BranchReport from "./pages/admin/BranchReport";
 import ServicePackages from "./pages/ServicePackages";
 import CreateServicePackage from "./pages/admin/CreateServicePackage";
+import PartTypeDetail from "./pages/admin/PartTypeDetail";
 import Campaigns from "./pages/Campaigns";
 import CampaignDetail from "./pages/CampaignDetail";
+import CreateCampaign from "./pages/admin/CreateCampaign";
+import SyncOEMData from "./pages/admin/SyncOEMData";
 import NotFound from "./pages/NotFound";
 
 // service staff
@@ -52,6 +57,7 @@ import StaffDetail from "./pages/manager/StaffDetail";
 import WarrantyList from "./pages/manager/WarrantyList";
 import WarrantyDetail from "./pages/manager/WarrantyDetail";
 import MissingPartsList from "./pages/manager/MissingPartsList";
+import MissingPartDetail from "./pages/manager/MissingPartDetail";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import InventorySummary from "./pages/manager/InventorySummary";
 import InventoryDetail from "./pages/manager/InventoryDetail";
@@ -61,9 +67,11 @@ import { StoreKeeperSidebar } from "./components/StoreKeeperSidebar";
 import StorekeeperInventory from "./pages/storekeeper/StorekeeperInventory";
 import StorekeeperAccessoryDetail from "./pages/storekeeper/StorekeeperAccessoryDetail";
 import ImportSlipsPage from "./pages/storekeeper/ImportSlipsPage";
+import ImportNoteDetail from "./pages/storekeeper/ImportNoteDetail";
 import ExportSlipsPage from "./pages/storekeeper/ExportSlipsPage";
 import CreateExportSlipPage from "./pages/storekeeper/CreateExportSlipPage";
 import ExportNoteDetail from "./pages/storekeeper/ExportNoteDetail";
+import CreateImportNotePage from "./pages/storekeeper/CreateImportNotePage";
 
 const queryClient = new QueryClient();
 
@@ -81,6 +89,10 @@ const App = () => (
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/verify-otp" element={<VerifyOTP />} />
+        
+        {/* Public routes */}
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/payment-failed" element={<PaymentFailed />} />
 
         {/* Admin routes */}
           <Route
@@ -310,6 +322,10 @@ const App = () => (
                         <Route
                           path="missing-parts"
                           element={<MissingPartsList />}
+                        />
+                        <Route
+                          path="missing-parts/:id"
+                          element={<MissingPartDetail />}
                         />
                         <Route path="*" element={<NotFound />} />
                       </Routes>

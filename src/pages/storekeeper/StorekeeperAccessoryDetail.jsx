@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, MapPin, User2, Phone, Loader2, Package } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStaffByAccountId } from "@/api/staffsApi";
-import { getPartItems } from "@/api/partitemsApi";
+import { getPartItemsByServiceCenter } from "@/api/partitemsApi";
 
 const buildBranchInfoFromStaff = (staff) => {
   if (!staff) return null;
@@ -98,13 +98,22 @@ export default function StorekeeperAccessoryDetail() {
       setLoading(true);
       setError("");
       try {
-        const response = await getPartItems({
-          serviceCenterId,
-          page: 1,
-          pageSize: 500,
-        });
-        const payload = response?.data || response;
-        const rows = payload?.rowDatas || payload?.data || payload || [];
+        const response = await getPartItemsByServiceCenter(serviceCenterId);
+        // API trả về: { statusCode, success, message, data: [...] } - data là array trực tiếp
+        let rows = [];
+        if (Array.isArray(response?.data)) {
+          // data là array trực tiếp
+          rows = response.data;
+        } else if (Array.isArray(response)) {
+          // response là array trực tiếp
+          rows = response;
+        } else if (response?.data?.rowDatas) {
+          // fallback: nếu có nested rowDatas
+          rows = response.data.rowDatas;
+        } else if (response?.rowDatas) {
+          // fallback: nếu rowDatas ở root
+          rows = response.rowDatas;
+        }
 
         const matchingItems = (rows || []).filter(
           (item) => normalizePartCode(item) === decodedPartCode,

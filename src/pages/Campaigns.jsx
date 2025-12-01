@@ -157,10 +157,16 @@ export default function Campaigns() {
       };
 
       const response = await getCampaigns(params);
-      const data = response?.data || response;
+      console.log("📥 Campaigns API response:", response);
+      
+      // Axios interceptor đã trả về response.data, nên response đã là data rồi
+      // Structure: { pageCurrent, pageSize, total, rowDatas: [...] }
+      const rowDatas = response?.rowDatas || response?.data?.rowDatas || [];
+      console.log("📋 Campaigns rowDatas:", rowDatas);
       
       // Map API data to UI format
-      const mappedCampaigns = (data?.rowDatas || []).map((campaign) => {
+      const mappedCampaigns = rowDatas.map((campaign) => {
+        console.log("🔍 Mapping campaign:", campaign, "ID:", campaign.id);
         const campaignStatus = getCampaignStatus(campaign.startDate, campaign.endDate, campaign.status);
         return {
           id: campaign.id, // ✅ Dùng id từ API response
@@ -176,11 +182,13 @@ export default function Campaigns() {
           createdAt: campaign.startDate,
           modelName: campaign.modelName,
           campaignDetails: campaign.campaignDetails || [],
+          type: campaign.type, // Thêm type
+          attachmentUrl: campaign.attachmentUrl, // Thêm attachmentUrl
         };
       });
       
       setCampaigns(mappedCampaigns);
-      setTotal(data?.total || 0);
+      setTotal(response?.total || response?.data?.total || 0);
     } catch (err) {
       console.error("Error fetching campaigns:", err);
       setError("Không thể tải danh sách campaigns");
@@ -295,9 +303,9 @@ export default function Campaigns() {
             <table className="w-full">
               <thead>
                 <tr className="bg-gradient-to-r from-red-50 via-red-50/90 to-red-100/50 dark:from-red-950/20 dark:via-red-950/15 dark:to-red-900/10 border-b-2 border-red-200/60 dark:border-red-800/30">
-                  <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  {/* <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     Mã campaign
-                  </th>
+                  </th> */}
                   <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     Tên campaign
                   </th>
@@ -384,7 +392,20 @@ export default function Campaigns() {
                             size="icon"
                             className="h-8 w-8 text-primary hover:bg-primary/10"
                             title="Xem chi tiết"
-                            onClick={() => navigate(`/admin/campaigns/${campaign.id}`)}
+                            onClick={() => {
+                              console.log("🔍 Click view detail - campaign:", campaign);
+                              console.log("🔍 Campaign ID:", campaign.id);
+                              if (!campaign.id) {
+                                console.error("❌ Campaign ID is undefined!", campaign);
+                                toast({
+                                  title: "Lỗi",
+                                  description: "Không tìm thấy ID campaign",
+                                  variant: "destructive"
+                                });
+                                return;
+                              }
+                              navigate(`/admin/campaigns/${campaign.id}`);
+                            }}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>

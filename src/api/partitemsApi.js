@@ -6,6 +6,8 @@ export const getPartItems = (params = {}) => {
   const queryParams = {
     page: params.page || 1,
     pageSize: params.pageSize || 10,
+    ...(params.partId && { partId: params.partId }),
+    ...(params.serialNumber && { serialNumber: params.serialNumber }),
     ...(params.search && { search: params.search }),
     ...(params.status && { status: params.status }),
     ...(params.serviceCenterId && { serviceCenterId: params.serviceCenterId }),

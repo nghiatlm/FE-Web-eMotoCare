@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStaffByAccountId } from "@/api/staffsApi";
-import { getPartItems } from "@/api/partitemsApi";
+import { getPartItemsByServiceCenter } from "@/api/partitemsApi";
+import { getServiceCenterById } from "@/api/serviceCentersApi";
 
 const STOCK_THRESHOLD = 10;
 
@@ -40,6 +41,9 @@ const aggregatePartItems = (partItems, branchInfo) => {
       });
     }
     const entry = map.get(partCode);
+    // QUAN TRỌNG: Lấy quantity từ item (partItem) ở ngoài, KHÔNG phải từ part.quantity ở trong
+    // item.quantity là số lượng thực tế của partItem trong kho
+    // part.quantity là số lượng tổng của part (không dùng ở đây)
     entry.totalQty += item.quantity || 0;
     if (!entry.partImage && part.image) {
       entry.partImage = part.image;
@@ -141,23 +145,68 @@ export default function StorekeeperInventory() {
   const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
+    let isMounted = true;
     const fetchStaffInfo = async () => {
       if (!user?.accountResponse?.id) return;
       try {
-        const response = await getStaffByAccountId(user.accountResponse.id);
-        const staff = response?.data?.rowDatas?.[0];
-        if (staff?.serviceCenterId) {
-          setServiceCenterId(staff.serviceCenterId);
-          setBranchInfo((prev) => prev || buildBranchInfoFromStaff(staff));
-        } else {
-          setError("Không tìm thấy thông tin chi nhánh của thủ kho.");
+        const response = await getStaffByAccountId(user.accountResponse.id, { pageSize: 1 });
+        const payload =
+          response?.data?.rowDatas ||
+          response?.data?.data ||
+          response?.data ||
+          response?.rowDatas ||
+          response;
+        const staff = Array.isArray(payload) ? payload[0] : payload;
+
+        if (!staff) {
+          if (isMounted) {
+            setError("Không tìm thấy thông tin chi nhánh của thủ kho.");
+          }
+          return;
+        }
+
+        const resolvedServiceCenterId = staff.serviceCenterId || staff.serviceCenter?.id || null;
+        if (resolvedServiceCenterId && isMounted) {
+          setServiceCenterId(resolvedServiceCenterId);
+        }
+
+        let serviceCenter = staff.serviceCenter || null;
+        if (!serviceCenter && resolvedServiceCenterId) {
+          try {
+            const centerRes = await getServiceCenterById(resolvedServiceCenterId);
+            serviceCenter = centerRes?.data || centerRes;
+          } catch (centerErr) {
+            console.error("Error fetching service center:", centerErr);
+          }
+        }
+
+        if (isMounted) {
+          const managerName =
+            serviceCenter?.managerName ||
+            [staff.firstName, staff.lastName].filter(Boolean).join(" ").trim() ||
+            staff.managerName ||
+            staff.fullName ||
+            "—";
+
+          setBranchInfo({
+            id: serviceCenter?.id || resolvedServiceCenterId,
+            name: serviceCenter?.name || serviceCenter?.code || staff.serviceCenterName || "Chi nhánh của tôi",
+            address: serviceCenter?.address || staff.serviceCenterAddress || "",
+            manager: managerName,
+            phone: serviceCenter?.phone || serviceCenter?.contactNumber || staff.serviceCenterPhone || "",
+          });
         }
       } catch (err) {
         console.error("Error fetching staff info:", err);
-        setError("Không thể tải thông tin thủ kho.");
+        if (isMounted) {
+          setError("Không thể tải thông tin thủ kho.");
+        }
       }
     };
     fetchStaffInfo();
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   useEffect(() => {
@@ -166,13 +215,22 @@ export default function StorekeeperInventory() {
       setLoading(true);
       setError("");
       try {
-        const response = await getPartItems({
-          serviceCenterId,
-          page: 1,
-          pageSize: 500,
-        });
-        const payload = response?.data || response;
-        const rows = payload?.rowDatas || payload?.data || payload || [];
+        const response = await getPartItemsByServiceCenter(serviceCenterId);
+        // API trả về: { statusCode, success, message, data: [...] } - data là array trực tiếp
+        let rows = [];
+        if (Array.isArray(response?.data)) {
+          // data là array trực tiếp
+          rows = response.data;
+        } else if (Array.isArray(response)) {
+          // response là array trực tiếp
+          rows = response;
+        } else if (response?.data?.rowDatas) {
+          // fallback: nếu có nested rowDatas
+          rows = response.data.rowDatas;
+        } else if (response?.rowDatas) {
+          // fallback: nếu rowDatas ở root
+          rows = response.rowDatas;
+        }
         setParts(aggregatePartItems(rows, branchInfo));
       } catch (err) {
         console.error("Error loading part items:", err);
@@ -253,8 +311,10 @@ export default function StorekeeperInventory() {
                     <span>{branchInfo.address}</span>
                   </div>
                 )}
-                {branchInfo?.phone && (
-                  <p className="text-sm text-muted-foreground mt-1">Hotline: {branchInfo.phone}</p>
+                {branchInfo?.manager && (
+                  <div className="text-sm text-muted-foreground mt-1">
+                    Quản lý: <span className="font-medium text-foreground">{branchInfo.manager}</span>
+                  </div>
                 )}
               </div>
             </div>

@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MapPin, Building2, FileUp, Plus, Eye, Printer, Trash2, Edit, Loader2, CheckSquare, Square } from "lucide-react";
+import { Search, MapPin, Building2, FileUp, Plus, Eye, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,52 +10,26 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import ExportSlipsTable from "@/components/ExportSlipsTable";
-import { createExportNote, getExportNoteById, updateExportNote } from "@/api/exportNotesApi";
-import { getPartItems, getPartItemsByServiceCenter } from "@/api/partitemsApi";
+import { getExportNoteById, updateExportNote } from "@/api/exportNotesApi";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStaffByAccountId } from "@/api/staffsApi";
-import { Checkbox } from "@/components/ui/checkbox";
+import { getServiceCenterById } from "@/api/serviceCentersApi";
 
 export default function ExportSlipsPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedSlip, setSelectedSlip] = useState(null);
   const [exportNoteDetail, setExportNoteDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [branchInfo, setBranchInfo] = useState(null);
+  const [branchLoading, setBranchLoading] = useState(false);
   
-  // Part items state
-  const [partItems, setPartItems] = useState([]);
-  const [loadingPartItems, setLoadingPartItems] = useState(false);
-  const [selectedPartItemIds, setSelectedPartItemIds] = useState([]);
-  const [partItemsPage, setPartItemsPage] = useState(1);
-  const [partItemsPageSize, setPartItemsPageSize] = useState(10);
-  const [partItemsTotal, setPartItemsTotal] = useState(0);
-  const [partItemsSearch, setPartItemsSearch] = useState("");
-  const [serviceCenterId, setServiceCenterId] = useState("a805546d-b31d-11f0-9e95-c4efbb30f085");
-  const [staffId, setStaffId] = useState("a7797a1f-c9d9-4b6b-a06f-d26bdc54e917");
-  
-  // Form state cho tạo phiếu xuất
-  const [formData, setFormData] = useState({
-    code: "",
-    type: "REPLACEMENT",
-    exportTo: "string",
-    totalQuantity: 0,
-    totalValue: 0,
-    note: "",
-    exportById: "",
-    serviceCenterId: "",
-    exportNoteStatus: "PENDING",
-    partItemId: []
-  });
-
   const [editFormData, setEditFormData] = useState({
     code: "",
     exportDate: "",
@@ -66,146 +40,9 @@ export default function ExportSlipsPage() {
     note: "",
     exportById: "",
     serviceCenterId: "",
-    exportNoteStatus: "PENDING"
+    exportNoteStatus: ""
   });
 
-  useEffect(() => {
-    const fetchStaffInfo = async () => {
-      try {
-        const accountId = user?.accountResponse?.id;
-        if (!accountId) return;
-
-        const staffResponse = await getStaffByAccountId(accountId);
-        const staffData = staffResponse?.data?.rowDatas?.[0];
-        
-        if (staffData) {
-          if (staffData.serviceCenterId) {
-            setServiceCenterId(staffData.serviceCenterId);
-            setFormData(prev => ({ ...prev, serviceCenterId: staffData.serviceCenterId }));
-          }
-          if (staffData.id) {
-            setStaffId(staffData.id);
-            setFormData(prev => ({ ...prev, exportById: staffData.id }));
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching staff info:", error);
-      }
-    };
-
-    if (user) {
-      fetchStaffInfo();
-    }
-  }, [user]);
-
-  const fetchPartItems = useCallback(async () => {
-    try {
-      setLoadingPartItems(true);
-      console.log("🔄 Fetching part items for service center:", serviceCenterId);
-
-      // Call API lấy phụ tùng theo serviceCenterId
-      const response = await getPartItemsByServiceCenter(serviceCenterId);
-
-      console.log("📦 Part Items API Response (full):", response);
-      
-      // Xử lý response - có thể là array hoặc object có data/rowDatas
-      let items = [];
-      let total = 0;
-      
-      if (Array.isArray(response?.data)) {
-        items = response.data;
-        total = response.data.length;
-      } else if (response?.data?.rowDatas) {
-        items = response.data.rowDatas;
-        total = response.data.total || response.data.rowDatas.length;
-      } else if (Array.isArray(response)) {
-        items = response;
-        total = response.length;
-      } else if (response?.rowDatas) {
-        items = response.rowDatas;
-        total = response.total || response.rowDatas.length;
-      }
-
-      console.log("📋 Processed part items:", {
-        itemsCount: items.length,
-        total,
-        firstItem: items[0],
-      });
-
-      if (items.length === 0) {
-        console.warn("⚠️ No part items found in response");
-        console.warn("Full response:", JSON.stringify(response, null, 2));
-      }
-
-      setPartItems(items);
-      setPartItemsTotal(total);
-    } catch (error) {
-      console.error("❌ Error fetching part items:", error);
-      console.error("Error response:", error.response);
-      console.error("Error data:", error.data);
-      console.error("Error message:", error.message);
-      toast({
-        title: "Lỗi",
-        description: error?.message || error?.data?.message || "Không thể tải danh sách phụ tùng",
-        variant: "destructive",
-      });
-      setPartItems([]);
-      setPartItemsTotal(0);
-    } finally {
-      setLoadingPartItems(false);
-    }
-  }, [serviceCenterId, toast]);
-
-  useEffect(() => {
-    if (isCreateDialogOpen && serviceCenterId) {
-      console.log("Dialog opened, fetching part items...");
-      console.log("Current serviceCenterId:", serviceCenterId);
-      fetchPartItems();
-    } else {
-      setPartItems([]);
-      setSelectedPartItemIds([]);
-      setPartItemsSearch("");
-      setPartItemsPage(1);
-    }
-  }, [isCreateDialogOpen, serviceCenterId, fetchPartItems]);
-
-  const selectedPartItemsData = useMemo(() => {
-    const selectedItems = partItems.filter(item => selectedPartItemIds.includes(item.id));
-    const totalQty = selectedItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
-    const totalVal = selectedItems.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0);
-    return { totalQty, totalVal, selectedItems };
-  }, [partItems, selectedPartItemIds]);
-
-  useEffect(() => {
-    setFormData(prev => ({
-      ...prev,
-      totalQuantity: selectedPartItemsData.totalQty,
-      totalValue: selectedPartItemsData.totalVal,
-      partItemId: selectedPartItemIds,
-    }));
-  }, [selectedPartItemsData.totalQty, selectedPartItemsData.totalVal, selectedPartItemIds]);
-
-  // Handle part item selection
-  const handlePartItemToggle = (partItemId) => {
-    setSelectedPartItemIds(prev => {
-      if (prev.includes(partItemId)) {
-        return prev.filter(id => id !== partItemId);
-      } else {
-        return [...prev, partItemId];
-      }
-    });
-  };
-
-  // Handle select all part items
-  const handleSelectAllPartItems = () => {
-    if (selectedPartItemIds.length === partItems.length) {
-      setSelectedPartItemIds([]);
-    } else {
-      setSelectedPartItemIds(partItems.map(item => item.id));
-    }
-  };
-
-  // Helper functions để format tên hiển thị
   const getTypeLabel = (type) => {
     const typeMap = {
       REPLACEMENT: "Thay thế",
@@ -225,16 +62,84 @@ export default function ExportSlipsPage() {
     return statusMap[status] || status;
   };
 
-  const currentBranch = {
-    id: "BR-001",
-    name: "GreenWheel - Chi nhánh Hồ Chí Minh",
-    address: "123 Đường Lê Lợi, Quận 1, TP.HCM",
-    manager: "Dũng"
-  };
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchBranchInfo = async () => {
+      if (!user?.accountResponse?.id) {
+        if (isMounted) {
+          setBranchInfo(null);
+        }
+        return;
+      }
+
+      try {
+        setBranchLoading(true);
+        const response = await getStaffByAccountId(user.accountResponse.id, { pageSize: 1 });
+        const payload =
+          response?.data?.rowDatas ||
+          response?.data?.data ||
+          response?.data ||
+          response?.rowDatas ||
+          response;
+        const staff = Array.isArray(payload) ? payload[0] : payload;
+
+        if (!staff) {
+          if (isMounted) {
+            setBranchInfo(null);
+          }
+          return;
+        }
+
+        let serviceCenter = staff.serviceCenter;
+
+        if (!serviceCenter && staff.serviceCenterId) {
+          try {
+            const centerRes = await getServiceCenterById(staff.serviceCenterId);
+            serviceCenter = centerRes?.data || centerRes;
+          } catch (error) {
+            console.error("Error fetching service center:", error);
+          }
+        }
+
+        const managerName =
+          [staff.firstName, staff.lastName].filter(Boolean).join(" ") ||
+          staff.fullName ||
+          staff.name ||
+          staff.managerName ||
+          user?.fullName ||
+          "—";
+
+        if (isMounted) {
+          setBranchInfo({
+            id: serviceCenter?.code || serviceCenter?.id || staff.serviceCenterId || "—",
+            name: serviceCenter?.name || staff.serviceCenterName || "Chưa xác định",
+            address: serviceCenter?.address || staff.serviceCenterAddress || "Chưa có địa chỉ",
+            manager: managerName,
+            phone: serviceCenter?.phone || serviceCenter?.contactNumber || staff.serviceCenterPhone || null,
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching branch info:", error);
+        if (isMounted) {
+          setBranchInfo(null);
+        }
+      } finally {
+        if (isMounted) {
+          setBranchLoading(false);
+        }
+      }
+    };
+
+    fetchBranchInfo();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   useEffect(() => {
     window.openViewExportSlip = async (slip) => {
-      // Navigate to detail page instead of opening dialog
       if (slip?.rawData?.id) {
         navigate(`/storekeeper/export-slips/${slip.rawData.id}`);
       } else {
@@ -269,7 +174,6 @@ export default function ExportSlipsPage() {
           if (response.success && response.data) {
             const data = response.data;
             setExportNoteDetail(data);
-            // Populate form
             setEditFormData({
               code: data.code || "",
               exportDate: data.exportDate ? new Date(data.exportDate).toISOString().slice(0, 16) : "",
@@ -315,7 +219,7 @@ export default function ExportSlipsPage() {
             </div>
             <Button 
               className="gap-2 bg-primary hover:bg-primary/90 text-white"
-              onClick={() => setIsCreateDialogOpen(true)}
+              onClick={() => navigate("/storekeeper/export-slips/create")}
             >
               <Plus className="h-4 w-4" />
               Tạo phiếu xuất
@@ -324,26 +228,41 @@ export default function ExportSlipsPage() {
           <p className="text-muted-foreground mb-4">Quản lý các phiếu xuất hàng cho appointments</p>
           
           <div className="p-4 bg-card rounded-lg border border-border">
-            <div className="flex items-center justify-between">
-              <div className="flex items-start gap-3">
-                <Building2 className="h-5 w-5 text-primary mt-1" />
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-foreground">{currentBranch.name}</span>
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
-                      Chi nhánh của tôi
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <MapPin className="h-3 w-3" />
-                    <span>{currentBranch.address}</span>
-                  </div>
-                  <div className="text-sm text-muted-foreground mt-1">
-                    Quản lý: <span className="font-medium text-foreground">{currentBranch.manager}</span>
+            {branchLoading ? (
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+                <div className="space-y-2 w-full">
+                  <div className="h-4 bg-muted rounded animate-pulse w-1/3" />
+                  <div className="h-3 bg-muted rounded animate-pulse w-1/2" />
+                  <div className="h-3 bg-muted rounded animate-pulse w-1/4" />
+                </div>
+              </div>
+            ) : branchInfo ? (
+              <div className="flex items-center justify-between gap-6 flex-wrap">
+                <div className="flex items-start gap-3">
+                  <Building2 className="h-5 w-5 text-primary mt-1" />
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold text-foreground">{branchInfo.name}</span>
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                        Chi nhánh của tôi
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <MapPin className="h-3 w-3" />
+                      <span>{branchInfo.address}</span>
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      Quản lý: <span className="font-medium text-foreground">{branchInfo.manager}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                Không tìm thấy thông tin chi nhánh. Vui lòng đảm bảo tài khoản có gán trung tâm dịch vụ.
+              </div>
+            )}
           </div>
         </div>
 
@@ -390,376 +309,6 @@ export default function ExportSlipsPage() {
 
         <ExportSlipsTable search={search} status={status} />
       </div>
-
-      {/* Create Export Slip Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="text-2xl flex items-center gap-2">
-              <FileUp className="h-6 w-6 text-primary" />
-              Tạo phiếu xuất mới
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4 max-h-[80vh] overflow-y-auto">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="type" className="text-sm font-semibold">Loại *</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(value) => setFormData({ ...formData, type: value })}
-                >
-                  <SelectTrigger id="type">
-                    <SelectValue placeholder="Chọn loại" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="REPLACEMENT">Thay thế</SelectItem>
-                    <SelectItem value="TRANSFER_TO">Chuyển kho</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="exportNoteStatus" className="text-sm font-semibold">Trạng thái *</Label>
-                <Select
-                  value={formData.exportNoteStatus}
-                  onValueChange={(value) => setFormData({ ...formData, exportNoteStatus: value })}
-                >
-                  <SelectTrigger id="exportNoteStatus">
-                    <SelectValue placeholder="Chọn trạng thái" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="PENDING">Chờ xử lý</SelectItem>
-                    <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
-                    <SelectItem value="CANCELLED">Đã hủy</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* <div className="space-y-2">
-              <Label htmlFor="exportTo" className="text-sm font-semibold">Người nhận (Chi nhánh) *</Label>
-              <Input
-                id="exportTo"
-                placeholder="Nhập người nhận"
-                value={formData.exportTo}
-                onChange={(e) => setFormData({ ...formData, exportTo: e.target.value })}
-              />
-            </div> */}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="totalQuantity" className="text-sm font-semibold">Tổng số lượng *</Label>
-                <Input
-                  id="totalQuantity"
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  value={formData.totalQuantity}
-                  readOnly
-                  className="bg-muted"
-                />
-                <p className="text-xs text-muted-foreground">Tự động tính từ phụ tùng đã chọn</p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="totalValue" className="text-sm font-semibold">Tổng giá trị *</Label>
-                <Input
-                  id="totalValue"
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  value={formData.totalValue}
-                  readOnly
-                  className="bg-muted"
-                />
-                <p className="text-xs text-muted-foreground">Tự động tính từ phụ tùng đã chọn</p>
-              </div>
-            </div>
-
-            {/* Part Items Selection */}
-            <div className="space-y-2 border-t pt-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-semibold">Chọn phụ tùng *</Label>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSelectAllPartItems}
-                    disabled={partItems.length === 0}
-                  >
-                    {selectedPartItemIds.length === partItems.length && partItems.length > 0 ? "Bỏ chọn tất cả" : "Chọn tất cả"}
-                  </Button>
-                </div>
-              </div>
-              
-              {/* Search - Tạm thời comment lại */}
-              {/* <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Tìm kiếm phụ tùng theo mã/tên..."
-                  value={partItemsSearch}
-                  onChange={(e) => setPartItemsSearch(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      setPartItemsPage(1);
-                      fetchPartItems();
-                    }
-                  }}
-                  className="pl-9"
-                />
-              </div> */}
-
-              <div className="border rounded-lg max-h-96 overflow-y-auto">
-                {loadingPartItems ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    <span className="ml-2 text-sm text-muted-foreground">Đang tải phụ tùng...</span>
-                  </div>
-                ) : partItems.length === 0 ? (
-                  <div className="py-8 text-center text-sm text-muted-foreground">
-                    Không có phụ tùng nào
-                  </div>
-                ) : (
-                  <div className="divide-y">
-                    {partItems.map((item) => {
-                      const isSelected = selectedPartItemIds.includes(item.id);
-                      const partImage = item.part?.image;
-                      return (
-                        <div
-                          key={item.id}
-                          className="p-3 hover:bg-muted/50 cursor-pointer transition-colors"
-                          onClick={() => handlePartItemToggle(item.id)}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="mt-1">
-                              {isSelected ? (
-                                <CheckSquare className="h-5 w-5 text-primary" />
-                              ) : (
-                                <Square className="h-5 w-5 text-muted-foreground" />
-                              )}
-                            </div>
-                            
-                            {/* Hình ảnh phụ tùng */}
-                            {partImage ? (
-                              <img
-                                src={partImage}
-                                alt={item.part?.name || item.part?.code || "Phụ tùng"}
-                                className="h-16 w-16 rounded-lg object-cover border border-border/60 shadow-sm flex-shrink-0"
-                                onError={(e) => {
-                                  e.target.style.display = 'none';
-                                }}
-                              />
-                            ) : (
-                              <div className="h-16 w-16 rounded-lg border border-dashed border-border/60 flex items-center justify-center text-xs text-muted-foreground bg-muted/30 flex-shrink-0">
-                                N/A
-                              </div>
-                            )}
-                            
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-semibold text-primary">{item.part?.code || "—"}</span>
-                                <Badge variant="outline" className="text-xs">
-                                  {item.quantity || 1} bộ
-                                </Badge>
-                                <Badge variant="secondary" className="text-xs">
-                                  {new Intl.NumberFormat("vi-VN", {
-                                    style: "currency",
-                                    currency: "VND",
-                                    maximumFractionDigits: 0,
-                                  }).format(item.price || 0)}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-foreground mt-1">{item.part?.name || "—"}</p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Serial: {item.serialNumber || "—"}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Pagination - Tạm thời comment lại vì hiển thị hết */}
-              {/* {partItemsTotal > partItemsPageSize && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    Hiển thị {(partItemsPage - 1) * partItemsPageSize + 1} - {Math.min(partItemsPage * partItemsPageSize, partItemsTotal)} / {partItemsTotal} phụ tùng
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={partItemsPage <= 1 || loadingPartItems}
-                      onClick={async () => {
-                        setPartItemsPage(prev => prev - 1);
-                        // fetchPartItems will be called by useEffect
-                      }}
-                    >
-                      Trước
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={partItemsPage * partItemsPageSize >= partItemsTotal || loadingPartItems}
-                      onClick={async () => {
-                        setPartItemsPage(prev => prev + 1);
-                        // fetchPartItems will be called by useEffect
-                      }}
-                    >
-                      Sau
-                    </Button>
-                  </div>
-                </div>
-              )} */}
-
-              {partItems.length > 0 && (
-                <div className="mt-2 p-2 bg-muted/50 rounded-lg">
-                  <p className="text-sm text-muted-foreground">
-                    Tổng cộng: {partItemsTotal} phụ tùng
-                  </p>
-                </div>
-              )}
-
-              {selectedPartItemIds.length > 0 && (
-                <div className="mt-2 p-2 bg-primary/10 rounded-lg">
-                  <p className="text-sm font-medium text-primary">
-                    Đã chọn {selectedPartItemIds.length} phụ tùng
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2 border-t pt-4">
-              <Label htmlFor="note" className="text-sm font-semibold">Ghi chú</Label>
-              <Textarea
-                id="note"
-                placeholder="Nhập ghi chú cho phiếu xuất..."
-                value={formData.note}
-                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                rows={3}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setIsCreateDialogOpen(false);
-                setFormData({
-                  code: "",
-                  type: "REPLACEMENT",
-                  exportTo: "",
-                  totalQuantity: 0,
-                  totalValue: 0,
-                  note: "",
-                  exportById: staffId || "",
-                  serviceCenterId: serviceCenterId || "",
-                  exportNoteStatus: "PENDING",
-                  partItemId: []
-                });
-                setSelectedPartItemIds([]);
-                setPartItemsSearch("");
-                setPartItemsPage(1);
-              }}
-              disabled={creating}
-            >
-              Hủy
-            </Button>
-            <Button 
-              className="bg-primary hover:bg-primary/90"
-              onClick={async () => {
-                // Validate required fields
-                // if (!formData.exportTo) {
-                //   toast({
-                //     title: "Lỗi",
-                //     description: "Vui lòng điền đầy đủ các trường bắt buộc (Người nhận)",
-                //     variant: "destructive"
-                //   });
-                //   return;
-                // }
-
-                // Validate part items
-                if (!formData.partItemId || formData.partItemId.length === 0) {
-                  toast({
-                    title: "Lỗi",
-                    description: "Vui lòng chọn ít nhất một phụ tùng",
-                    variant: "destructive"
-                  });
-                  return;
-                }
-
-                try {
-                  setCreating(true);
-                  
-                  const createData = {
-                    type: formData.type,
-                    exportTo: formData.exportTo,
-                    totalQuantity: formData.totalQuantity,
-                    exportById: staffId,
-                    serviceCenterId: serviceCenterId,
-                    totalValue: formData.totalValue,
-                    note: formData.note,
-                    partItemId: formData.partItemId,
-                  };
-                  console.log(createData);
-                  const response = await createExportNote(createData);
-                  
-                  if (response.success) {
-                    toast({
-                      title: "Thành công",
-                      description: "Tạo phiếu xuất mới thành công"
-                    });
-                    setIsCreateDialogOpen(false);
-                    // Reset form
-                    setFormData({
-                      code: "",
-                      type: "REPLACEMENT",
-                      exportTo: "",
-                      totalQuantity: 0,
-                      totalValue: 0,
-                      note: "",
-                      exportById: staffId || "",
-                      serviceCenterId: serviceCenterId || "",
-                      exportNoteStatus: "PENDING",
-                      partItemId: []
-                    });
-                    setSelectedPartItemIds([]);
-                    setPartItemsSearch("");
-                    setPartItemsPage(1);
-                    // Refresh table
-                    if (window.refreshExportNotes) {
-                      window.refreshExportNotes();
-                    }
-                  } else {
-                    throw new Error(response.message || "Tạo thất bại");
-                  }
-                } catch (error) {
-                  console.error("Error creating export note:", error);
-                  toast({
-                    title: "Lỗi",
-                    description: error.message || "Không thể tạo phiếu xuất mới",
-                    variant: "destructive"
-                  });
-                } finally {
-                  setCreating(false);
-                }
-              }}
-              disabled={creating}
-            >
-              {creating ? "Đang tạo..." : "Tạo phiếu xuất"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* View Export Slip Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={(open) => {

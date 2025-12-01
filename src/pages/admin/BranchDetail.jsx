@@ -1,19 +1,39 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Building2, MapPin, Phone, Mail, Clock, Users, Hash, Info, Calendar, FileText, Edit, DollarSign, TrendingUp } from "lucide-react";
+import { ArrowLeft, Building2, MapPin, Phone, Mail, Clock, Users, Hash, Info, Calendar, FileText, Edit, DollarSign, TrendingUp, Plus } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getServiceCenterById } from "@/api/serviceCentersApi";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { getServiceCenterById, createServiceCenterSlot } from "@/api/serviceCentersApi";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { CheckCircle, XCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 export default function BranchDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [branchDetail, setBranchDetail] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isCreateSlotOpen, setIsCreateSlotOpen] = useState(false);
+  const [isCreatingSlot, setIsCreatingSlot] = useState(false);
+  const [slotForm, setSlotForm] = useState({
+    date: "",
+    slotTime: "",
+    capacity: 0,
+    isActive: true,
+    note: "",
+  });
 
   // Mock summary stats - có thể lấy từ API sau
   const summaryStats = {
@@ -34,25 +54,100 @@ export default function BranchDetail() {
     }).format(amount);
   };
 
-  useEffect(() => {
-    const fetchBranchDetail = async () => {
-      if (id) {
-        try {
-          setLoading(true);
-          const response = await getServiceCenterById(id);
-          if (response.success && response.data) {
-            setBranchDetail(response.data);
-          }
-        } catch (error) {
-          console.error("Error fetching branch detail:", error);
-        } finally {
-          setLoading(false);
+  const fetchBranchDetail = async () => {
+    if (id) {
+      try {
+        setLoading(true);
+        const response = await getServiceCenterById(id);
+        if (response.success && response.data) {
+          setBranchDetail(response.data);
         }
+      } catch (error) {
+        console.error("Error fetching branch detail:", error);
+      } finally {
+        setLoading(false);
       }
-    };
+    }
+  };
 
+  useEffect(() => {
     fetchBranchDetail();
   }, [id]);
+
+  // Slot time options
+  const SLOT_TIME_OPTIONS = [
+    { value: "H07_08", label: "07:00 - 08:00" },
+    { value: "H08_09", label: "08:00 - 09:00" },
+    { value: "H09_10", label: "09:00 - 10:00" },
+    { value: "H10_11", label: "10:00 - 11:00" },
+    { value: "H13_14", label: "13:00 - 14:00" },
+    { value: "H14_15", label: "14:00 - 15:00" },
+    { value: "H15_16", label: "15:00 - 16:00" },
+    { value: "H16_17", label: "16:00 - 17:00" },
+    { value: "H17_18", label: "17:00 - 18:00" },
+  ];
+
+  // Get day of week from date
+  const getDayOfWeek = (dateString) => {
+    const date = new Date(dateString);
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days[date.getDay()];
+  };
+
+  // Handle create slot
+  const handleCreateSlot = async () => {
+    if (!slotForm.date || !slotForm.slotTime) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng điền đầy đủ thông tin (Ngày và Khung giờ)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsCreatingSlot(true);
+      const dayOfWeek = getDayOfWeek(slotForm.date);
+      
+      const slotData = {
+        date: slotForm.date,
+        dayOfWeek: dayOfWeek,
+        slotTime: slotForm.slotTime,
+        capacity: Number(slotForm.capacity) || 0,
+        isActive: slotForm.isActive,
+        note: slotForm.note || "",
+      };
+
+      await createServiceCenterSlot(id, slotData);
+      
+      toast({
+        title: "Thành công",
+        description: "Tạo slot thành công!",
+      });
+
+      // Reset form
+      setSlotForm({
+        date: "",
+        slotTime: "",
+        capacity: 0,
+        isActive: true,
+        note: "",
+      });
+      setIsCreateSlotOpen(false);
+
+      // Refresh branch detail
+      await fetchBranchDetail();
+    } catch (error) {
+      console.error("Error creating slot:", error);
+      toast({
+        title: "Lỗi",
+        description: error?.response?.data?.message || error?.message || "Không thể tạo slot. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingSlot(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -258,18 +353,26 @@ export default function BranchDetail() {
           )}
 
           {/* Lịch làm việc */}
-          {branchDetail.serviceCenterSlots && branchDetail.serviceCenterSlots.length > 0 && (
-            <Card>
-              <CardHeader>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-primary" />
                   Lịch làm việc
-                  <Badge variant="secondary" className="ml-2">
-                    {branchDetail.serviceCenterSlots.length} slot
-                  </Badge>
+                  {branchDetail.serviceCenterSlots && branchDetail.serviceCenterSlots.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">
+                      {branchDetail.serviceCenterSlots.length} slot
+                    </Badge>
+                  )}
                 </CardTitle>
-              </CardHeader>
-              <CardContent>
+                <Button onClick={() => setIsCreateSlotOpen(true)} size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Tạo slot
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {branchDetail.serviceCenterSlots && branchDetail.serviceCenterSlots.length > 0 ? (
                 <div className="space-y-4">
                   {(() => {
                     const groupedByDate = branchDetail.serviceCenterSlots.reduce((acc, slot) => {
@@ -342,9 +445,124 @@ export default function BranchDetail() {
                     });
                   })()}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Chưa có slot nào. Nhấn nút "Tạo slot" để thêm khung giờ làm việc.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Dialog tạo slot */}
+          <Dialog open={isCreateSlotOpen} onOpenChange={setIsCreateSlotOpen}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Tạo slot mới</DialogTitle>
+                <DialogDescription>
+                  Thêm khung giờ làm việc mới cho chi nhánh này
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                {/* Date */}
+                <div className="space-y-2">
+                  <Label htmlFor="date">Ngày *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !slotForm.date && "text-muted-foreground"
+                        )}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {slotForm.date ? format(new Date(slotForm.date), "dd/MM/yyyy", { locale: vi }) : "Chọn ngày"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={slotForm.date ? new Date(slotForm.date) : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            setSlotForm({ ...slotForm, date: format(date, "yyyy-MM-dd") });
+                          }
+                        }}
+                        disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Slot Time */}
+                <div className="space-y-2">
+                  <Label htmlFor="slotTime">Khung giờ *</Label>
+                  <Select
+                    value={slotForm.slotTime}
+                    onValueChange={(value) => setSlotForm({ ...slotForm, slotTime: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn khung giờ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SLOT_TIME_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Capacity */}
+                <div className="space-y-2">
+                  <Label htmlFor="capacity">Sức chứa</Label>
+                  <Input
+                    id="capacity"
+                    type="number"
+                    min="0"
+                    value={slotForm.capacity}
+                    onChange={(e) => setSlotForm({ ...slotForm, capacity: parseInt(e.target.value) || 0 })}
+                    placeholder="Nhập sức chứa"
+                  />
+                </div>
+
+                {/* Is Active */}
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="isActive"
+                    checked={slotForm.isActive}
+                    onCheckedChange={(checked) => setSlotForm({ ...slotForm, isActive: checked })}
+                  />
+                  <Label htmlFor="isActive" className="font-normal cursor-pointer">
+                    Kích hoạt slot
+                  </Label>
+                </div>
+
+                {/* Note */}
+                <div className="space-y-2">
+                  <Label htmlFor="note">Ghi chú</Label>
+                  <Textarea
+                    id="note"
+                    value={slotForm.note}
+                    onChange={(e) => setSlotForm({ ...slotForm, note: e.target.value })}
+                    placeholder="Nhập ghi chú (tùy chọn)"
+                    rows={3}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsCreateSlotOpen(false)} disabled={isCreatingSlot}>
+                  Hủy
+                </Button>
+                <Button onClick={handleCreateSlot} disabled={isCreatingSlot}>
+                  {isCreatingSlot ? "Đang tạo..." : "Tạo slot"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Sidebar */}

@@ -5,8 +5,8 @@ import { getExportNotes, getExportNotePartItems, getExportStatusByAppointmentAnd
  */
 export const fetchExportNotesService = async (params = {}) => {
   try {
-    const { page = 1, pageSize = 100 } = params;
-    const res = await getExportNotes(page, pageSize);
+    const { page = 1, pageSize = 100, ...rest } = params;
+    const res = await getExportNotes({ page, pageSize, ...rest });
     
     // ✅ Axios interceptor đã unwrap response.data
     // Response structure: { data: { rowDatas: [...] } } hoặc { rowDatas: [...] }

@@ -25,12 +25,17 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { getRmaById, updateRma, updateRmaDetail } from "@/api/rmasApi";
+import { getRmaById, updateRmaDetail } from "@/api/rmasApi";
+import { getParts } from "@/api/partsApi";
 
 const STATUS_META = {
   PENDING: {
@@ -56,15 +61,15 @@ const STATUS_META = {
     panelMuted: "text-sky-600",
   },
   APPROVED: {
-    label: "Đang xử lý",
-    description: "Yêu cầu đang trong quá trình xử lý và theo dõi.",
-    pill: "bg-sky-500/10 text-sky-600 border border-sky-200",
-    gradient: "from-sky-50 via-white to-white",
+    label: "Đã cập nhật hãng",
+    description: "Yêu cầu đã được cập nhật hãng.",
+    pill: "bg-green-500/10 text-green-600 border border-green-200",
+    gradient: "from-green-50 via-white to-white",
     icon: CheckCircle2,
-    panelBorder: "border-sky-200",
-    panelBg: "bg-sky-50/70",
-    panelText: "text-sky-700",
-    panelMuted: "text-sky-600",
+    panelBorder: "border-green-200",
+    panelBg: "bg-green-50/70",
+    panelText: "text-green-700",
+    panelMuted: "text-green-600",
   },
   REJECTED: {
     label: "Đã từ chối",
@@ -90,66 +95,6 @@ const STATUS_META = {
   },
 };
 
-const STATUS_FLOW = [
-  {
-    key: "PENDING",
-    label: "Tiếp nhận yêu cầu",
-    description: "Đơn được tạo bởi nhân viên cửa hàng và chờ xét duyệt.",
-    icon: Clock,
-  },
-  {
-    key: "PROCESSING",
-    label: "Đang xử lý",
-    description: "Yêu cầu đang được xử lý theo quy trình bảo hành.",
-    icon: CheckCircle2,
-  },
-  {
-    key: "REJECTED",
-    label: "Từ chối yêu cầu",
-    description: "Yêu cầu không đạt yêu cầu bảo hành. Xem ghi chú để biết lý do.",
-    icon: XCircle,
-  },
-];
-
-const defaultWarrantyInfo = {
-  request: {
-    code: "",
-    priority: "",
-    status: "",
-    policyName: "",
-    description: "",
-    createdAt: "",
-  },
-  customer: {
-    name: "",
-    phone: "",
-    email: "",
-    address: "",
-  },
-  vehicle: {
-    name: "",
-    vin: "",
-    frameNumber: "",
-    licensePlate: "",
-    engineNumber: "",
-    warrantyStatus: "",
-    warrantyFrom: "",
-    warrantyTo: "",
-  },
-  relatedStaffs: [],
-  part: {
-    code: "",
-    serial: "",
-    name: "",
-    productionDate: "",
-    warrantyStatus: "",
-    policy: "",
-    warrantyFrom: "",
-    warrantyTo: "",
-    condition: "",
-  },
-};
-
 export default function WarrantyDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -158,10 +103,49 @@ export default function WarrantyDetail() {
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [updatingDetailId, setUpdatingDetailId] = useState(null);
   const [rma, setRma] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedDetails, setExpandedDetails] = useState(new Set());
+  const [detailForms, setDetailForms] = useState({}); 
+  // State để quản lý month cho các date picker (key: `${detailId}-${fieldName}`)
+  const [datePickerMonths, setDatePickerMonths] = useState({});
+  const [parts, setParts] = useState([]);
+  const [loadingParts, setLoadingParts] = useState(false);
+
+  // Helper function để generate years
+  const generateYears = () => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 20 }, (_, i) => currentYear - 10 + i);
+  };
+
+  // Helper function để get/set month cho date picker
+  const getDatePickerMonth = (detailId, fieldName, defaultDate = null) => {
+    const key = `${detailId}-${fieldName}`;
+    if (datePickerMonths[key]) {
+      return datePickerMonths[key];
+    }
+    if (defaultDate) {
+      return new Date(defaultDate);
+    }
+    return new Date();
+  };
+
+  const setDatePickerMonth = (detailId, fieldName, month) => {
+    const key = `${detailId}-${fieldName}`;
+    setDatePickerMonths(prev => ({
+      ...prev,
+      [key]: month
+    }));
+  };
+
+  // Chuẩn hóa ngày về nửa đêm UTC để không bị lệch múi giờ khi gửi lên server
+  const toUtcDateISOString = (value) => {
+    if (!value) return null;
+    const dateObj = value instanceof Date ? value : new Date(value);
+    return new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())).toISOString();
+  }; 
 
   const fetchRmaDetail = useCallback(async () => {
     if (!id) return;
@@ -187,6 +171,25 @@ export default function WarrantyDetail() {
   useEffect(() => {
     fetchRmaDetail();
   }, [fetchRmaDetail]);
+
+  // Fetch parts list
+  useEffect(() => {
+    const fetchParts = async () => {
+      try {
+        setLoadingParts(true);
+        const response = await getParts({ page: 1, pageSize: 500, status: "ACTIVE" });
+        const data = response?.data || response;
+        const partsList = data?.rowDatas || data?.data || [];
+        setParts(partsList);
+      } catch (error) {
+        console.error("Error fetching parts:", error);
+        setParts([]);
+      } finally {
+        setLoadingParts(false);
+      }
+    };
+    fetchParts();
+  }, []);
 
   if (loading) {
     return (
@@ -511,24 +514,22 @@ export default function WarrantyDetail() {
         return;
       }
 
-      // Cập nhật status của tất cả rmaDetails sang APPROVED
       const updatePromises = pendingDetails.map((detail) =>
         updateRmaDetail(detail.id, { 
           status: "APPROVED",
-          quantity: detail.quantity,
-          reason: detail.reason,
-          rmaNumber: detail.rmaNumber,
-          releaseDateRMA: detail.releaseDateRMA,
-          expirationDateRMA: detail.expirationDateRMA,
-          inspector: detail.inspector || "",
-          result: detail.result || "",
-          solution: detail.solution || "",
+          // quantity: detail.quantity,
+          // reason: detail.reason,
+          // rmaNumber: detail.rmaNumber,
+          // releaseDateRMA: detail.releaseDateRMA,
+          // expirationDateRMA: detail.expirationDateRMA,
+          // inspector: detail.inspector || "",
+          // result: detail.result || "",
+          // solution: detail.solution || "",
         })
       );
 
       await Promise.all(updatePromises);
 
-      // Fetch lại dữ liệu để đảm bảo có data mới nhất trước khi đóng dialog
       await fetchRmaDetail();
 
       toast({
@@ -545,6 +546,157 @@ export default function WarrantyDetail() {
       });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleApproveDetail = async (detailId, detail) => {
+    if (!detailId || !detail) return;
+    
+    setIsProcessing(true);
+    setUpdatingDetailId(detailId);
+    try {
+      await updateRmaDetail(detailId, { 
+        status: "APPROVED",
+        // quantity: detail.quantity,
+        // reason: detail.reason,
+        // rmaNumber: detail.rmaNumber,
+        // releaseDateRMA: detail.releaseDateRMA,
+        // expirationDateRMA: detail.expirationDateRMA,
+        // inspector: detail.inspector || "",
+        // result: detail.result || "",
+        // solution: detail.solution || "",
+        // evCheckDetailId: detail.evCheckDetailId || detail.evCheckDetail?.id,
+        // rmaId: detail.rmaId || rma?.id,
+      });
+
+      await fetchRmaDetail();
+
+      toast({
+        title: "Thành công",
+        description: "Đã cập nhật hãng thành công",
+      });
+    } catch (error) {
+      console.error("Error approving RMA detail:", error);
+      toast({
+        title: "Lỗi",
+        description: error?.response?.data?.message || "Không thể cập nhật hãng",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+      setUpdatingDetailId(null);
+    }
+  };
+
+  const handleFormChange = (detailId, field, value) => {
+    setDetailForms(prev => {
+      const currentForm = prev[detailId] || {};
+      const updatedForm = {
+        ...currentForm,
+        [field]: value,
+      };
+
+      // Tự động set warantyStartDate từ releaseDateRMA khi releaseDateRMA thay đổi
+      if (field === "releaseDateRMA" && value && !currentForm.replacePartWarrantyStart) {
+        updatedForm.replacePartWarrantyStart = value;
+      }
+
+      // Tự động tính warantyEndDate khi warrantyPeriod hoặc warantyStartDate thay đổi
+      if (field === "replacePartWarrantyPeriod" || field === "replacePartWarrantyStart" || field === "releaseDateRMA") {
+        const warrantyPeriod = updatedForm.replacePartWarrantyPeriod || currentForm.replacePartWarrantyPeriod || 0;
+        const warrantyStart = updatedForm.replacePartWarrantyStart || currentForm.replacePartWarrantyStart || (field === "releaseDateRMA" ? value : null);
+        
+        if (warrantyStart && warrantyPeriod && warrantyPeriod > 0) {
+          const startDate = new Date(warrantyStart);
+          const endDate = new Date(startDate);
+          endDate.setMonth(endDate.getMonth() + parseInt(warrantyPeriod));
+          updatedForm.replacePartWarrantyEnd = toUtcDateISOString(endDate);
+        } else {
+          updatedForm.replacePartWarrantyEnd = null;
+        }
+      }
+
+      return {
+        ...prev,
+        [detailId]: updatedForm,
+      };
+    });
+  };
+
+  const handleSubmitHangInfo = async (detailId, detail) => {
+    if (!detailId || !detail) return;
+    
+    const formData = detailForms[detailId] || {};
+    
+    setIsProcessing(true);
+    setUpdatingDetailId(detailId);
+    try {
+      // Tính toán warantyStartDate từ releaseDateRMA hoặc ngày hiện tại
+      const releaseDate = formData.releaseDateRMA || detail.releaseDateRMA || toUtcDateISOString(new Date());
+      const warrantyStartDate = formData.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || releaseDate;
+      
+      // Tính toán warantyEndDate từ warrantyStartDate + warrantyPeriod
+      let warrantyEndDate = null;
+      const warrantyPeriod = formData.replacePartWarrantyPeriod || detail.replacePart?.warrantyPeriod || 0;
+      if (warrantyStartDate && warrantyPeriod > 0) {
+        const startDate = new Date(warrantyStartDate);
+        const endDate = new Date(startDate);
+        endDate.setMonth(endDate.getMonth() + parseInt(warrantyPeriod));
+        warrantyEndDate = toUtcDateISOString(endDate);
+      } else {
+        warrantyEndDate = formData.replacePartWarrantyEnd || detail.replacePart?.warantyEndDate || null;
+      }
+
+      const payload = {
+        status: "APPROVED", 
+        quantity: detail.quantity,
+        reason: detail.reason,
+        rmaNumber: formData.rmaNumber || detail.rmaNumber || "",
+        releaseDateRMA: formData.releaseDateRMA || detail.releaseDateRMA || null,
+        expirationDateRMA: formData.expirationDateRMA || detail.expirationDateRMA || null,
+        inspector: formData.inspector || detail.inspector || "",
+        result: formData.result || detail.result || "",
+        solution: formData.solution || detail.solution || "",
+        evCheckDetailId: detail.evCheckDetailId || detail.evCheckDetail?.id,
+        rmaId: detail.rmaId || rma?.id,
+        isManufacturerWarranty: true,
+      };
+
+      // Thêm replacePart nếu có partId được chọn
+      if (formData.replacePartId || detail.replacePart?.partId) {
+        payload.replacePart = {
+          partId: formData.replacePartId || detail.replacePart?.partId || null,
+          exportNoteId: null,
+          importNoteId: null,
+          quantity: 0,
+          serialNumber: formData.replacePartSerial || detail.replacePart?.serialNumber || "",
+          price: formData.replacePartPrice ? parseFloat(formData.replacePartPrice) : (detail.replacePart?.price || 0),
+          warrantyPeriod: warrantyPeriod,
+          warantyStartDate: warrantyStartDate,
+          warantyEndDate: warrantyEndDate,
+          serviceCenterInventoryId: null,
+        };
+      }
+
+      await updateRmaDetail(detailId, payload);
+
+      // Fetch lại dữ liệu để đảm bảo có data mới nhất
+      await fetchRmaDetail();
+
+      toast({
+        title: "Thành công",
+        description: "Đã cập nhật thông tin hãng thành công",
+      });
+    } catch (error) {
+      console.error("Error updating hang info:", error);
+      toast({
+        title: "Lỗi",
+        description: error?.response?.data?.message || "Không thể cập nhật thông tin hãng",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+      setUpdatingDetailId(null);
     }
   };
 
@@ -682,6 +834,28 @@ export default function WarrantyDetail() {
                   </span>
                 )}
               </div>
+              {/* Action Buttons */}
+              {rma?.rmaDetails && rma.rmaDetails.some((detail) => detail.status?.toUpperCase() === "PENDING") && (
+                <div className="flex flex-wrap items-center gap-3 mt-4">
+                  <Button
+                    onClick={() => setIsConfirmDialogOpen(true)}
+                    disabled={isProcessing}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md backdrop-blur-sm border-2 border-white/80"
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Duyệt tất cả
+                  </Button>
+                  <Button
+                    onClick={() => setIsRejectDialogOpen(true)}
+                    disabled={isProcessing}
+                    variant="destructive"
+                    className="shadow-md backdrop-blur-sm border-2 border-white/80"
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Từ chối tất cả
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="grid w-full max-w-md grid-cols-2 gap-4">
               <div className="rounded-2xl border-2 border-white/80 bg-white/90 backdrop-blur-sm px-5 py-5 text-foreground shadow-lg hover:shadow-xl transition-shadow">
@@ -968,6 +1142,8 @@ export default function WarrantyDetail() {
                                 case "PROCESSING":
                                 case "IN_PROGRESS":
                                   return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Đang xử lý</Badge>;
+                                case "APPROVED":
+                                  return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Đã cập nhật hãng</Badge>;
                                 case "COMPLETED":
                                 case "ACTIVE":
                                   return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Hoàn thành</Badge>;
@@ -995,7 +1171,7 @@ export default function WarrantyDetail() {
                                   className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 px-6 py-4 cursor-pointer hover:from-primary/10 transition-colors"
                                   onClick={toggleExpand}
                                 >
-                                  <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center justify-between gap-4">
                                     <div className="flex items-center gap-4 flex-1">
                                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); toggleExpand(); }}>
                                         {isExpanded ? (
@@ -1025,6 +1201,30 @@ export default function WarrantyDetail() {
                                         </div>
                                       </div>
                                     </div>
+                                    {detailStatus?.toUpperCase() === "PENDING" && (
+                                      <Button
+                                        variant="default"
+                                        size="sm"
+                                        className="bg-green-600 hover:bg-green-700 text-white"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleApproveDetail(detailId, detail);
+                                        }}
+                                        disabled={isProcessing && updatingDetailId === detailId}
+                                      >
+                                        {isProcessing && updatingDetailId === detailId ? (
+                                          <>
+                                            <Clock className="h-4 w-4 mr-2 animate-spin" />
+                                            Đang xử lý...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                                            Xác nhận
+                                          </>
+                                        )}
+                                      </Button>
+                                    )}
                                   </div>
                                 </div>
                                 
@@ -1080,6 +1280,384 @@ export default function WarrantyDetail() {
                                         )}
                                       </div>
                                     </div>
+
+                                    {/* Form nhập thông tin hãng - chỉ hiển thị khi status là APPROVED */}
+                                    {detailStatus?.toUpperCase() === "APPROVED" && (
+                                      <div className="rounded-lg border-2 border-green-200 bg-green-50/30 shadow-sm overflow-hidden">
+                                        <div className="bg-green-100/50 border-b border-green-200 px-5 py-3">
+                                          <div className="flex items-center gap-2">
+                                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                            <h3 className="text-base font-semibold text-foreground">Phản hồi của hãng</h3>
+                                          </div>
+                                        </div>
+                                        <div className="p-5 space-y-4">
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                              <Label htmlFor={`rmaNumber-${detailId}`}>Số RMA</Label>
+                                              <Input
+                                                id={`rmaNumber-${detailId}`}
+                                                value={detailForms[detailId]?.rmaNumber || detail.rmaNumber || ""}
+                                                onChange={(e) => handleFormChange(detailId, "rmaNumber", e.target.value)}
+                                                placeholder="Nhập số RMA"
+                                              />
+                                            </div>
+                                            <div className="space-y-2">
+                                              <Label htmlFor={`inspector-${detailId}`}>Người kiểm tra</Label>
+                                              <Input
+                                                id={`inspector-${detailId}`}
+                                                value={detailForms[detailId]?.inspector || detail.inspector || ""}
+                                                onChange={(e) => handleFormChange(detailId, "inspector", e.target.value)}
+                                                placeholder="Nhập tên người kiểm tra"
+                                              />
+                                            </div>
+                                            <div className="space-y-2">
+                                              <Label htmlFor={`releaseDate-${detailId}`}>Ngày phát hành RMA</Label>
+                                              <Popover>
+                                                <PopoverTrigger asChild>
+                                                  <Button
+                                                    variant="outline"
+                                                    className={cn(
+                                                      "w-full justify-start text-left font-normal",
+                                                      !(detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA) && "text-muted-foreground"
+                                                    )}
+                                                  >
+                                                    <Calendar className="mr-2 h-4 w-4" />
+                                                    {detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA ? (
+                                                      format(new Date(detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA), "MM/dd/yyyy")
+                                                    ) : (
+                                                      <span>mm/dd/yyyy</span>
+                                                    )}
+                                                  </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0" align="start">
+                                                  <div className="p-3 border-b flex items-center gap-2">
+                                                    <Select
+                                                      value={getDatePickerMonth(detailId, "releaseDateRMA", detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA).getFullYear().toString()}
+                                                      onValueChange={(year) => {
+                                                        const currentMonth = getDatePickerMonth(detailId, "releaseDateRMA", detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA);
+                                                        const newDate = new Date(currentMonth);
+                                                        newDate.setFullYear(parseInt(year));
+                                                        setDatePickerMonth(detailId, "releaseDateRMA", newDate);
+                                                      }}
+                                                    >
+                                                      <SelectTrigger className="w-[100px] h-8">
+                                                        <SelectValue />
+                                                      </SelectTrigger>
+                                                      <SelectContent>
+                                                        {generateYears().map((year) => (
+                                                          <SelectItem key={year} value={year.toString()}>
+                                                            {year}
+                                                          </SelectItem>
+                                                        ))}
+                                                      </SelectContent>
+                                                    </Select>
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      className="h-8"
+                                                      onClick={() => setDatePickerMonth(detailId, "releaseDateRMA", new Date())}
+                                                    >
+                                                      Năm nay
+                                                    </Button>
+                                                  </div>
+                                                  <CalendarComponent
+                                                    mode="single"
+                                                    selected={
+                                                      detailForms[detailId]?.releaseDateRMA 
+                                                        ? new Date(detailForms[detailId].releaseDateRMA)
+                                                  : detail.releaseDateRMA 
+                                                          ? new Date(detail.releaseDateRMA)
+                                                          : undefined
+                                                    }
+                                                    onSelect={(date) => {
+                                                      const dateISO = toUtcDateISOString(date);
+                                                      handleFormChange(detailId, "releaseDateRMA", dateISO);
+                                                    }}
+                                                    month={getDatePickerMonth(detailId, "releaseDateRMA", detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA)}
+                                                    onMonthChange={(month) => setDatePickerMonth(detailId, "releaseDateRMA", month)}
+                                                    initialFocus
+                                                  />
+                                                </PopoverContent>
+                                              </Popover>
+                                            </div>
+                                            <div className="space-y-2">
+                                              <Label htmlFor={`expirationDate-${detailId}`}>Ngày hết hạn RMA</Label>
+                                              <Popover>
+                                                <PopoverTrigger asChild>
+                                                  <Button
+                                                    variant="outline"
+                                                    className={cn(
+                                                      "w-full justify-start text-left font-normal",
+                                                      !(detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA) && "text-muted-foreground"
+                                                    )}
+                                                  >
+                                                    <Calendar className="mr-2 h-4 w-4" />
+                                                    {detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA ? (
+                                                      format(new Date(detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA), "MM/dd/yyyy")
+                                                    ) : (
+                                                      <span>mm/dd/yyyy</span>
+                                                    )}
+                                                  </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0" align="start">
+                                                  <div className="p-3 border-b flex items-center gap-2">
+                                                    <Select
+                                                      value={getDatePickerMonth(detailId, "expirationDateRMA", detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA).getFullYear().toString()}
+                                                      onValueChange={(year) => {
+                                                        const currentMonth = getDatePickerMonth(detailId, "expirationDateRMA", detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA);
+                                                        const newDate = new Date(currentMonth);
+                                                        newDate.setFullYear(parseInt(year));
+                                                        setDatePickerMonth(detailId, "expirationDateRMA", newDate);
+                                                      }}
+                                                    >
+                                                      <SelectTrigger className="w-[100px] h-8">
+                                                        <SelectValue />
+                                                      </SelectTrigger>
+                                                      <SelectContent>
+                                                        {generateYears().map((year) => (
+                                                          <SelectItem key={year} value={year.toString()}>
+                                                            {year}
+                                                          </SelectItem>
+                                                        ))}
+                                                      </SelectContent>
+                                                    </Select>
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      className="h-8"
+                                                      onClick={() => setDatePickerMonth(detailId, "expirationDateRMA", new Date())}
+                                                    >
+                                                      Năm nay
+                                                    </Button>
+                                                  </div>
+                                                  <CalendarComponent
+                                                    mode="single"
+                                                    selected={
+                                                      detailForms[detailId]?.expirationDateRMA 
+                                                        ? new Date(detailForms[detailId].expirationDateRMA)
+                                                  : detail.expirationDateRMA 
+                                                          ? new Date(detail.expirationDateRMA)
+                                                          : undefined
+                                                    }
+                                                    onSelect={(date) => {
+                                                      const dateISO = toUtcDateISOString(date);
+                                                      handleFormChange(detailId, "expirationDateRMA", dateISO);
+                                                    }}
+                                                    month={getDatePickerMonth(detailId, "expirationDateRMA", detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA)}
+                                                    onMonthChange={(month) => setDatePickerMonth(detailId, "expirationDateRMA", month)}
+                                                    initialFocus
+                                                  />
+                                                </PopoverContent>
+                                              </Popover>
+                                            </div>
+                                          </div>
+                                          
+                                          <div className="space-y-2">
+                                            <Label htmlFor={`result-${detailId}`}>Kết quả kiểm tra</Label>
+                                            <Textarea
+                                              id={`result-${detailId}`}
+                                              value={detailForms[detailId]?.result || detail.result || ""}
+                                              onChange={(e) => handleFormChange(detailId, "result", e.target.value)}
+                                              placeholder="Nhập kết quả kiểm tra từ hãng"
+                                              rows={3}
+                                            />
+                                          </div>
+
+                                          <div className="space-y-2">
+                                            <Label htmlFor={`solution-${detailId}`}>Giải pháp</Label>
+                                            <Textarea
+                                              id={`solution-${detailId}`}
+                                              value={
+                                                detailForms[detailId]?.solution !== undefined 
+                                                  ? detailForms[detailId].solution 
+                                                  : (detail.solution && detail.solution !== "CHECK" ? detail.solution : "")
+                                              }
+                                              onChange={(e) => handleFormChange(detailId, "solution", e.target.value)}
+                                              placeholder="Nhập giải pháp từ hãng (thay thế, sửa chữa, v.v.)"
+                                              rows={3}
+                                            />
+                                          </div>
+
+                                          {/* Form nhập thông tin phụ tùng thay thế */}
+                                          <div className="rounded-lg border-2 border-teal-200 bg-teal-50/30 shadow-sm overflow-hidden mt-4">
+                                            <div className="bg-teal-100/50 border-b border-teal-200 px-5 py-3">
+                                              <div className="flex items-center gap-2">
+                                                <Package className="h-5 w-5 text-teal-600" />
+                                                <h3 className="text-base font-semibold text-foreground">Bộ phận thay thế (Tùy chọn)</h3>
+                                              </div>
+                                            </div>
+                                            <div className="p-5 space-y-4">
+                                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                  <Label htmlFor={`replacePartId-${detailId}`}>Phụ tùng</Label>
+                                                  <Select
+                                                    value={
+                                                      detailForms[detailId]?.replacePartId || detail.replacePart?.partId || undefined
+                                                    }
+                                                    onValueChange={(value) => {
+                                                      handleFormChange(detailId, "replacePartId", value);
+                                                    }}
+                                                    disabled={loadingParts}
+                                                  >
+                                                    <SelectTrigger>
+                                                      <SelectValue placeholder={loadingParts ? "Đang tải..." : "Chọn phụ tùng (tùy chọn)"} />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                      {parts.map((part) => (
+                                                        <SelectItem key={part.id} value={part.id}>
+                                                        {part.name}
+                                                        </SelectItem>
+                                                      ))}
+                                                    </SelectContent>
+                                                  </Select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                  <Label htmlFor={`replacePartSerial-${detailId}`}>Số serial</Label>
+                                                  <Input
+                                                    id={`replacePartSerial-${detailId}`}
+                                                    value={detailForms[detailId]?.replacePartSerial || detail.replacePart?.serialNumber || ""}
+                                                    onChange={(e) => handleFormChange(detailId, "replacePartSerial", e.target.value)}
+                                                    placeholder="Nhập số serial (VD: PIN-2025-L01-000123)"
+                                                  />
+                                                </div>
+                                                <div className="space-y-2">
+                                                  <Label htmlFor={`replacePartWarrantyPeriod-${detailId}`}>Thời hạn bảo hành (tháng)</Label>
+                                                  <Input
+                                                    id={`replacePartWarrantyPeriod-${detailId}`}
+                                                    type="number"
+                                                    min="0"
+                                                    value={detailForms[detailId]?.replacePartWarrantyPeriod || detail.replacePart?.warrantyPeriod || ""}
+                                                    onChange={(e) => handleFormChange(detailId, "replacePartWarrantyPeriod", e.target.value ? parseInt(e.target.value) : 0)}
+                                                    placeholder="Nhập số tháng (VD: 12)"
+                                                  />
+                                                </div>
+                                                <div className="space-y-2">
+                                                  <Label htmlFor={`replacePartWarrantyStart-${detailId}`}>Ngày bắt đầu BH</Label>
+                                                  <Popover>
+                                                    <PopoverTrigger asChild>
+                                                      <Button
+                                                        variant="outline"
+                                                        className={cn(
+                                                          "w-full justify-start text-left font-normal",
+                                                          !(detailForms[detailId]?.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA) && "text-muted-foreground"
+                                                        )}
+                                                      >
+                                                        <Calendar className="mr-2 h-4 w-4" />
+                                                        {detailForms[detailId]?.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA ? (
+                                                          format(new Date(detailForms[detailId]?.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA), "MM/dd/yyyy")
+                                                        ) : (
+                                                          <span>mm/dd/yyyy</span>
+                                                        )}
+                                                      </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0" align="start">
+                                                      <div className="p-3 border-b flex items-center gap-2">
+                                                        <Select
+                                                          value={getDatePickerMonth(detailId, "replacePartWarrantyStart", detailForms[detailId]?.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA).getFullYear().toString()}
+                                                          onValueChange={(year) => {
+                                                            const currentMonth = getDatePickerMonth(detailId, "replacePartWarrantyStart", detailForms[detailId]?.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA);
+                                                            const newDate = new Date(currentMonth);
+                                                            newDate.setFullYear(parseInt(year));
+                                                            setDatePickerMonth(detailId, "replacePartWarrantyStart", newDate);
+                                                          }}
+                                                        >
+                                                          <SelectTrigger className="w-[100px] h-8">
+                                                            <SelectValue />
+                                                          </SelectTrigger>
+                                                          <SelectContent>
+                                                            {generateYears().map((year) => (
+                                                              <SelectItem key={year} value={year.toString()}>
+                                                                {year}
+                                                              </SelectItem>
+                                                            ))}
+                                                          </SelectContent>
+                                                        </Select>
+                                                        <Button
+                                                          variant="ghost"
+                                                          size="sm"
+                                                          className="h-8"
+                                                          onClick={() => setDatePickerMonth(detailId, "replacePartWarrantyStart", new Date())}
+                                                        >
+                                                          Năm nay
+                                                        </Button>
+                                                      </div>
+                                                      <CalendarComponent
+                                                        mode="single"
+                                                        selected={
+                                                          detailForms[detailId]?.replacePartWarrantyStart 
+                                                            ? new Date(detailForms[detailId].replacePartWarrantyStart)
+                                                            : detail.replacePart?.warantyStartDate 
+                                                              ? new Date(detail.replacePart.warantyStartDate)
+                                                              : detailForms[detailId]?.releaseDateRMA
+                                                                ? new Date(detailForms[detailId].releaseDateRMA)
+                                                                : detail.releaseDateRMA
+                                                                  ? new Date(detail.releaseDateRMA)
+                                                                  : undefined
+                                                        }
+                                                        onSelect={(date) => {
+                                                          const dateISO = toUtcDateISOString(date);
+                                                          handleFormChange(detailId, "replacePartWarrantyStart", dateISO);
+                                                        }}
+                                                        month={getDatePickerMonth(detailId, "replacePartWarrantyStart", detailForms[detailId]?.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA)}
+                                                        onMonthChange={(month) => setDatePickerMonth(detailId, "replacePartWarrantyStart", month)}
+                                                        initialFocus
+                                                      />
+                                                    </PopoverContent>
+                                                  </Popover>
+                                                </div>
+                                                <div className="space-y-2">
+                                                  <Label htmlFor={`replacePartWarrantyEnd-${detailId}`}>Ngày kết thúc BH (Tự động)</Label>
+                                                  <Input
+                                                    id={`replacePartWarrantyEnd-${detailId}`}
+                                                    readOnly
+                                                    value={
+                                                      detailForms[detailId]?.replacePartWarrantyEnd || detail.replacePart?.warantyEndDate
+                                                        ? format(new Date(detailForms[detailId]?.replacePartWarrantyEnd || detail.replacePart.warantyEndDate), "MM/dd/yyyy")
+                                                        : ""
+                                                    }
+                                                    placeholder="Tự động tính từ ngày bắt đầu + số tháng"
+                                                    className="bg-muted"
+                                                  />
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                          <div className="flex justify-end gap-2 pt-2">
+                                            <Button
+                                              variant="outline"
+                                              onClick={() => {
+                                                setDetailForms(prev => {
+                                                  const newForms = { ...prev };
+                                                  delete newForms[detailId];
+                                                  return newForms;
+                                                });
+                                              }}
+                                              disabled={isProcessing && updatingDetailId === detailId}
+                                            >
+                                              Hủy
+                                            </Button>
+                                            <Button
+                                              onClick={() => handleSubmitHangInfo(detailId, detail)}
+                                              disabled={isProcessing && updatingDetailId === detailId}
+                                              className="bg-green-600 hover:bg-green-700"
+                                            >
+                                              {isProcessing && updatingDetailId === detailId ? (
+                                                <>
+                                                  <Clock className="h-4 w-4 mr-2 animate-spin" />
+                                                  Đang lưu...
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                                                  Lưu thông tin
+                                                </>
+                                              )}
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
 
                                     {/* EvCheckDetail */}
                                     {evCheckDetail && (

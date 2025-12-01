@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Package, Calendar as CalendarIcon, Clock, DollarSign, Wrench, Tag, FileText, Hash, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,14 +17,18 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function CreateServicePackage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [partTypes, setPartTypes] = useState([]);
   const [loadingPartTypes, setLoadingPartTypes] = useState(false);
   const [errors, setErrors] = useState({});
 
+  // Get partTypeId from navigation state
+  const { partTypeId: preSelectedPartTypeId, partTypeName: preSelectedPartTypeName } = location.state || {};
+
   const [form, setForm] = useState({
-    partTypeId: "",
+    partTypeId: preSelectedPartTypeId || "",
     code: "",
     remedies: "REPAIR",
     name: "",

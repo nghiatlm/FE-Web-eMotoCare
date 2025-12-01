@@ -1,30 +1,36 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Plus, MapPin, Building2, FileDown, Eye, Edit, Loader2, CheckSquare, Square } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Search, Plus, MapPin, Building2, FileDown, Edit, Loader2, CheckSquare, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import ImportSlipsTable from "@/components/ImportSlipsTable";
 import { getImportNoteById, updateImportNote, createImportNote } from "@/api/importNotesApi";
-import { getPartItems, getPartItemsByServiceCenter } from "@/api/partitemsApi";
+import { getPartItemsByServiceCenter } from "@/api/partitemsApi";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/contexts/AuthContext";
+import { getStaffByAccountId } from "@/api/staffsApi";
+import { getServiceCenterById } from "@/api/serviceCentersApi";
 
 export default function ImportSlipsPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedSlip, setSelectedSlip] = useState(null);
-  const [importNoteDetail, setImportNoteDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [branchInfo, setBranchInfo] = useState(null);
+  const [branchLoading, setBranchLoading] = useState(false);
+  const [serviceCenterId, setServiceCenterId] = useState(null);
+  const [staffId, setStaffId] = useState("");
 
   // Edit form state
   const [editFormData, setEditFormData] = useState({
@@ -35,20 +41,18 @@ export default function ImportSlipsPage() {
     type: "SUPPLIER",
     totalAmout: 0,
     importById: "",
-    serviceCenterId: "",
-    importNoteStatus: "PENDING"
+    serviceCenterId: ""
   });
 
   // Create form state
   const [createFormData, setCreateFormData] = useState({
-    importFrom: "Bảo Trân",
-    supplier: "Bảo Trân",
+    importFrom: "",
+    supplier: "",
     type: "SUPPLIER",
     totalQuantity: 0,
     totalAmout: 0,
-    importById: "a7797a1f-c9d9-4b6b-a06f-d26bdc54e917",
-    serviceCenterId: "a805546d-b31d-11f0-9e95-c4efbb30f085",
-    importNoteStatus: "PENDING",
+    importById: "",
+    serviceCenterId: "",
     partItemId: [],
     note: ""
   });
@@ -58,10 +62,111 @@ export default function ImportSlipsPage() {
   const [loadingPartItems, setLoadingPartItems] = useState(false);
   const [selectedPartItemIds, setSelectedPartItemIds] = useState([]);
   const [partItemsTotal, setPartItemsTotal] = useState(0);
-  
-  // Hardcoded IDs (user sẽ set cứng)
-  const [importById] = useState("a7797a1f-c9d9-4b6b-a06f-d26bdc54e917"); // staffId
-  const [serviceCenterId] = useState("a805546d-b31d-11f0-9e95-c4efbb30f085"); // serviceCenterId
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchBranchInfo = async () => {
+      if (!user?.accountResponse?.id) {
+        if (isMounted) {
+          setBranchInfo(null);
+          setServiceCenterId(null);
+          setStaffId("");
+        }
+        return;
+      }
+
+      try {
+        setBranchLoading(true);
+        const response = await getStaffByAccountId(user.accountResponse.id, { pageSize: 1 });
+        const payload =
+          response?.data?.rowDatas ||
+          response?.data?.data ||
+          response?.data ||
+          response?.rowDatas ||
+          response;
+        const staff = Array.isArray(payload) ? payload[0] : payload;
+
+        if (!staff) {
+          if (isMounted) {
+            setBranchInfo(null);
+            setServiceCenterId(null);
+            setStaffId("");
+          }
+          return;
+        }
+
+        const staffIdentifier = staff.id || staff.staffId || staff.accountId || "";
+        if (isMounted) {
+          setStaffId(staffIdentifier);
+        }
+
+        let serviceCenter = staff.serviceCenter || null;
+        const resolvedServiceCenterId = staff.serviceCenterId || serviceCenter?.id || null;
+
+        if (!serviceCenter && resolvedServiceCenterId) {
+          try {
+            const centerRes = await getServiceCenterById(resolvedServiceCenterId);
+            serviceCenter = centerRes?.data || centerRes;
+          } catch (error) {
+            console.error("Error fetching service center info:", error);
+          }
+        }
+
+        if (isMounted) {
+          setServiceCenterId(serviceCenter?.id || resolvedServiceCenterId || null);
+          const managerName =
+            serviceCenter?.managerName ||
+            [staff.firstName, staff.lastName].filter(Boolean).join(" ").trim() ||
+            staff.managerName ||
+            staff.fullName ||
+            "—";
+
+          setBranchInfo({
+            id: serviceCenter?.code || serviceCenter?.id || resolvedServiceCenterId || "—",
+            name: serviceCenter?.name || serviceCenter?.code || staff.serviceCenterName || "Chi nhánh của tôi",
+            address: serviceCenter?.address || staff.serviceCenterAddress || "Chưa có địa chỉ",
+            manager: managerName,
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching branch info:", error);
+        if (isMounted) {
+          setBranchInfo(null);
+          setServiceCenterId(null);
+          setStaffId("");
+        }
+      } finally {
+        if (isMounted) {
+          setBranchLoading(false);
+        }
+      }
+    };
+
+    fetchBranchInfo();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (staffId) {
+      setCreateFormData((prev) => ({
+        ...prev,
+        importById: staffId,
+      }));
+    }
+  }, [staffId]);
+
+  useEffect(() => {
+    if (serviceCenterId) {
+      setCreateFormData((prev) => ({
+        ...prev,
+        serviceCenterId,
+      }));
+    }
+  }, [serviceCenterId]);
 
   // Fetch part items
   const fetchPartItems = useCallback(async () => {
@@ -162,26 +267,6 @@ export default function ImportSlipsPage() {
 
   // Setup window functions for table interactions
   useEffect(() => {
-    window.openViewImportSlip = async (slip) => {
-      setSelectedSlip(slip);
-      setIsViewDialogOpen(true);
-      
-      // Fetch detail from API using the UUID from rawData
-      if (slip?.rawData?.id) {
-        try {
-          setLoadingDetail(true);
-          const response = await getImportNoteById(slip.rawData.id);
-          if (response.success && response.data) {
-            setImportNoteDetail(response.data);
-          }
-        } catch (error) {
-          setImportNoteDetail(null);
-        } finally {
-          setLoadingDetail(false);
-        }
-      }
-    };
-
     window.openEditImportSlip = async (slip) => {
       setSelectedSlip(slip);
       setIsEditDialogOpen(true);
@@ -193,7 +278,6 @@ export default function ImportSlipsPage() {
           const response = await getImportNoteById(slip.rawData.id);
           if (response.success && response.data) {
             const data = response.data;
-            setImportNoteDetail(data);
             // Populate form
             setEditFormData({
               code: data.code || "",
@@ -203,8 +287,7 @@ export default function ImportSlipsPage() {
               type: data.type || "SUPPLIER",
               totalAmout: data.totalAmout || 0,
               importById: typeof data.importBy === 'object' ? data.importBy?.id || "" : "",
-              serviceCenterId: typeof data.serviceCenter === 'object' ? data.serviceCenter?.id || "" : "",
-              importNoteStatus: data.importNoteStatus || data.status || "PENDING"
+              serviceCenterId: typeof data.serviceCenter === 'object' ? data.serviceCenter?.id || "" : ""
             });
           }
         } catch (error) {
@@ -220,7 +303,6 @@ export default function ImportSlipsPage() {
     };
 
     return () => {
-      delete window.openViewImportSlip;
       delete window.openEditImportSlip;
     };
   }, [toast]);
@@ -237,26 +319,41 @@ export default function ImportSlipsPage() {
           
           {/* Chi nhánh hiện tại */}
           <div className="p-4 bg-card rounded-lg border border-border">
-            <div className="flex items-center justify-between">
-              <div className="flex items-start gap-3">
-                <Building2 className="h-5 w-5 text-primary mt-1" />
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-foreground">{currentBranch.name}</span>
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
-                      Chi nhánh của tôi
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <MapPin className="h-3 w-3" />
-                    <span>{currentBranch.address}</span>
-                  </div>
-                  <div className="text-sm text-muted-foreground mt-1">
-                    Quản lý: <span className="font-medium text-foreground">{currentBranch.manager}</span>
+            {branchLoading ? (
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+                <div className="space-y-2 w-full">
+                  <div className="h-4 bg-muted rounded animate-pulse w-1/3" />
+                  <div className="h-3 bg-muted rounded animate-pulse w-1/2" />
+                  <div className="h-3 bg-muted rounded animate-pulse w-1/4" />
+                </div>
+              </div>
+            ) : branchInfo ? (
+              <div className="flex items-center justify-between gap-6 flex-wrap">
+                <div className="flex items-start gap-3">
+                  <Building2 className="h-5 w-5 text-primary mt-1" />
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold text-foreground">{branchInfo.name}</span>
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                        Chi nhánh của tôi
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <MapPin className="h-3 w-3" />
+                      <span>{branchInfo.address}</span>
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      Quản lý: <span className="font-medium text-foreground">{branchInfo.manager}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                Không tìm thấy thông tin chi nhánh. Vui lòng kiểm tra lại tài khoản của bạn.
+              </div>
+            )}
           </div>
         </div>
 
@@ -272,36 +369,10 @@ export default function ImportSlipsPage() {
               />
             </div>
 
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Trạng thái" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="completed">Hoàn thành</SelectItem>
-                <SelectItem value="pending">Đang chờ</SelectItem>
-                <SelectItem value="cancelled">Đã hủy</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {(status || search) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setStatus("");
-                  setSearch("");
-                }}
-                className="text-primary hover:text-primary/90"
-              >
-                Clear Filters
-              </Button>
-            )}
-
             <div className="flex items-center gap-3 ml-auto">
-              <Button 
+              <Button
                 className="gap-2 bg-primary hover:bg-primary/90"
-                onClick={() => setIsCreateDialogOpen(true)}
+                onClick={() => navigate("/storekeeper/import-slips/create")}
               >
                 <Plus className="h-4 w-4" />
                 Tạo phiếu nhập mới
@@ -310,162 +381,8 @@ export default function ImportSlipsPage() {
           </div>
         </div>
 
-        <ImportSlipsTable search={search} status={status} />
+        <ImportSlipsTable search={search} />
       </div>
-
-      {/* View Import Slip Dialog */}
-      <Dialog open={isViewDialogOpen} onOpenChange={(open) => {
-        setIsViewDialogOpen(open);
-        if (!open) {
-          setSelectedSlip(null);
-          setImportNoteDetail(null);
-        }
-      }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl flex items-center gap-2">
-              <Eye className="h-6 w-6 text-primary" />
-              Chi tiết phiếu nhập
-            </DialogTitle>
-          </DialogHeader>
-
-          {loadingDetail ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-                <p className="text-muted-foreground text-sm">Đang tải chi tiết phiếu nhập...</p>
-              </div>
-            </div>
-          ) : importNoteDetail ? (
-            <div className="space-y-6 py-4">
-              {/* Header Info */}
-              <div className="grid grid-cols-2 gap-4 p-4 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/20">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Mã phiếu</p>
-                  <p className="font-semibold text-foreground">{importNoteDetail.code || "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Loại</p>
-                  <p className="font-semibold text-foreground">{importNoteDetail.type || "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Nhà cung cấp</p>
-                  <p className="font-semibold text-foreground">{importNoteDetail.supplier || importNoteDetail.importFrom || "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Ngày nhập</p>
-                  <p className="font-semibold text-foreground">
-                    {importNoteDetail.importDate 
-                      ? new Date(importNoteDetail.importDate).toLocaleString('vi-VN') 
-                      : "N/A"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Import By & Service Center */}
-              {(importNoteDetail.importBy || importNoteDetail.serviceCenter) && (
-                <div className="grid grid-cols-2 gap-4">
-                  {importNoteDetail.importBy && (
-                    <div className="p-4 bg-card rounded-lg border border-border">
-                      <p className="text-sm font-semibold text-foreground mb-3">Người nhập</p>
-                      <div className="space-y-2">
-                        {typeof importNoteDetail.importBy === 'object' ? (
-                          <>
-                            <p className="text-sm">
-                              <span className="text-muted-foreground">Tên:</span>{" "}
-                              {importNoteDetail.importBy.firstName} {importNoteDetail.importBy.lastName}
-                            </p>
-                            <p className="text-sm">
-                              <span className="text-muted-foreground">Chức vụ:</span>{" "}
-                              {importNoteDetail.importBy.position || "N/A"}
-                            </p>
-                            <p className="text-sm">
-                              <span className="text-muted-foreground">Mã nhân viên:</span>{" "}
-                              {importNoteDetail.importBy.staffCode || "N/A"}
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-sm">{importNoteDetail.importBy}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {importNoteDetail.serviceCenter && (
-                    <div className="p-4 bg-card rounded-lg border border-border">
-                      <p className="text-sm font-semibold text-foreground mb-3">Trung tâm dịch vụ</p>
-                      <div className="space-y-2">
-                        {typeof importNoteDetail.serviceCenter === 'object' ? (
-                          <>
-                            <p className="text-sm">
-                              <span className="text-muted-foreground">Tên:</span>{" "}
-                              {importNoteDetail.serviceCenter.name || "N/A"}
-                            </p>
-                            <p className="text-sm">
-                              <span className="text-muted-foreground">Mã:</span>{" "}
-                              {importNoteDetail.serviceCenter.code || "N/A"}
-                            </p>
-                            <p className="text-sm">
-                              <span className="text-muted-foreground">Địa chỉ:</span>{" "}
-                              {importNoteDetail.serviceCenter.address || "N/A"}
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-sm">{importNoteDetail.serviceCenter}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Summary */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-card rounded-lg border border-border">
-                  <p className="text-sm text-muted-foreground mb-1">Tổng giá trị</p>
-                  <p className="text-2xl font-bold text-primary">
-                    {importNoteDetail.totalAmout?.toLocaleString('vi-VN') || "0"}đ
-                  </p>
-                </div>
-                <div className="p-4 bg-card rounded-lg border border-border">
-                  <p className="text-sm text-muted-foreground mb-1">Nguồn nhập</p>
-                  <p className="text-lg font-semibold text-foreground">
-                    {importNoteDetail.importFrom || "N/A"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Additional Info */}
-              <div className="p-4 bg-muted/30 rounded-lg border border-border">
-                <p className="text-sm font-semibold text-foreground mb-2">Thông tin bổ sung</p>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">ID:</span>{" "}
-                    <span className="font-medium">{importNoteDetail.id || "N/A"}</span>
-                  </div>
-                  {importNoteDetail.note && (
-                    <div className="col-span-2">
-                      <span className="text-muted-foreground">Ghi chú:</span>{" "}
-                      <span className="font-medium">{importNoteDetail.note}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-muted-foreground text-sm">
-                Không thể tải chi tiết phiếu nhập
-              </p>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
-              Đóng
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Edit Import Slip Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
@@ -481,8 +398,7 @@ export default function ImportSlipsPage() {
             type: "SUPPLIER",
             totalAmout: 0,
             importById: "",
-            serviceCenterId: "",
-            importNoteStatus: "PENDING"
+            serviceCenterId: ""
           });
         }
       }}>
@@ -594,22 +510,6 @@ export default function ImportSlipsPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="importNoteStatus">Trạng thái *</Label>
-                <Select
-                  value={editFormData.importNoteStatus}
-                  onValueChange={(value) => setEditFormData({ ...editFormData, importNoteStatus: value })}
-                >
-                  <SelectTrigger id="importNoteStatus">
-                    <SelectValue placeholder="Chọn trạng thái" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="PENDING">PENDING</SelectItem>
-                    <SelectItem value="COMPLETED">COMPLETED</SelectItem>
-                    <SelectItem value="CANCELLED">CANCELLED</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
           )}
 
@@ -650,11 +550,10 @@ export default function ImportSlipsPage() {
                   const updateData = {
                     code: editFormData.code,
                     importDate: importDateISO,
-                    importFrom: editFormData.importFrom,
-                    supplier: editFormData.supplier,
+                    importFrom: editFormData.importFrom?.trim() || "Chưa xác định",
+                    supplier: editFormData.supplier?.trim() || "Chưa xác định",
                     type: editFormData.type,
-                    totalAmout: editFormData.totalAmout,
-                    importNoteStatus: editFormData.importNoteStatus
+                    totalAmout: editFormData.totalAmout
                   };
 
                   // Only include optional fields if they have values
@@ -709,9 +608,10 @@ export default function ImportSlipsPage() {
             type: "SUPPLIER",
             totalQuantity: 0,
             totalAmout: 0,
-            importById: "",
-            serviceCenterId: "",
-            partItemId: []
+          importById: staffId || "",
+          serviceCenterId: serviceCenterId || "",
+            partItemId: [],
+            note: ""
           });
           setSelectedPartItemIds([]);
         }
@@ -725,25 +625,20 @@ export default function ImportSlipsPage() {
           </DialogHeader>
 
           <div className="space-y-4 py-4 max-h-[80vh] overflow-y-auto">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="create-importFrom" className="text-sm font-semibold">Nguồn nhập *</Label>
-                <Input
-                  id="create-importFrom"
-                  value={createFormData.importFrom}
-                  onChange={(e) => setCreateFormData({ ...createFormData, importFrom: e.target.value })}
-                  placeholder="Nhập nguồn nhập"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="create-supplier" className="text-sm font-semibold">Nhà cung cấp *</Label>
-                <Input
-                  id="create-supplier"
-                  value={createFormData.supplier}
-                  onChange={(e) => setCreateFormData({ ...createFormData, supplier: e.target.value })}
-                  placeholder="Nhập nhà cung cấp"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-type" className="text-sm font-semibold">Loại phiếu *</Label>
+              <Select
+                value={createFormData.type}
+                onValueChange={(value) => setCreateFormData({ ...createFormData, type: value })}
+              >
+                <SelectTrigger id="create-type">
+                  <SelectValue placeholder="Chọn loại phiếu" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SUPPLIER">SUPPLIER - Nhập hàng</SelectItem>
+                  <SelectItem value="TRANSFER_IN">TRANSFER_IN - Nhận điều chuyển</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -907,16 +802,6 @@ export default function ImportSlipsPage() {
             </Button>
             <Button
               onClick={async () => {
-                // Validate required fields
-                if (!createFormData.importFrom || !createFormData.supplier) {
-                  toast({
-                    title: "Lỗi",
-                    description: "Vui lòng điền đầy đủ các trường bắt buộc (Nguồn nhập, Nhà cung cấp)",
-                    variant: "destructive"
-                  });
-                  return;
-                }
-
                 // Validate part items
                 if (!createFormData.partItemId || createFormData.partItemId.length === 0) {
                   toast({
@@ -939,16 +824,22 @@ export default function ImportSlipsPage() {
                     return sum + ((item.price || 0) * (item.quantity || 1));
                   }, 0);
                   
+                  const importFromValue = createFormData.importFrom?.trim() || "Chưa xác định";
+                  const supplierValue = createFormData.supplier?.trim() || "Chưa xác định";
+
                   const createData = {
-                    importFrom: createFormData.importFrom,
-                    supplier: createFormData.supplier,
+                    importFrom: importFromValue,
+                    supplier: supplierValue,
                     type: createFormData.type,
                     totalQuantity: calculatedTotalQuantity,
                     totalAmout: calculatedTotalAmount,
                     partItemId: selectedPartItemIds,
-                    importById: createFormData.importById,
-                    serviceCenterId: createFormData.serviceCenterId,
+                    importById: createFormData.importById || staffId || "",
+                    serviceCenterId: createFormData.serviceCenterId || serviceCenterId || "",
                   };
+                  if (createFormData.note?.trim()) {
+                    createData.note = createFormData.note.trim();
+                  }
 
                   const response = await createImportNote(createData);
                   
@@ -965,7 +856,10 @@ export default function ImportSlipsPage() {
                       type: "SUPPLIER",
                       totalQuantity: 0,
                       totalAmout: 0,
-                      partItemId: []
+                      importById: staffId || "",
+                      serviceCenterId: serviceCenterId || "",
+                      partItemId: [],
+                      note: ""
                     });
                     setSelectedPartItemIds([]);
                     // Refresh table
