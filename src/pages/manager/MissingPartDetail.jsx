@@ -31,6 +31,8 @@ const statusClassMap = {
   COMPLETED: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-300 dark:border-green-700",
   CANCELLED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-300 dark:border-red-700",
   OUT_OF_STOCK: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-300 dark:border-red-700",
+  STOCK_FOUND: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-300 dark:border-green-700",
+  STOCK_NOT_FOUND: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-300 dark:border-red-700",
 };
 
 const statusLabelMap = {
@@ -40,6 +42,8 @@ const statusLabelMap = {
   COMPLETED: "Hoàn thành",
   CANCELLED: "Đã hủy",
   OUT_OF_STOCK: "Hết hàng",
+  STOCK_FOUND: "Đã tìm thấy hàng",
+  STOCK_NOT_FOUND: "Không tìm thấy hàng",
 };
 
 const getStatusBadgeClass = (status) => statusClassMap[status] || "bg-muted text-muted-foreground border-border";
@@ -218,32 +222,32 @@ export default function MissingPartDetail() {
 
     try {
       setUpdatingStatus((prev) => ({ ...prev, [detailId]: true }));
-      
+
       const updateData = {
-        partItemId: null,
-        status: "STOCK_FOUND"
+        status: "STOCK_FOUND",
       };
 
       const response = await updateExportNoteDetail(detailId, updateData);
-      
+
       if (response?.success || response?.statusCode === 200) {
         toast({
           title: "Thành công",
           description: "Đã cập nhật trạng thái phụ tùng thành công.",
         });
-        
-        // Refresh lại data
-        const fetchDetail = async () => {
-          try {
-            const response = await getExportNoteOutOfStockById(id);
-            if (response.success && response.data) {
-              setExportNote(response.data);
-            }
-          } catch (error) {
-            console.error("Error refreshing export note:", error);
-          }
-        };
-        fetchDetail();
+
+        // Cập nhật lại trạng thái trong state hiện tại
+        setExportNote((prev) => {
+          if (!prev) return prev;
+
+          const updatedDetails = (prev.exportNoteDetails || []).map((detail) =>
+            detail.id === detailId ? { ...detail, status: "STOCK_FOUND" } : detail
+          );
+
+          return {
+            ...prev,
+            exportNoteDetails: updatedDetails,
+          };
+        });
       } else {
         throw new Error(response?.message || "Cập nhật thất bại");
       }
