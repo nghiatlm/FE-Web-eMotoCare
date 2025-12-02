@@ -263,6 +263,14 @@ const App = () => (
                           element={<ImportSlipsPage />}
                         />
                         <Route
+                          path="import-slips/create"
+                          element={<CreateImportNotePage />}
+                        />
+                        <Route
+                          path="import-slips/:id"
+                          element={<ImportNoteDetail />}
+                        />
+                        <Route
                           path="export-slips"
                           element={<ExportSlipsPage />}
                         />

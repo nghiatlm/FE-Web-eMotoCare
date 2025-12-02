@@ -134,10 +134,6 @@ export default function BranchReport() {
                 <SelectItem value="year">Năm này</SelectItem>
               </SelectContent>
             </Select>
-            <Button onClick={() => handleExport(reportType)}>
-              <Download className="h-4 w-4 mr-2" />
-              Xuất báo cáo
-            </Button>
           </div>
         </div>
       </div>

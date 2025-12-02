@@ -620,22 +620,6 @@ export default function PartTypeDetail() {
                 {/* Mã và Tên dịch vụ */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Mã (tùy chọn)</Label>
-                    <Input
-                      value={form.code}
-                      onChange={(e) => {
-                        setForm((f) => ({ ...f, code: e.target.value }));
-                        validateField("code", e.target.value);
-                      }}
-                      placeholder="VD: PriceSV-00001"
-                      className="h-10"
-                      maxLength={50}
-                    />
-                    {errors.code && (
-                      <p className="text-sm text-red-500">{errors.code}</p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
                     <Label>Tên dịch vụ <span className="text-red-500">*</span></Label>
                     <Input
                       value={form.name}
@@ -649,39 +633,29 @@ export default function PartTypeDetail() {
                     />
                     {errors.name && (
                       <p className="text-sm text-red-500">{errors.name}</p>
-                    )}
+                    )}          
                   </div>
-                </div>
-
-                {/* Mô tả */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label>Mô tả</Label>
-                    {form.description && (
-                      <span className="text-xs text-muted-foreground">
-                        {form.description.length}/500
-                      </span>
-                    )}
-                  </div>
+                  <div className="space-y-2">
+                  <Label>Mô tả <span className="text-red-500">*</span></Label>
                   <Input
-                    value={form.description}
-                    onChange={(e) => {
-                      setForm((f) => ({ ...f, description: e.target.value }));
-                      validateField("description", e.target.value);
-                    }}
-                    placeholder="Mô tả chi tiết về dịch vụ..."
-                    className="h-10"
-                    maxLength={500}
-                  />
-                  {errors.description && (
-                    <p className="text-sm text-red-500">{errors.description}</p>
-                  )}
+                      value={form.description}
+                      onChange={(e) => {
+                        setForm((f) => ({ ...f, description: e.target.value }));
+                        validateField("description", e.target.value);
+                      }}
+                      placeholder="Mô tả chi tiết về dịch vụ..."
+                      className="h-10"
+                    />
+                    {errors.description && (
+                      <p className="text-sm text-red-500">{errors.description}</p>
+                    )}
+                  </div>  
                 </div>
 
                 {/* Giá và Chi phí lao động */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Giá (VNĐ) <span className="text-red-500">*</span></Label>
+                    <Label>Giá <span className="text-red-500">*</span></Label>
                     <Input
                       type="number"
                       value={form.price}
@@ -700,7 +674,7 @@ export default function PartTypeDetail() {
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label>Chi phí lao động (VNĐ)</Label>
+                    <Label>Chi phí lao động</Label>
                     <Input
                       type="number"
                       value={form.laborCost}
