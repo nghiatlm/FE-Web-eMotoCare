@@ -74,8 +74,8 @@ export default function ImportSlipsTable({ search = "" }) {
         setTotal(response.data.total || 0);
       }
     } catch (err) {
-      console.error("Error fetching import notes:", err);
-      setError(err.message || "Failed to fetch import notes");
+      console.error("Lỗi khi tải phiếu nhập:", err);
+      setError(err.message || "Không thể tải phiếu nhập. Vui lòng thử lại sau.");
       setRows([]);
     } finally {
       setLoading(false);
@@ -225,7 +225,7 @@ export default function ImportSlipsTable({ search = "" }) {
       </div>
 
       {/* Pagination */}
-      {total > pageSize && (
+      {total > 0 && (
         <div className="flex items-center justify-between p-4 border-t border-border">
           <div className="text-sm text-muted-foreground">
             Hiển thị {filtered.length} / {total} phiếu

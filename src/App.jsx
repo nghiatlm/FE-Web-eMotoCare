@@ -27,6 +27,7 @@ import PartTypeDetail from "./pages/admin/PartTypeDetail";
 import Campaigns from "./pages/Campaigns";
 import CampaignDetail from "./pages/CampaignDetail";
 import CreateCampaign from "./pages/admin/CreateCampaign";
+import CreateUserPage from "./pages/admin/CreateUserPage";
 import SyncOEMData from "./pages/admin/SyncOEMData";
 import NotFound from "./pages/NotFound";
 
@@ -110,6 +111,7 @@ const App = () => (
                       <Routes>
                         <Route path="" element={<Index />} />
                         <Route path="users" element={<UserManagement />} />
+                        <Route path="users/create" element={<CreateUserPage />} />
                         <Route path="branches" element={<Branches />} />
                         <Route path="branches/:id" element={<BranchDetail />} />
                         <Route
@@ -128,6 +130,10 @@ const App = () => (
                         <Route
                           path="service-packages/create"
                           element={<CreateServicePackage />}
+                        />
+                        <Route
+                          path="service-packages/part-type/:id"
+                          element={<PartTypeDetail />}
                         />
                         <Route path="campaigns" element={<Campaigns />} />
                         <Route

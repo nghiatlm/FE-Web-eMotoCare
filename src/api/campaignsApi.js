@@ -1,5 +1,6 @@
 import api from "./api";
 
+// Backend hiện dùng resource "programs" cho cả campaign/recall
 const BASE_URL = "/v1/programs";
 
 /**
@@ -24,10 +25,9 @@ export const getCampaigns = (params = {}) => {
     ...(params.fromDate && { fromDate: params.fromDate }),
     ...(params.toDate && { toDate: params.toDate }),
   };
-  return api.get(BASE_URL, { 
-    params: queryParams,
-    headers: { Authorization: `Bearer ${token}` }
-  });
+
+  // Token đã được gắn sẵn qua axios interceptor trong api.js
+  return api.get(BASE_URL, { params: queryParams });
 };
 
 /**
@@ -35,11 +35,7 @@ export const getCampaigns = (params = {}) => {
  * @param {string} id - ID của campaign
  * @returns {Promise} Response từ API
  */
-export const getCampaignById = (id) => {
-  return api.get(`${BASE_URL}/${id}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-};
+export const getCampaignById = (id) => api.get(`${BASE_URL}/${id}`);
 
 /**
  * Tạo campaign mới (program)
@@ -56,11 +52,7 @@ export const getCampaignById = (id) => {
  * @param {Array} data.programDetails - Chi tiết program [{ recallPartId, serviceType, discountPercent, bonusAmount, recallAction }]
  * @returns {Promise} Response từ API
  */
-export const createCampaign = (data) => {
-  return api.post(BASE_URL, data, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-};
+export const createCampaign = (data) => api.post(BASE_URL, data);
 
 /**
  * Cập nhật campaign
@@ -68,20 +60,12 @@ export const createCampaign = (data) => {
  * @param {Object} data - Dữ liệu cập nhật
  * @returns {Promise} Response từ API
  */
-export const updateCampaign = (id, data) => {
-  return api.put(`${BASE_URL}/${id}`, data, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-};
+export const updateCampaign = (id, data) => api.put(`${BASE_URL}/${id}`, data);
 
 /**
  * Xóa campaign
  * @param {string} id - ID của campaign
  * @returns {Promise} Response từ API
  */
-export const deleteCampaign = (id) => {
-  return api.delete(`${BASE_URL}/${id}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-};
+export const deleteCampaign = (id) => api.delete(`${BASE_URL}/${id}`);
 

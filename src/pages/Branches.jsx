@@ -188,28 +188,29 @@ export default function Branches() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="p-8">
+  <div className="min-h-screen bg-slate-50">
+      <div className="p-8 max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Quản lý chi nhánh</h1>
-          <p className="text-muted-foreground">Theo dõi và quản lý hệ thống chi nhánh</p>
+          <h1 className="text-2xl font-semibold text-slate-900">Quản lý chi nhánh</h1>
+          <p className="mt-1 text-sm text-slate-500">Theo dõi và quản lý hệ thống chi nhánh</p>
+          <div className="mt-3 h-[2px] w-24 rounded-full bg-red-500/70"/>
         </div>
 
-        <div className="mb-6 p-4 bg-card rounded-lg border border-border">
+        <div className="mb-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
           <div className="flex flex-wrap items-center gap-4">
             <div className="relative w-[350px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Tìm kiếm chi nhánh"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
+                className="pl-9 bg-slate-50 border-slate-200 focus-visible:ring-red-500/70"
               />
             </div>
 
 
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
@@ -221,7 +222,7 @@ export default function Branches() {
             </Select>
 
             <Select value={manager} onValueChange={setManager}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-[200px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
                 <SelectValue placeholder="Quản lý" />
               </SelectTrigger>
               <SelectContent>
@@ -239,21 +240,21 @@ export default function Branches() {
 
             {(status || manager || search) && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={() => {
                   setStatus("");
                   setManager("");
                   setSearch("");
                 }}
-                className="text-primary hover:text-primary/90"
+                className="border-transparent text-slate-600 hover:text-red-600 hover:bg-red-50"
               >
                 Xóa lọc
               </Button>
             )}
 
             <div className="flex items-center gap-3 ml-auto">
-              <Button className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setIsAddOpen(true)}>
+              <Button className="gap-2 bg-red-600 hover:bg-red-700 shadow-sm" onClick={() => setIsAddOpen(true)}>
                 <Plus className="h-4 w-4" />
                 Thêm chi nhánh
               </Button>

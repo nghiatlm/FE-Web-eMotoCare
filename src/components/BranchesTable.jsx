@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Pencil, Eye, Pause, Play, Building2 } from "lucide-react";
 import { getServiceCenters } from "@/api/serviceCentersApi";
 import { formatPhoneNumber } from "@/utils/formatters";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 const initialBranches = [];
 
@@ -27,6 +28,7 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -63,6 +65,11 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
         }));
 
         setRows(mapped);
+        const totalCount =
+          payload?.total ||
+          payload?.data?.total ||
+          (Array.isArray(list) ? list.length : 0);
+        setTotal(totalCount);
       } catch (e) {
         console.error("Lỗi tải danh sách chi nhánh:", e);
         setRows([]);
@@ -140,21 +147,23 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
     );
   };
 
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-lg overflow-hidden">
+  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="bg-gradient-to-r from-red-50 via-red-50/90 to-red-100/50 dark:from-red-950/20 dark:via-red-950/15 dark:to-red-900/10 border-b-2 border-red-200/60 dark:border-red-800/30">
-              <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider w-16">STT</th>
-              <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Tên chi nhánh</th>
-              <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Địa chỉ</th>
-              <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Số điện thoại</th>
-              <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Trạng thái</th>
-              <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider w-32">Thao tác</th>
+            <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
+              <th className="text-center py-4 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide w-16">STT</th>
+              <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide">Tên chi nhánh</th>
+              <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide">Địa chỉ</th>
+              <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide">Số điện thoại</th>
+              <th className="text-center py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide">Trạng thái</th>
+              <th className="text-center py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide w-32">Thao tác</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200/80">
+          <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
                 <td colSpan="6" className="py-16 px-6 text-center">
@@ -178,34 +187,32 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
               </tr>
             ) : (
               filtered.map((b, i) => (
-                <tr 
+              <tr 
                   key={b.id} 
-                  className={`transition-all duration-200 ease-in-out group ${
-                    i % 2 === 0 
-                      ? 'bg-white hover:bg-slate-50/50' 
-                      : 'bg-slate-50/30 hover:bg-slate-50'
-                  } hover:shadow-md`}
+                  className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+                    i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'
+                  }`}
                 >
-                  <td className="py-5 px-6 text-center text-sm font-medium text-muted-foreground">
+                  <td className="py-4 px-4 text-center text-sm font-medium text-slate-600">
                     {i + 1}
                   </td>
-                  <td className="py-5 px-6 text-center">
+                  <td className="py-4 px-6">
                     <span className="font-semibold text-slate-900 text-sm">{b.name}</span>
                   </td>
-                  <td className="py-5 px-6 text-center">
+                  <td className="py-4 px-6">
                     <span className="text-sm text-slate-700">{b.location || "—"}</span>
                   </td>
-                  <td className="py-5 px-6 text-center">
+                  <td className="py-4 px-6">
                     <span className="text-sm text-slate-700">{formatPhoneNumber(b.phone) || "—"}</span>
                   </td>
-                  <td className="py-5 px-6 text-center">
+                  <td className="py-4 px-6">
                     <div className="flex items-center justify-center">
                       <span className={statusBadge(b.status)}>
                         {b.status === "active" ? "Hoạt động" : b.status === "inactive" ? "Ngưng hoạt động" : b.status === "suspended" ? "Tạm dừng" : b.status}
                       </span>
                     </div>
                   </td>
-                  <td className="py-5 px-6 text-center">
+                  <td className="py-4 px-6">
                     <div className="flex items-center justify-center gap-2">
                       <Button
                         variant="ghost"
@@ -246,6 +253,49 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {total > 0 && (
+        <div className="flex items-center justify-center px-6 py-4 border-t border-slate-200/80 bg-slate-50/60">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                  className={`cursor-pointer rounded-full px-3 ${
+                    page === 1 ? "pointer-events-none opacity-40" : "hover:bg-slate-100"
+                  }`}
+                />
+              </PaginationItem>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <PaginationItem key={pageNum}>
+                  <PaginationLink
+                    onClick={() => setPage(pageNum)}
+                    isActive={page === pageNum}
+                    className={`cursor-pointer rounded-full px-3 py-1 text-sm ${
+                      page === pageNum
+                        ? "bg-red-100 text-red-700 font-medium"
+                        : "hover:bg-slate-100"
+                    }`}
+                  >
+                    {pageNum}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+
+              <PaginationItem>
+                <PaginationNext 
+                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                  className={`cursor-pointer rounded-full px-3 ${
+                    page >= totalPages ? "pointer-events-none opacity-40" : "hover:bg-slate-100"
+                  }`}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
     </div>
   );
 }

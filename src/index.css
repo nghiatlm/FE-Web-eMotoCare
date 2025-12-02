@@ -109,6 +109,25 @@ All colors MUST be HSL.
   }
 }
 
+/* Custom scrollbar (WebKit-based browsers) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f9fafb; /* very light */
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #f97373; /* light red */
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #ef4444;
+}
+
 /* ✅ Table row styling */
 .table-row-light {
   background-color: #fff;
