@@ -1,87 +1,124 @@
-import { FileText, Package, FileDown, FileUp, LogOut } from "lucide-react";
+import { Package, FileDown, FileUp, LogOut } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar, } from "@/components/ui/sidebar";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import { authService } from "@/services/authService";
 import { cn } from "@/lib/utils";
 
-const menuItems = [
-    { title: "Tồn kho phụ tùng", icon: Package, url: "/storekeeper" },
-    { title: "Phiếu nhập", icon: FileDown, url: "/storekeeper/import-slips" },
-    { title: "Phiếu xuất", icon: FileUp, url: "/storekeeper/export-slips" },
+const sections = [
+  {
+    label: "Kho",
+    items: [{ title: "Tồn kho phụ tùng", icon: Package, url: "/storekeeper" }],
+  },
+  {
+    label: "Giao dịch",
+    items: [
+      { title: "Phiếu nhập", icon: FileDown, url: "/storekeeper/import-slips" },
+      { title: "Phiếu xuất", icon: FileUp, url: "/storekeeper/export-slips" },
+    ],
+  },
 ];
 
 export function StoreKeeperSidebar() {
-    const { state } = useSidebar();
-    const isCollapsed = state === "collapsed";
+  const { state } = useSidebar();
+  const isCollapsed = state === "collapsed";
   const location = useLocation();
 
   return (
     <>
       <style>{`
-        [data-sidebar="sidebar"] {
-          background: #c52020 !important;
-          --sidebar-accent-foreground: #c52020 !important;
-          --sidebar-primary: #c52020 !important;
-          --sidebar-ring: #c52020 !important;
-        }
-        [data-sidebar="sidebar"] [data-active="true"] {
-          color: #c52020 !important;
-        }
-        [data-sidebar="sidebar"] [data-sidebar="menu-button"][data-active="true"],
-        [data-sidebar="sidebar"] [data-sidebar="menu-button"][data-active="true"] span,
-        [data-sidebar="sidebar"] [data-sidebar="menu-button"][data-active="true"] svg {
-          color: #c52020 !important;
-        }
         :root {
-          --sidebar-width: 20rem !important;
+          --sidebar-width: 19rem !important;
+        }
+        [data-sidebar="sidebar"] {
+          background: #b71324 !important;
         }
       `}</style>
-      <Sidebar collapsible="icon">
-        <SidebarHeader className="p-4 border-b border-red-800/30 dark:border-red-800/50">
-          <div className="flex items-center justify-center">
-            <img
-              src="/logowhite.png"
-              alt="Logo"
-              className={isCollapsed ? "h-16 w-16 object-contain" : "h-20 w-20 object-contain"}
-            />
+      <Sidebar collapsible='icon' className='border-r border-red-900/50 text-white'>
+        <SidebarHeader className='px-4 py-5 border-b border-red-800/40'>
+          <div
+            className={cn(
+              "flex items-center gap-3 transition-all duration-200",
+              isCollapsed ? "justify-center" : "justify-center"
+            )}>
+            <div className='h-20 w-20 flex items-center justify-center'>
+              <img
+                src='/logowhite.png'
+                alt='Logo'
+                className='h-20 w-20 object-contain'
+              />
+            </div>
+            {!isCollapsed && (
+              <div>
+                <p className='text-xl font-semibold leading-tight'>eMotoCare</p>
+                <p className='text-sm text-red-100'>Thủ kho</p>
+              </div>
+            )}
           </div>
         </SidebarHeader>
 
-        <SidebarContent className="p-3">
-          <SidebarMenu className="space-y-1">
-            {menuItems.map((item) => {
-              const isActive =
-                location.pathname === item.url ||
-                (item.url !== "/storekeeper" && location.pathname.startsWith(item.url + "/"));
+        <SidebarContent className='px-3 py-4'>
+          {sections.map((section) => (
+            <div key={section.label} className='mb-5 last:mb-0'>
+              {!isCollapsed && (
+                <p className='px-2 mb-2 text-[11px] font-semibold tracking-wide text-red-100 uppercase'>
+                  {section.label}
+                </p>
+              )}
+              <SidebarMenu
+                className={cn(
+                  "space-y-1.6",
+                  isCollapsed && "items-center space-y-2"
+                )}>
+                {section.items.map((item) => {
+                  const isActive =
+                    location.pathname === item.url ||
+                    (item.url !== "/storekeeper" &&
+                      location.pathname.startsWith(item.url + "/"));
 
-              return (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    tooltip={item.title}
-                    isActive={isActive}
-                    className={cn(
-                      "gap-3 rounded-lg transition-all text-base",
-                      isActive
-                        ? "bg-red-100 !text-[#c52020] font-semibold shadow-lg hover:bg-red-200 [&>svg]:!text-[#c52020] [&>span]:!text-[#c52020]"
-                        : "text-white/90 hover:bg-red-900/50 hover:text-white"
-                    )}
-                  >
-                    <NavLink
-                      to={item.url}
-                      className={isActive ? "[&_svg]:!text-[#c52020] [&_span]:!text-[#c52020]" : ""}
-                    >
-                      <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {!isCollapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              );
-            })}
-          </SidebarMenu>
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        tooltip={item.title}
+                        isActive={isActive}
+                        className={cn(
+                          "h-10 gap-3 rounded-lg px-4 text-sm font-medium transition-all",
+                          !isCollapsed && "w-full",
+                          isCollapsed && "justify-center px-0",
+                          isActive
+                            ? isCollapsed
+                              ? "bg-white text-[#b71324] shadow-none"
+                              : "bg-white text-[#b71324] border-l-4 border-white shadow-none"
+                            : "text-red-100 hover:bg-red-900/40 hover:text-white"
+                        )}>
+                        <NavLink to={item.url}>
+                          <item.icon
+                            className={cn(
+                              "h-5 w-5 flex-shrink-0",
+                              isActive ? "text-[#b71324]" : "text-red-200"
+                            )}
+                          />
+                          {!isCollapsed && <span>{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </div>
+          ))}
         </SidebarContent>
 
-        <SidebarFooter className="p-3 border-t border-red-800/30 dark:border-red-800/50">
+        <SidebarFooter className='px-3 py-4 border-t border-red-800/40 mt-auto'>
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
@@ -89,10 +126,9 @@ export function StoreKeeperSidebar() {
                   authService.logout();
                   window.location.href = "/login";
                 }}
-                tooltip="Đăng xuất"
-                className="gap-3 rounded-lg text-white/90 hover:bg-red-900/50 hover:text-white transition-all text-base"
-              >
-                <LogOut className="h-5 w-5 flex-shrink-0" />
+                tooltip='Đăng xuất'
+                className='gap-3 rounded-lg text-red-50 hover:bg-red-900/40 hover:text-white transition-all text-base'>
+                <LogOut className='h-5 w-5 flex-shrink-0 text-red-100' />
                 {!isCollapsed && <span>Đăng xuất</span>}
               </SidebarMenuButton>
             </SidebarMenuItem>
