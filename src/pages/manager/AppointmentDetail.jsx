@@ -20,6 +20,9 @@ import {
   MessageSquare,
   Package,
   Loader2,
+  Tag,
+  Gauge, // New icon for Mileage/Duration
+  Clock3, // Different clock icon for estimated time
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,116 +33,77 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getAppointmentById, getAppointmentMissingParts } from "@/api/appointmentsApi";
 
+// Giữ nguyên STATUS_META nhưng tối ưu hóa màu sắc cho thiết kế phẳng và chuyên nghiệp hơn
 const STATUS_META = {
   PENDING: {
     label: "Chờ xử lý",
     description: "Lịch hẹn đang chờ được xử lý và phê duyệt.",
-    pill: "bg-yellow-100 text-yellow-800 border border-yellow-200",
+    pill: "bg-yellow-50 text-yellow-700 border border-yellow-200",
     gradient: "from-yellow-50 via-white to-white",
     icon: Clock,
-    panelBorder: "border-yellow-200",
-    panelBg: "bg-yellow-50/60",
-    panelText: "text-yellow-700",
-    panelMuted: "text-yellow-600",
   },
   APPROVED: {
     label: "Đã duyệt",
     description: "Lịch hẹn đã được phê duyệt và sẵn sàng check-in.",
-    pill: "bg-green-100 text-green-800 border border-green-200",
+    pill: "bg-green-50 text-green-700 border border-green-200",
     gradient: "from-green-50 via-white to-white",
     icon: CheckCircle2,
-    panelBorder: "border-green-200",
-    panelBg: "bg-green-50/70",
-    panelText: "text-green-700",
-    panelMuted: "text-green-600",
   },
   CHECKED_IN: {
     label: "Đã check-in",
     description: "Khách hàng đã check-in và đang trong quá trình xử lý.",
-    pill: "bg-blue-100 text-blue-800 border border-blue-200",
+    pill: "bg-blue-50 text-blue-700 border border-blue-200",
     gradient: "from-blue-50 via-white to-white",
     icon: CheckCircle2,
-    panelBorder: "border-blue-200",
-    panelBg: "bg-blue-50/70",
-    panelText: "text-blue-700",
-    panelMuted: "text-blue-600",
   },
   QUOTE_APPROVED: {
     label: "Đã duyệt báo giá",
     description: "Báo giá đã được duyệt và chờ khách hàng xác nhận.",
-    pill: "bg-purple-100 text-purple-800 border border-purple-200",
+    pill: "bg-purple-50 text-purple-700 border border-purple-200",
     gradient: "from-purple-50 via-white to-white",
     icon: CheckCircle2,
-    panelBorder: "border-purple-200",
-    panelBg: "bg-purple-50/70",
-    panelText: "text-purple-700",
-    panelMuted: "text-purple-600",
   },
   REPAIR_COMPLETED: {
     label: "Hoàn thành sửa chữa",
     description: "Quá trình sửa chữa đã hoàn thành, chờ thanh toán.",
-    pill: "bg-teal-100 text-teal-800 border border-teal-200",
+    pill: "bg-teal-50 text-teal-700 border border-teal-200",
     gradient: "from-teal-50 via-white to-white",
     icon: CheckCircle2,
-    panelBorder: "border-teal-200",
-    panelBg: "bg-teal-50/70",
-    panelText: "text-teal-700",
-    panelMuted: "text-teal-600",
   },
   WAITING_FOR_PAYMENT: {
     label: "Chờ thanh toán",
     description: "Lịch hẹn đang chờ khách hàng thanh toán.",
-    pill: "bg-orange-100 text-orange-800 border border-orange-200",
+    pill: "bg-orange-50 text-orange-700 border border-orange-200",
     gradient: "from-orange-50 via-white to-white",
     icon: Clock,
-    panelBorder: "border-orange-200",
-    panelBg: "bg-orange-50/70",
-    panelText: "text-orange-700",
-    panelMuted: "text-orange-600",
   },
   PAYMENT_FAILED: {
     label: "Thanh toán thất bại",
     description: "Thanh toán không thành công, cần xử lý lại.",
-    pill: "bg-red-100 text-red-800 border border-red-200",
+    pill: "bg-red-50 text-red-700 border border-red-200",
     gradient: "from-red-50 via-white to-white",
     icon: XCircle,
-    panelBorder: "border-red-200",
-    panelBg: "bg-red-50/60",
-    panelText: "text-red-700",
-    panelMuted: "text-red-600",
   },
   COMPLETED: {
     label: "Hoàn thành",
     description: "Lịch hẹn đã được hoàn thành thành công.",
-    pill: "bg-emerald-100 text-emerald-800 border border-emerald-200",
+    pill: "bg-emerald-50 text-emerald-700 border border-emerald-200",
     gradient: "from-emerald-50 via-white to-white",
     icon: CheckCircle2,
-    panelBorder: "border-emerald-200",
-    panelBg: "bg-emerald-50/70",
-    panelText: "text-emerald-700",
-    panelMuted: "text-emerald-600",
   },
   CANCELLED: {
     label: "Đã hủy",
     description: "Lịch hẹn đã bị hủy.",
-    pill: "bg-red-100 text-red-800 border border-red-200",
-    gradient: "from-red-50 via-white to-white",
+    pill: "bg-gray-100 text-gray-700 border border-gray-200",
+    gradient: "from-gray-50 via-white to-white",
     icon: XCircle,
-    panelBorder: "border-red-200",
-    panelBg: "bg-red-50/60",
-    panelText: "text-red-700",
-    panelMuted: "text-red-600",
   },
   CANCELED: {
     label: "Đã hủy",
     description: "Lịch hẹn đã bị hủy.",
-    pill: "bg-red-100 text-red-800 border border-red-200",
-    gradient: "from-red-50 via-white to-white",
+    pill: "bg-gray-100 text-gray-700 border border-gray-200",
+    gradient: "from-gray-50 via-white to-white",
     icon: XCircle,
-    panelBorder: "border-red-200",
-    panelBg: "bg-red-50/60",
-    panelText: "text-red-700",
-    panelMuted: "text-red-600",
   },
   DEFAULT: {
     label: "Không xác định",
@@ -147,10 +111,6 @@ const STATUS_META = {
     pill: "bg-muted text-muted-foreground border border-muted",
     gradient: "from-muted via-background to-background",
     icon: Clock,
-    panelBorder: "border-border/70",
-    panelBg: "bg-muted/40",
-    panelText: "text-muted-foreground",
-    panelMuted: "text-muted-foreground/80",
   },
 };
 
@@ -164,7 +124,7 @@ export default function AppointmentDetail() {
   const [missingParts, setMissingParts] = useState([]);
   const [loadingMissingParts, setLoadingMissingParts] = useState(false);
 
-  // Format slotTime from "H17_18" to "17:00 - 18:00"
+  // --- Formatting Functions (Giữ nguyên) ---
   const formatSlotTime = (slotTime) => {
     if (!slotTime) return "—";
     const match = slotTime.match(/H(\d+)_(\d+)/);
@@ -176,7 +136,6 @@ export default function AppointmentDetail() {
     return slotTime;
   };
 
-  // Format appointment type
   const formatAppointmentType = (type) => {
     switch (type) {
       case "WARRANTY_TYPE":
@@ -190,7 +149,6 @@ export default function AppointmentDetail() {
     }
   };
 
-  // Format duration month (MONTH_12 -> 12 tháng)
   const formatDurationMonth = (durationMonth) => {
     if (!durationMonth) return "—";
     const match = durationMonth.match(/MONTH_(\d+)/);
@@ -200,7 +158,6 @@ export default function AppointmentDetail() {
     return durationMonth;
   };
 
-  // Format mileage (KM10000 -> 10,000 km)
   const formatMileage = (mileage) => {
     if (!mileage) return "—";
     const match = mileage.match(/KM(\d+)/);
@@ -211,7 +168,30 @@ export default function AppointmentDetail() {
     return mileage;
   };
 
-  // Format currency
+  // Đổi tên màu từ tiếng Anh sang tiếng Việt (nếu map được)
+  const formatColor = (color) => {
+    if (!color) return "—";
+    const normalized = String(color).trim().toLowerCase();
+
+    const map = {
+      black: "Đen",
+      white: "Trắng",
+      silver: "Bạc",
+      gray: "Xám",
+      grey: "Xám",
+      blue: "Xanh dương",
+      red: "Đỏ",
+      green: "Xanh lá",
+      yellow: "Vàng",
+      orange: "Cam",
+      brown: "Nâu",
+      purple: "Tím",
+      pink: "Hồng",
+    };
+
+    return map[normalized] || color;
+  };
+
   const formatCurrency = (value) => {
     if (value === null || value === undefined) return "—";
     try {
@@ -225,7 +205,6 @@ export default function AppointmentDetail() {
     }
   };
 
-  // Format date
   const safeFormat = (value, pattern) => {
     if (!value) return "—";
     try {
@@ -237,17 +216,15 @@ export default function AppointmentDetail() {
 
   const formatDateTime = (value) => safeFormat(value, "dd/MM/yyyy HH:mm");
   const formatDateOnly = (value) => safeFormat(value, "dd/MM/yyyy");
+  // --- End Formatting Functions ---
 
-  // Fetch missing parts
+  // --- Fetch Logic (Giữ nguyên) ---
   const fetchMissingParts = useCallback(async (appointmentId) => {
     if (!appointmentId) return;
     try {
       setLoadingMissingParts(true);
       const response = await getAppointmentMissingParts(appointmentId);
       
-      console.log("📋 Missing Parts API Response:", response);
-      
-      // Handle response structure: { data: [...] } or direct array or { data: { rowDatas: [...] } }
       let partsData = [];
       if (Array.isArray(response?.data)) {
         partsData = response.data;
@@ -261,15 +238,12 @@ export default function AppointmentDetail() {
       
       setMissingParts(partsData);
     } catch (err) {
-      console.error("Error fetching missing parts:", err);
-      // Không hiển thị error toast vì có thể appointment chưa có missing parts
       setMissingParts([]);
     } finally {
       setLoadingMissingParts(false);
     }
   }, []);
 
-  // Fetch appointment detail
   const fetchAppointmentDetail = useCallback(async () => {
     if (!id) return;
     try {
@@ -277,18 +251,13 @@ export default function AppointmentDetail() {
       setError(null);
       const response = await getAppointmentById(id);
       
-      console.log("📋 Appointment Detail API Response:", response);
-      
-      // Handle response structure: { data: { ... } } or direct data
       const appointmentData = response?.data || response;
       setAppointment(appointmentData);
       
-      // Gọi API missing parts ngay sau khi fetch appointment detail thành công
       if (appointmentData?.id) {
         fetchMissingParts(appointmentData.id);
       }
     } catch (err) {
-      console.error("Error fetching appointment detail:", err);
       setError("Không thể tải thông tin lịch hẹn. Vui lòng thử lại sau.");
       toast({
         title: "Lỗi",
@@ -304,10 +273,12 @@ export default function AppointmentDetail() {
     fetchAppointmentDetail();
   }, [fetchAppointmentDetail]);
 
+  // --- Loading/Error States (Giữ nguyên) ---
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-8 flex items-center justify-center">
         <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
           <div className="text-lg text-muted-foreground">Đang tải...</div>
         </div>
       </div>
@@ -331,293 +302,114 @@ export default function AppointmentDetail() {
     );
   }
 
+  // --- Data Extraction (Giữ nguyên) ---
   const currentStatus = (appointment.status || "PENDING").toUpperCase();
   const statusInfo = STATUS_META[currentStatus] || STATUS_META.DEFAULT;
   const StatusHeroIcon = statusInfo.icon || Clock;
 
   const customerName = `${appointment.customer?.firstName || ""} ${appointment.customer?.lastName || ""}`.trim() || "—";
-  const customerPhone = appointment.customer?.phone || "—";
-  const customerEmail = appointment.customer?.accountId ? "—" : "—"; // Email not in response
+  const customerPhone = appointment.customer?.account?.phone || "—";
   const customerAddress = appointment.customer?.address || "—";
   const customerCode = appointment.customer?.customerCode || "—";
-  const customerCitizenId = appointment.customer?.citizenId || "—";
-  const customerGender = appointment.customer?.gender === "MALE" ? "Nam" : appointment.customer?.gender === "FEMALE" ? "Nữ" : "—";
-  const customerDateOfBirth = formatDateOnly(appointment.customer?.dateOfBirth);
-
+  
   const serviceCenterName = appointment.serviceCenter?.name || "—";
   const serviceCenterCode = appointment.serviceCenter?.code || "—";
   const serviceCenterAddress = appointment.serviceCenter?.address || "—";
-  const serviceCenterPhone = appointment.serviceCenter?.phone || "—";
-  const serviceCenterEmail = appointment.serviceCenter?.email || "—";
 
   const appointmentDate = formatDateOnly(appointment.appointmentDate);
   const appointmentDateTime = formatDateTime(appointment.appointmentDate);
   const slotTime = formatSlotTime(appointment.slotTime);
   const appointmentType = formatAppointmentType(appointment.type);
 
-  const vehicleInfo = appointment.vehicle
-    ? {
-        color: appointment.vehicle.color || "—",
-        chassisNumber: appointment.vehicle.chassisNumber || "—",
-        engineNumber: appointment.vehicle.engineNumber || "—",
-        manufactureDate: formatDateOnly(appointment.vehicle.manufactureDate),
-        purchaseDate: formatDateOnly(appointment.vehicle.purchaseDate),
-        warrantyExpiry: formatDateOnly(appointment.vehicle.warrantyExpiry),
-        status: appointment.vehicle.status || "—",
-      }
-    : null;
+  const vehicleInfo = appointment.vehicle ? {
+      color: formatColor(appointment.vehicle.color),
+      chassisNumber: appointment.vehicle.chassisNumber || "—",
+      engineNumber: appointment.vehicle.engineNumber || "—",
+      manufactureDate: formatDateOnly(appointment.vehicle.manufactureDate),
+      purchaseDate: formatDateOnly(appointment.vehicle.purchaseDate),
+      warrantyExpiry: formatDateOnly(appointment.vehicle.warrantyExpiry),
+      status: appointment.vehicle.status || "—",
+    } : null;
 
-  const maintenanceStage = appointment.maintenanceStage
-    ? {
-        name: appointment.maintenanceStage.name || "—",
-        mileage: appointment.maintenanceStage.mileage || null,
-        durationMonth: appointment.maintenanceStage.durationMonth || null,
-        estimatedTime: appointment.maintenanceStage.estimatedTime || null,
-        description: appointment.maintenanceStage.description || null,
-      }
-    : null;
+  const maintenanceStage = appointment.maintenanceStage ? {
+      name: appointment.maintenanceStage.name || "—",
+      mileage: appointment.maintenanceStage.mileage || null,
+      durationMonth: appointment.maintenanceStage.durationMonth || null,
+      estimatedTime: appointment.maintenanceStage.estimatedTime || null,
+      description: appointment.maintenanceStage.description || null,
+    } : null;
 
+  // --- Optimized DetailRow Component ---
   const DetailRow = ({ label, value, icon: Icon, className, valueClassName }) => {
     const display = value || value === 0 ? value : "—";
     return (
-      <div className={cn("flex items-start gap-2 text-sm", className)}>
-        {Icon && <Icon className="mt-0.5 h-4 w-4 text-muted-foreground flex-shrink-0" />}
-        <div className="flex-1">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-          <p className={cn("mt-1 text-sm font-medium text-foreground", valueClassName)}>{display}</p>
+      <div className={cn("flex flex-col gap-0.5", className)}>
+        <div className="flex items-center text-xs font-medium uppercase tracking-wider text-muted-foreground/80">
+          {Icon && <Icon className="h-3 w-3 mr-1 text-muted-foreground" />}
+          {label}
         </div>
+        <p className={cn("text-sm font-semibold text-foreground", valueClassName)}>
+          {display}
+        </p>
       </div>
     );
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="px-4 py-6 sm:px-6 lg:px-10">
-        <Button variant="ghost" onClick={() => navigate("/manager/appointments")} className="mb-6">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <Button variant="ghost" onClick={() => navigate("/manager/appointments")} className="mb-8 text-slate-600 hover:bg-slate-100">
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Quay lại
+          Quay lại danh sách
         </Button>
 
-        {/* Header Card */}
-        <div className={cn("relative mb-8 overflow-hidden rounded-3xl border border-border/60 bg-card shadow-lg")}>
-          <div className={cn("absolute inset-0 bg-gradient-to-r", statusInfo.gradient)} />
-          <div className="relative flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between md:p-10">
-            <div className="max-w-2xl space-y-5">
-              <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/70 bg-white/80 shadow-inner">
-                  <StatusHeroIcon className="h-5 w-5 text-primary" />
+        {/* Header - Thông tin tổng quan */}
+        <div className="mb-10 bg-white p-6 md:p-8 rounded-xl shadow-lg border border-slate-100">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <StatusHeroIcon className={cn("h-6 w-6", statusInfo.pill.includes("text-") ? statusInfo.pill.split(" ").find(c => c.startsWith("text-")) : "text-primary")} />
+                <h1 className="text-3xl font-bold text-slate-900">
+                  Lịch hẹn #{appointment.code}
+                </h1>
+                <Badge className={cn("ml-2 text-sm", statusInfo.pill)}>
+                    {statusInfo.label}
+                </Badge>
+              </div>
+              <p className="mt-2 text-slate-600 text-base">{statusInfo.description}</p>
+            </div>
+            
+            <div className="w-full md:w-auto flex-shrink-0">
+                <div className="rounded-xl border border-primary/20 bg-primary-50/50 p-4 text-center">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-primary-600">Loại dịch vụ</p>
+                    <p className="mt-1 text-xl font-bold text-primary-800">{appointmentType}</p>
                 </div>
-                <span className="uppercase tracking-wide">Lịch hẹn #{appointment.code}</span>
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-foreground md:text-4xl">Chi tiết lịch hẹn</h1>
-                <p className="mt-3 text-muted-foreground">{statusInfo.description}</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={cn("inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold shadow-sm backdrop-blur", statusInfo.pill)}>
-                  <StatusHeroIcon className="h-4 w-4" />
-                  {statusInfo.label}
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/80 px-4 py-2 text-sm font-medium text-foreground shadow-sm">
-                  <Hash className="h-4 w-4 text-muted-foreground" />
-                  {appointment.code}
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/80 px-4 py-2 text-sm font-medium text-foreground shadow-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  {appointmentDateTime}
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/80 px-4 py-2 text-sm font-medium text-foreground shadow-sm">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  {slotTime}
-                </span>
-              </div>
             </div>
-            <div className="grid w-full max-w-sm grid-cols-2 gap-4">
-              <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-4 text-foreground shadow-sm">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Loại dịch vụ</p>
-                <p className="mt-1 text-2xl font-semibold">{appointmentType}</p>
-              </div>
-              <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-4 text-foreground shadow-sm">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Chi phí ước tính</p>
-                <p className="mt-1 text-2xl font-semibold">{formatCurrency(appointment.estimatedCost)}</p>
-              </div>
-            </div>
+          </div>
+          
+          {/* Appointment Quick Details */}
+          <div className="mt-6 pt-4 border-t border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <DetailRow label="Mã lịch hẹn" value={appointment.code} icon={Hash} />
+            <DetailRow label="Ngày hẹn" value={appointmentDate} icon={Calendar} />
+            <DetailRow label="Khung giờ" value={slotTime} icon={Clock} />
+            <DetailRow label="Mã check-in" value={appointment.checkinCode || "—"} icon={QrCode} />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="space-y-6 lg:col-span-2">
-            {/* Appointment Information */}
-            <Card className="border-border/60 shadow-sm">
-              <CardHeader>
-                <CardTitle>Thông tin lịch hẹn</CardTitle>
-                <CardDescription>Tổng quan chi tiết của lịch hẹn.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="rounded-2xl border border-border/70 bg-background/80 shadow-sm">
-                  <div className="border-b border-border/60 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    Thông tin chung
-                  </div>
-                  <div className="grid gap-4 px-5 py-5 md:grid-cols-2">
-                    <DetailRow label="Mã lịch hẹn" value={appointment.code} icon={Hash} />
-                    <DetailRow label="Loại dịch vụ" value={appointmentType} icon={Wrench} />
-                    <DetailRow label="Ngày hẹn" value={appointmentDate} icon={Calendar} />
-                    <DetailRow label="Khung giờ" value={slotTime} icon={Clock} />
-                    <DetailRow label="Trạng thái" value={statusInfo.label} icon={CheckCircle2} valueClassName="text-primary font-medium" />
-                    <DetailRow label="Chi phí ước tính" value={formatCurrency(appointment.estimatedCost)} icon={DollarSign} />
-                    <DetailRow label="Chi phí thực tế" value={formatCurrency(appointment.actualCost)} icon={DollarSign} />
-                    <DetailRow label="Mã check-in" value={appointment.checkinCode || "—"} icon={QrCode} />
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-border/70 bg-background/80 shadow-sm">
-                  <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    <Building2 className="h-4 w-4" />
-                    Trung tâm dịch vụ
-                  </div>
-                  <div className="grid gap-3 px-5 py-5 md:grid-cols-2">
-                    <DetailRow label="Tên trung tâm" value={serviceCenterName} />
-                    <DetailRow label="Mã trung tâm" value={serviceCenterCode} icon={Hash} />
-                    <DetailRow label="Địa chỉ" value={serviceCenterAddress} icon={MapPin} className="md:col-span-2" />
-                    <DetailRow label="Số điện thoại" value={serviceCenterPhone} icon={Phone} />
-                    <DetailRow label="Email" value={serviceCenterEmail} icon={Mail} />
-                  </div>
-                </div>
-
-                {vehicleInfo && (
-                  <div className="rounded-2xl border border-border/70 bg-background/80 shadow-sm">
-                    <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                      <Bike className="h-4 w-4" />
-                      Thông tin xe
-                    </div>
-                    <div className="grid gap-3 px-5 py-5 md:grid-cols-2">
-                      <DetailRow label="Màu sắc" value={vehicleInfo.color} />
-                      <DetailRow label="Số khung" value={vehicleInfo.chassisNumber} />
-                      <DetailRow label="Số máy" value={vehicleInfo.engineNumber} />
-                      <DetailRow label="Trạng thái" value={vehicleInfo.status} />
-                      <DetailRow label="Ngày sản xuất" value={vehicleInfo.manufactureDate} icon={Calendar} />
-                      <DetailRow label="Ngày mua" value={vehicleInfo.purchaseDate} icon={Calendar} />
-                      <DetailRow label="Hết hạn bảo hành" value={vehicleInfo.warrantyExpiry} icon={Calendar} />
-                    </div>
-                  </div>
-                )}
-
-                {maintenanceStage && (
-                  <div className="rounded-2xl border border-border/70 bg-background/80 shadow-sm">
-                    <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                      <Wrench className="h-4 w-4" />
-                      Gói bảo dưỡng
-                    </div>
-                    <div className="grid gap-3 px-5 py-5 md:grid-cols-2">
-                      <DetailRow label="Tên gói" value={maintenanceStage.name || "—"} />
-                      <DetailRow label="Số km" value={maintenanceStage.mileage ? formatMileage(maintenanceStage.mileage) : "—"} />
-                      <DetailRow label="Thời hạn" value={maintenanceStage.durationMonth ? formatDurationMonth(maintenanceStage.durationMonth) : "—"} />
-                      <DetailRow label="Thời gian ước tính" value={maintenanceStage.estimatedTime ? `${maintenanceStage.estimatedTime} phút` : "—"} icon={Clock} />
-                      {maintenanceStage.description && (
-                        <DetailRow label="Mô tả" value={maintenanceStage.description} className="md:col-span-2" />
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {appointment.note && (
-                  <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-5 py-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <MessageSquare className="h-4 w-4 text-primary" />
-                      <p className="text-xs font-semibold uppercase tracking-wide text-primary">Ghi chú</p>
-                    </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{appointment.note}</p>
-                  </div>
-                )}
-
-                {appointment.checkinQRCode && (
-                  <div className="rounded-2xl border border-border/70 bg-background/80 shadow-sm">
-                    <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                      <QrCode className="h-4 w-4" />
-                      QR Code Check-in
-                    </div>
-                    <div className="px-5 py-5">
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="flex justify-center">
-                          <img 
-                            src={appointment.checkinQRCode} 
-                            alt="Check-in QR Code" 
-                            className="max-w-xs rounded-lg border border-border shadow-sm" 
-                          />
-                        </div>
-                        <p className="text-sm text-muted-foreground text-center">
-                          Mã check-in: <span className="font-mono font-semibold">{appointment.checkinCode || appointment.code}</span>
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Missing Parts */}
-                <div className="rounded-2xl border border-border/70 bg-background/80 shadow-sm">
-                  <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    <Package className="h-4 w-4" />
-                    Danh sách phụ tùng thiếu
-                  </div>
-                  <div className="px-5 py-5">
-                    {loadingMissingParts ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                        <span className="ml-2 text-sm text-muted-foreground">Đang tải danh sách phụ tùng thiếu...</span>
-                      </div>
-                    ) : missingParts.length > 0 ? (
-                      <div className="space-y-4">
-                        {missingParts.map((part, index) => (
-                          <div key={part.id || index} className="rounded-xl border border-border/60 bg-muted/10 p-4">
-                            <div className="grid gap-3 md:grid-cols-2">
-                              <DetailRow 
-                                label="Mã phụ tùng" 
-                                value={part.code || part.partCode || "—"} 
-                                icon={Hash}
-                              />
-                              <DetailRow 
-                                label="Tên phụ tùng" 
-                                value={part.name || part.partName || "—"} 
-                              />
-                              <DetailRow 
-                                label="Số lượng thiếu" 
-                                value={part.quantity || part.missingQuantity || "—"} 
-                              />
-                              <DetailRow 
-                                label="Đơn giá" 
-                                value={part.price ? formatCurrency(part.price) : "—"} 
-                                icon={DollarSign}
-                              />
-                              {part.description && (
-                                <DetailRow 
-                                  label="Mô tả" 
-                                  value={part.description} 
-                                  className="md:col-span-2"
-                                />
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="py-8 text-center text-sm text-muted-foreground">
-                        Không có phụ tùng thiếu cho lịch hẹn này.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Customer Information */}
-            <Card className="border-border/60 shadow-sm">
-              <CardHeader>
-                <CardTitle>Thông tin khách hàng</CardTitle>
+        {/* Main Content: 2 Columns Layout */}
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          {/* Column 1: Detail Cards */}
+          <div className="space-y-8 lg:col-span-2">
+            
+            {/* 1. Customer Info */}
+            <Card className="shadow-md border-slate-200">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-xl font-semibold text-slate-800">Thông tin khách hàng</CardTitle>
                 <CardDescription>Chi tiết thông tin khách hàng đặt lịch hẹn.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-5">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+              <CardContent className="space-y-6 pt-0">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-lg font-bold text-rose-700 shadow-inner">
                     {customerName
                       .split(" ")
                       .filter(Boolean)
@@ -627,83 +419,167 @@ export default function AppointmentDetail() {
                       .toUpperCase() || "KH"}
                   </div>
                   <div>
-                    <p className="text-lg font-semibold text-foreground">{customerName}</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {customerCode && (
-                        <Badge className="border border-primary/20 bg-primary/10 text-primary">Mã: {customerCode}</Badge>
-                      )}
-                      {customerGender && (
-                        <Badge variant="outline" className="border-border/70 text-muted-foreground">
-                          {customerGender}
-                        </Badge>
-                      )}
-                    </div>
+                    <p className="text-lg font-bold text-slate-900">{customerName}</p>
+                    {customerCode && (
+                      <Badge variant="outline" className="mt-1 bg-rose-50 text-rose-600 border-rose-200 font-normal">
+                        Mã KH: {customerCode}
+                      </Badge>
+                    )}
                   </div>
                 </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="rounded-xl border border-border/60 bg-muted/10 px-4 py-3">
-                    <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-                      <Phone className="h-3.5 w-3.5" />
-                      Số điện thoại
-                    </div>
-                    <p className="mt-2 text-sm font-medium text-foreground">{customerPhone}</p>
-                  </div>
-                  <div className="rounded-xl border border-border/60 bg-muted/10 px-4 py-3">
-                    <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-                      <Calendar className="h-3.5 w-3.5" />
-                      Ngày sinh
-                    </div>
-                    <p className="mt-2 text-sm font-medium text-foreground">{customerDateOfBirth}</p>
-                  </div>
-                  <div className="rounded-xl border border-border/60 bg-muted/10 px-4 py-3 md:col-span-2">
-                    <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-                      <MapPin className="h-3.5 w-3.5" />
-                      Địa chỉ
-                    </div>
-                    <p className="mt-2 text-sm font-medium text-foreground leading-relaxed">{customerAddress}</p>
-                  </div>
-                  {customerCitizenId && (
-                    <div className="rounded-xl border border-border/60 bg-muted/10 px-4 py-3 md:col-span-2">
-                      <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-                        <FileText className="h-3.5 w-3.5" />
-                        CMND/CCCD
-                      </div>
-                      <p className="mt-2 text-sm font-medium text-foreground">{customerCitizenId}</p>
-                    </div>
-                  )}
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <DetailRow label="Số điện thoại" value={customerPhone} icon={Phone} valueClassName="break-all" />
+                  <DetailRow label="Địa chỉ" value={customerAddress} icon={MapPin} className="md:col-span-2 lg:col-span-1" valueClassName="leading-relaxed" />
                 </div>
               </CardContent>
             </Card>
-          </div>
 
-          {/* Sidebar */}
-          <div className="sticky top-20 self-start space-y-6">
-            <Card className="border-border/60 shadow-sm">
-              <CardHeader>
-                <CardTitle>Tổng quan</CardTitle>
-                <CardDescription>Thông tin nhanh về lịch hẹn.</CardDescription>
+            {/* 2. Service Center Info */}
+            <Card className="shadow-md border-slate-200">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-xl font-semibold text-slate-800">Trung tâm dịch vụ</CardTitle>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="rounded-2xl border border-border/60 bg-muted/15 px-4 py-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Trạng thái</p>
-                  <div className="mt-2">
-                    <Badge className={statusInfo.pill}>{statusInfo.label}</Badge>
+              <CardContent className="grid gap-4 md:grid-cols-2 pt-0">
+                <DetailRow label="Tên trung tâm" value={serviceCenterName} />
+                <DetailRow label="Mã trung tâm" value={serviceCenterCode} icon={Hash} />
+                <DetailRow label="Địa chỉ" value={serviceCenterAddress} icon={MapPin} className="md:col-span-2" valueClassName="leading-relaxed" />
+              </CardContent>
+            </Card>
+
+            {/* 3. General & Cost Info */}
+            <Card className="shadow-md border-slate-200">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-xl font-semibold text-slate-800">Thông tin chi phí & Chung</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="grid gap-4 md:grid-cols-3 pt-0">
+                  <DetailRow label="Chi phí ước tính" value={formatCurrency(appointment.estimatedCost)} icon={DollarSign} valueClassName="text-orange-600" />
+                  <DetailRow label="Chi phí thực tế" value={formatCurrency(appointment.actualCost)} icon={DollarSign} valueClassName="text-green-600" />
+                  <DetailRow label="Loại dịch vụ" value={appointmentType} icon={Wrench} />
+              </CardContent>
+            </Card>
+            
+            {/* 4. Vehicle Info */}
+            {vehicleInfo && (
+              <Card className="shadow-md border-slate-200">
+                <CardHeader className="pb-4">
+                    <div className="flex items-center gap-2">
+                        <Bike className="h-5 w-5 text-primary" />
+                        <CardTitle className="text-xl font-semibold text-slate-800">Thông tin xe</CardTitle>
+                    </div>
+                </CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-3 pt-0">
+                    <DetailRow label="Màu sắc" value={vehicleInfo.color} />
+                    <DetailRow label="Số khung" value={vehicleInfo.chassisNumber} />
+                    <DetailRow label="Số máy" value={vehicleInfo.engineNumber} />
+                    <DetailRow label="Ngày sản xuất" value={vehicleInfo.manufactureDate} icon={Calendar} />
+                    <DetailRow label="Ngày mua" value={vehicleInfo.purchaseDate} icon={Calendar} />
+                    <DetailRow label="Hết hạn BH" value={vehicleInfo.warrantyExpiry} icon={Calendar} />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 5. Maintenance Stage Info */}
+            {maintenanceStage && (
+              <Card className="shadow-md border-slate-200">
+                <CardHeader className="pb-4">
+                    <div className="flex items-center gap-2">
+                        <Wrench className="h-5 w-5 text-primary" />
+                        <CardTitle className="text-xl font-semibold text-slate-800">Gói bảo dưỡng</CardTitle>
+                    </div>
+                </CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-4 pt-0">
+                    <DetailRow label="Tên gói" value={maintenanceStage.name || "—"} className="md:col-span-2" />
+                    <DetailRow label="Số km" value={maintenanceStage.mileage ? formatMileage(maintenanceStage.mileage) : "—"} icon={Gauge} />
+                    <DetailRow label="Thời hạn" value={maintenanceStage.durationMonth ? formatDurationMonth(maintenanceStage.durationMonth) : "—"} icon={Clock} />
+                    <DetailRow label="Thời gian ước tính" value={maintenanceStage.estimatedTime ? `${maintenanceStage.estimatedTime} phút` : "—"} icon={Clock3} />
+                    {maintenanceStage.description && (
+                      <DetailRow label="Mô tả" value={maintenanceStage.description} className="md:col-span-4" valueClassName="text-slate-600" />
+                    )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 6. Missing Parts */}
+            <Card className="shadow-md border-slate-200">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-xl font-semibold text-slate-800">Danh sách phụ tùng thiếu</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                {loadingMissingParts ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    <span className="ml-3 text-sm text-muted-foreground">Đang tải danh sách phụ tùng thiếu...</span>
                   </div>
-                </div>
-                <div className="rounded-2xl border border-border/60 bg-muted/15 px-4 py-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Ngày tạo</p>
-                  <p className="mt-2 text-sm font-medium text-foreground">{formatDateTime(appointment.createdAt)}</p>
-                </div>
-                <div className="rounded-2xl border border-border/60 bg-muted/15 px-4 py-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Cập nhật lần cuối</p>
-                  <p className="mt-2 text-sm font-medium text-foreground">{formatDateTime(appointment.updatedAt)}</p>
-                </div>
-                {appointment.evCheckId && (
-                  <div className="rounded-2xl border border-border/60 bg-muted/15 px-4 py-3">
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Mã kiểm tra</p>
-                    <p className="mt-2 text-sm font-medium text-foreground font-mono">{appointment.evCheckId}</p>
+                ) : missingParts.length > 0 ? (
+                  <div className="space-y-4">
+                    {missingParts.map((part, index) => (
+                      <div key={part.id || index} className="rounded-lg border border-red-100 bg-red-50 p-4 shadow-sm">
+                        <div className="grid gap-3 md:grid-cols-4">
+                          <DetailRow label="Mã PT" value={part.code || part.partCode || "—"} icon={Tag} />
+                          <DetailRow label="Số lượng thiếu" value={part.quantity || part.missingQuantity || "—"} valueClassName="font-bold text-red-700" />
+                          <DetailRow label="Đơn giá" value={part.price ? formatCurrency(part.price) : "—"} icon={DollarSign} />
+                          <DetailRow label="Tên phụ tùng" value={part.name || part.partName || "—"} className="md:col-span-4 lg:col-span-1" />
+                          {part.description && (
+                            <DetailRow label="Mô tả" value={part.description} className="md:col-span-4" valueClassName="text-slate-600" />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-6 text-center text-sm text-slate-500 bg-slate-50 rounded-lg border border-slate-200">
+                    Không có phụ tùng thiếu cho lịch hẹn này.
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* 7. Note */}
+            {appointment.note && (
+                <div className="rounded-xl border border-dashed border-blue-300 bg-blue-50/70 p-5 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                        <MessageSquare className="h-4 w-4 text-blue-600" />
+                        <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">Ghi chú từ khách hàng</p>
+                    </div>
+                    <p className="text-sm text-slate-700 leading-relaxed">{appointment.note}</p>
+                </div>
+            )}
+          
+          </div>
+
+          {/* Column 2: Sidebar (Sticky) */}
+          <div className="space-y-6 lg:col-span-1">
+            <Card className="sticky top-8 shadow-md border-slate-200">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-xl font-semibold text-slate-800">Tổng quan</CardTitle>
+                <CardDescription>Các mốc thời gian quan trọng của lịch hẹn.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-0">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Trạng thái hiện tại</p>
+                  <div className="mt-2">
+                    <Badge
+                      className={cn(
+                        "text-base px-3 py-1.5 cursor-default",
+                        statusInfo.pill
+                      )}
+                    >
+                      {statusInfo.label}
+                    </Badge>
+                  </div>
+                </div>
+                <DetailRow label="Ngày tạo" value={formatDateTime(appointment.createdAt)} icon={Calendar} className="border-b border-dashed pb-4" />
+                <DetailRow label="Cập nhật lần cuối" value={formatDateTime(appointment.updatedAt)} icon={Clock} />
               </CardContent>
             </Card>
           </div>
@@ -712,4 +588,3 @@ export default function AppointmentDetail() {
     </div>
   );
 }
-

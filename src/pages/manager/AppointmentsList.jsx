@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useNavigate } from "react-router-dom";
 import { getAppointments } from "@/api/appointmentsApi";
 import { useToast } from "@/hooks/use-toast";
@@ -103,12 +104,17 @@ export default function AppointmentsList() {
     }
   };
 
-  // Fetch appointments
+  // Fetch appointments từ API (có phân trang + search + status)
   const fetchAppointments = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await getAppointments({ page, pageSize });
+      const response = await getAppointments({
+        page,
+        pageSize,
+        search: search || undefined,
+        status: statusFilter,
+      });
       
       console.log("📋 Appointments API Response:", response);
       
@@ -133,7 +139,7 @@ export default function AppointmentsList() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, toast]);
+  }, [page, pageSize, search, statusFilter, toast]);
 
   useEffect(() => {
     fetchAppointments();
@@ -171,6 +177,8 @@ export default function AppointmentsList() {
       .filter(Boolean)
   )];
 
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="p-8 max-w-7xl mx-auto space-y-6">
@@ -189,9 +197,12 @@ export default function AppointmentsList() {
             <div className="relative flex-1 min-w-[300px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Tìm theo tên, số điện thoại, dịch vụ..."
+                placeholder="Tìm theo mã lịch hẹn, tên, số điện thoại, dịch vụ..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setPage(1); // reset về trang 1 khi tìm kiếm
+                  setSearch(e.target.value);
+                }}
                 className="pl-9 bg-slate-50 border-slate-200 focus-visible:ring-red-500/70"
               />
             </div>
@@ -245,7 +256,8 @@ export default function AppointmentsList() {
           </p>
 
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-            <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+            {/* Header table (không scroll) */}
+            <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
@@ -275,6 +287,12 @@ export default function AppointmentsList() {
                     </th>
                   </tr>
                 </thead>
+              </table>
+            </div>
+
+            {/* Body table (scroll riêng, thanh scroll dừng dưới header) */}
+            <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+              <table className="w-full">
                 <tbody>
                   {loading ? (
                     <tr>
@@ -376,6 +394,49 @@ export default function AppointmentsList() {
               </table>
             </div>
           </div>
+
+          {/* Pagination – dùng chung style với admin (BranchesTable) */}
+          {!loading && total > 0 && (
+            <div className="mt-4 flex items-center justify-center px-6 py-4 border-t border-slate-200/80 bg-slate-50/60">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                      className={`cursor-pointer rounded-full px-3 ${
+                        page === 1 ? "pointer-events-none opacity-40" : "hover:bg-slate-100"
+                      }`}
+                    />
+                  </PaginationItem>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink
+                        onClick={() => setPage(pageNum)}
+                        isActive={page === pageNum}
+                        className={`cursor-pointer rounded-full px-3 py-1 text-sm ${
+                          page === pageNum
+                            ? "bg-red-100 text-red-700 font-medium"
+                            : "hover:bg-slate-100"
+                        }`}
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                      className={`cursor-pointer rounded-full px-3 ${
+                        page >= totalPages ? "pointer-events-none opacity-40" : "hover:bg-slate-100"
+                      }`}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -459,7 +459,7 @@ export default function BranchDetail() {
           {/* Lịch làm việc */}
           <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
             <CardHeader className="border-b border-slate-100 pb-3 bg-red-50/40">
-              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="h-9 w-9 rounded-full bg-red-500/10 flex items-center justify-center">
                     <Calendar className="h-5 w-5 text-red-600" />
@@ -478,10 +478,7 @@ export default function BranchDetail() {
                     </p>
                   </div>
                 </div>
-                <Button onClick={() => setIsCreateSlotOpen(true)} size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Tạo slot
-                </Button>
+                {/* Admin chỉ xem lịch làm việc, không tạo slot */}
               </div>
             </CardHeader>
             <CardContent>

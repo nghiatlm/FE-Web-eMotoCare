@@ -2,11 +2,19 @@ import api from "./api";
 
 const BASE_URL = "/v1/appointments";
 
-export const getAppointments = ({ page = 1, pageSize = 20, serviceCenterId } = {}) => {
+export const getAppointments = ({
+  page = 1,
+  pageSize = 20,
+  serviceCenterId,
+  search,
+  status,
+} = {}) => {
   const params = { page, pageSize };
-  if (serviceCenterId) {
-    params.serviceCenterId = serviceCenterId;
-  }
+
+  if (serviceCenterId) params.serviceCenterId = serviceCenterId;
+  if (search) params.search = search.trim();
+  if (status && status !== "all") params.status = status;
+
   return api.get(BASE_URL, { params });
 };
 export const postAppointment = (data) => api.post(BASE_URL, data);
@@ -14,16 +22,9 @@ export const postAppointment = (data) => api.post(BASE_URL, data);
 
 export const getAppointmentById = (id) => api.get(`${BASE_URL}/${id}`);
 
-// // Duyệt lịch hẹn
-// export const approveAppointment = (appointmentId, staffId) => {
-//   if (!staffId) throw new Error("StaffId là bắt buộc để duyệt lịch");
-//   return api.post(`${BASE_URL}/${appointmentId}/approve?staffId=${staffId}`);
-// };
-// ✅ Gửi staffId trong body thay vì query
 export const updateAppointment = (id, body) =>
   api.put(`${BASE_URL}/${id}`, body);
 
-// Lấy danh sách lịch hẹn theo Technician ID (staffId)
 export const getAppointmentsByTechnician = (technicianId) => {
   return api.get(`${BASE_URL}/technician/${technicianId}`);
 };
@@ -31,13 +32,11 @@ export const getAppointmentsByTechnician = (technicianId) => {
 export const getAppointmentMissingParts = (appointmentId) =>
   api.get(`${BASE_URL}/${appointmentId}/missing-parts`);
 
-// Lấy danh sách phụ tùng còn thiếu (cho manager)
 export const getAppointmentsMissingParts = ({ page = 1, pageSize = 10, sortDesc = true } = {}) => {
   const params = { page, pageSize, sortDesc };
   return api.get(`${BASE_URL}/missing-parts`, { params });
 };
 
-// ✅ Lấy thông tin khách hàng/xe từ số khung (first visit)
 export const getFirstVisitVehicleInfo = (chassisNumber) => {
   return api.get(`${BASE_URL}/first-visit/vehicle-info`, { params: { chassisNumber } });
 };

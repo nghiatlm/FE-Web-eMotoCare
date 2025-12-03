@@ -4,11 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { getRmas } from "@/api/rmasApi";
 import { getStaffByAccountId } from "@/api/staffsApi";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 export default function WarrantyList() {
   const navigate = useNavigate();
@@ -74,29 +81,43 @@ export default function WarrantyList() {
       case "PENDING":
         return (
           <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 flex items-center gap-1">
-            <Clock className="h-3 w-3" />
             Chờ xác nhận
           </Badge>
         );
       case "PROCESSING":
         return (
           <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100 flex items-center gap-1">
-            <Clock className="h-3 w-3" />
             Đang xử lý
           </Badge>
         );
       case "APPROVED":
         return (
           <Badge className="bg-green-100 text-green-800 hover:bg-green-100 flex items-center gap-1">
-            <CheckCircle2 className="h-3 w-3" />
             Đã duyệt
           </Badge>
         );
       case "REJECTED":
         return (
           <Badge className="bg-red-100 text-red-800 hover:bg-red-100 flex items-center gap-1">
-            <XCircle className="h-3 w-3" />
             Đã từ chối
+          </Badge>
+        );
+      case "CANCELED":
+        return (
+          <Badge className="bg-slate-100 text-slate-800 hover:bg-slate-100 flex items-center gap-1">
+            Đã hủy
+          </Badge>
+        );
+      case "COMPLETED":
+        return (
+          <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 flex items-center gap-1">
+            Hoàn thành
+          </Badge>
+        );
+      case "APPOINTMENT_BOOKED":
+        return (
+          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 flex items-center gap-1">
+            Đã đặt lịch
           </Badge>
         );
       default:
@@ -114,6 +135,12 @@ export default function WarrantyList() {
         return <CheckCircle2 className="h-4 w-4 text-green-600" />;
       case "REJECTED":
         return <XCircle className="h-4 w-4 text-red-600" />;
+      case "CANCELED":
+        return <XCircle className="h-4 w-4 text-slate-600" />;
+      case "COMPLETED":
+        return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
+      case "APPOINTMENT_BOOKED":
+        return <Clock className="h-4 w-4 text-blue-600" />;
       default:
         return null;
     }
@@ -158,207 +185,272 @@ export default function WarrantyList() {
     };
   }, [rmas]);
 
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Quản lý Bảo hành</h1>
-        <p className="text-muted-foreground">Quản lý các yêu cầu bảo hành tại trung tâm dịch vụ</p>
-      </div>
+    <div className="bg-slate-50">
+      <div className="p-8 max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-2xl font-semibold text-slate-900">Quản lý bảo hành</h1>
+          <p className="mt-2 text-sm text-slate-600">
+            Quản lý các yêu cầu bảo hành tại trung tâm dịch vụ
+          </p>
+          <div className="mt-4 h-[2px] w-16 bg-gradient-to-r from-red-500 via-red-400 to-orange-300 rounded-full" />
+        </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tổng số</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Chờ xác nhận</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Đã duyệt</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Đã từ chối</CardTitle>
-            <XCircle className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
-          </CardContent>
-        </Card>
-      </div>
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="rounded-xl bg-white border border-slate-200 px-4 py-3 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Tổng số</p>
+              <p className="mt-1 text-2xl font-semibold text-slate-900">{stats.total}</p>
+            </div>
+            <FileText className="h-5 w-5 text-slate-400" />
+          </div>
+          <div className="rounded-xl bg-white border border-slate-200 px-4 py-3 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-yellow-700 uppercase tracking-wide">Chờ xác nhận</p>
+              <p className="mt-1 text-2xl font-semibold text-yellow-600">{stats.pending}</p>
+            </div>
+            <Clock className="h-5 w-5 text-yellow-500" />
+          </div>
+          <div className="rounded-xl bg-white border border-slate-200 px-4 py-3 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-green-700 uppercase tracking-wide">Đã duyệt</p>
+              <p className="mt-1 text-2xl font-semibold text-green-600">{stats.approved}</p>
+            </div>
+            <CheckCircle2 className="h-5 w-5 text-green-500" />
+          </div>
+          <div className="rounded-xl bg-white border border-slate-200 px-4 py-3 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-red-700 uppercase tracking-wide">Đã từ chối</p>
+              <p className="mt-1 text-2xl font-semibold text-red-600">{stats.rejected}</p>
+            </div>
+            <XCircle className="h-5 w-5 text-red-500" />
+          </div>
+        </div>
 
-      {/* Filters */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Bộ lọc</CardTitle>
-        </CardHeader>
-        <CardContent>
+        {/* Filters – giống block filter admin */}
+        <div className="mb-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="relative flex-1 min-w-[300px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="relative flex-1 min-w-[260px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Tìm theo mã, tên khách hàng, SĐT, số serial..."
+                placeholder="Tìm theo mã yêu cầu, nhân viên, ghi chú..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setPage(1);
+                  setSearch(e.target.value);
+                }}
                 className="pl-9"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Trạng thái" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="PENDING">Chờ xác nhận</SelectItem>
-                <SelectItem value="APPROVED">Đã duyệt</SelectItem>
-                <SelectItem value="REJECTED">Đã từ chối</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline">
-              <Filter className="h-4 w-4 mr-2" />
-              Lọc
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Warranty Claims Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Danh sách yêu cầu bảo hành ({filteredClaims.length})</CardTitle>
-            <CardDescription>Tổng số yêu cầu: {total}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="py-12 text-center text-muted-foreground">Đang tải...</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Mã yêu cầu</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Nhân viên</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Ghi chú</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Địa chỉ trả</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Ngày gửi</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Trạng thái</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Thao tác</th>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-slate-600 uppercase tracking-wide">
+                  Trạng thái
+                </span>
+                <Select
+                  value={statusFilter}
+                  onValueChange={(value) => {
+                    setPage(1);
+                    setStatusFilter(value);
+                  }}
+                >
+                  <SelectTrigger className="w-[180px] h-9 text-sm">
+                    <SelectValue placeholder="Trạng thái" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả</SelectItem>
+                    <SelectItem value="PENDING">Chờ xác nhận</SelectItem>
+                    <SelectItem value="APPROVED">Đã duyệt</SelectItem>
+                    <SelectItem value="REJECTED">Đã từ chối</SelectItem>
+                    <SelectItem value="PROCESSING">Đang xử lý</SelectItem>
+                    <SelectItem value="CANCELED">Đã hủy</SelectItem>
+                    <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
+                    <SelectItem value="APPOINTMENT_BOOKED">Đã đặt lịch</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("all");
+                  setPage(1);
+                }}
+              >
+                Xóa bộ lọc
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Summary */}
+        <p className="text-sm text-slate-500 mb-4">
+          {search || statusFilter !== "all"
+            ? `Hiển thị ${filteredClaims.length} / ${rmas.length} yêu cầu (đã lọc)`
+            : `Hiển thị ${rmas.length} / ${total} yêu cầu`}
+        </p>
+
+        {/* Warranty Claims Table – style giống admin */}
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="sticky top-0 z-10 bg-white">
+                <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-16">
+                    STT
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    Mã yêu cầu
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    Nhân viên
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    Địa chỉ trả
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    Ngày gửi
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    Trạng thái
+                  </th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-32">
+                    Thao tác
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="py-10 text-center text-muted-foreground text-sm">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
+                        <span>Đang tải dữ liệu...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredClaims.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-10 text-center text-muted-foreground text-sm">
+                      Không tìm thấy yêu cầu bảo hành nào
+                    </td>
+                  </tr>
+                ) : (
+                  filteredClaims.map((claim, index) => (
+                    <tr
+                      key={claim.id}
+                      className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+                        index % 2 === 0 ? "bg-white" : "bg-slate-50/40"
+                      }`}
+                    >
+                      <td className="py-3 px-4 text-sm text-slate-600 text-center">
+                        {(page - 1) * pageSize + index + 1}
+                      </td>
+                      <td className="py-3 px-4 text-sm font-medium text-slate-900">
+                        {claim.code}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-900">
+                        <div>
+                          <div className="font-medium text-slate-900">
+                            {claim.staffName || "N/A"}
+                          </div>
+                          <div className="text-xs text-slate-500">{claim.staffCode || ""}</div>
+                        </div>
+                      </td>
+                      
+                      <td className="py-3 px-4 text-sm text-slate-900">
+                        <div className="max-w-xs">
+                          <div className="truncate" title={claim.returnAddress}>
+                            {claim.returnAddress || "—"}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-900">
+                        <div className="flex items-center gap-2">
+                          <span>
+                            {claim.rmaDate
+                              ? new Date(claim.rmaDate).toLocaleDateString("vi-VN")
+                              : "—"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-900">
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(claim.status)}
+                          {getStatusBadge(claim.status)}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-sm">
+                        <div className="flex justify-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-primary hover:text-primary/80"
+                            onClick={() => navigate(`/manager/warranty/${claim.id}`)}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Chi tiết
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {filteredClaims.length === 0 ? (
-                      <tr>
-                        <td colSpan="7" className="py-12 text-center text-muted-foreground">
-                          Không tìm thấy yêu cầu bảo hành nào
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredClaims.map((claim) => (
-                        <tr
-                          key={claim.id}
-                          className="border-b border-border hover:bg-muted/50 transition-colors"
-                        >
-                          <td className="py-4 px-4">
-                            <div className="font-medium text-foreground">{claim.code}</div>
-                          </td>
-                          <td className="py-4 px-4">
-                            <div>
-                              <div className="font-medium text-foreground">{claim.staffName || "N/A"}</div>
-                              <div className="text-sm text-muted-foreground">{claim.staffCode || ""}</div>
-                            </div>
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="max-w-xs">
-                              <div className="text-foreground text-sm truncate" title={claim.note}>
-                                {claim.note || "—"}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="max-w-xs">
-                              <div className="text-foreground text-sm truncate" title={claim.returnAddress}>
-                                {claim.returnAddress || "—"}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-foreground">
-                                {claim.rmaDate
-                                  ? new Date(claim.rmaDate).toLocaleDateString("vi-VN")
-                                  : "—"}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-2">
-                              {getStatusIcon(claim.status)}
-                              {getStatusBadge(claim.status)}
-                            </div>
-                          </td>
-                          <td className="py-4 px-4">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => navigate(`/manager/warranty/${claim.id}`)}
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              Xem chi tiết
-                            </Button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            {total > pageSize && (
-              <div className="flex items-center justify-between mt-4">
-                <div className="text-sm text-muted-foreground">
-                  Hiển thị {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, total)} của {total}
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                  >
-                    Trước
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => p + 1)}
-                    disabled={page * pageSize >= total}
-                  >
-                    Sau
-                  </Button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Pagination – giống style UserTable */}
+        {total > 0 && (
+          <div className="mt-4 pb-4 flex items-center justify-center text-sm text-slate-500">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                    className={`cursor-pointer rounded-full px-3 ${
+                      page === 1 ? "pointer-events-none opacity-40" : "hover:bg-slate-100"
+                    }`}
+                  />
+                </PaginationItem>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                  <PaginationItem key={pageNum}>
+                    <PaginationLink
+                      onClick={() => setPage(pageNum)}
+                      isActive={page === pageNum}
+                      className={`cursor-pointer rounded-full px-3 py-1 text-sm ${
+                        page === pageNum
+                          ? "bg-red-100 text-red-700 font-medium"
+                          : "hover:bg-slate-100"
+                      }`}
+                    >
+                      {pageNum}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                    className={`cursor-pointer rounded-full px-3 ${
+                      page >= totalPages ? "pointer-events-none opacity-40" : "hover:bg-slate-100"
+                    }`}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
