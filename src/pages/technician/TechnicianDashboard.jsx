@@ -53,7 +53,7 @@ const TechnicianDashboard = () => {
     return bookingDate.isAfter(today) && bookingDate.isBefore(next7Days);
   });
 
-  // Thống kê theo loại dịch vụ
+  // Thống kê theo loại dịch vụ (5 loại)
   const serviceTypeStats = {
     maintenance: assignedBookings.filter(b => 
       (b.type || "").toUpperCase() === "MAINTENANCE_TYPE"
@@ -66,6 +66,9 @@ const TechnicianDashboard = () => {
     ).length,
     recall: assignedBookings.filter(b => 
       (b.type || "").toUpperCase() === "RECALL_TYPE"
+    ).length,
+    campaign: assignedBookings.filter(b => 
+      (b.type || "").toUpperCase() === "CAMPAIGN_TYPE"
     ).length,
   };
 
@@ -117,6 +120,7 @@ const TechnicianDashboard = () => {
       REPAIR_TYPE: "Sửa chữa",
       WARRANTY_TYPE: "Bảo hành",
       RECALL_TYPE: "Recall",
+      CAMPAIGN_TYPE: "Chiến dịch",
     };
     return typeMap[type] || type;
   };
@@ -249,7 +253,7 @@ const TechnicianDashboard = () => {
           <span>Phân bổ theo loại dịch vụ</span>
         </Space>
       }>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="text-center">
             <div className="text-2xl font-bold" style={{ color: "#1890ff" }}>{serviceTypeStats.maintenance}</div>
             <div className="text-sm text-gray-600">Bảo dưỡng</div>
@@ -265,6 +269,10 @@ const TechnicianDashboard = () => {
           <div className="text-center">
             <div className="text-2xl font-bold" style={{ color: "#722ed1" }}>{serviceTypeStats.recall}</div>
             <div className="text-sm text-gray-600">Recall</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold" style={{ color: "#eb2f96" }}>{serviceTypeStats.campaign}</div>
+            <div className="text-sm text-gray-600">Chiến dịch</div>
           </div>
         </div>
       </Card>
