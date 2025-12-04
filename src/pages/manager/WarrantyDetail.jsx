@@ -39,8 +39,8 @@ import { getParts } from "@/api/partsApi";
 
 const STATUS_META = {
   PENDING: {
-    label: "Đang chờ duyệt",
-    description: "Yêu cầu đang đợi quản lý xem xét và phê duyệt.",
+    label: "Chờ xác nhận",
+    description: "Yêu cầu bảo hành đang chờ quản lý xác nhận.",
     pill: "bg-amber-500/10 text-amber-600 border border-amber-200",
     gradient: "from-amber-50 via-white to-white",
     icon: Clock,
@@ -51,25 +51,25 @@ const STATUS_META = {
   },
   PROCESSING: {
     label: "Đang xử lý",
-    description: "Yêu cầu đang trong quá trình xử lý và theo dõi.",
+    description: "Yêu cầu đang được xử lý tại trung tâm dịch vụ.",
     pill: "bg-sky-500/10 text-sky-600 border border-sky-200",
     gradient: "from-sky-50 via-white to-white",
-    icon: CheckCircle2,
+    icon: Clock,
     panelBorder: "border-sky-200",
     panelBg: "bg-sky-50/70",
     panelText: "text-sky-700",
     panelMuted: "text-sky-600",
   },
   APPROVED: {
-    label: "Đã cập nhật hãng",
-    description: "Yêu cầu đã được cập nhật hãng.",
-    pill: "bg-green-500/10 text-green-600 border border-green-200",
-    gradient: "from-green-50 via-white to-white",
+    label: "Đã duyệt",
+    description: "Yêu cầu bảo hành đã được duyệt.",
+    pill: "bg-emerald-500/10 text-emerald-600 border border-emerald-200",
+    gradient: "from-emerald-50 via-white to-white",
     icon: CheckCircle2,
-    panelBorder: "border-green-200",
-    panelBg: "bg-green-50/70",
-    panelText: "text-green-700",
-    panelMuted: "text-green-600",
+    panelBorder: "border-emerald-200",
+    panelBg: "bg-emerald-50/70",
+    panelText: "text-emerald-700",
+    panelMuted: "text-emerald-600",
   },
   REJECTED: {
     label: "Đã từ chối",
@@ -81,6 +81,39 @@ const STATUS_META = {
     panelBg: "bg-rose-50/60",
     panelText: "text-rose-700",
     panelMuted: "text-rose-600",
+  },
+  CANCELED: {
+    label: "Đã hủy",
+    description: "Yêu cầu bảo hành đã bị hủy.",
+    pill: "bg-slate-500/10 text-slate-700 border border-slate-200",
+    gradient: "from-slate-50 via-white to-white",
+    icon: XCircle,
+    panelBorder: "border-slate-200",
+    panelBg: "bg-slate-50/60",
+    panelText: "text-slate-700",
+    panelMuted: "text-slate-600",
+  },
+  COMPLETED: {
+    label: "Hoàn thành",
+    description: "Yêu cầu bảo hành đã được xử lý xong.",
+    pill: "bg-emerald-500/10 text-emerald-700 border border-emerald-200",
+    gradient: "from-emerald-50 via-white to-white",
+    icon: CheckCircle2,
+    panelBorder: "border-emerald-200",
+    panelBg: "bg-emerald-50/60",
+    panelText: "text-emerald-700",
+    panelMuted: "text-emerald-600",
+  },
+  APPOINTMENT_BOOKED: {
+    label: "Đã đặt lịch",
+    description: "Yêu cầu đã được đặt lịch xử lý tại trung tâm.",
+    pill: "bg-blue-500/10 text-blue-700 border border-blue-200",
+    gradient: "from-blue-50 via-white to-white",
+    icon: Clock,
+    panelBorder: "border-blue-200",
+    panelBg: "bg-blue-50/60",
+    panelText: "text-blue-700",
+    panelMuted: "text-blue-600",
   },
   DEFAULT: {
     label: "Không xác định",
@@ -290,7 +323,7 @@ export default function WarrantyDetail() {
       case "INACTIVE":
         return "Không hoạt động";
       case "PENDING":
-        return "Chờ xử lý";
+        return "Chờ xác nhận";
       case "PROCESSING":
       case "IN_PROGRESS":
         return "Đang xử lý";
@@ -303,6 +336,8 @@ export default function WarrantyDetail() {
       case "CANCELLED":
       case "CANCELED":
         return "Đã hủy";
+      case "APPOINTMENT_BOOKED":
+        return "Đã đặt lịch";
       default:
         return status;
     }
@@ -330,22 +365,43 @@ export default function WarrantyDetail() {
       case "PENDING":
         return (
           <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 flex items-center gap-1 text-lg px-4 py-2">
-            <Clock className="h-4 w-4" />
             Chờ xác nhận
+          </Badge>
+        );
+      case "PROCESSING":
+        return (
+          <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100 flex items-center gap-1 text-lg px-4 py-2">
+            Đang xử lý
           </Badge>
         );
       case "APPROVED":
         return (
           <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100 flex items-center gap-1 text-lg px-4 py-2">
-            <CheckCircle2 className="h-4 w-4" />
-            Đang xử lý
+            Đã duyệt
           </Badge>
         );
       case "REJECTED":
         return (
           <Badge className="bg-red-100 text-red-800 hover:bg-red-100 flex items-center gap-1 text-lg px-4 py-2">
-            <XCircle className="h-4 w-4" />
             Đã từ chối
+          </Badge>
+        );
+      case "CANCELED":
+        return (
+          <Badge className="bg-slate-100 text-slate-800 hover:bg-slate-100 flex items-center gap-1 text-lg px-4 py-2">
+            Đã hủy
+          </Badge>
+        );
+      case "COMPLETED":
+        return (
+          <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 flex items-center gap-1 text-lg px-4 py-2">
+            Hoàn thành
+          </Badge>
+        );
+      case "APPOINTMENT_BOOKED":
+        return (
+          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 flex items-center gap-1 text-lg px-4 py-2">
+            Đã đặt lịch
           </Badge>
         );
       default:
@@ -448,8 +504,19 @@ export default function WarrantyDetail() {
     },
     customer: {
       name: rma.customer?.name || (rma.customer?.firstName && rma.customer?.lastName ? `${rma.customer.firstName} ${rma.customer.lastName}` : "") || rma.customerName || "",
-      phone: rma.customer?.phone || rma.customer?.account?.phone || rma.customerPhone || "",
-      email: rma.customer?.email || rma.customer?.account?.email || rma.customerEmail || "",
+      phone:
+        rma.customer?.phone ||
+        rma.customer?.account?.phone ||
+        rma.customerPhone ||
+        rma.appointment?.phone ||
+        rma.appointment?.customer?.account?.phone ||
+        "",
+      email:
+        rma.customer?.email ||
+        rma.customer?.account?.email ||
+        rma.customerEmail ||
+        rma.appointment?.customer?.account?.email ||
+        "",
       address: rma.customer?.address || rma.customerAddress || "",
       customerCode: rma.customer?.customerCode || "",
       citizenId: rma.customer?.citizenId || "",
@@ -789,7 +856,7 @@ export default function WarrantyDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100">
       <div className="px-4 py-6 sm:px-6 lg:px-10 max-w-7xl mx-auto">
         <Button variant="ghost" onClick={() => navigate("/manager/warranty")} className="mb-6 hover:bg-muted/50">
           <ArrowLeft className="h-4 w-4 mr-2" />

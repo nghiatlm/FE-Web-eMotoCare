@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { User } from "lucide-react";
 import { getServiceCenterById, createServiceCenterSlot } from "@/api/serviceCentersApi";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -151,12 +152,10 @@ export default function BranchDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background p-8">
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-            <p className="text-muted-foreground text-sm">Đang tải chi tiết chi nhánh...</p>
-          </div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+          <p className="text-muted-foreground text-sm">Đang tải chi tiết chi nhánh...</p>
         </div>
       </div>
     );
@@ -164,7 +163,7 @@ export default function BranchDetail() {
 
   if (!branchDetail) {
     return (
-      <div className="min-h-screen bg-background p-8">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center py-12">
           <p className="text-muted-foreground">Không tìm thấy thông tin chi nhánh</p>
           <Button variant="outline" onClick={() => navigate("/admin/branches")} className="mt-4">
@@ -176,156 +175,261 @@ export default function BranchDetail() {
     );
   }
 
+  const branchManager = branchDetail.staffs?.find(
+    (staff) => staff.position === "MANAGER_BRANCH"
+  );
+
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="mb-6">
-        <Button variant="ghost" onClick={() => navigate("/admin/branches")} className="mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Quay lại
-        </Button>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Chi tiết Chi nhánh</h1>
-            <p className="text-muted-foreground">Thông tin chi tiết về chi nhánh</p>
+    <div className="min-h-screen bg-slate-50">
+      <div className="p-8 max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="mb-2">
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/admin/branches")}
+            className="mb-3 gap-2 text-slate-600 hover:text-slate-900"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Quay lại danh sách
+          </Button>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-900">Chi tiết chi nhánh</h1>
+              <p className="mt-1 text-sm text-slate-500">
+                Thông tin chi tiết về chi nhánh trong hệ thống
+              </p>
+              <div className="mt-3 h-[2px] w-24 rounded-full bg-red-500/70" />
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tổng doanh thu</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(summaryStats.totalRevenue)}</div>
-            <p className="text-xs text-green-600 mt-1 flex items-center">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              +12.5% so với kỳ trước
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tổng lịch hẹn</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{summaryStats.totalAppointments}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Hoàn thành: {summaryStats.completedAppointments}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Nhân viên</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{summaryStats.activeStaff}/{summaryStats.totalStaff}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Đang làm việc / Tổng số
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Bảo hành</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{summaryStats.confirmedWarranty}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Đã xác nhận / Tổng: {summaryStats.totalWarrantyClaims}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Thông tin cơ bản */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Info className="h-5 w-5 text-primary" />
-                Thông tin cơ bản
-              </CardTitle>
+        {/* Summary cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Doanh thu */}
+          <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+            <div className="h-1 w-full bg-red-500/80" />
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-3">
+              <div>
+                <CardTitle className="text-sm font-medium text-slate-600">Tổng doanh thu</CardTitle>
+                <p className="mt-1 text-xs text-slate-400">Tất cả dịch vụ trong kỳ</p>
+              </div>
+              <div className="p-2 rounded-full bg-red-50 text-red-600">
+                <DollarSign className="h-4 w-4" />
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                    <Hash className="h-4 w-4" />
-                    Mã chi nhánh
-                  </label>
-                  <p className="text-lg font-semibold text-foreground mt-1">{branchDetail.code || "—"}</p>
+            <CardContent className="pt-1">
+              <div className="text-2xl font-semibold text-slate-900">
+                {formatCurrency(summaryStats.totalRevenue)}
+              </div>
+              <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                <TrendingUp className="h-3 w-3" />
+                <span>+12.5% so với kỳ trước</span>
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Lịch hẹn */}
+          <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+            <div className="h-1 w-full bg-sky-500/80" />
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-3">
+              <div>
+                <CardTitle className="text-sm font-medium text-slate-600">Tổng lịch hẹn</CardTitle>
+                <p className="mt-1 text-xs text-slate-400">Bao gồm lịch đã hoàn thành</p>
+              </div>
+              <div className="p-2 rounded-full bg-sky-50 text-sky-600">
+                <Calendar className="h-4 w-4" />
+              </div>
+            </CardHeader>
+            <CardContent className="pt-1">
+              <div className="text-2xl font-semibold text-slate-900">
+                {summaryStats.totalAppointments}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Hoàn thành:{" "}
+                <span className="font-medium text-slate-700">
+                  {summaryStats.completedAppointments}
+                </span>
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Nhân viên */}
+          <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+            <div className="h-1 w-full bg-emerald-500/80" />
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-3">
+              <div>
+                <CardTitle className="text-sm font-medium text-slate-600">Nhân viên</CardTitle>
+                <p className="mt-1 text-xs text-slate-400">Đang làm việc / Tổng số</p>
+              </div>
+              <div className="p-2 rounded-full bg-emerald-50 text-emerald-600">
+                <Users className="h-4 w-4" />
+              </div>
+            </CardHeader>
+            <CardContent className="pt-1">
+              <div className="text-2xl font-semibold text-slate-900">
+                {summaryStats.activeStaff}/{summaryStats.totalStaff}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Bảo hành */}
+          <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+            <div className="h-1 w-full bg-violet-500/80" />
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-3">
+              <div>
+                <CardTitle className="text-sm font-medium text-slate-600">Bảo hành</CardTitle>
+                <p className="mt-1 text-xs text-slate-400">Đã xác nhận / Tổng yêu cầu</p>
+              </div>
+              <div className="p-2 rounded-full bg-violet-50 text-violet-600">
+                <FileText className="h-4 w-4" />
+              </div>
+            </CardHeader>
+            <CardContent className="pt-1">
+              <div className="text-2xl font-semibold text-slate-900">
+                {summaryStats.confirmedWarranty}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Tổng yêu cầu:{" "}
+                <span className="font-medium text-slate-700">
+                  {summaryStats.totalWarrantyClaims}
+                </span>
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)] gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+          {/* Thông tin cơ bản */}
+          <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+            <CardHeader className="border-b border-slate-100 pb-3 bg-red-50/40">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-full bg-red-500/10 flex items-center justify-center">
+                  <Info className="h-5 w-5 text-red-600" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                    <Building2 className="h-4 w-4" />
-                    Tên chi nhánh
-                  </label>
-                  <p className="text-lg font-semibold text-foreground mt-1">{branchDetail.name || "—"}</p>
+                  <CardTitle className="text-base font-semibold text-slate-900">
+                    Thông tin cơ bản
+                  </CardTitle>
+                  <p className="text-xs text-slate-500">
+                    Mã chi nhánh và tên hiển thị trong hệ thống
+                  </p>
                 </div>
               </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Mô tả</label>
-                <p className="text-foreground mt-1 bg-muted/50 p-3 rounded-md">
+            </CardHeader>
+            <CardContent className="space-y-4 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 flex items-center gap-1">
+                    <Hash className="h-3.5 w-3.5" />
+                    Mã chi nhánh
+                  </label>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">
+                    {branchDetail.code || "—"}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 flex items-center gap-1">
+                    <Building2 className="h-3.5 w-3.5" />
+                    Tên chi nhánh
+                  </label>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">
+                    {branchDetail.name || "—"}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Mô tả
+                </label>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 leading-relaxed">
                   {branchDetail.description || "Không có mô tả"}
-                </p>
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Thông tin liên hệ */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Phone className="h-5 w-5 text-primary" />
-                Thông tin liên hệ
-              </CardTitle>
+          <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+            <CardHeader className="border-b border-slate-100 pb-3 bg-red-50/40">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-full bg-red-500/10 flex items-center justify-center">
+                  <Phone className="h-5 w-5 text-red-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-semibold text-slate-900">
+                    Thông tin liên hệ
+                  </CardTitle>
+                  <p className="text-xs text-slate-500">
+                    Email, quản lý và địa chỉ chi nhánh
+                  </p>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
                     <Mail className="h-4 w-4" />
                     Email
                   </label>
-                  <p className="text-foreground mt-1">{branchDetail.email || "—"}</p>
+                  <p className="mt-1 text-sm text-foreground break-all">
+                    {branchDetail.email || "—"}
+                  </p>
                 </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 flex items-center gap-1">
+                    <User className="h-3.5 w-3.5" />
+                    Quản lý
+                  </label>
+                  {branchManager ? (
+                    <>
+                      <p className="mt-1 text-base font-semibold text-slate-900">
+                        {branchManager.firstName} {branchManager.lastName}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {branchDetail.phone || "Chưa có số điện thoại"}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="mt-1 text-sm text-slate-500">
+                      Chưa gán quản lý cho chi nhánh này
+                    </p>
+                  )}
+                </div>
+
                 <div>
                   <label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                    <Phone className="h-4 w-4" />
-                    Số điện thoại
+                    <MapPin className="h-4 w-4" />
+                    Địa chỉ
                   </label>
-                  <p className="text-foreground mt-1">{branchDetail.phone || "—"}</p>
+                  <p className="mt-1 text-sm text-foreground">
+                    {branchDetail.address || "—"}
+                  </p>
                 </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                  <MapPin className="h-4 w-4" />
-                  Địa chỉ
-                </label>
-                <p className="text-foreground mt-1">{branchDetail.address || "—"}</p>
               </div>
             </CardContent>
           </Card>
 
           {/* Bản đồ */}
           {(branchDetail.latitude || branchDetail.longitude || branchDetail.address) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-primary" />
-                  Vị trí trên bản đồ
-                </CardTitle>
+            <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+              <CardHeader className="border-b border-slate-100 pb-3 bg-red-50/40">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-red-500/10 flex items-center justify-center">
+                    <MapPin className="h-5 w-5 text-red-600" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base font-semibold text-slate-900">
+                      Vị trí trên bản đồ
+                    </CardTitle>
+                    <p className="text-xs text-slate-500">
+                      Hiển thị vị trí chi nhánh trên Google Maps
+                    </p>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="rounded-md overflow-hidden border border-border">
@@ -353,22 +457,28 @@ export default function BranchDetail() {
           )}
 
           {/* Lịch làm việc */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-primary" />
-                  Lịch làm việc
-                  {branchDetail.serviceCenterSlots && branchDetail.serviceCenterSlots.length > 0 && (
-                    <Badge variant="secondary" className="ml-2">
-                      {branchDetail.serviceCenterSlots.length} slot
-                    </Badge>
-                  )}
-                </CardTitle>
-                <Button onClick={() => setIsCreateSlotOpen(true)} size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Tạo slot
-                </Button>
+          <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+            <CardHeader className="border-b border-slate-100 pb-3 bg-red-50/40">
+                <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-red-500/10 flex items-center justify-center">
+                    <Calendar className="h-5 w-5 text-red-600" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
+                      Lịch làm việc
+                      {branchDetail.serviceCenterSlots && branchDetail.serviceCenterSlots.length > 0 && (
+                        <Badge variant="secondary" className="ml-1 rounded-full px-2 py-0.5 text-[11px] bg-slate-100 text-slate-700">
+                          {branchDetail.serviceCenterSlots.length} slot
+                        </Badge>
+                      )}
+                    </CardTitle>
+                    <p className="text-xs text-slate-500">
+                      Quản lý các khung giờ làm việc của chi nhánh
+                    </p>
+                  </div>
+                </div>
+                {/* Admin chỉ xem lịch làm việc, không tạo slot */}
               </div>
             </CardHeader>
             <CardContent>
@@ -411,34 +521,39 @@ export default function BranchDetail() {
                             </Badge>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                            {slots.map((slot) => (
-                              <div
-                                key={slot.id}
-                                className={`p-3 rounded-md border transition-colors ${
-                                  slot.isActive
-                                    ? 'bg-green-50 border-green-200 dark:bg-green-900/10 dark:border-green-800'
-                                    : 'bg-gray-50 border-gray-200 dark:bg-gray-900/10 dark:border-gray-800'
-                                }`}
-                              >
-                                <div className="flex items-center justify-between mb-2">
-                                  <div className="flex items-center gap-2">
-                                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                                    <span className="text-sm font-medium text-foreground">
-                                      {slot.startTime?.slice(0, 5)} - {slot.endTime?.slice(0, 5)}
-                                    </span>
+                            {slots.map((slot) => {
+                              const slotLabel =
+                                SLOT_TIME_OPTIONS.find((opt) => opt.value === slot.slotTime)?.label ||
+                                "-";
+                              return (
+                                <div
+                                  key={slot.id}
+                                  className={`p-3 rounded-md border transition-colors ${
+                                    slot.isActive
+                                      ? "bg-green-50 border-green-200 dark:bg-green-900/10 dark:border-green-800"
+                                      : "bg-gray-50 border-gray-200 dark:bg-gray-900/10 dark:border-gray-800"
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                                      <span className="text-sm font-medium text-foreground">
+                                        {slotLabel}
+                                      </span>
+                                    </div>
+                                    {slot.isActive ? (
+                                      <CheckCircle className="h-4 w-4 text-green-600" />
+                                    ) : (
+                                      <XCircle className="h-4 w-4 text-gray-400" />
+                                    )}
                                   </div>
-                                  {slot.isActive ? (
-                                    <CheckCircle className="h-4 w-4 text-green-600" />
-                                  ) : (
-                                    <XCircle className="h-4 w-4 text-gray-400" />
-                                  )}
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                                    <Users className="h-3.5 w-3.5" />
+                                    <span>Sức chứa: {slot.capacity}</span>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                                  <Users className="h-3.5 w-3.5" />
-                                  <span>Sức chứa: {slot.capacity}</span>
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       );
@@ -564,26 +679,6 @@ export default function BranchDetail() {
             </DialogContent>
           </Dialog>
         </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6 sticky top-20 self-start">
-          <Card>
-            <CardHeader>
-              <CardTitle>Trạng thái</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Badge 
-                className={
-                  branchDetail.status === 'ACTIVE' 
-                    ? 'bg-green-100 text-green-800 hover:bg-green-100 text-lg px-4 py-2'
-                    : 'bg-gray-100 text-gray-800 hover:bg-gray-100 text-lg px-4 py-2'
-                }
-              >
-                {branchDetail.status === 'ACTIVE' ? 'Hoạt động' : 'Ngưng hoạt động'}
-              </Badge>
-            </CardContent>
-          </Card>
-
         </div>
       </div>
     </div>

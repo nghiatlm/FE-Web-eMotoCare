@@ -6,6 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { getCampaigns } from "@/api/campaignsApi";
 import { useToast } from "@/hooks/use-toast";
 
@@ -239,35 +247,36 @@ export default function Campaigns() {
   }, [campaigns, search, statusFilter]);
 
   // Calculate total pages
-  const totalPages = Math.ceil(total / pageSize);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="p-6 md:p-8 space-y-6">
+      <div className="p-8 max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="space-y-2">
+        <div className="mb-2">
           <div className="flex items-center gap-2">
-            <Megaphone className="h-6 w-6 text-primary" />
-            <h1 className="text-3xl font-semibold text-foreground">Danh sách Campaign</h1>
+            <Megaphone className="h-6 w-6 text-red-600" />
+            <h1 className="text-2xl font-semibold text-slate-900">Danh sách Campaign</h1>
           </div>
-          <p className="text-muted-foreground">Quản lý các chiến dịch khuyến mãi và ưu đãi</p>
+          <p className="mt-1 text-sm text-slate-500">Quản lý các chiến dịch khuyến mãi và ưu đãi</p>
+          <div className="mt-3 h-[2px] w-24 rounded-full bg-red-500/70" />
         </div>
 
         {/* Filters and Actions */}
-        <Card className="rounded-xl border border-slate-200/80 bg-white shadow-sm">
+        <Card className="rounded-xl border border-slate-200 bg-white shadow-sm">
           <CardContent className="p-4">
             <div className="flex flex-wrap items-center gap-4">
               <div className="relative w-full max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Tìm kiếm theo mã, tên hoặc mô tả campaign"
-                  className="pl-9"
+                  className="pl-9 bg-slate-50 border-slate-200 focus-visible:ring-red-500/70"
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-[200px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
                   <SelectValue placeholder="Trạng thái" />
                 </SelectTrigger>
                 <SelectContent>
@@ -282,14 +291,14 @@ export default function Campaigns() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-2"
+                  className="gap-2 border-transparent text-slate-600 hover:text-red-600 hover:bg-red-50"
                   onClick={handleClearFilter}
                 >
                   <Filter className="h-4 w-4" />
                   Xóa lọc
                 </Button>
               )}
-              <Button className="gap-2 ml-auto" size="sm" onClick={() => navigate("/admin/campaigns/new")}>
+              <Button className="gap-2 ml-auto bg-red-600 hover:bg-red-700 shadow-sm" size="sm" onClick={() => navigate("/admin/campaigns/new")}>
                 <Plus className="h-4 w-4" />
                 Tạo campaign mới
               </Button>
@@ -298,26 +307,24 @@ export default function Campaigns() {
         </Card>
 
         {/* Table */}
-        <Card className="rounded-2xl border border-slate-200/80 bg-white shadow-lg overflow-hidden">
+        <Card className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-gradient-to-r from-red-50 via-red-50/90 to-red-100/50 dark:from-red-950/20 dark:via-red-950/15 dark:to-red-900/10 border-b-2 border-red-200/60 dark:border-red-800/30">
-                  {/* <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                    Mã campaign
-                  </th> */}
-                  <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
+                  <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-16">
+                    STT
+                  </th>
+                  <th className="text-left py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
                     Tên campaign
                   </th>
-                 
-                  <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
                     Thời gian
                   </th>
-                 
-                  <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
                     Trạng thái
                   </th>
-                  <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider w-32">
+                  <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase w-32">
                     Thao tác
                   </th>
                 </tr>
@@ -325,7 +332,7 @@ export default function Campaigns() {
               <tbody className="divide-y divide-slate-200/80">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="py-16 px-6 text-center">
+                    <td colSpan={5} className="py-16 px-6 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         <p className="text-sm font-medium text-muted-foreground">
@@ -336,7 +343,7 @@ export default function Campaigns() {
                   </tr>
                 ) : filteredCampaigns.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-16 px-6 text-center">
+                    <td colSpan={5} className="py-16 px-6 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Megaphone className="h-12 w-12 text-slate-300" />
                         <p className="text-sm font-medium text-muted-foreground">
@@ -350,20 +357,24 @@ export default function Campaigns() {
                     <tr
                       key={campaign.id}
                       className={`transition-all duration-200 ease-in-out ${
-                        index % 2 === 0 ? "bg-white hover:bg-slate-50/50" : "bg-slate-50/30 hover:bg-slate-50"
+                        index % 2 === 0 ? "bg-white hover:bg-slate-50" : "bg-slate-50/40 hover:bg-slate-50"
                       }`}
                     >
-                      <td className="py-5 px-6 text-center">
-                        <span className="font-bold text-primary text-sm">{campaign.title || campaign.name || campaign.id}</span>
+                      <td className="py-4 px-4 text-center text-sm text-slate-600">
+                        {(page - 1) * pageSize + index + 1}
                       </td>
-                      <td className="py-5 px-6 text-center">
-                        <div className="space-y-1 max-w-xs mx-auto">
-                          <p className="font-semibold text-slate-900 text-sm leading-tight">{campaign.title || campaign.name || campaign.id}</p>
-                          <p className="text-xs text-slate-500 font-medium line-clamp-1">{campaign.description}</p>
+                      <td className="py-4 px-6">
+                        <div className="space-y-1 max-w-md">
+                          <p className="font-semibold text-slate-900 text-sm leading-tight">
+                            {campaign.title || campaign.name || campaign.id}
+                          </p>
+                          <p className="text-xs text-slate-500 font-medium line-clamp-1">
+                            {campaign.description}
+                          </p>
                         </div>
                       </td>
                       
-                      <td className="py-5 px-6 text-center">
+                      <td className="py-4 px-6 text-center">
                         <div className="space-y-1">
                           <div className="flex items-center justify-center gap-1 text-xs text-slate-600">
                             <Calendar className="h-3 w-3" />
@@ -373,7 +384,7 @@ export default function Campaigns() {
                         </div>
                       </td>
                       
-                      <td className="py-5 px-6 text-center">
+                      <td className="py-4 px-6 text-center">
                         <div className="flex items-center justify-center">
                           <Badge
                             variant="outline"
@@ -385,7 +396,7 @@ export default function Campaigns() {
                           </Badge>
                         </div>
                       </td>
-                      <td className="py-5 px-6 text-center">
+                      <td className="py-4 px-6 text-center">
                         <div className="flex items-center justify-center gap-1">
                           <Button
                             variant="ghost"
@@ -435,32 +446,43 @@ export default function Campaigns() {
           </div>
           
           {/* Pagination */}
-          {!loading && filteredCampaigns.length > 0 && totalPages > 1 && (
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200/80">
-              <p className="text-sm text-muted-foreground">
-                Hiển thị {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, total)} trong tổng số {total} campaigns
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  Trước
-                </Button>
-                <span className="text-sm text-muted-foreground">
-                  Trang {page} / {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                >
-                  Sau
-                </Button>
-              </div>
+          {!loading && total > 0 && (
+            <div className="mt-2 flex items-center justify-center px-6 py-4 border-t border-slate-200">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      className={`cursor-pointer rounded-full px-3 ${
+                        page === 1 ? "pointer-events-none opacity-40" : "hover:bg-slate-100"
+                      }`}
+                    />
+                  </PaginationItem>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink
+                        onClick={() => setPage(pageNum)}
+                        isActive={page === pageNum}
+                        className={`cursor-pointer rounded-full px-3 py-1 text-sm ${
+                          page === pageNum ? "bg-red-100 text-red-700 font-medium" : "hover:bg-slate-100"
+                        }`}
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      className={`cursor-pointer rounded-full px-3 ${
+                        page >= totalPages ? "pointer-events-none opacity-40" : "hover:bg-slate-100"
+                      }`}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
           )}
         </Card>

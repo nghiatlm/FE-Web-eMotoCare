@@ -1,21 +1,41 @@
 import { useEffect, useState } from "react";
-import { Building2, MapPin, Phone, Mail, Clock, Users, Wrench, Calendar, ChevronRight } from "lucide-react";
+import { Building2, MapPin, Phone, Mail, Clock, Users, Wrench, Calendar, ChevronRight, Plus } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Edit } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStaffByAccountId } from "@/api/staffsApi";
-import { getServiceCenterById } from "@/api/serviceCentersApi";
+import { getServiceCenterById, createServiceCenterSlot } from "@/api/serviceCentersApi";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 export default function InformationDetail() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [serviceCenter, setServiceCenter] = useState(null);
   const [staff, setStaff] = useState(null);
+  const [isCreateSlotOpen, setIsCreateSlotOpen] = useState(false);
+  const [isCreatingSlot, setIsCreatingSlot] = useState(false);
+  const [slotForm, setSlotForm] = useState({
+    date: "",
+    slotTime: "",
+    capacity: 0,
+    isActive: true,
+    note: "",
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -141,6 +161,79 @@ export default function InformationDetail() {
   // Tìm manager từ danh sách staffs
   const manager = serviceCenter.staffs?.find(s => s.position === "MANAGER_BRANCH");
 
+  // --- Tạo slot (cho Manager) ---
+  const SLOT_TIME_OPTIONS = [
+    { value: "H07_08", label: "07:00 - 08:00" },
+    { value: "H08_09", label: "08:00 - 09:00" },
+    { value: "H09_10", label: "09:00 - 10:00" },
+    { value: "H10_11", label: "10:00 - 11:00" },
+    { value: "H13_14", label: "13:00 - 14:00" },
+    { value: "H14_15", label: "14:00 - 15:00" },
+    { value: "H15_16", label: "15:00 - 16:00" },
+    { value: "H16_17", label: "16:00 - 17:00" },
+    { value: "H17_18", label: "17:00 - 18:00" },
+  ];
+
+  const getDayOfWeek = (dateString) => {
+    const date = new Date(dateString);
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    return days[date.getDay()];
+  };
+
+  const handleCreateSlot = async () => {
+    if (!slotForm.date || !slotForm.slotTime) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng điền đầy đủ thông tin (Ngày và Khung giờ)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsCreatingSlot(true);
+      const dayOfWeek = getDayOfWeek(slotForm.date);
+
+      const slotData = {
+        date: slotForm.date,
+        dayOfWeek,
+        slotTime: slotForm.slotTime,
+        capacity: Number(slotForm.capacity) || 0,
+        isActive: slotForm.isActive,
+        note: slotForm.note || "",
+      };
+
+      await createServiceCenterSlot(serviceCenter.id, slotData);
+
+      toast({
+        title: "Thành công",
+        description: "Tạo slot thành công!",
+      });
+
+      setSlotForm({
+        date: "",
+        slotTime: "",
+        capacity: 0,
+        isActive: true,
+        note: "",
+      });
+      setIsCreateSlotOpen(false);
+
+      // Refresh service center detail
+      const refreshed = await getServiceCenterById(serviceCenter.id);
+      setServiceCenter(refreshed?.data || refreshed);
+    } catch (error) {
+      console.error("Error creating slot:", error);
+      toast({
+        title: "Lỗi",
+        description: error?.response?.data?.message || error?.message || "Không thể tạo slot. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingSlot(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="mb-8 flex items-center justify-between">
@@ -237,16 +330,23 @@ export default function InformationDetail() {
           )}
 
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-primary" />
-                Lịch làm việc
-                {serviceCenter.serviceCenterSlots && serviceCenter.serviceCenterSlots.length > 0 && (
-                  <Badge variant="secondary" className="ml-2">
-                    {serviceCenter.serviceCenterSlots.length} slot
-                  </Badge>
-                )}
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div className="space-y-1">
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-primary" />
+                  Lịch làm việc
+                  {serviceCenter.serviceCenterSlots && serviceCenter.serviceCenterSlots.length > 0 && (
+                    <Badge variant="secondary" className="ml-2 rounded-full px-2 py-0.5 text-[11px] bg-slate-100 text-slate-700">
+                      {serviceCenter.serviceCenterSlots.length} slot
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CardDescription>Quản lý các khung giờ làm việc tại trung tâm của bạn.</CardDescription>
+              </div>
+              <Button onClick={() => setIsCreateSlotOpen(true)} size="sm" className="gap-1">
+                <Plus className="h-4 w-4" />
+                Tạo slot
+              </Button>
             </CardHeader>
             <CardContent>
               {sortedDates.length > 0 ? (
@@ -313,6 +413,118 @@ export default function InformationDetail() {
               )}
             </CardContent>
           </Card>
+
+          {/* Dialog tạo slot cho Manager */}
+          <Dialog open={isCreateSlotOpen} onOpenChange={setIsCreateSlotOpen}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Tạo slot mới</DialogTitle>
+                <DialogDescription>
+                  Thêm khung giờ làm việc mới cho trung tâm của bạn.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                {/* Date */}
+                <div className="space-y-2">
+                  <Label htmlFor="date">Ngày *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !slotForm.date && "text-muted-foreground"
+                        )}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {slotForm.date ? format(new Date(slotForm.date), "dd/MM/yyyy", { locale: vi }) : "Chọn ngày"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={slotForm.date ? new Date(slotForm.date) : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            setSlotForm({ ...slotForm, date: format(date, "yyyy-MM-dd") });
+                          }
+                        }}
+                        disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Slot Time */}
+                <div className="space-y-2">
+                  <Label htmlFor="slotTime">Khung giờ *</Label>
+                  <Select
+                    value={slotForm.slotTime}
+                    onValueChange={(value) => setSlotForm({ ...slotForm, slotTime: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn khung giờ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SLOT_TIME_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Capacity */}
+                <div className="space-y-2">
+                  <Label htmlFor="capacity">Sức chứa</Label>
+                  <Input
+                    id="capacity"
+                    type="number"
+                    min="0"
+                    value={slotForm.capacity}
+                    onChange={(e) =>
+                      setSlotForm({ ...slotForm, capacity: parseInt(e.target.value, 10) || 0 })
+                    }
+                    placeholder="Nhập sức chứa"
+                  />
+                </div>
+
+                {/* Active */}
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="isActive"
+                    checked={slotForm.isActive}
+                    onCheckedChange={(checked) =>
+                      setSlotForm({ ...slotForm, isActive: Boolean(checked) })
+                    }
+                  />
+                  <Label htmlFor="isActive">Kích hoạt slot ngay sau khi tạo</Label>
+                </div>
+
+                {/* Note */}
+                <div className="space-y-2">
+                  <Label htmlFor="note">Ghi chú</Label>
+                  <Textarea
+                    id="note"
+                    rows={3}
+                    value={slotForm.note}
+                    onChange={(e) => setSlotForm({ ...slotForm, note: e.target.value })}
+                    placeholder="Ví dụ: Slot ưu tiên cho lịch bảo dưỡng định kỳ..."
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsCreateSlotOpen(false)}>
+                  Hủy
+                </Button>
+                <Button onClick={handleCreateSlot} disabled={isCreatingSlot}>
+                  {isCreatingSlot ? "Đang tạo..." : "Tạo slot"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <div className="space-y-6 sticky top-9 self-start">

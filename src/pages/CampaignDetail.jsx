@@ -104,10 +104,6 @@ export default function CampaignDetail() {
         const response = await getCampaignById(id);
         console.log("📥 CampaignDetail API response:", response);
         
-        // Axios interceptor đã trả về response.data
-        // Nếu response có structure { statusCode, success, message, data: {...} }
-        // thì response.data sẽ là campaign object
-        // Nếu response đã là campaign object thì dùng trực tiếp
         const campaignData = response?.data || response;
         console.log("📦 CampaignDetail data:", campaignData);
         
@@ -123,16 +119,29 @@ export default function CampaignDetail() {
 
         setCampaign(campaignData);
 
-        // Fetch part names
-        const partIds = campaignData.programDetails?.map(detail => detail.recallPartId).filter(Boolean) || [];
+        // Fetch part names từ API dựa trên recallPartId
+        const partIds =
+          campaignData.programDetails?.map((detail) => detail.recallPartId).filter(Boolean) || [];
         const partNamesMap = {};
+
         await Promise.all(
           partIds.map(async (partId) => {
             try {
               const partResponse = await getPartById(partId);
-              const partData = partResponse?.data || partResponse;
+              // Backend parts có thể trả về:
+              // { statusCode, success, message, data: {...} } hoặc { data: {...} } hoặc {...}
+              const partData =
+                partResponse?.data?.data || partResponse?.data || partResponse;
+
               if (partData) {
-                partNamesMap[partId] = partData.name || partData.code || partId;
+                const partName = partData.name || "";
+                const partCode = partData.code || "";
+                partNamesMap[partId] =
+                  partName && partCode
+                    ? `${partName} (${partCode})`
+                    : partName || partCode || partId;
+              } else {
+                partNamesMap[partId] = partId;
               }
             } catch (error) {
               console.error(`Error fetching part ${partId}:`, error);
@@ -140,6 +149,7 @@ export default function CampaignDetail() {
             }
           })
         );
+
         setPartNames(partNamesMap);
 
         // Fetch model names
@@ -235,9 +245,6 @@ export default function CampaignDetail() {
                   </div>
                   <div>
                     <CardTitle className="text-2xl font-bold text-foreground">{campaign.title}</CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Mã: <span className="font-semibold text-primary">{campaign.id}</span>
-                    </p>
                   </div>
                 </div>
               </div>
@@ -379,13 +386,13 @@ export default function CampaignDetail() {
                         Phụ tùng
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-2">
+                    {/* <CardContent className="space-y-2">
                       {campaign.programDetails.map((detail, idx) => (
                         <Badge key={idx} variant="outline" className="mr-1">
                           {partNames[detail.recallPartId] || detail.recallPartId}
                         </Badge>
                       ))}
-                    </CardContent>
+                    </CardContent> */}
                   </Card>
                 )}
               </div>
