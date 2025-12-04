@@ -15,18 +15,17 @@ import dayjs from "dayjs";
 
 const TechnicianDashboard = () => {
   const { data: bookings, loading: bookingsLoading, fetchBookings } = useBookings();
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const staffId = user?.accountResponse?.id;
 
   useEffect(() => {
     fetchBookings();
   }, []);
 
-  // Lọc booking được phân công cho technician này
-  const assignedBookings = bookings.filter(b => {
-    const technicianId = b?.technician?.id || b?.technicianId;
-    return technicianId === staffId;
-  });
+  // ✅ useBookings hook đã tự động lọc bookings theo technician rồi
+  // Không cần lọc lại nữa
+  const assignedBookings = Array.isArray(bookings) ? bookings : [];
+  
+  // Debug log
+  console.log("TechnicianDashboard - Bookings loaded:", assignedBookings.length);
 
   // Tính toán thống kê
   const stats = {
