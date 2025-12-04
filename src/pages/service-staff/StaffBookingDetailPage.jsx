@@ -24,6 +24,7 @@ import { getPartItemByIdService } from "../../services/partitemsService";
 
 import Payment from "../../components/service-staff/Payment";
 import PaymentInfo from "../../components/service-staff/PaymentInfo";
+import PaymentHistory from "../../components/service-staff/PaymentHistory";
 import { useBookings } from "../../hooks/useBookings";
 import useAppointmentHub from "../../hooks/useAppointmentHub";
 
@@ -740,13 +741,19 @@ export default function StaffBookingDetailPage() {
             </Card>
           )}
 
-          {/* Thông tin thanh toán */}
-          {(status === "REPAIR_COMPLETED" || status === "COMPLETED" || status === "QUOTE_APPROVED") && currentTechnician && (
+          {/* Thông tin thanh toán / Lịch sử thanh toán */}
+          {currentTechnician && (
             <div style={{ marginBottom: 24 }}>
-              <PaymentInfo
-                booking={booking}
-                onOpenPayment={() => setIsPaymentModalOpen(true)}
-              />
+              {status === "COMPLETED" ? (
+                // ✅ Đã hoàn thành: Hiển thị lịch sử thanh toán (không có nút thanh toán)
+                <PaymentHistory booking={booking} />
+              ) : (status === "REPAIR_COMPLETED" || status === "QUOTE_APPROVED") ? (
+                // ✅ Chưa hoàn thành: Hiển thị thông tin thanh toán (có nút "Xử lý thanh toán")
+                <PaymentInfo
+                  booking={booking}
+                  onOpenPayment={() => setIsPaymentModalOpen(true)}
+                />
+              ) : null}
             </div>
           )}
 
