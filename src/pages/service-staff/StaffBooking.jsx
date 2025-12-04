@@ -60,7 +60,7 @@ const StaffBooking = () => {
   };
 
   return (
-    <div style={{ padding: 24, width: "100%", margin: "0 auto" }}>
+    <div style={{ padding: 24, width: "100%", maxWidth: "100%", margin: "0 auto", overflowX: "hidden", transform: "scale(1)", zoom: 1 }}>
       {/* ✅ HEADER */}
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#ff4d4f", display: "flex", alignItems: "center", gap: 12 }}>
@@ -118,6 +118,7 @@ const StaffBooking = () => {
               <Option value='MAINTENANCE_TYPE'>Bảo dưỡng</Option>
               <Option value='REPAIR_TYPE'>Sửa chữa</Option>
               <Option value='WARRANTY_TYPE'>Bảo hành</Option>
+              <Option value='CAMPAIGN_TYPE'>Chiến dịch</Option>
               <Option value='RECALL_TYPE'>Recall</Option>
             </Select>
           </div>
@@ -205,6 +206,7 @@ const StaffBooking = () => {
             { key: "MAINTENANCE_TYPE", label: "Bảo dưỡng" },
             { key: "REPAIR_TYPE", label: "Sửa chữa" },
             { key: "WARRANTY_TYPE", label: "Bảo hành" },
+            { key: "CAMPAIGN_TYPE", label: "Chiến dịch" },
             { key: "RECALL_TYPE", label: "Recall" },
           ]}
           size="large"

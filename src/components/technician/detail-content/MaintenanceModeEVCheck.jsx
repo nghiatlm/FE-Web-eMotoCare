@@ -651,10 +651,10 @@ export default function MaintenanceModeEVCheck({
     evCheckStatus !== "COMPLETED";
 
   const baseColumns = [
-    { title: "STT", render: (_, __, idx) => idx + 1, width: 50 },
+    { title: "STT", render: (_, __, idx) => idx + 1, width: 35 },
     {
       title: "Hạng mục",
-      width: 250,
+      width: 120,
       ellipsis: {
         showTitle: false,
       },
@@ -676,7 +676,7 @@ export default function MaintenanceModeEVCheck({
     },
     {
       title: "Hình ảnh",
-      width: 90,
+      width: 50,
       align: "center",
       render: (_, r) => {
         const imageUrl = r.partItem?.part?.image || r.partItem?.image;
@@ -716,7 +716,7 @@ export default function MaintenanceModeEVCheck({
     },
     {
       title: "Kết quả",
-      width: 350,
+      width: 120,
       render: (_, r, i) => {
         // ✅ Kiểm tra nếu bộ phận là CÒI
         const partName = r.maintenanceStageDetail?.part?.name || r.partName || "";
@@ -755,7 +755,7 @@ export default function MaintenanceModeEVCheck({
     },
     {
       title: "Biện pháp",
-      width: 110,
+      width: 90,
       render: (_, r, i) => {
         const isWarranty = checkWarrantyStatus(r.partItem);
         
@@ -779,29 +779,31 @@ export default function MaintenanceModeEVCheck({
         const remediesLabel = getRemediesLabel(remediesValue);
 
         return (
-        <Select
-          placeholder='Chọn'
-            value={{ value: remediesValue, label: remediesLabel }}
-            labelInValue // ✅ Dùng labelInValue để hiển thị label thay vì value
-          style={{ width: 100 }}
-            onChange={(v) => handleChange(r.id, "remedies", v.value || v)} // ✅ Lấy value từ object, dùng r.id thay vì i
-          disabled={!canEditFields}>
-          <Option value='NONE'>Bôi trơn</Option>
-            {/* ✅ Nếu đang bảo hành thì không cho chọn "Thay thế" và "Sửa chữa" */}
-            <Option value='REPLACE' disabled={isWarranty}>
-              Thay thế
-            </Option>
-            <Option value='REPAIR' disabled={isWarranty}>
-              Sửa chữa
-            </Option>
-          <Option value='CHECK'>Kiểm tra</Option>
-        </Select>
+          <Tooltip title={remediesLabel || "Chọn"} placement="topLeft">
+            <Select
+              placeholder='Chọn'
+              value={{ value: remediesValue, label: remediesLabel }}
+              labelInValue // ✅ Dùng labelInValue để hiển thị label thay vì value
+              style={{ width: 100 }}
+              onChange={(v) => handleChange(r.id, "remedies", v.value || v)} // ✅ Lấy value từ object, dùng r.id thay vì i
+              disabled={!canEditFields}>
+              <Option value='NONE'>Bôi trơn</Option>
+              {/* ✅ Nếu đang bảo hành thì không cho chọn "Thay thế" và "Sửa chữa" */}
+              <Option value='REPLACE' disabled={isWarranty}>
+                Thay thế
+              </Option>
+              <Option value='REPAIR' disabled={isWarranty}>
+                Sửa chữa
+              </Option>
+              <Option value='CHECK'>Kiểm tra</Option>
+            </Select>
+          </Tooltip>
         );
       },
     },
     {
       title: "Bảo hành",
-      width: 80,
+      width: 60,
       render: (_, r) => {
         const partItem = r.partItem;
         if (!partItem) return "Không";
@@ -811,7 +813,7 @@ export default function MaintenanceModeEVCheck({
     },
     {
       title: "Phụ tùng thay thế",
-      width: 220,
+      width: 130,
       ellipsis: {
         showTitle: false,
       },
@@ -859,7 +861,7 @@ export default function MaintenanceModeEVCheck({
         const allSuggestedParts = cacheKey ? (partOptionsMap[cacheKey] || []) : [];
         
         return (
-          <Tooltip title={replacePartName} placement="topLeft">
+          <Tooltip title={replacePartName || "Chọn phụ tùng"} placement="topLeft">
         <Select
               showSearch
               placeholder="Chọn phụ tùng"
@@ -1025,7 +1027,7 @@ export default function MaintenanceModeEVCheck({
     },
     {
       title: "SL",
-      width: 70,
+      width: 50,
       render: (_, r, i) => (
         <Input
           type='number'
@@ -1036,44 +1038,30 @@ export default function MaintenanceModeEVCheck({
         />
       ),
     },
-    { title: "ĐV", width: 50, render: (_, r) => r.unit || "-" },
+    { title: "ĐV", width: 35, render: (_, r) => r.unit || "-" },
     {
       title: "Giá PT",
-      width: 110,
+      width: 60,
       render: (_, r, i) => {
         if (r.remedies !== "REPLACE")
           return <span className='text-gray-400'>—</span>;
-        return (
-          <Input
-            value={r.pricePart}
-            onChange={(e) => handleChange(r.id, "pricePart", e.target.value)}
-            disabled={!canEditFields}
-            style={{ fontSize: 12 }}
-          />
-        );
+        return Number(r.pricePart || 0).toLocaleString();
       },
     },
     {
       title: "Giá DV",
-      width: 110,
-      render: (_, r, i) => (
-        <Input
-          value={r.priceService}
-          onChange={(e) => handleChange(r.id, "priceService", e.target.value)}
-          disabled={!canEditFields}
-          style={{ fontSize: 12 }}
-        />
-      ),
+      width: 60,
+      render: (_, r, i) => Number(r.priceService || 0).toLocaleString(),
     },
     {
       title: "Tổng",
-      width: 110,
+      width: 70,
       render: (_, r) =>
         r.totalAmount ? `${Number(r.totalAmount).toLocaleString()}đ` : "-",
     },
     {
       title: "Trạng thái phụ tùng",
-      width: 150,
+      width: 100,
       render: (_, r) => {
         // ✅ Hiển thị exportNoteStatus nếu có (không chỉ khi COMPLETED)
         const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
@@ -1144,7 +1132,7 @@ export default function MaintenanceModeEVCheck({
         <span>Trạng thái</span>
       </div>
     ),
-    width: 220,
+    width: 120,
     render: (_, r, i) => {
       const stat = REPAIR_STATUS[r.status] || REPAIR_STATUS.PENDING;
 
@@ -1272,6 +1260,7 @@ export default function MaintenanceModeEVCheck({
                 </Button>
               </div>
             )}
+        <div className="repair-mode-table" style={{ width: '100%', overflow: 'hidden', maxWidth: '100%' }}>
           <Table
           key={`rma-table-${selectedRMAItems.size}`} // ✅ Force re-render khi selection thay đổi
             columns={columns}
@@ -1298,7 +1287,9 @@ export default function MaintenanceModeEVCheck({
           }}
             size='small'
             bordered
+            style={{ width: '100%', maxWidth: '100%' }}
           />
+        </div>
 
           <div
             style={{

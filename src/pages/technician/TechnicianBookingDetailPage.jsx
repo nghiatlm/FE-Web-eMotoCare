@@ -239,6 +239,19 @@ export default function TechnicianBookingDetailPage({
             {new Date(booking.appointmentDate).toLocaleDateString("vi-VN")}
           </div>
           <div>
+            <strong>Thời gian:</strong>{" "}
+            {booking.slotTime ? (() => {
+              const [start, end] = booking.slotTime.replace("H", "").split("_");
+              return `${start}:00-${end}:00`;
+            })() : "—"}
+          </div>
+          <div>
+            <strong>Trung tâm dịch vụ:</strong> {booking.serviceCenter?.name || "—"}
+          </div>
+          <div>
+            <strong>Giai đoạn bảo dưỡng:</strong> {booking.maintenanceStage?.name || "—"}
+          </div>
+          <div>
             <strong>Loại dịch vụ:</strong>{" "}
             <span
               style={{
@@ -268,6 +281,11 @@ export default function TechnicianBookingDetailPage({
                 : "—"}
             </span>
           </div>
+          {booking.note && (
+            <div style={{ gridColumn: "1 / -1" }}>
+              <strong>Ghi chú:</strong> {booking.note}
+            </div>
+          )}
           {isRepair && chassisNumber && (
             <div style={{ gridColumn: "1 / -1" }}>
               <strong>Số khung (VIN):</strong>{" "}

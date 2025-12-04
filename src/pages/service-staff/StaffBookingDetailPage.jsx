@@ -1,5 +1,5 @@
 import { STATUS_COLORS, STATUS_MAP } from "../../utils/constants";
-import { Button, Tag, Divider, Select, Card, Spin } from "antd";
+import { Button, Tag, Divider, Select, Card, Spin, Modal } from "antd";
 import { toast } from "@/components/ui/sonner";
 import { motion } from "framer-motion";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -17,10 +17,14 @@ import { getAppointmentById } from "../../api/appointmentsApi";
 import {
   createEVCheckService,
   fetchEVCheckByAppointmentService,
+  fetchEVCheckDetailsServiceRe,
 } from "../../services/evcheckService";
+import { getLaborCostByRemediesService } from "../../services/priceserviceService";
+import { getPartItemByIdService } from "../../services/partitemsService";
 
 import Payment from "../../components/service-staff/Payment";
 import PaymentInfo from "../../components/service-staff/PaymentInfo";
+import PaymentHistory from "../../components/service-staff/PaymentHistory";
 import { useBookings } from "../../hooks/useBookings";
 import useAppointmentHub from "../../hooks/useAppointmentHub";
 
@@ -43,6 +47,10 @@ export default function StaffBookingDetailPage() {
   const [showTechnicianDrawer, setShowTechnicianDrawer] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [technicianFromEVCheck, setTechnicianFromEVCheck] = useState(null);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancellationFee, setCancellationFee] = useState(0);
+  const [isCalculatingFee, setIsCalculatingFee] = useState(false);
+  const [isPendingCancel, setIsPendingCancel] = useState(false); // ✅ Track xem có đang chờ thanh toán để hủy không
 
   // ✅ Ref để lưu loadBookingDetail function
   const loadBookingDetailRef = useRef(null);
@@ -58,7 +66,15 @@ export default function StaffBookingDetailPage() {
       const bookingData = res?.data?.data || res?.data || res;
       if (bookingData) {
         setBooking(bookingData);
-        console.log("✅ [StaffBookingDetailPage] Loaded booking detail - Status:", bookingData.status, "ID:", bookingData.id);
+        
+        // ✅ Nếu khách đã hủy từ mobile và có cancellationFee, set vào state
+        // Khi khách hủy, status đã là CANCELED và có cancellationFee từ backend
+        if (bookingData.status === "CANCELED" && bookingData.cancellationFee > 0) {
+          setCancellationFee(bookingData.cancellationFee);
+          setIsPendingCancel(false); // ✅ Không phải đang chờ hủy, mà là thanh toán phí hủy đã có
+        }
+        
+        console.log("✅ [StaffBookingDetailPage] Loaded booking detail - Status:", bookingData.status, "ID:", bookingData.id, "CancellationFee:", bookingData.cancellationFee, "CancelledBy:", bookingData.cancelledBy);
       } else {
         console.warn("⚠️ [StaffBookingDetailPage] No booking data found");
       }
@@ -211,6 +227,161 @@ export default function StaffBookingDetailPage() {
     }
   };
 
+  // ✅ Tính phí hủy (laborCost) từ các hạng mục đã có trong EVCheck
+  const calculateCancellationFee = async () => {
+    try {
+      // ✅ Lấy EVCheck từ appointment
+      const evCheck = await fetchEVCheckByAppointmentService(booking.id);
+      if (!evCheck || !evCheck.id) {
+        return 0; // Không có EVCheck thì không có phí hủy
+      }
+
+      // ✅ Lấy danh sách EVCheck details
+      const evCheckDetailsRes = await fetchEVCheckDetailsServiceRe(evCheck.id);
+      const details = evCheckDetailsRes?.evCheckDetails || [];
+
+      if (details.length === 0) {
+        return 0; // Không có hạng mục thì không có phí hủy
+      }
+
+      // ✅ Tính tổng laborCost từ các hạng mục
+      // Lấy partTypeId từ partItem.part.partType.id (theo cấu trúc API)
+      console.log("🔍 [calculateCancellationFee] Details:", details);
+      
+      let totalLaborCost = 0;
+      const laborCostPromises = details.map(async (detail, index) => {
+        // ✅ Lấy partItemId từ detail
+        const partItemId = detail.partItemId || detail.partItem?.id || null;
+        
+        if (!partItemId) {
+          console.warn(`⚠️ [calculateCancellationFee] Detail ${index} - Không có partItemId`);
+          return 0;
+        }
+        
+        // ✅ Gọi API để lấy thông tin đầy đủ của partItem (vehicle part item)
+        let partTypeId = null;
+        try {
+          const partItemDetail = await getPartItemByIdService(partItemId);
+          console.log(`🔍 [calculateCancellationFee] Detail ${index} - partItemDetail từ API:`, partItemDetail);
+          
+          // ✅ Lấy partTypeId từ partItem.part.partType.id (cấu trúc vehicle part item)
+          partTypeId = 
+            partItemDetail?.part?.partType?.id || 
+            partItemDetail?.partTypeId ||
+            null;
+          
+          console.log(`🔍 [calculateCancellationFee] Detail ${index} - partTypeId từ API: ${partTypeId}`);
+        } catch (error) {
+          console.error(`❌ [calculateCancellationFee] Lỗi lấy partItem ${partItemId}:`, error);
+          // ✅ Fallback: thử lấy từ detail.partItem nếu có
+          partTypeId = detail.partItem?.part?.partType?.id || null;
+        }
+        
+        // ✅ Lấy remedies (biện pháp) từ detail
+        const remedies = detail.remedies || "NONE";
+        
+        console.log(`🔍 [calculateCancellationFee] Detail ${index} - partTypeId: ${partTypeId}, remedies: ${remedies}`);
+        
+        // ✅ Chỉ tính phí khi có partTypeId và remedies
+        if (!partTypeId || !remedies) {
+          console.warn(`⚠️ [calculateCancellationFee] Detail ${index} - Thiếu partTypeId hoặc remedies:`, { 
+            partTypeId, 
+            remedies,
+            partItemId
+          });
+          return 0;
+        }
+        
+        // ✅ Gọi API lấy laborCost theo partTypeId và remedies
+        try {
+          console.log(`📞 [calculateCancellationFee] Gọi API với partTypeId: ${partTypeId}, remedies: ${remedies}`);
+          const laborCost = await getLaborCostByRemediesService(partTypeId, remedies);
+          console.log(`✅ [calculateCancellationFee] LaborCost cho partTypeId: ${partTypeId}, remedies: ${remedies} = ${laborCost}`);
+          return laborCost || 0;
+        } catch (error) {
+          console.error(`❌ [calculateCancellationFee] Lỗi lấy laborCost cho partTypeId: ${partTypeId}, remedies: ${remedies}:`, error);
+          return 0;
+        }
+      });
+
+      const laborCosts = await Promise.all(laborCostPromises);
+      totalLaborCost = laborCosts.reduce((sum, cost) => sum + cost, 0);
+
+      return totalLaborCost;
+    } catch (error) {
+      console.error("❌ Lỗi tính phí hủy:", error);
+      return 0; // Nếu lỗi thì trả về 0
+    }
+  };
+
+  // ✅ Xử lý khi click nút hủy
+  const handleCancelClick = async () => {
+    setIsCalculatingFee(true);
+    try {
+      const fee = await calculateCancellationFee();
+      setCancellationFee(fee);
+      setIsCancelModalOpen(true);
+    } catch (error) {
+      console.error("Lỗi tính phí hủy:", error);
+      toast.error("Không thể tính phí hủy. Vui lòng thử lại!");
+    } finally {
+      setIsCalculatingFee(false);
+    }
+  };
+
+  // ✅ TRƯỜNG HỢP 1: Xác nhận hủy lịch hẹn (Staff hủy trên UI)
+  // Flow: Tính tiền → Thanh toán → Cập nhật status thành CANCELED
+  const handleConfirmCancel = async () => {
+    setIsCancelModalOpen(false);
+    
+    // ✅ Nếu có phí hủy, mở modal thanh toán trước (chưa cập nhật status)
+    if (cancellationFee > 0) {
+      setIsPendingCancel(true); // ✅ Đánh dấu đang chờ thanh toán để hủy (staff hủy)
+      setIsPaymentModalOpen(true);
+      toast.info("Vui lòng thanh toán phí hủy để hoàn tất việc hủy lịch hẹn.");
+    } else {
+      // ✅ Nếu không có phí hủy, cập nhật status ngay
+      try {
+        await changeAppointmentStatusService(booking.id, "CANCELED", {
+          cancellationFee: 0,
+          cancelledBy: "STAFF"
+        });
+        updateStatus(booking.id, "CANCELED", booking.technician);
+        toast.success("Đã hủy lịch hẹn thành công!");
+        navigate("/staff/booking/list");
+      } catch (e) {
+        toast.error(e.message || "Không thể hủy lịch hẹn!");
+      }
+    }
+  };
+
+  // ✅ Xử lý sau khi thanh toán thành công
+  const handlePaymentSuccess = async (paymentResult) => {
+    if (isPendingCancel) {
+      // ✅ TRƯỜNG HỢP 1: Staff hủy trên UI
+      // Tính tiền → Thanh toán → Cập nhật status thành CANCELED
+      try {
+        await changeAppointmentStatusService(booking.id, "CANCELED", {
+          cancellationFee: cancellationFee,
+          cancelledBy: "STAFF"
+        });
+        
+        updateStatus(booking.id, "CANCELED", booking.technician);
+        setIsPendingCancel(false);
+        toast.success("Đã thanh toán phí hủy và hủy lịch hẹn thành công!");
+        navigate("/staff/booking/list");
+      } catch (e) {
+        toast.error(e.message || "Không thể cập nhật trạng thái hủy!");
+        setIsPendingCancel(false);
+      }
+    } else if (status === "CANCELED") {
+      // ✅ TRƯỜNG HỢP 2: Khách hủy từ mobile/UI khách
+      // Trạng thái đã là CANCELED → Tính tiền → Thanh toán → CHỈ cập nhật payment status, KHÔNG cập nhật appointment status
+      toast.success("Đã thanh toán phí hủy thành công!");
+      await loadBookingDetail(); // ✅ Reload để cập nhật thông tin booking (payment status)
+    }
+  };
+
   const handleChangeStatus = async (newStatus) => {
     try {
       if (newStatus === "APPROVED") {
@@ -292,8 +463,23 @@ export default function StaffBookingDetailPage() {
                 {new Date(booking.appointmentDate).toLocaleDateString("vi-VN")}
               </p>
               <p style={{ margin: 0 }}>
-                <strong>Trung tâm DV:</strong> {booking.serviceCenter?.name}
+                <strong>Thời gian:</strong>{" "}
+                {booking.slotTime ? (() => {
+                  const [start, end] = booking.slotTime.replace("H", "").split("_");
+                  return `${start}:00-${end}:00`;
+                })() : "—"}
               </p>
+              <p style={{ margin: 0 }}>
+                <strong>Trung tâm dịch vụ:</strong> {booking.serviceCenter?.name || "—"}
+              </p>
+              <div>
+            <strong>Giai đoạn bảo dưỡng:</strong> {booking.maintenanceStage?.name || "—"}
+          </div>
+              {booking.note && (
+                <p style={{ margin: 0, gridColumn: "1 / -1" }}>
+                  <strong>Ghi chú:</strong> {booking.note}
+                </p>
+              )}
             </div>
           </Card>
 
@@ -365,20 +551,6 @@ export default function StaffBookingDetailPage() {
                   }
                 />
               </div>
-              {selectedTechnician && (
-                <div style={{
-                  padding: "12px 16px",
-                  background: "#ffffff",
-                  borderRadius: 6,
-                  border: "1px solid #f0f0f0",
-                  marginBottom: 16
-                }}>
-                  <p style={{ margin: 0, fontSize: 14, color: "#595959" }}>
-                    Đã chọn: <strong>{selectedTechnician.firstName} {selectedTechnician.lastName}</strong>
-                    {selectedTechnician.staffCode && ` (${selectedTechnician.staffCode})`}
-                  </p>
-                </div>
-              )}
               <Button
                 type='primary'
                 block
@@ -444,13 +616,144 @@ export default function StaffBookingDetailPage() {
             )}
           </Card>
 
-          {/* Thông tin thanh toán */}
-          {(status === "REPAIR_COMPLETED" || status === "COMPLETED" || status === "QUOTE_APPROVED") && currentTechnician && (
+          {/* ✅ Thông báo khi lịch hẹn bị hủy */}
+          {status === "CANCELED" && (
+            <Card
+              style={{ 
+                marginBottom: 24, 
+                borderRadius: 8,
+                border: "2px solid #ff4d4f",
+                backgroundColor: "#fff1f0"
+              }}
+              bodyStyle={{ padding: "24px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                <div style={{ 
+                  width: 40, 
+                  height: 40, 
+                  borderRadius: "50%", 
+                  backgroundColor: "#ff4d4f", 
+                  display: "flex", 
+                  alignItems: "center", 
+                  justifyContent: "center",
+                  color: "white",
+                  fontSize: 20,
+                  fontWeight: "bold"
+                }}>
+                  !
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#c41e0e" }}>
+                    Lịch hẹn đã bị hủy
+                  </h3>
+                  <p style={{ margin: "4px 0 0 0", fontSize: 14, color: "#666" }}>
+                    {/* ✅ Phân biệt ai đã hủy */}
+                    {booking.cancelledBy === "CUSTOMER" || booking.cancelledBy === "MOBILE" ? (
+                      "Khách hàng đã hủy lịch hẹn này từ ứng dụng mobile."
+                    ) : booking.cancelledBy === "STAFF" || booking.cancelledBy === "WEB" ? (
+                      "Nhân viên đã hủy lịch hẹn này từ hệ thống web."
+                    ) : (
+                      "Lịch hẹn đã bị hủy."
+                    )}
+                  </p>
+                </div>
+              </div>
+              
+              {/* ✅ Hiển thị phí hủy nếu có */}
+              {booking.cancellationFee > 0 ? (
+                <div style={{ 
+                  marginTop: 16, 
+                  padding: 16, 
+                  backgroundColor: "#fff7e6", 
+                  borderRadius: 8, 
+                  border: "1px solid #ffd591" 
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 14, color: "#d46b08", fontWeight: 600 }}>
+                        Phí hủy lịch hẹn:
+                      </p>
+                      <p style={{ margin: "8px 0 0 0", fontSize: 20, color: "#d46b08", fontWeight: 700 }}>
+                        {booking.cancellationFee.toLocaleString("vi-VN")} VNĐ
+                      </p>
+                    </div>
+                    <Button
+                      type="primary"
+                      danger
+                      size="large"
+                      onClick={() => {
+                        // ✅ Sử dụng cancellationFee từ booking (đã có từ API khi khách hủy)
+                        setCancellationFee(booking.cancellationFee);
+                        setIsPendingCancel(false); // ✅ Không phải đang chờ hủy, mà là thanh toán phí hủy đã có
+                        setIsPaymentModalOpen(true);
+                      }}>
+                      Thanh toán phí hủy
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                // ✅ Nếu chưa có phí hủy, hiển thị nút để tính phí hủy
+                <div style={{ 
+                  marginTop: 16, 
+                  padding: 16, 
+                  backgroundColor: "#f0f0f0", 
+                  borderRadius: 8, 
+                  border: "1px solid #d9d9d9" 
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 14, color: "#595959", fontWeight: 600 }}>
+                        Chưa tính phí hủy lịch hẹn
+                      </p>
+                      <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#8c8c8c" }}>
+                        Vui lòng tính phí hủy dựa trên các hạng mục đã kiểm tra
+                      </p>
+                    </div>
+                    <Button
+                      type="primary"
+                      danger
+                      size="large"
+                      loading={isCalculatingFee}
+                      onClick={async () => {
+                        // ✅ TRƯỜNG HỢP 2: Khách đã hủy từ mobile/UI khách
+                        // Flow: Trạng thái đã CANCELED → Tính tiền → Thanh toán → CHỈ cập nhật payment status, KHÔNG cập nhật appointment status
+                        setIsCalculatingFee(true);
+                        try {
+                          const fee = await calculateCancellationFee();
+                          if (fee > 0) {
+                            setCancellationFee(fee);
+                            setIsPendingCancel(false); // ✅ Không phải đang chờ hủy, mà là thanh toán phí hủy cho lịch đã hủy
+                            setIsPaymentModalOpen(true);
+                          } else {
+                            toast.info("Không có phí hủy cho lịch hẹn này.");
+                          }
+                        } catch (error) {
+                          console.error("Lỗi tính phí hủy:", error);
+                          toast.error("Không thể tính phí hủy. Vui lòng thử lại!");
+                        } finally {
+                          setIsCalculatingFee(false);
+                        }
+                      }}>
+                       Thanh toán phí hủy
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </Card>
+          )}
+
+          {/* Thông tin thanh toán / Lịch sử thanh toán */}
+          {currentTechnician && (
             <div style={{ marginBottom: 24 }}>
-              <PaymentInfo
-                booking={booking}
-                onOpenPayment={() => setIsPaymentModalOpen(true)}
-              />
+              {status === "COMPLETED" ? (
+                // ✅ Đã hoàn thành: Hiển thị lịch sử thanh toán (không có nút thanh toán)
+                <PaymentHistory booking={booking} />
+              ) : (status === "REPAIR_COMPLETED" || status === "QUOTE_APPROVED") ? (
+                // ✅ Chưa hoàn thành: Hiển thị thông tin thanh toán (có nút "Xử lý thanh toán")
+                <PaymentInfo
+                  booking={booking}
+                  onOpenPayment={() => setIsPaymentModalOpen(true)}
+                />
+              ) : null}
             </div>
           )}
 
@@ -460,7 +763,10 @@ export default function StaffBookingDetailPage() {
           <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
             {status === "PENDING" && (
               <>
-                <Button danger onClick={() => handleChangeStatus("CANCELED")}>
+                <Button 
+                  danger 
+                  onClick={handleCancelClick}
+                  loading={isCalculatingFee}>
                   Hủy
                 </Button>
                 <Button
@@ -472,7 +778,18 @@ export default function StaffBookingDetailPage() {
               </>
             )}
             {(status === "APPROVED" || status === "CHECKED_IN") && (
-              <Button danger onClick={() => handleChangeStatus("CANCELED")}>
+              <Button 
+                danger 
+                onClick={handleCancelClick}
+                loading={isCalculatingFee}>
+                Hủy lịch hẹn
+              </Button>
+            )}
+            {(status === "INSPECTION_COMPLETED" || status === "QUOTE_APPROVED") && (
+              <Button 
+                danger 
+                onClick={handleCancelClick}
+                loading={isCalculatingFee}>
                 Hủy lịch hẹn
               </Button>
             )}
@@ -483,6 +800,12 @@ export default function StaffBookingDetailPage() {
                 style={{ backgroundColor: "#ff4d4f", borderColor: "#ff4d4f" }}>
                 Hoàn tất / Thanh toán
               </Button>
+            )}
+            {/* ✅ Khi đã hủy, không hiển thị nút hành động */}
+            {status === "CANCELED" && (
+              <div style={{ color: "#999", fontSize: 14 }}>
+                Lịch hẹn đã bị hủy
+              </div>
             )}
           </div>
         </motion.div>
@@ -498,9 +821,59 @@ export default function StaffBookingDetailPage() {
 
       <Payment
         open={isPaymentModalOpen}
-        onClose={() => setIsPaymentModalOpen(false)}
+        onClose={() => {
+          setIsPaymentModalOpen(false);
+          // ✅ Nếu đang chờ thanh toán để hủy mà đóng modal, reset state
+          if (isPendingCancel) {
+            setIsPendingCancel(false);
+          }
+        }}
         booking={booking}
+        onPaymentSuccess={handlePaymentSuccess}
+        cancellationFee={cancellationFee}
+        isPendingCancel={isPendingCancel}
       />
+
+      {/* ✅ Modal xác nhận hủy lịch hẹn */}
+      <Modal
+        title="Xác nhận hủy lịch hẹn"
+        open={isCancelModalOpen}
+        onOk={handleConfirmCancel}
+        onCancel={() => setIsCancelModalOpen(false)}
+        okText="Xác nhận hủy"
+        cancelText="Hủy"
+        okButtonProps={{ danger: true }}>
+        <div style={{ padding: "16px 0" }}>
+          {cancellationFee > 0 ? (
+            <>
+              <p style={{ fontSize: 16, marginBottom: 12, fontWeight: 500 }}>
+                Bạn có chắc muốn hủy lịch hẹn này?
+              </p>
+              <div style={{ 
+                padding: 16, 
+                backgroundColor: "#fff7e6", 
+                borderRadius: 8, 
+                border: "1px solid #ffd591",
+                marginTop: 16 
+              }}>
+                <p style={{ margin: 0, fontSize: 14, color: "#d46b08", fontWeight: 600 }}>
+                  ⚠️ Phí hủy lịch hẹn:
+                </p>
+                <p style={{ margin: "8px 0 0 0", fontSize: 20, color: "#d46b08", fontWeight: 700 }}>
+                  {cancellationFee.toLocaleString("vi-VN")} VNĐ
+                </p>
+                <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#8c8c8c" }}>
+                  Phí này được tính dựa trên các hạng mục đã thực hiện trong quá trình kiểm tra.
+                </p>
+              </div>
+            </>
+          ) : (
+            <p style={{ fontSize: 16 }}>
+              Bạn có chắc muốn hủy lịch hẹn này? Không có phí hủy.
+            </p>
+          )}
+        </div>
+      </Modal>
     </>
   );
 }

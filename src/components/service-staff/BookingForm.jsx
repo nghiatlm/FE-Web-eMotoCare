@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Form, InputNumber, DatePicker, Button, Select, Input, Card, Divider, Row, Col, Space, Descriptions, Tag, Spin } from "antd";
 import { User, Car, Calendar, Clock, FileText, Settings, Wrench, Search, Phone, Mail, MapPin, Hash } from "lucide-react";
+import { toast } from "@/components/ui/sonner";
 import dayjs from "dayjs";
 
 import { getCustomersService } from "../../services/customerService";
@@ -111,6 +112,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
   // ✅ Hàm gọi API để lấy thông tin từ số khung
   const handleChassisNumberLookup = async (chassisNumber) => {
     if (!chassisNumber || chassisNumber.trim() === "") {
+      toast.warning("Vui lòng nhập số khung để tìm kiếm!");
       return;
     }
 
@@ -157,11 +159,17 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
         // ✅ Enable các form items khác
         setIsChassisNumberLoaded(true);
         console.log("✅ isChassisNumberLoaded set to true");
+        
+        // ✅ Toast thành công
+        toast.success("Tìm thấy thông tin xe và khách hàng!");
     } catch (error) {
       console.error("❌ Lỗi lấy thông tin từ số khung:", error);
       setVehicleInfo(null);
       setIsChassisNumberLoaded(false);
-      // ✅ Có thể thêm toast notification ở đây
+      
+      // ✅ Toast lỗi
+      const errorMessage = error?.response?.data?.message || error?.message || "Không tìm thấy thông tin từ số khung. Vui lòng kiểm tra lại!";
+      toast.error(errorMessage);
     }
   };
 
@@ -620,10 +628,10 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
               {/* ✅ Hiển thị thông tin sau khi nhập số khung */}
               {vehicleInfo ? (
                 <div style={{ marginTop: 16 }}>
-                  <Row gutter={[16, 16]}>
+                  <Row gutter={[16, 16]} style={{ display: "flex" }}>
                     {/* Thông tin khách hàng */}
                     {vehicleInfo.customer && (
-                      <Col xs={24} md={12}>
+                      <Col xs={24} md={12} style={{ display: "flex" }}>
                         <Card 
                           title={
                             <Space>
@@ -633,17 +641,18 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                               <span style={{ fontWeight: 600, fontSize: 16 }}>Thông tin khách hàng</span>
                             </Space>
                           }
-                          style={{ borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}
+                          style={{ borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.08)", width: "100%", display: "flex", flexDirection: "column" }}
                           headStyle={{ borderBottom: "1px solid #f0f0f0", padding: "18px 24px", backgroundColor: "#fafafa" }}
-                          bodyStyle={{ padding: "24px" }}>
-                          <Descriptions column={1} size="middle" colon={false}>
+                          bodyStyle={{ padding: "24px", flex: 1 }}>
+                          <Descriptions column={1} size="middle" colon={false} style={{ margin: 0 }}>
                             <Descriptions.Item 
                               label={
                                 <Space size={6}>
                                   <User size={16} style={{ color: "#595959" }} />
                                   <span style={{ fontWeight: 500 }}>Họ tên</span>
                                 </Space>
-                              }>
+                              }
+                              style={{ paddingBottom: 12 }}>
                               <span style={{ fontWeight: 500, fontSize: 15 }}>
                                 {vehicleInfo.customer.firstName} {vehicleInfo.customer.lastName}
                               </span>
@@ -654,7 +663,8 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                                   <Hash size={16} style={{ color: "#595959" }} />
                                   <span style={{ fontWeight: 500 }}>Mã KH</span>
                                 </Space>
-                              }>
+                              }
+                              style={{ paddingBottom: 12 }}>
                               <Tag color="blue" style={{ fontSize: 13, padding: "4px 12px" }}>
                                 {vehicleInfo.customer.customerCode}
                               </Tag>
@@ -665,7 +675,8 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                                   <Phone size={16} style={{ color: "#595959" }} />
                                   <span style={{ fontWeight: 500 }}>SĐT</span>
                                 </Space>
-                              }>
+                              }
+                              style={{ paddingBottom: 12 }}>
                               {vehicleInfo.customer.account?.phone || "N/A"}
                             </Descriptions.Item>
                             <Descriptions.Item 
@@ -674,10 +685,10 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                                   <Mail size={16} style={{ color: "#595959" }} />
                                   <span style={{ fontWeight: 500 }}>Email</span>
                                 </Space>
-                              }>
+                              }
+                              style={{ paddingBottom: 0 }}>
                               {vehicleInfo.customer.account?.email || "N/A"}
                             </Descriptions.Item>
-                       
                           </Descriptions>
                         </Card>
                       </Col>
@@ -685,7 +696,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                     
                     {/* Thông tin xe */}
                     {vehicleInfo.vehicle && (
-                      <Col xs={24} md={12}>
+                      <Col xs={24} md={12} style={{ display: "flex" }}>
                         <Card 
                           title={
                             <Space>
@@ -695,17 +706,18 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                               <span style={{ fontWeight: 600, fontSize: 16 }}>Thông tin xe</span>
                             </Space>
                           }
-                          style={{ borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}
+                          style={{ borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.08)", width: "100%", display: "flex", flexDirection: "column" }}
                           headStyle={{ borderBottom: "1px solid #f0f0f0", padding: "18px 24px", backgroundColor: "#fafafa" }}
-                          bodyStyle={{ padding: "24px" }}>
-                          <Descriptions column={1} size="middle" colon={false}>
+                          bodyStyle={{ padding: "24px", flex: 1 }}>
+                          <Descriptions column={1} size="middle" colon={false} style={{ margin: 0 }}>
                             <Descriptions.Item 
                               label={
                                 <Space size={6}>
                                   <Car size={16} style={{ color: "#595959" }} />
                                   <span style={{ fontWeight: 500 }}>Mẫu xe</span>
                                 </Space>
-                              }>
+                              }
+                              style={{ paddingBottom: 12 }}>
                               <span style={{ fontWeight: 500, fontSize: 15 }}>{vehicleInfo.vehicle.modelName || "N/A"}</span>
                             </Descriptions.Item>
                             <Descriptions.Item 
@@ -714,7 +726,8 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                                   <Hash size={16} style={{ color: "#595959" }} />
                                   <span style={{ fontWeight: 500 }}>Số khung</span>
                                 </Space>
-                              }>
+                              }
+                              style={{ paddingBottom: 12 }}>
                               <Tag color="orange" style={{ fontSize: 13, padding: "4px 12px" }}>
                                 {vehicleInfo.vehicle.chassisNumber || "N/A"}
                               </Tag>
@@ -725,7 +738,8 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                                   <Hash size={16} style={{ color: "#595959" }} />
                                   <span style={{ fontWeight: 500 }}>Số máy</span>
                                 </Space>
-                              }>
+                              }
+                              style={{ paddingBottom: 12 }}>
                               {vehicleInfo.vehicle.engineNumber || "N/A"}
                             </Descriptions.Item>
                             <Descriptions.Item 
@@ -734,7 +748,8 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                                   <Car size={16} style={{ color: "#595959" }} />
                                   <span style={{ fontWeight: 500 }}>Màu sắc</span>
                                 </Space>
-                              }>
+                              }
+                              style={{ paddingBottom: 0 }}>
                               <Tag color="purple" style={{ fontSize: 13, padding: "4px 12px" }}>
                                 {vehicleInfo.vehicle.color || "N/A"}
                               </Tag>

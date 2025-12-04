@@ -605,22 +605,99 @@ export default function BatteryDetailPage() {
               </Title>
             </Divider>
 
-            <div className="space-y-4">
+            <div className="space-y-6">
                 {(() => {
                   let conclusionObj = null;
 
+                  console.log("🔍 Conclusion type:", typeof conclusion);
+                  console.log("🔍 Conclusion value:", conclusion);
+
                   if (typeof conclusion === "string") {
                     try {
+                      // ✅ Thử parse toàn bộ string trước
                       const parsed = JSON.parse(conclusion);
+                      console.log("🔍 Parsed conclusion:", parsed);
                       if (
                         typeof parsed === "object" &&
                         parsed !== null &&
                         !Array.isArray(parsed)
                       ) {
                         conclusionObj = parsed;
+                      } else if (Array.isArray(parsed)) {
+                        // ✅ Nếu là array, merge các objects lại
+                        conclusionObj = parsed.reduce((acc, item) => ({ ...acc, ...item }), {});
                       }
                     } catch (e) {
+                      console.log("🔍 Failed to parse as single JSON, trying to parse multiple JSON objects...");
+                      // ✅ Nếu parse toàn bộ thất bại, thử parse từng JSON object riêng biệt
+                      try {
+                        // ✅ Tìm tất cả các JSON objects trong string (có thể có nhiều objects)
+                        // Sử dụng regex để tìm các JSON objects (cân bằng ngoặc nhọn)
+                        const jsonMatches = [];
+                        let depth = 0;
+                        let start = -1;
+                        let inString = false;
+                        let escapeNext = false;
+                        
+                        for (let i = 0; i < conclusion.length; i++) {
+                          const char = conclusion[i];
+                          
+                          if (escapeNext) {
+                            escapeNext = false;
+                            continue;
+                          }
+                          
+                          if (char === '\\') {
+                            escapeNext = true;
+                            continue;
+                          }
+                          
+                          if (char === '"' && !escapeNext) {
+                            inString = !inString;
+                            continue;
+                          }
+                          
+                          if (!inString) {
+                            if (char === '{') {
+                              if (depth === 0) start = i;
+                              depth++;
+                            } else if (char === '}') {
+                              depth--;
+                              if (depth === 0 && start !== -1) {
+                                const match = conclusion.substring(start, i + 1);
+                                jsonMatches.push(match);
+                                start = -1;
+                              }
+                            }
+                          }
+                        }
+                        
+                        console.log("🔍 Found JSON matches:", jsonMatches.length);
+                        console.log("🔍 JSON matches:", jsonMatches);
+                        
+                        if (jsonMatches && jsonMatches.length > 0) {
+                          conclusionObj = {};
+                          jsonMatches.forEach((match, idx) => {
+                            try {
+                              const parsed = JSON.parse(match.trim());
+                              console.log(`🔍 Parsed JSON match ${idx}:`, parsed);
+                              if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+                                // ✅ Merge các keys vào conclusionObj
+                                Object.keys(parsed).forEach(key => {
+                                  conclusionObj[key] = parsed[key];
+                                });
+                              }
+                            } catch (err) {
+                              console.warn(`Failed to parse JSON match ${idx}:`, err);
+                              console.warn(`Match content:`, match.substring(0, 100));
+                            }
+                          });
+                          console.log("🔍 Final merged conclusionObj:", conclusionObj);
+                        }
+                      } catch (e2) {
+                        console.error("Failed to parse conclusion:", e2);
                       conclusionObj = null;
+                      }
                     }
                   } else if (
                     typeof conclusion === "object" &&
@@ -628,79 +705,116 @@ export default function BatteryDetailPage() {
                     !Array.isArray(conclusion)
                   ) {
                     conclusionObj = conclusion;
+                  } else if (Array.isArray(conclusion)) {
+                    // ✅ Nếu là array, merge các objects lại
+                    conclusionObj = conclusion.reduce((acc, item) => ({ ...acc, ...item }), {});
                   }
 
-                  if (
-                    conclusionObj &&
-                    (conclusionObj.energyCapability ||
-                      conclusionObj.chargeDischargeEfficiency ||
-                      conclusionObj.degradationStatus ||
-                      conclusionObj.remainingUsefulLife ||
-                      conclusionObj.safety)
-                  ) {
+                  // ✅ Hiển thị UI mới nếu có bất kỳ dữ liệu nào trong conclusionObj
+                  if (conclusionObj && Object.keys(conclusionObj).length > 0) {
                     const sections = [
                       {
                         key: "energyCapability",
                         title: "Khả năng cung cấp năng lượng",
-                        icon: <Zap className="h-4 w-4" style={{ color: "#52c41a" }} />,
+                        icon: <Zap className="h-5 w-5" />,
                         color: "#52c41a",
                         bgColor: "#f6ffed",
                         borderColor: "#b7eb8f",
+                        borderLeft: "5px solid #52c41a",
                       },
                       {
                         key: "chargeDischargeEfficiency",
                         title: "Hiệu suất nạp/xả",
-                        icon: <Activity className="h-4 w-4" style={{ color: "#1890ff" }} />,
+                        icon: <Activity className="h-5 w-5" />,
                         color: "#1890ff",
                         bgColor: "#f0f5ff",
                         borderColor: "#adc6ff",
+                        borderLeft: "5px solid #1890ff",
                       },
                       {
                         key: "degradationStatus",
                         title: "Tình trạng xuống cấp",
-                        icon: <TrendingDown className="h-4 w-4" style={{ color: "#faad14" }} />,
+                        icon: <TrendingDown className="h-5 w-5" />,
                         color: "#faad14",
                         bgColor: "#fffbe6",
                         borderColor: "#ffe58f",
+                        borderLeft: "5px solid #faad14",
                       },
                       {
                         key: "remainingUsefulLife",
                         title: "Tuổi thọ còn lại",
-                        icon: <TrendingUp className="h-4 w-4" style={{ color: "#722ed1" }} />,
+                        icon: <TrendingUp className="h-5 w-5" />,
                         color: "#722ed1",
                         bgColor: "#f9f0ff",
                         borderColor: "#d3adf7",
+                        borderLeft: "5px solid #722ed1",
                       },
                       {
                         key: "safety",
-                        title: "Cảnh báo",
-                        icon: <AlertTriangle className="h-4 w-4" style={{ color: "#ff4d4f" }} />,
+                        title: "An toàn",
+                        icon: <AlertTriangle className="h-5 w-5" />,
                         color: "#ff4d4f",
                         bgColor: "#fff1f0",
                         borderColor: "#ffccc7",
+                        borderLeft: "5px solid #ff4d4f",
                       },
                     ];
 
+                    // ✅ Hiển thị conclusion riêng biệt và nổi bật hơn
+                    const hasConclusion = conclusionObj.conclusion;
+
                     return (
-                      <>
-                        {sections.map((section) => {
+                      <div className="space-y-6">
+                        {/* ✅ Các section phân tích - Layout 3-2 (3 trên, 2 dưới) */}
+                        <div>
+                          {/* Hàng đầu: 3 cards */}
+                          <Row gutter={[20, 20]} justify="start">
+                            {sections.slice(0, 3).map((section) => {
                           const content = conclusionObj[section.key];
                           if (!content) return null;
 
                           return (
+                                <Col xs={24} sm={24} md={8} key={section.key}>
                             <Card
-                              key={section.key}
                               size="small"
                               style={{
                                 backgroundColor: section.bgColor,
                                 border: `1px solid ${section.borderColor}`,
-                                marginBottom: "16px",
-                              }}
-                            >
-                              <Space direction="vertical" size="small" style={{ width: "100%" }}>
-                                <div className="flex items-center gap-2">
+                                      borderLeft: section.borderLeft,
+                                      borderRadius: "10px",
+                                      height: "100%",
+                                      boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                                      transition: "all 0.3s ease",
+                                    }}
+                                    bodyStyle={{ padding: "20px" }}
+                                    hoverable
+                                  >
+                                    <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                                      <div className="flex items-center gap-3" style={{ marginBottom: "4px" }}>
+                                        <div 
+                                          style={{ 
+                                            color: section.color,
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            width: "32px",
+                                            height: "32px",
+                                            borderRadius: "8px",
+                                            backgroundColor: `${section.color}15`,
+                                          }}
+                                        >
                                   {section.icon}
-                                  <Title level={5} style={{ margin: 0, color: section.color }}>
+                                        </div>
+                                        <Title 
+                                          level={5} 
+                                          style={{ 
+                                            margin: 0, 
+                                            color: section.color,
+                                            fontWeight: 600,
+                                            fontSize: "16px",
+                                            lineHeight: "1.5",
+                                          }}
+                                        >
                                     {section.title}
                                   </Title>
                                 </div>
@@ -708,34 +822,222 @@ export default function BatteryDetailPage() {
                                   className="mb-0"
                                   style={{
                                     whiteSpace: "pre-wrap",
-                                    lineHeight: 1.6,
-                                    color: "#595959",
+                                          lineHeight: 1.75,
+                                          color: "#262626",
                                     fontSize: "14px",
+                                          margin: 0,
+                                          textAlign: "justify",
                                   }}
                                 >
                                   {content}
                                 </Paragraph>
                               </Space>
                             </Card>
+                                </Col>
                           );
                         })}
-                      </>
+                          </Row>
+                          
+                          {/* Hàng dưới: 2 cards - tổng chiều rộng bằng 3 cards trên */}
+                          {sections.slice(3).length > 0 && (
+                            <Row gutter={[20, 20]} justify="start" style={{ marginTop: 20 }}>
+                              {sections.slice(3).map((section) => {
+                                const content = conclusionObj[section.key];
+                                if (!content) return null;
+
+                                return (
+                                  <Col 
+                                    xs={24} 
+                                    sm={24} 
+                                    md={12}
+                                    key={section.key}
+                                  >
+                                    <Card
+                                      size="small"
+                                      style={{
+                                        backgroundColor: section.bgColor,
+                                        border: `1px solid ${section.borderColor}`,
+                                        borderLeft: section.borderLeft,
+                                        borderRadius: "10px",
+                                        height: "100%",
+                                        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                                        transition: "all 0.3s ease",
+                                      }}
+                                      bodyStyle={{ padding: "20px" }}
+                                      hoverable
+                                    >
+                                      <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                                        <div className="flex items-center gap-3" style={{ marginBottom: "4px" }}>
+                                          <div 
+                                            style={{ 
+                                              color: section.color,
+                                              display: "flex",
+                                              alignItems: "center",
+                                              justifyContent: "center",
+                                              width: "32px",
+                                              height: "32px",
+                                              borderRadius: "8px",
+                                              backgroundColor: `${section.color}15`,
+                                            }}
+                                          >
+                                            {section.icon}
+                                          </div>
+                                          <Title 
+                                            level={5} 
+                                            style={{ 
+                                              margin: 0, 
+                                              color: section.color,
+                                              fontWeight: 600,
+                                              fontSize: "16px",
+                                              lineHeight: "1.5",
+                                            }}
+                                          >
+                                            {section.title}
+                                          </Title>
+                                        </div>
+                                        <Paragraph
+                                          className="mb-0"
+                                          style={{
+                                            whiteSpace: "pre-wrap",
+                                            lineHeight: 1.75,
+                                            color: "#262626",
+                                            fontSize: "14px",
+                                            margin: 0,
+                                            textAlign: "justify",
+                                          }}
+                                        >
+                                          {content}
+                                        </Paragraph>
+                                      </Space>
+                                    </Card>
+                                  </Col>
+                                );
+                              })}
+                            </Row>
+                          )}
+                        </div>
+
+                        {/* ✅ Kết luận cuối cùng - nổi bật và chiếm full width */}
+                        {hasConclusion && (
+                          <Card
+                            style={{
+                              backgroundColor: conclusionObj.conclusion.includes("Bảo Hành") || conclusionObj.conclusion.includes("Thay Thế")
+                                ? "#fff1f0"
+                                : conclusionObj.conclusion.includes("tốt") || conclusionObj.conclusion.includes("bình thường")
+                                ? "#f6ffed"
+                                : "#fffbe6",
+                              border: conclusionObj.conclusion.includes("Bảo Hành") || conclusionObj.conclusion.includes("Thay Thế")
+                                ? "2px solid #ff4d4f"
+                                : conclusionObj.conclusion.includes("tốt") || conclusionObj.conclusion.includes("bình thường")
+                                ? "2px solid #52c41a"
+                                : "2px solid #faad14",
+                              borderRadius: "12px",
+                              boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+                              marginTop: "8px",
+                            }}
+                            bodyStyle={{ padding: "28px" }}
+                          >
+                            <Space direction="vertical" size={16} style={{ width: "100%" }}>
+                              <div className="flex items-center gap-3">
+                                <div
+                                  style={{
+                                    color: conclusionObj.conclusion.includes("Bảo Hành") || conclusionObj.conclusion.includes("Thay Thế")
+                                      ? "#ff4d4f"
+                                      : conclusionObj.conclusion.includes("tốt") || conclusionObj.conclusion.includes("bình thường")
+                                      ? "#52c41a"
+                                      : "#faad14",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    width: "40px",
+                                    height: "40px",
+                                    borderRadius: "10px",
+                                    backgroundColor: conclusionObj.conclusion.includes("Bảo Hành") || conclusionObj.conclusion.includes("Thay Thế")
+                                      ? "#ff4d4f20"
+                                      : conclusionObj.conclusion.includes("tốt") || conclusionObj.conclusion.includes("bình thường")
+                                      ? "#52c41a20"
+                                      : "#faad1420",
+                                  }}
+                                >
+                                  <FileText className="h-5 w-5" />
+                                </div>
+                                <Title 
+                                  level={4} 
+                                  style={{ 
+                                    margin: 0,
+                                    color: conclusionObj.conclusion.includes("Bảo Hành") || conclusionObj.conclusion.includes("Thay Thế")
+                                      ? "#ff4d4f"
+                                      : conclusionObj.conclusion.includes("tốt") || conclusionObj.conclusion.includes("bình thường")
+                                      ? "#52c41a"
+                                      : "#faad14",
+                                    fontWeight: 700,
+                                    fontSize: "18px",
+                                  }}
+                                >
+                                  Kết luận
+                                </Title>
+                              </div>
+                              <div
+                                style={{
+                                  whiteSpace: "pre-wrap",
+                                  lineHeight: 1.85,
+                                  color: "#262626",
+                                  fontSize: "15px",
+                                  fontWeight: 500,
+                                  marginTop: "4px",
+                                  textAlign: "justify",
+                                }}
+                              >
+                                {conclusionObj.conclusion.split(/(\*\*.*?\*\*)/g).map((part, index) => {
+                                  if (part.startsWith("**") && part.endsWith("**")) {
+                                    const text = part.replace(/\*\*/g, "");
+                                    return (
+                                      <span key={index} style={{ color: "#ff4d4f", fontWeight: 700 }}>
+                                        {text}
+                                      </span>
+                                    );
+                                  }
+                                  return <span key={index}>{part}</span>;
+                                })}
+                              </div>
+                            </Space>
+                          </Card>
+                        )}
+                      </div>
                     );
                   }
 
-                  // ✅ Format cũ: conclusion là string - hiển thị đơn giản
+                  // ✅ Nếu không parse được, vẫn thử hiển thị UI mới với dữ liệu thô
+                  // Hoặc hiển thị thông báo lỗi parse
                   return (
-                    <Alert
-                      message="Kết luận"
-                      description={
-                        <Paragraph className="mb-0" style={{ whiteSpace: "pre-wrap" }}>
-                          {conclusion}
+                    <Card
+                      style={{
+                        backgroundColor: "#f0f5ff",
+                        border: "1px solid #adc6ff",
+                        borderRadius: "8px",
+                      }}
+                      bodyStyle={{ padding: "16px" }}
+                    >
+                      <Space direction="vertical" size="small" style={{ width: "100%" }}>
+                        <div className="flex items-center gap-2">
+                          <Info className="h-4 w-4" style={{ color: "#1890ff" }} />
+                          <Title level={5} style={{ margin: 0, color: "#1890ff" }}>
+                            Kết luận
+                          </Title>
+                        </div>
+                        <Paragraph
+                          className="mb-0"
+                          style={{
+                            whiteSpace: "pre-wrap",
+                            lineHeight: 1.8,
+                            color: "#262626",
+                            fontSize: "14px",
+                          }}
+                        >
+                          {typeof conclusion === "string" ? conclusion : JSON.stringify(conclusion, null, 2)}
                         </Paragraph>
-                      }
-                      type="info"
-                      icon={<Info className="h-4 w-4" />}
-                      showIcon
-                    />
+                      </Space>
+                    </Card>
                   );
                 })()}
             </div>

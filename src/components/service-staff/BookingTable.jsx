@@ -17,7 +17,7 @@ export default function BookingTable({
     {
       title: "STT",
       key: "index",
-      width: 60,
+      width: 50,
       align: "center",
       render: (_, __, idx) => (
         <span style={{ fontWeight: 500, color: "#595959" }}>{idx + 1}</span>
@@ -27,43 +27,31 @@ export default function BookingTable({
       title: "Mã đặt lịch",
       dataIndex: "code",
       key: "code",
-      width: 140,
+      width: 120,
+      ellipsis: true,
       render: (code) => (
-        <span style={{ fontWeight: 600, color: "#262626" }}>{code || "—"}</span>
+        <span style={{ fontWeight: 600, color: "#262626" }} title={code}>{code || "—"}</span>
       ),
     },
     {
       title: "Người đặt",
       dataIndex: "customer",
       key: "customer",
-      width: 180,
+      width: 140,
+      ellipsis: true,
       render: (customer) => {
         if (!customer) return <span style={{ color: "#bfbfbf" }}>—</span>;
         const name = [customer.firstName, customer.lastName]
           .filter(Boolean)
           .join(" ");
-        return <div style={{ fontWeight: 500, color: "#262626" }}>{name || "—"}</div>;
+        return <div style={{ fontWeight: 500, color: "#262626" }} title={name}>{name || "—"}</div>;
       },
-    },
-    {
-      title: "Trung tâm dịch vụ",
-      dataIndex: "serviceCenter",
-      key: "serviceCenter",
-      width: 200,
-      ellipsis: {
-        showTitle: false,
-      },
-      render: (center) => (
-        <span style={{ color: "#595959" }} title={center?.name || "—"}>
-          {center?.name || "—"}
-        </span>
-      ),
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      width: 140,
+      width: 120,
       align: "center",
       render: (status) => {
         if (!status) return <Tag>—</Tag>;
@@ -76,24 +64,10 @@ export default function BookingTable({
       },
     },
     {
-      title: "Giai đoạn xe",
-      dataIndex: "maintenanceStage",
-      key: "maintenanceStage",
-      width: 150,
-      ellipsis: {
-        showTitle: false,
-      },
-      render: (stage) => (
-        <span style={{ color: "#595959" }} title={stage?.name || "-"}>
-          {stage?.name || "-"}
-        </span>
-      ),
-    },
-    {
       title: "Loại dịch vụ",
       dataIndex: "type",
       key: "type",
-      width: 140,
+      width: 110,
       align: "center",
       render: (service) => {
         if (!service) return <Tag>—</Tag>;
@@ -110,7 +84,7 @@ export default function BookingTable({
       title: "Ngày hẹn",
       dataIndex: "appointmentDate",
       key: "appointmentDate",
-      width: 120,
+      width: 100,
       render: (date) => {
         if (!date) return <span style={{ color: "#bfbfbf" }}>—</span>;
         const d = new Date(date);
@@ -129,7 +103,7 @@ export default function BookingTable({
       title: "Thời gian",
       dataIndex: "slotTime",
       key: "slotTime",
-      width: 120,
+      width: 100,
       align: "center",
       render: (slot) => {
         if (!slot) return <span style={{ color: "#bfbfbf" }}>-</span>;
@@ -143,23 +117,9 @@ export default function BookingTable({
       },
     },
     {
-      title: "Ghi chú",
-      dataIndex: "note",
-      key: "note",
-      width: 150,
-      ellipsis: {
-        showTitle: false,
-      },
-      render: (note) => (
-        <span style={{ color: "#595959" }} title={note || "—"}>
-          {note || "—"}
-        </span>
-      ),
-    },
-    {
       title: "Hành động",
       key: "action",
-      width: 120,
+      width: 100,
       align: "center",
       render: (_, record) => (
         <Button 
@@ -169,6 +129,7 @@ export default function BookingTable({
             color: "#ff4d4f",
             fontWeight: 500,
             padding: 0,
+            fontSize: "12px"
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.color = "#ff7875";
@@ -176,20 +137,23 @@ export default function BookingTable({
           onMouseLeave={(e) => {
             e.currentTarget.style.color = "#ff4d4f";
           }}>
-          Xem chi tiết
+          Xem
         </Button>
       ),
     },
   ];
 
   return (
-    <div style={{ 
-      backgroundColor: "#fff",
-      borderRadius: 8,
-      boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-      overflow: "hidden",
-      width: "100%"
-    }}>
+    <div 
+      className="booking-table-container"
+      style={{ 
+        backgroundColor: "#fff",
+        borderRadius: 8,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+        overflow: "hidden",
+        width: "100%",
+        maxWidth: "100%"
+      }}>
       <Table
         columns={columns}
         dataSource={data}
@@ -205,6 +169,7 @@ export default function BookingTable({
         bordered
         size="middle"
         scroll={{ x: false }}
+        style={{ width: "100%", maxWidth: "100%" }}
         rowClassName={(record, index) => 
           index % 2 === 0 ? "table-row-light" : "table-row-dark"
         }

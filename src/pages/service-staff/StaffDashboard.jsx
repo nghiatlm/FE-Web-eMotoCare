@@ -28,13 +28,14 @@ const StaffDashboard = () => {
     loadRMAs();
   }, []);
 
-  // ✅ Lấy staffId của staff hiện tại
+  // ✅ Lấy staffId của staff hiện tại (tùy chọn, có thể dùng để filter sau)
   const loadCurrentStaff = async () => {
     try {
       const staff = await fetchServiceStaff();
       const staffData = staff?.data?.data || staff?.data || staff;
       const staffId = staffData?.id;
       setCurrentStaffId(staffId);
+      console.log("Current staffId loaded:", staffId);
     } catch (error) {
       console.error("Lỗi lấy staffId:", error);
     }
@@ -53,10 +54,12 @@ const StaffDashboard = () => {
     }
   };
 
-  // ✅ Lọc booking chỉ lấy những booking mà staff này đã approve
-  const approvedBookings = currentStaffId
-    ? bookings.filter(b => b.approveById === currentStaffId)
-    : [];
+  // ✅ Hiển thị tất cả bookings của service center
+  // Có thể lọc theo approveById nếu cần, nhưng tạm thời hiển thị tất cả để dashboard có dữ liệu
+  const approvedBookings = Array.isArray(bookings) ? bookings : [];
+  
+  // Debug log
+  console.log("StaffDashboard - Bookings loaded:", approvedBookings.length, "Current staffId:", currentStaffId);
 
   // Tính toán thống kê (chỉ tính booking đã approve bởi staff này)
   const stats = {

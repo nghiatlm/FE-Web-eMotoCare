@@ -6,7 +6,7 @@ import { createPaymentLinkService } from "../../services/paymentService";
 import { fetchEVCheckByAppointmentService } from "../../services/evcheckService";
 import { SERVICE_TYPE_MAP } from "../../utils/constants";
 
-const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
+const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0, isPendingCancel = false }) => {
   const [paymentMethod, setPaymentMethod] = useState("PAY_OS_CENTER");
   const [loading, setLoading] = useState(false);
   const [quoteItems, setQuoteItems] = useState([]);
@@ -17,6 +17,23 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
 
   useEffect(() => {
     if (!open || !appointmentId) return;
+
+    // ✅ TRƯỜNG HỢP 1: Staff hủy - đang chờ thanh toán phí hủy để hủy lịch
+    // ✅ TRƯỜNG HỢP 2: Khách hủy - lịch đã bị hủy, cần thanh toán phí hủy
+    if (cancellationFee > 0 && (isPendingCancel || booking?.status === "CANCELED")) {
+      setQuoteItems([{
+        id: 'cancellation-fee',
+        name: 'Phí hủy lịch hẹn',
+        remedies: 'CANCELLATION',
+        quantity: 1,
+        priceService: cancellationFee,
+        pricePartDisplay: 0,
+        serial: '',
+        totalAmount: cancellationFee,
+      }]);
+      setTotalAmount(cancellationFee);
+      return;
+    }
 
     const loadQuoteFromEVCheck = async () => {
       setFetchingEVCheck(true);
@@ -89,7 +106,7 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
     };
 
     loadQuoteFromEVCheck();
-  }, [open, appointmentId]);
+  }, [open, appointmentId, isPendingCancel, cancellationFee]);
 
   const handlePayment = async () => {
     if (!appointmentId) return toast.error("Thiếu thông tin lịch hẹn");
@@ -104,8 +121,8 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
           paymentMethod === "PAY_OS_CENTER" ? "PAY_OS_CENTER" : "CASH",
         currency: "VND",
         appointmentId,
-        returnUrl: "https://modernestate.vercel.app/payment-success",
-        callbackUrl: "https://modernestate.vercel.app/payment-success",
+        returnUrl: "https://emotocare.vercel.app/payment-success",
+        callbackUrl: "https://emotocare.vercel.app/payment-failed",
       };
 
       // ✅ Luôn gọi API, truyền paymentMethod (CASH hoặc PAY_OS_CENTER)
@@ -156,6 +173,9 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
       key: "remedies",
       width: 130,
       render: (v) => {
+        if (v === "CANCELLATION") {
+          return <Tag color="red">Phí hủy</Tag>;
+        }
         const label =
           v === "REPLACE"
             ? "Thay thế"
@@ -199,7 +219,9 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess }) => {
       align: "right",
       width: 140,
       render: (v, row) =>
-        row.remedies === "REPLACE" ? (
+        row.remedies === "CANCELLATION" ? (
+          <span className='text-gray-400'>—</span>
+        ) : row.remedies === "REPLACE" ? (
           <span>{Number(v).toLocaleString("vi-VN")}</span>
         ) : (
           <span className='text-gray-400'>—</span>

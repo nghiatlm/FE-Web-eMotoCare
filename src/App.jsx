@@ -12,6 +12,7 @@ import ForgotPassword from "./pages/login/ForgotPassword";
 import VerifyOTP from "./pages/login/VerifyOTP";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
+import VerifySuccess from "./pages/VerifySuccess";
 
 // admin
 import WarrantyClaims from "./pages/WarrantyClaims";
@@ -94,6 +95,7 @@ const App = () => (
         {/* Public routes */}
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/payment-failed" element={<PaymentFailed />} />
+        <Route path="/verify-success" element={<VerifySuccess />} />
 
         {/* Admin routes */}
           <Route
