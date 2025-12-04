@@ -494,7 +494,7 @@ export default function PartTypeDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-muted-foreground">Đang tải...</p>
@@ -508,10 +508,10 @@ export default function PartTypeDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="p-8">
+    <div className="min-h-screen bg-slate-50">
+      <div className="p-8 max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-8">
           <Button
             variant="ghost"
             size="sm"
@@ -521,40 +521,47 @@ export default function PartTypeDetail() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Quay lại danh sách
           </Button>
-          <div className="flex items-center gap-2 mb-2">
-            <Package className="h-6 w-6 text-primary" />
-            <h1 className="text-3xl font-bold text-foreground">Chi tiết loại phụ tùng</h1>
+          <div className="flex items-center gap-2 mt-2">
+            <Package className="h-6 w-6 text-red-600" />
+            <h1 className="text-2xl font-semibold text-slate-900">Chi tiết loại phụ tùng</h1>
           </div>
+          <p className="mt-1 text-sm text-slate-500">Xem chi tiết loại phụ tùng và các gói dịch vụ liên quan</p>
+          <div className="mt-3 h-[2px] w-24 rounded-full bg-red-500/70" />
         </div>
 
         {/* Part Type Information */}
-        <Card className="mb-6">
+        <Card className="mb-6 rounded-xl border border-slate-200 shadow-sm bg-white">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Info className="h-5 w-5 text-primary" />
-              Thông tin loại phụ tùng
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-red-50 text-red-600">
+                <Info className="h-4 w-4" />
+              </span>
+              <span>Thông tin loại phụ tùng</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs font-medium tracking-wide text-slate-500 uppercase">
                   <Package className="h-4 w-4" />
                   <span>Tên loại phụ tùng</span>
                 </div>
-                <p className="text-base font-semibold text-foreground">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900">
                   {partType.name || "—"}
-                </p>
+                </div>
               </div>
-              <div className="space-y-1.5">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <FileText className="h-4 w-4" />
-                <span>Mô tả</span>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs font-medium tracking-wide text-slate-500 uppercase">
+                  <FileText className="h-4 w-4" />
+                  <span>Mô tả</span>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 leading-relaxed min-h-[44px] flex items-center">
+                  {partType.description
+                    ? partType.description
+                    : <span className="italic text-slate-400">Không có mô tả</span>}
+                </div>
               </div>
-              <p className="text-sm text-foreground leading-relaxed bg-muted/50 p-3 rounded-md">
-                {partType.description || "Không có mô tả"}
-              </p>
-            </div>
             </div>
           </CardContent>
         </Card>
@@ -613,22 +620,6 @@ export default function PartTypeDetail() {
                 {/* Mã và Tên dịch vụ */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Mã (tùy chọn)</Label>
-                    <Input
-                      value={form.code}
-                      onChange={(e) => {
-                        setForm((f) => ({ ...f, code: e.target.value }));
-                        validateField("code", e.target.value);
-                      }}
-                      placeholder="VD: PriceSV-00001"
-                      className="h-10"
-                      maxLength={50}
-                    />
-                    {errors.code && (
-                      <p className="text-sm text-red-500">{errors.code}</p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
                     <Label>Tên dịch vụ <span className="text-red-500">*</span></Label>
                     <Input
                       value={form.name}
@@ -642,39 +633,29 @@ export default function PartTypeDetail() {
                     />
                     {errors.name && (
                       <p className="text-sm text-red-500">{errors.name}</p>
-                    )}
+                    )}          
                   </div>
-                </div>
-
-                {/* Mô tả */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label>Mô tả</Label>
-                    {form.description && (
-                      <span className="text-xs text-muted-foreground">
-                        {form.description.length}/500
-                      </span>
-                    )}
-                  </div>
+                  <div className="space-y-2">
+                  <Label>Mô tả <span className="text-red-500">*</span></Label>
                   <Input
-                    value={form.description}
-                    onChange={(e) => {
-                      setForm((f) => ({ ...f, description: e.target.value }));
-                      validateField("description", e.target.value);
-                    }}
-                    placeholder="Mô tả chi tiết về dịch vụ..."
-                    className="h-10"
-                    maxLength={500}
-                  />
-                  {errors.description && (
-                    <p className="text-sm text-red-500">{errors.description}</p>
-                  )}
+                      value={form.description}
+                      onChange={(e) => {
+                        setForm((f) => ({ ...f, description: e.target.value }));
+                        validateField("description", e.target.value);
+                      }}
+                      placeholder="Mô tả chi tiết về dịch vụ..."
+                      className="h-10"
+                    />
+                    {errors.description && (
+                      <p className="text-sm text-red-500">{errors.description}</p>
+                    )}
+                  </div>  
                 </div>
 
                 {/* Giá và Chi phí lao động */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Giá (VNĐ) <span className="text-red-500">*</span></Label>
+                    <Label>Giá <span className="text-red-500">*</span></Label>
                     <Input
                       type="number"
                       value={form.price}
@@ -693,7 +674,7 @@ export default function PartTypeDetail() {
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label>Chi phí lao động (VNĐ)</Label>
+                    <Label>Chi phí lao động</Label>
                     <Input
                       type="number"
                       value={form.laborCost}
@@ -794,11 +775,13 @@ export default function PartTypeDetail() {
         </Card>
 
         {/* Service Packages */}
-        <Card>
+        <Card className="rounded-xl border border-slate-200 shadow-sm bg-white">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Wrench className="h-5 w-5 text-primary" />
-              Danh sách gói dịch vụ
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-red-50 text-red-600">
+                <Wrench className="h-4 w-4" />
+              </span>
+              <span>Danh sách gói dịch vụ</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -824,41 +807,70 @@ export default function PartTypeDetail() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Tên gói dịch vụ</TableHead>
-                      <TableHead>Loại dịch vụ</TableHead>
-                      <TableHead>Giá (VNĐ)</TableHead>
-                      <TableHead>Chi phí lao động (VNĐ)</TableHead>
-                      <TableHead>Ngày hiệu lực</TableHead>
-                      <TableHead>Mô tả</TableHead>
-                      <TableHead className="text-right">Thao tác</TableHead>
+                    <TableRow className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
+                      <TableHead className="w-16 text-center text-xs font-semibold tracking-wide text-red-700 uppercase">
+                        STT
+                      </TableHead>
+                      <TableHead className="text-left text-xs font-semibold tracking-wide text-red-700 uppercase">
+                        Tên gói dịch vụ
+                      </TableHead>
+                      <TableHead className="text-center text-xs font-semibold tracking-wide text-red-700 uppercase">
+                        Loại dịch vụ
+                      </TableHead>
+                      <TableHead className="text-center text-xs font-semibold tracking-wide text-red-700 uppercase">
+                        Giá (VNĐ)
+                      </TableHead>
+                      <TableHead className="text-center text-xs font-semibold tracking-wide text-red-700 uppercase">
+                        Chi phí lao động (VNĐ)
+                      </TableHead>
+                      <TableHead className="text-left text-xs font-semibold tracking-wide text-red-700 uppercase">
+                        Ngày hiệu lực
+                      </TableHead>
+                      <TableHead className="text-left text-xs font-semibold tracking-wide text-red-700 uppercase">
+                        Mô tả
+                      </TableHead>
+                      <TableHead className="text-center text-xs font-semibold tracking-wide text-red-700 uppercase w-20">
+                        Thao tác
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {servicePackages.map((pkg) => (
-                      <TableRow key={pkg.id}>
-                        <TableCell className="font-medium">{pkg.name || "—"}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
+                    {servicePackages.map((pkg, index) => (
+                      <TableRow
+                        key={pkg.id}
+                        className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+                          index % 2 === 0 ? "bg-white" : "bg-slate-50/40"
+                        }`}
+                      >
+                        <TableCell className="text-center text-sm text-slate-600">
+                          {index + 1}
+                        </TableCell>
+                        <TableCell className="font-medium text-slate-900">
+                          {pkg.name || "—"}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="px-3 py-1 rounded-full text-xs font-medium">
                             {getRemediesLabel(pkg.remedies)}
                           </Badge>
                         </TableCell>
-                        <TableCell className="font-semibold">
+                        <TableCell className="text-center font-semibold text-slate-900">
                           {formatPrice(pkg.price)}₫
                         </TableCell>
-                        <TableCell>
-                          {pkg.laborCost ? formatPrice(pkg.laborCost) + "₫" : "—"}
+                        <TableCell className="text-center text-sm text-slate-800">
+                          {pkg.laborCost ? `${formatPrice(pkg.laborCost)}₫` : "—"}
                         </TableCell>
-                        <TableCell>{formatDate(pkg.effectiveDate)}</TableCell>
-                        <TableCell className="max-w-xs truncate">
+                        <TableCell className="text-sm text-slate-800">
+                          {formatDate(pkg.effectiveDate)}
+                        </TableCell>
+                        <TableCell className="max-w-xs text-sm text-slate-700">
                           {pkg.description || "—"}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-center">
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleOpenEditDialog(pkg)}
-                            className="h-8 w-8"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>

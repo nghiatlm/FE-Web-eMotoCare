@@ -46,8 +46,8 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
         setTotal(response.data.total || 0);
       }
     } catch (err) {
-      console.error("Error fetching export notes:", err);
-      setError(err.message || "Failed to fetch export notes");
+      console.error("Lỗi khi tải phiếu xuất:", err);
+      setError(err.message || "Không thể tải phiếu xuất. Vui lòng thử lại sau.");
       setRows([]);
     } finally {
       setLoading(false);
@@ -322,7 +322,7 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
       </div>
 
       {/* Pagination */}
-      {total > pageSize && (
+      {total > 0 && (
       <div className="flex items-center justify-between p-5 bg-gradient-to-r from-muted/30 to-muted/50 border-t border-border/50">
         <div className="text-sm font-medium text-foreground/80">
           Hiển thị <span className="font-semibold text-foreground">{filtered.length}</span> / <span className="font-semibold text-foreground">{total}</span> phiếu

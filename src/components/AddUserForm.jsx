@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, Mail, Phone, Shield, UserCircle, MapPin, Calendar, IdCard, Image as ImageIcon, Briefcase, Building2 } from "lucide-react";
+import { User, Mail, Phone, Shield, UserCircle, MapPin, Calendar, IdCard, Image as ImageIcon, Briefcase, Building2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,8 +13,9 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { createUser } from "@/api/usersApi";
 import { getServiceCenters } from "@/api/serviceCentersApi";
+import { uploadFile } from "@/utils/firebaseUpload";
 
-export function AddUserForm({ open, onOpenChange, onUserAdded }) {
+export function AddUserForm({ open, onOpenChange, onUserAdded, mode = "dialog", onCancel }) {
   const [formData, setFormData] = useState({
     phone: "",
     email: "",
@@ -37,7 +38,20 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
   const [errors, setErrors] = useState({});
   const [serviceCenters, setServiceCenters] = useState([]);
   const [loadingCenters, setLoadingCenters] = useState(false);
+  const [selectedAvatar, setSelectedAvatar] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState("");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const { toast } = useToast();
+
+  const handleClose = () => {
+    if (mode === "page") {
+      if (onCancel) {
+        onCancel();
+      }
+    } else if (onOpenChange) {
+      onOpenChange(false);
+    }
+  };
 
   useEffect(() => {
     const fetchServiceCenters = async () => {
@@ -55,10 +69,10 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
       }
     };
 
-    if (open) {
+    if (open || mode === "page") {
       fetchServiceCenters();
     }
-  }, [open]);
+  }, [open, mode]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -138,6 +152,44 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
     setIsLoading(true);
     
     try {
+      // Upload avatar to Firebase if selected
+      let avatarUrl = formData.avatarUrl.trim();
+      if (selectedAvatar) {
+        try {
+          setUploadingAvatar(true);
+
+          if (!selectedAvatar.type.startsWith("image/")) {
+            throw new Error("Vui lòng chọn file ảnh hợp lệ");
+          }
+          if (selectedAvatar.size > 5 * 1024 * 1024) {
+            throw new Error("Kích thước ảnh không được vượt quá 5MB");
+          }
+
+          const timestamp = Date.now();
+          const ext = selectedAvatar.name.split(".").pop();
+          const identifier =
+            formData.phone.trim() ||
+            formData.staffCode.trim() ||
+            `user_${timestamp}`;
+          const path = `avatars/${identifier}_${timestamp}.${ext || "jpg"}`;
+
+          avatarUrl = await uploadFile(path, selectedAvatar);
+        } catch (error) {
+          console.error("Error uploading avatar:", error);
+          toast({
+            title: "Lỗi tải ảnh đại diện",
+            description:
+              error.message || "Không thể tải ảnh đại diện lên. Vui lòng thử lại.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          setUploadingAvatar(false);
+          return;
+        } finally {
+          setUploadingAvatar(false);
+        }
+      }
+
       // Format payload with nested staff object
       const payload = {
         phone: formData.phone.trim(),
@@ -163,8 +215,8 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
       };
 
       // Only include avatarUrl if provided
-      if (formData.avatarUrl.trim()) {
-        payload.staff.avatarUrl = formData.avatarUrl.trim();
+      if (avatarUrl) {
+        payload.staff.avatarUrl = avatarUrl;
       }
 
       // Call API to create user
@@ -196,6 +248,8 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
           position: "",
           serviceCenterId: ""
         });
+        setSelectedAvatar(null);
+        setAvatarPreview("");
         setErrors({});
 
         // Success toast with green styling
@@ -204,7 +258,7 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
           description: response?.message || "Đã tạo người dùng mới thành công!",
         });
 
-        onOpenChange(false);
+        handleClose();
       } else {
         throw new Error(response.message || "Tạo người dùng thất bại");
       }
@@ -225,6 +279,43 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: "" }));
     }
+  };
+
+  const handleAvatarFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng chọn file ảnh hợp lệ.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Lỗi",
+        description: "Kích thước ảnh không được vượt quá 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedAvatar(file);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAvatarRemove = () => {
+    setSelectedAvatar(null);
+    setAvatarPreview("");
+    setFormData((prev) => ({ ...prev, avatarUrl: "" }));
   };
 
   const roleOptions = [
@@ -556,18 +647,87 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
                 )}
               </div>
 
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="avatarUrl" className="flex items-center gap-2">
+              <div className="space-y-3 md:col-span-2">
+                <Label className="flex items-center gap-2">
                   <ImageIcon className="h-4 w-4" />
-                  URL Ảnh đại diện (tùy chọn)
+                  Ảnh đại diện (tùy chọn)
                 </Label>
-                <Input
-                  id="avatarUrl"
-                  type="url"
-                  placeholder="VD: https://example.com/avatar.jpg"
-                  value={formData.avatarUrl}
-                  onChange={(e) => handleInputChange("avatarUrl", e.target.value)}
-                />
+
+                <div className="space-y-2">
+                  {avatarPreview || formData.avatarUrl ? (
+                    <div className="flex items-center gap-4">
+                      <div className="relative group">
+                        <img
+                          src={avatarPreview || formData.avatarUrl}
+                          alt="Avatar preview"
+                          className="h-20 w-20 rounded-full object-cover border border-border shadow-sm"
+                        />
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="destructive"
+                          className="absolute -top-2 -right-2 h-7 w-7 rounded-full shadow-md"
+                          onClick={handleAvatarRemove}
+                          disabled={uploadingAvatar || isLoading}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <div className="space-y-1 text-sm text-muted-foreground">
+                        <p className="font-medium text-foreground">
+                          Đã chọn ảnh đại diện
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const input = document.getElementById("avatarFile");
+                            if (input) input.click();
+                          }}
+                          disabled={uploadingAvatar || isLoading}
+                          className="gap-2"
+                        >
+                          <Upload className="h-3.5 w-3.5" />
+                          Đổi ảnh khác
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-muted-foreground/40 rounded-lg p-4 flex items-center gap-3">
+                      <input
+                        type="file"
+                        id="avatarFile"
+                        accept="image/*"
+                        onChange={handleAvatarFileChange}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="avatarFile"
+                        className="flex items-center gap-3 cursor-pointer"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                          <Upload className="h-4 w-4 text-foreground" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-foreground">
+                            Chọn ảnh đại diện
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            JPG, PNG, GIF • Tối đa 5MB
+                          </span>
+                        </div>
+                      </label>
+                    </div>
+                  )}
+
+                  {uploadingAvatar && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-2">
+                      <span className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      Đang tải ảnh đại diện...
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -581,8 +741,16 @@ export function AddUserForm({ open, onOpenChange, onUserAdded }) {
             >
               Hủy
             </Button>
-            <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90">
-              {isLoading ? "Đang tạo..." : "Tạo người dùng"}
+            <Button
+              type="submit"
+              disabled={isLoading || uploadingAvatar}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {isLoading || uploadingAvatar
+                ? uploadingAvatar
+                  ? "Đang tải ảnh..."
+                  : "Đang tạo..."
+                : "Tạo người dùng"}
             </Button>
           </DialogFooter>
         </form>

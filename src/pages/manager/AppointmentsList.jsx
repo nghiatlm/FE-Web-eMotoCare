@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useNavigate } from "react-router-dom";
 import { getAppointments } from "@/api/appointmentsApi";
 import { useToast } from "@/hooks/use-toast";
@@ -103,12 +104,17 @@ export default function AppointmentsList() {
     }
   };
 
-  // Fetch appointments
+  // Fetch appointments từ API (có phân trang + search + status)
   const fetchAppointments = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await getAppointments({ page, pageSize });
+      const response = await getAppointments({
+        page,
+        pageSize,
+        search: search || undefined,
+        status: statusFilter,
+      });
       
       console.log("📋 Appointments API Response:", response);
       
@@ -133,7 +139,7 @@ export default function AppointmentsList() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, toast]);
+  }, [page, pageSize, search, statusFilter, toast]);
 
   useEffect(() => {
     fetchAppointments();
@@ -171,31 +177,37 @@ export default function AppointmentsList() {
       .filter(Boolean)
   )];
 
-  return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Danh sách Lịch hẹn</h1>
-        <p className="text-muted-foreground">Quản lý các lịch hẹn tại trung tâm dịch vụ</p>
-      </div>
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-      {/* Filters */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Bộ lọc</CardTitle>
-        </CardHeader>
-        <CardContent>
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <div className="p-8 max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="mb-2">
+          <h1 className="text-2xl font-semibold text-slate-900">Danh sách Lịch hẹn</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Quản lý các lịch hẹn tại trung tâm dịch vụ
+          </p>
+          <div className="mt-3 h-[2px] w-24 rounded-full bg-red-500/70" />
+        </div>
+
+        {/* Filters */}
+        <div className="mb-2 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
           <div className="flex flex-wrap items-center gap-4">
             <div className="relative flex-1 min-w-[300px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Tìm theo tên, số điện thoại, dịch vụ..."
+                placeholder="Tìm theo mã lịch hẹn, tên, số điện thoại, dịch vụ..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
+                onChange={(e) => {
+                  setPage(1); // reset về trang 1 khi tìm kiếm
+                  setSearch(e.target.value);
+                }}
+                className="pl-9 bg-slate-50 border-slate-200 focus-visible:ring-red-500/70"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
@@ -213,7 +225,7 @@ export default function AppointmentsList() {
               </SelectContent>
             </Select>
             <Select value={dateFilter} onValueChange={setDateFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
                 <SelectValue placeholder="Ngày" />
               </SelectTrigger>
               <SelectContent>
@@ -225,59 +237,90 @@ export default function AppointmentsList() {
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline">
+            <Button
+              variant="outline"
+              className="border-transparent text-slate-600 hover:text-red-600 hover:bg-red-50"
+            >
               <Filter className="h-4 w-4 mr-2" />
               Lọc
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Appointments Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Danh sách lịch hẹn ({filteredAppointments.length})</CardTitle>
-          <CardDescription>
-            {loading ? "Đang tải..." : `Tổng số lịch hẹn: ${total} (Hiển thị: ${filteredAppointments.length})`}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-muted-foreground">Đang tải danh sách lịch hẹn...</span>
-            </div>
-          ) : error ? (
-            <div className="py-12 text-center">
-              <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-              <p className="text-destructive">{error}</p>
-              <Button onClick={fetchAppointments} className="mt-4" variant="outline">
-                Thử lại
-              </Button>
-            </div>
-          ) : (
+        {/* Appointments Table */}
+        <div>
+          <p className="text-sm text-slate-500 mb-4">
+            {loading
+              ? "Đang tải dữ liệu..."
+              : `Tổng số lịch hẹn: ${total} (Hiển thị: ${filteredAppointments.length})`}
+          </p>
+
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+            {/* Header table (không scroll) */}
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Mã lịch hẹn</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Khách hàng</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Loại dịch vụ</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Ngày/giờ</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Trung tâm dịch vụ</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Trạng thái</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Thao tác</th>
+                  <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
+                    <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-16">
+                      STT
+                    </th>
+                    <th className="text-left py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                      Mã lịch hẹn
+                    </th>
+                    <th className="text-left py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                      Khách hàng
+                    </th>
+                    <th className="text-left py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                      Loại dịch vụ
+                    </th>
+                    <th className="text-left py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                      Ngày/giờ
+                    </th>
+                    <th className="text-left py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                      Trung tâm dịch vụ
+                    </th>
+                    <th className="text-left py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                      Trạng thái
+                    </th>
+                    <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-32">
+                      Thao tác
+                    </th>
                   </tr>
                 </thead>
+              </table>
+            </div>
+
+            {/* Body table (scroll riêng, thanh scroll dừng dưới header) */}
+            <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+              <table className="w-full">
                 <tbody>
-                  {filteredAppointments.length === 0 ? (
+                  {loading ? (
                     <tr>
-                      <td colSpan="7" className="py-12 text-center text-muted-foreground">
+                      <td colSpan={8} className="py-12 text-center">
+                        <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          <span>Đang tải danh sách lịch hẹn...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : error ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center">
+                        <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+                        <p className="text-destructive mb-3">{error}</p>
+                        <Button onClick={fetchAppointments} variant="outline">
+                          Thử lại
+                        </Button>
+                      </td>
+                    </tr>
+                  ) : filteredAppointments.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-muted-foreground">
                         Không tìm thấy lịch hẹn nào
                       </td>
                     </tr>
                   ) : (
-                    filteredAppointments.map((appointment) => {
+                    filteredAppointments.map((appointment, index) => {
                       const customerName = `${appointment.customer?.firstName || ""} ${appointment.customer?.lastName || ""}`.trim() || "—";
                       const serviceType = formatAppointmentType(appointment.type);
                       const appointmentDate = appointment.appointmentDate 
@@ -289,8 +332,13 @@ export default function AppointmentsList() {
                       return (
                         <tr
                           key={appointment.id}
-                          className="border-b border-border hover:bg-muted/50 transition-colors"
+                          className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+                            index % 2 === 0 ? "bg-white" : "bg-slate-50/40"
+                          }`}
                         >
+                          <td className="py-4 px-4 text-sm text-slate-600 text-center">
+                            {(page - 1) * pageSize + index + 1}
+                          </td>
                           <td className="py-4 px-4">
                             <div className="font-medium text-foreground text-sm">{appointment.code || "—"}</div>
                           </td>
@@ -306,11 +354,9 @@ export default function AppointmentsList() {
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                               <div>
                                 <div className="text-foreground">{appointmentDate}</div>
                                 <div className="text-sm text-muted-foreground flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
                                   {slotTime}
                                 </div>
                               </div>
@@ -326,17 +372,19 @@ export default function AppointmentsList() {
                             </div>
                           </td>
                           <td className="py-4 px-4">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                // Navigate to appointment detail
-                                navigate(`/manager/appointments/${appointment.id}`);
-                              }}
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              Xem chi tiết
-                            </Button>
+                            <div className="flex justify-center">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-600 hover:text-red-700"
+                                onClick={() => {
+                                  navigate(`/manager/appointments/${appointment.id}`);
+                                }}
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                Xem chi tiết
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -345,9 +393,52 @@ export default function AppointmentsList() {
                 </tbody>
               </table>
             </div>
+          </div>
+
+          {/* Pagination – dùng chung style với admin (BranchesTable) */}
+          {!loading && total > 0 && (
+            <div className="mt-4 flex items-center justify-center px-6 py-4 border-t border-slate-200/80 bg-slate-50/60">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                      className={`cursor-pointer rounded-full px-3 ${
+                        page === 1 ? "pointer-events-none opacity-40" : "hover:bg-slate-100"
+                      }`}
+                    />
+                  </PaginationItem>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink
+                        onClick={() => setPage(pageNum)}
+                        isActive={page === pageNum}
+                        className={`cursor-pointer rounded-full px-3 py-1 text-sm ${
+                          page === pageNum
+                            ? "bg-red-100 text-red-700 font-medium"
+                            : "hover:bg-slate-100"
+                        }`}
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                      className={`cursor-pointer rounded-full px-3 ${
+                        page >= totalPages ? "pointer-events-none opacity-40" : "hover:bg-slate-100"
+                      }`}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

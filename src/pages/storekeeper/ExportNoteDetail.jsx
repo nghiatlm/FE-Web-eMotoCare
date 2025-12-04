@@ -140,17 +140,15 @@ export default function ExportNoteDetail() {
     return acc;
   }, {});
 
-  // Hàm chuyển status sang tiếng Việt
   const getDetailStatusLabel = (status) => {
     const statusMap = {
-      "STOCK_NOT_FOUND": "Chưa tìm thấy",
-      "STOCK_FOUND": "Đã tìm thấy",
+      "STOCK_NOT_FOUND": "Chưa tìm thấy trong kho",
+      "STOCK_FOUND": "Đã tìm thấy trong kho",
       "COMPLETED": "Hoàn thành"
     };
     return statusMap[status] || status || "Chưa tìm thấy";
   };
 
-  // Hàm chuyển trạng thái part sang tiếng Việt
   const getPartStatusLabel = (status) => {
     if (status === "ACTIVE") return "Khả dụng";
     if (status === "INACTIVE") return "Không khả dụng";
@@ -160,7 +158,7 @@ export default function ExportNoteDetail() {
   const displayItems = Object.values(displayParts).map((partData) => {
     // Lấy status từ detail (ưu tiên status từ API)
     const detailStatus = partData.details[0]?.status || "STOCK_NOT_FOUND";
-    
+
     return {
       id: `part-${partData.partId}`,
       partId: partData.partId,
@@ -311,22 +309,32 @@ export default function ExportNoteDetail() {
           console.warn(`⚠️ Không tìm thấy partItem với id: ${partItemId}`);
           continue;
         }
-        
-        // Tìm export note detail chưa có partItemId (status = "STOCK_NOT_FOUND") và chưa được map
-        const availableDetail = exportDetails.find(detail => {
+
+        const availableDetails = exportDetails.filter(detail => {
           const detailPartId = detail.proposedReplacePart?.id || detail.proposedReplacePartId;
           return detailPartId === foundPartId && 
                  !detail.partItemId && 
-                 detail.status === "STOCK_NOT_FOUND" &&
+                 (detail.status === "STOCK_NOT_FOUND" || detail.status === "STOCK_FOUND") &&
                  !usedDetailIds.has(detail.id);
         });
         
+        const availableDetail = availableDetails.find(d => d.status === "STOCK_NOT_FOUND") 
+          || availableDetails.find(d => d.status === "STOCK_FOUND") 
+          || availableDetails[0];
+        
         if (!availableDetail) {
-          console.warn(`⚠️ Không tìm thấy export note detail cần update cho partItem ${partItemId} (part: ${foundPartId})`);
+          console.warn(`⚠️ Không tìm thấy export note detail cần update cho partItem ${partItemId} (part: ${foundPartId})`, {
+            exportDetails: exportDetails.map(d => ({
+              id: d.id,
+              partId: d.proposedReplacePart?.id || d.proposedReplacePartId,
+              partItemId: d.partItemId,
+              status: d.status,
+              used: usedDetailIds.has(d.id)
+            }))
+          });
           continue;
         }
         
-        // Đánh dấu detail đã được map
         usedDetailIds.add(availableDetail.id);
         
         updatesToProcess.push({
@@ -346,8 +354,8 @@ export default function ExportNoteDetail() {
         setExporting(false);
         return;
       }
-      
-      console.log(`📝 Sẽ update ${updatesToProcess.length} export note details:`, updatesToProcess);
+
+      console.log(`Sẽ update ${updatesToProcess.length} export note details:`, updatesToProcess);
 
       const updatePromises = updatesToProcess.map(async ({ detailId, partItemId }) => {
         const updateData = {
@@ -357,7 +365,7 @@ export default function ExportNoteDetail() {
 
         try {
           const response = await updateExportNoteDetail(detailId, updateData);
-          console.log(`✅ Updated detail ${detailId} với partItemId ${partItemId}`, response);
+          console.log(`Updated detail ${detailId} với partItemId ${partItemId}`, response);
           return { success: true, detailId, partItemId, response };
         } catch (error) {
           console.error(`❌ Error updating detail ${detailId}:`, error);
@@ -665,16 +673,16 @@ export default function ExportNoteDetail() {
                         return (
                           <>
                             {/* Part Row */}
-                            <tr
-                              key={item.id}
+                        <tr
+                          key={item.id}
                               className={`border-b border-border transition-all duration-200 cursor-pointer ${
-                                idx % 2 === 0
-                                  ? "bg-gradient-to-r from-white to-rose-50/60 dark:from-card dark:to-red-950/10"
-                                  : "bg-white dark:bg-card"
-                              } hover:bg-rose-50/80`}
+                            idx % 2 === 0
+                              ? "bg-gradient-to-r from-white to-rose-50/60 dark:from-card dark:to-red-950/10"
+                              : "bg-white dark:bg-card"
+                          } hover:bg-rose-50/80`}
                               onClick={() => toggleExpandPart(item.partId)}
-                            >
-                              <td className="py-4 px-6">
+                        >
+                          <td className="py-4 px-6">
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -706,24 +714,24 @@ export default function ExportNoteDetail() {
                                   )}
                                   <span className="text-sm font-bold text-primary">{item.code}</span>
                                 </div>
-                              </td>
-                              <td className="py-4 px-6 text-sm font-medium text-foreground">{item.name}</td>
+                          </td>
+                          <td className="py-4 px-6 text-sm font-medium text-foreground">{item.name}</td>
                               <td className="py-4 px-6 text-sm text-muted-foreground">
                                 {item.partType || "N/A"}
                               </td>
-                              <td className="py-4 px-6">
-                                <Badge
-                                  variant="secondary"
-                                  className={
+                          <td className="py-4 px-6">
+                            <Badge
+                              variant="secondary"
+                              className={
                                     item.status === "ACTIVE"
-                                      ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 border border-green-300 dark:border-green-700"
+                                  ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 border border-green-300 dark:border-green-700"
                                       : "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400 border border-gray-300 dark:border-gray-700"
-                                  }
-                                >
+                              }
+                            >
                                   {getPartStatusLabel(item.status)}
-                                </Badge>
-                              </td>
-                              <td className="py-4 px-6">
+                            </Badge>
+                          </td>
+                          <td className="py-4 px-6">
                                 <Badge
                                   variant="secondary"
                                   className={
@@ -733,7 +741,7 @@ export default function ExportNoteDetail() {
                                   }
                                 >
                                   {getDetailStatusLabel(item.detailStatus)}
-                                </Badge>
+                              </Badge>
                               </td>
                               <td className="py-4 px-6 text-sm font-bold text-foreground">
                                 {loadingPartItems[item.partId] ? (
@@ -816,8 +824,8 @@ export default function ExportNoteDetail() {
                                     }}
                                     onClick={(e) => e.stopPropagation()}
                                   />
-                                </td>
-                              </tr>
+                          </td>
+                        </tr>
                             ))}
                           </>
                         );

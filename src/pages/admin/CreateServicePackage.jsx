@@ -361,36 +361,7 @@ export default function CreateServicePackage() {
                   "rounded-xl border bg-gradient-to-br from-background to-muted/20 p-5 space-y-3 shadow-sm",
                   errors.code ? "border-red-500/50 bg-red-50/50" : "border-border/60"
                 )}>
-                  <div className="flex items-center gap-2">
-                    <Hash className="h-4 w-4 text-muted-foreground" />
-                    <Label className="text-sm font-semibold">Mã (tùy chọn)</Label>
-                  </div>
-                  <Input
-                    value={form.code}
-                    onChange={(e) => {
-                      setForm((f) => ({ ...f, code: e.target.value }));
-                      validateField("code", e.target.value);
-                    }}
-                    placeholder="VD: PriceSV-00001"
-                    className={cn(
-                      "h-11 border transition-colors",
-                      errors.code 
-                        ? "border-red-500 focus:border-red-500" 
-                        : "border-border/60 focus:border-primary"
-                    )}
-                    maxLength={50}
-                  />
-                  {errors.code && (
-                    <p className="text-sm text-red-500 flex items-center gap-1">
-                      <span className="text-red-500">•</span>
-                      {errors.code}
-                    </p>
-                  )}
-                </div>
-                <div className={cn(
-                  "rounded-xl border bg-gradient-to-br from-background to-muted/20 p-5 space-y-3 shadow-sm",
-                  errors.name ? "border-red-500/50 bg-red-50/50" : "border-border/60"
-                )}>
+                 
                   <div className="flex items-center gap-2">
                     <Tag className="h-4 w-4 text-primary" />
                     <Label className="text-sm font-semibold">Tên dịch vụ <span className="text-red-500">*</span></Label>

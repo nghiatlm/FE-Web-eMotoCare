@@ -127,7 +127,7 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
             .slice(0, 2);
     };
     const getRoleBadgeColor = (role) => {
-        switch (role.toLowerCase()) {
+        switch ((role || "").toLowerCase()) {
             case "admin":
                 return "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300";
             case "manager":
@@ -145,6 +145,25 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
         }
     };
 
+    const getRoleLabelVi = (role) => {
+        switch ((role || "").toLowerCase()) {
+            case "admin":
+                return "Quản trị viên";
+            case "manager":
+                return "Quản lý";
+            case "staff":
+                return "Nhân viên dịch vụ";
+            case "technician":
+                return "Kỹ thuật viên";
+            case "customer":
+                return "Khách hàng";
+            case "storekeeper":
+                return "Thủ kho";
+            default:
+                return role || "Không xác định";
+        }
+    };
+
     const getStatusBadgeColor = (status) => {
         switch (status.toLowerCase()) {
             case "active":
@@ -155,13 +174,23 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
                 return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400";
         }
     };
+    const getAvatarColorClasses = (index) => {
+        const palette = [
+            "bg-red-50 text-red-700",
+            "bg-amber-50 text-amber-700",
+            "bg-emerald-50 text-emerald-700",
+            "bg-sky-50 text-sky-700",
+            "bg-violet-50 text-violet-700",
+        ];
+        return palette[index % palette.length];
+    };
 
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
                 <div className="text-center">
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-                    <p className="text-muted-foreground text-sm">Loading users...</p>
+                    <p className="text-muted-foreground text-sm">Đang tải danh sách người dùng...</p>
                 </div>
             </div>
         );
@@ -171,39 +200,42 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
         return (
             <div className="flex items-center justify-center py-12">
                 <div className="text-center">
-                    <p className="text-red-600 dark:text-red-400 mb-2">Error loading users</p>
+                    <p className="text-red-600 dark:text-red-400 mb-2">Lỗi khi tải danh sách người dùng</p>
                     <p className="text-muted-foreground text-sm">{error}</p>
                 </div>
             </div>
         );
     }
 
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
     return (<div>
-      <p className="text-sm text-muted-foreground mb-4">
+      <p className="text-sm text-slate-500 mb-4">
         {hasActiveFilters 
-          ? `Showing ${filteredUsers.length} of ${users.length} filtered users`
-          : `Showing ${users.length} of ${total} total users`
+          ? `Hiển thị ${filteredUsers.length} / ${users.length} người dùng (đã lọc)`
+          : `Hiển thị ${users.length} / ${total} người dùng`
         }
       </p>
       
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
-        <div className="overflow-x-auto">
-        <table className="w-full">
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+          <table className="w-full">
           <thead>
-            <tr className="bg-muted/50 border-b border-border">
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Ảnh đại diện</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Số điện thoại</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Email</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Họ tên</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Vai trò</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Trạng thái</th>
-              <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Thao tác</th>
+            <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
+              <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-16">STT</th>
+              <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-32">Ảnh đại diện</th>
+              <th className="text-left py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Số điện thoại</th>
+              <th className="text-left py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Email</th>
+              <th className="text-left py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Họ tên</th>
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Vai trò</th>
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Trạng thái</th>
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase w-32">Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan="8" className="py-12 px-6 text-center">
+                <td colSpan="9" className="py-12 px-6 text-center">
                   <div className="flex flex-col items-center gap-2">
                     <p className="text-muted-foreground text-sm">Không tìm thấy người dùng</p>
                     <p className="text-xs text-muted-foreground">Hãy thay đổi từ khóa hoặc bộ lọc</p>
@@ -211,30 +243,37 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
                 </td>
               </tr>
             ) : (
-              filteredUsers.map((user, index) => (<tr key={user.id} className={`border-b border-border hover:bg-muted/30 transition-colors ${index % 2 === 0 ? "bg-card" : "bg-muted/10"}`}>
-                <td className="py-4 px-6">
-                  <Avatar className="h-10 w-10">
+              filteredUsers.map((user, index) => (<tr key={user.id} className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-slate-50/40"}`}>
+                <td className="py-4 px-4 text-sm text-slate-600 text-center">{(page - 1) * pageSize + index + 1}</td>
+                <td className="py-4 px-4">
+                  <div className="flex items-center justify-center">
+                  <Avatar className="h-10 w-10 bg-white border border-slate-100 shadow-sm">
                     <AvatarImage src={user.avatar} alt={user.fullName}/>
-                    <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                    <AvatarFallback className={`font-medium ${getAvatarColorClasses(index)}`}>
                       {getInitials(user.fullName)}
                     </AvatarFallback>
                   </Avatar>
+                  </div>
                 </td>
                 <td className="py-4 px-6 text-sm text-foreground">{formatPhoneNumber(user.phoneNumber)}</td>
                 <td className="py-4 px-6 text-sm text-muted-foreground">{user.email}</td>
                 <td className="py-4 px-6 text-sm font-medium text-foreground">{user.fullName}</td>
                 <td className="py-4 px-6">
-                  <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role)}`}>
-                    {user.role}
-                  </span>
+                  <div className="flex justify-center">
+                    <span className={`inline-flex px-4 py-1 rounded-full text-xs font-medium justify-center ${getRoleBadgeColor(user.role)}`}>
+                      {getRoleLabelVi(user.role)}
+                    </span>
+                  </div>
                 </td>
                 <td className="py-4 px-6">
-                  <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(user.status)}`}>
-                    {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
-                  </span>
+                  <div className="flex justify-center">
+                    <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(user.status)}`}>
+                      {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
+                    </span>
+                  </div>
                 </td>
                 <td className="py-4 px-6">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center gap-2">
                     <Button 
                       variant="ghost" 
                       size="icon" 
@@ -259,20 +298,20 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
                               window.updateUserInTable({ ...user, status: "blocked" });
                             }
                             toast({
-                              title: "User blocked",
-                              description: `${user.fullName} has been blocked`,
+                              title: "Đã chặn người dùng",
+                              description: `${user.fullName} đã bị chặn`,
                               className: "bg-amber-50 border-amber-400 text-amber-900",
                             });
                           } catch (e) {
                             toast({
-                              title: "Block failed",
-                              description: e?.message || "Cannot block user",
+                              title: "Chặn không thành công",
+                              description: e?.message || "Không thể chặn người dùng",
                               variant: "destructive",
                               className: "bg-red-50 border-red-400 text-red-900",
                             });
                           }
                         }}
-                        title="Block User"
+                        title="Chặn người dùng"
                       >
                         <Ban className="h-4 w-4"/>
                       </Button>
@@ -288,20 +327,20 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
                               window.updateUserInTable({ ...user, status: "active" });
                             }
                             toast({
-                              title: "User unblocked",
-                              description: `${user.fullName} is active again`,
+                              title: "Đã mở khóa người dùng",
+                              description: `${user.fullName} đã được kích hoạt lại`,
                               className: "bg-green-50 border-green-400 text-green-900",
                             });
                           } catch (e) {
                             toast({
-                              title: "Unblock failed",
-                              description: e?.message || "Cannot unblock user",
+                              title: "Mở khóa không thành công",
+                              description: e?.message || "Không thể mở khóa người dùng",
                               variant: "destructive",
                               className: "bg-red-50 border-red-400 text-red-900",
                             });
                           }
                         }}
-                        title="Unblock User"
+                        title="Mở khóa người dùng"
                       >
                         <Unlock className="h-4 w-4"/>
                       </Button>
@@ -316,23 +355,27 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
       </div>
 
       {/* Pagination */}
-      {total > pageSize && (
-        <div className="mt-6 flex justify-center">
+      {total > 0 && (
+      <div className="mt-6 flex items-center justify-center text-sm text-slate-500">
           <Pagination>
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious 
                   onClick={() => setPage(prev => Math.max(1, prev - 1))}
-                  className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  className={`cursor-pointer rounded-full px-3 ${page === 1 ? "pointer-events-none opacity-40" : "hover:bg-slate-100"}`}
                 />
               </PaginationItem>
               
-              {Array.from({ length: Math.ceil(total / pageSize) }, (_, i) => i + 1).map(pageNum => (
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => (
                 <PaginationItem key={pageNum}>
                   <PaginationLink
                     onClick={() => setPage(pageNum)}
                     isActive={page === pageNum}
-                    className="cursor-pointer"
+                    className={`cursor-pointer rounded-full px-3 py-1 text-sm ${
+                      page === pageNum 
+                        ? "bg-red-100 text-red-700 font-medium" 
+                        : "hover:bg-slate-100"
+                    }`}
                   >
                     {pageNum}
                   </PaginationLink>
@@ -341,8 +384,8 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
               
               <PaginationItem>
                 <PaginationNext 
-                  onClick={() => setPage(prev => Math.min(Math.ceil(total / pageSize), prev + 1))}
-                  className={page >= Math.ceil(total / pageSize) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                  className={`cursor-pointer rounded-full px-3 ${page >= totalPages ? "pointer-events-none opacity-40" : "hover:bg-slate-100"}`}
                 />
               </PaginationItem>
             </PaginationContent>

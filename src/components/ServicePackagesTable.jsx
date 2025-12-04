@@ -416,7 +416,7 @@ export default function ServicePackagesTable({ search = "", category = "", statu
         </div>
 
         {/* Pagination */}
-        {total > pageSize && (
+        {total > 0 && (
           <div className="flex items-center justify-between p-4 border-t border-border/60 bg-muted/30">
             <div className="text-sm text-muted-foreground">
               Hiển thị <span className="font-semibold text-foreground">{filtered.length}</span> / <span className="font-semibold text-foreground">{total}</span> gói dịch vụ

@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStaffByAccountId, getStaffsByServiceCenterId } from "@/api/staffsApi";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 export default function StaffList() {
   const navigate = useNavigate();
@@ -18,6 +18,10 @@ export default function StaffList() {
   const [loading, setLoading] = useState(true);
   const [staffs, setStaffs] = useState([]);
   const [serviceCenterId, setServiceCenterId] = useState(null);
+  const [currentAccountId, setCurrentAccountId] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [total, setTotal] = useState(0);
 
   // Get serviceCenterId from staff info
   useEffect(() => {
@@ -25,6 +29,9 @@ export default function StaffList() {
       try {
         const accountId = user?.accountResponse?.id;
         if (!accountId) return;
+
+        // Lưu lại accountId của manager hiện tại để loại khỏi danh sách
+        setCurrentAccountId(accountId);
 
         const staffResponse = await getStaffByAccountId(accountId);
         const staffData = staffResponse?.data?.rowDatas?.[0];
@@ -50,12 +57,14 @@ export default function StaffList() {
       try {
         setLoading(true);
         const response = await getStaffsByServiceCenterId(serviceCenterId, {
-          page: 1,
-          pageSize: 100,
+          page,
+          pageSize,
         });
 
         const data = response?.data || response;
         setStaffs(data?.rowDatas || []);
+        const totalCount = data?.total || data?.data?.total || data?.rowDatas?.length || 0;
+        setTotal(totalCount);
       } catch (error) {
         console.error("Error fetching staffs:", error);
         setStaffs([]);
@@ -65,7 +74,7 @@ export default function StaffList() {
     };
 
     fetchStaffs();
-  }, [serviceCenterId]);
+  }, [serviceCenterId, page, pageSize]);
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -128,66 +137,64 @@ export default function StaffList() {
     }
   };
 
-  // Transform API data to UI format
   const transformedStaffs = useMemo(() => {
     return staffs.map((staff) => ({
-      id: staff.id, // Use real UUID id for API calls
-      staffCode: staff.staffCode || staff.id, // Use staffCode for display
+      id: staff.id,
+      staffCode: staff.staffCode || staff.id, 
       name: `${staff.firstName || ""} ${staff.lastName || ""}`.trim(),
-      phone: staff.phone || "",
-      email: staff.email || "",
+      avatarUrl: staff.avatarUrl || "",
+      phone: staff.account?.phone || staff.phone || "",
+      email: staff.account?.email || staff.email || "",
       role: getRoleFromPosition(staff.position),
       roleName: translatePosition(staff.position),
       status: staff.status?.toLowerCase() || "active",
       joinDate: staff.createdAt ? new Date(staff.createdAt).toISOString().split("T")[0] : "",
       address: staff.address || "",
       specialization: translatePosition(staff.position),
-      rawData: staff, // Keep raw data for detail page
+      rawData: staff, 
     }));
   }, [staffs]);
 
-  const filteredStaff = transformedStaffs.filter((staff) => {
-    const matchesSearch =
-      staff.name.toLowerCase().includes(search.toLowerCase()) ||
-      staff.phone.includes(search) ||
-      staff.email.toLowerCase().includes(search.toLowerCase()) ||
-      staff.staffCode.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === "all" || staff.status === statusFilter;
-    const matchesRole = roleFilter === "all" || staff.role === roleFilter;
-    return matchesSearch && matchesStatus && matchesRole;
-  });
+  const filteredStaff = transformedStaffs
+    .filter((staff) => staff.rawData?.accountId !== currentAccountId)
+    .filter((staff) => {
+      const matchesSearch =
+        staff.name.toLowerCase().includes(search.toLowerCase()) ||
+        staff.phone.includes(search) ||
+        staff.email.toLowerCase().includes(search.toLowerCase()) ||
+        staff.staffCode.toLowerCase().includes(search.toLowerCase());
+      const matchesStatus = statusFilter === "all" || staff.status === statusFilter;
+      const matchesRole = roleFilter === "all" || staff.role === roleFilter;
+      return matchesSearch && matchesStatus && matchesRole;
+    });
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Danh sách Nhân viên</h1>
-          <p className="text-muted-foreground">Quản lý nhân viên tại trung tâm dịch vụ</p>
+    <div className="min-h-screen bg-slate-50">
+      <div className="p-8 max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-2xl font-semibold text-slate-900">Danh sách nhân viên</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Quản lý nhân sự tại trung tâm dịch vụ của bạn
+          </p>
+          <div className="mt-3 h-[2px] w-24 rounded-full bg-red-500/70" />
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Thêm nhân viên
-        </Button>
-      </div>
 
-      {/* Filters */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Bộ lọc</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <div className="mb-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="relative flex-1 min-w-[300px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="relative w-[340px] flex-1 min-w-[260px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Tìm theo tên, số điện thoại, email, mã nhân viên..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
+                className="pl-9 bg-slate-50 border-slate-200 focus-visible:ring-red-500/70"
               />
             </div>
+
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
@@ -196,102 +203,205 @@ export default function StaffList() {
                 <SelectItem value="inactive">Nghỉ việc</SelectItem>
               </SelectContent>
             </Select>
+
             <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
                 <SelectValue placeholder="Vai trò" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả</SelectItem>
                 <SelectItem value="technician">Kỹ thuật viên</SelectItem>
                 <SelectItem value="staff">Nhân viên dịch vụ</SelectItem>
+                <SelectItem value="storekeeper">Thủ kho</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline">
-              <Filter className="h-4 w-4 mr-2" />
-              Lọc
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Staff Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {loading ? (
-          <div className="col-span-full py-12 text-center text-muted-foreground">
-            <div className="flex items-center justify-center gap-2">
-              <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
-              <span>Đang tải dữ liệu...</span>
+            {(search || statusFilter !== "all" || roleFilter !== "all") && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("all");
+                  setRoleFilter("all");
+                }}
+                className="border-transparent text-slate-600 hover:text-red-600 hover:bg-red-50"
+              >
+                Xóa bộ lọc
+              </Button>
+            )}
+
+            <div className="flex items-center gap-3 ml-auto">
+              <Button className="gap-2 bg-red-600 hover:bg-red-700 shadow-sm">
+                <Plus className="h-4 w-4" />
+                Thêm nhân viên
+              </Button>
             </div>
           </div>
-        ) : filteredStaff.length === 0 ? (
-          <div className="col-span-full py-12 text-center text-muted-foreground">
-            Không tìm thấy nhân viên nào
+        </div>
+
+        <p className="text-sm text-slate-500 mb-4">
+          {search || statusFilter !== "all" || roleFilter !== "all"
+            ? `Hiển thị ${filteredStaff.length} / ${staffs.length} nhân viên (đã lọc)`
+            : `Hiển thị ${staffs.length} / ${total} nhân viên`}
+        </p>
+
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-16">
+                    STT
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    Mã nhân viên
+                  </th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    Ảnh đại diện
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    Họ tên
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    Số điện thoại
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    Email
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    Vai trò
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    Trạng thái
+                  </th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-32">
+                    Thao tác
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="py-10 text-center text-muted-foreground text-sm">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
+                        <span>Đang tải dữ liệu...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredStaff.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-10 text-center text-muted-foreground text-sm">
+                      Không tìm thấy nhân viên nào
+                    </td>
+                  </tr>
+                ) : (
+                  filteredStaff.map((staff, index) => (
+                    <tr
+                      key={staff.id}
+                      className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+                        index % 2 === 0 ? "bg-white" : "bg-slate-50/40"
+                      }`}
+                    >
+                      <td className="py-3 px-4 text-sm text-slate-600 text-center">
+                        {(page - 1) * pageSize + index + 1}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-900">
+                        {staff.staffCode}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-900">
+                        <div className="flex items-center justify-center">
+                          {staff.avatarUrl ? (
+                            <img
+                              src={staff.avatarUrl}
+                              alt="Ảnh đại diện"
+                              className="h-8 w-8 rounded-full object-cover"
+                            />
+                          ) : (
+                            <span>—</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-900">
+                        {staff.name}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-800">
+                        {staff.phone || "—"}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-800">
+                        {staff.email || "—"}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-800">
+                        {getRoleBadge(staff.role)}
+                      </td>
+                      <td className="py-3 px-4 text-sm">
+                        {getStatusBadge(staff.status)}
+                      </td>
+                      <td className="py-3 px-4 text-sm">
+                        <div className="flex justify-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-primary hover:text-primary/80"
+                            onClick={() => navigate(`/manager/staff/${staff.id}`)}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Chi tiết
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-        ) : (
-          filteredStaff.map((staff) => (
-            <Card key={staff.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{staff.name}</CardTitle>
-                      <CardDescription className="mt-1">{staff.staffCode}</CardDescription>
-                    </div>
-                  </div>
-                  {getStatusBadge(staff.status)}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-foreground">{staff.phone}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-foreground">{staff.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-foreground text-xs">{staff.address}</span>
-                  </div>
-                </div>
+        </div>
 
-                <div className="pt-2 border-t border-border">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">Vai trò</span>
-                    {getRoleBadge(staff.role)}
-                  </div>
-                </div>
+        {/* Pagination – giống style UserTable */}
+        {total > 0 && (
+          <div className="mt-4 pb-4 flex items-center justify-center text-sm text-slate-500">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                    className={`cursor-pointer rounded-full px-3 ${
+                      page === 1 ? "pointer-events-none opacity-40" : "hover:bg-slate-100"
+                    }`}
+                  />
+                </PaginationItem>
 
-                <div className="pt-2 border-t border-border">
-                  <p className="text-xs text-muted-foreground mb-1">Chuyên môn</p>
-                  <p className="text-sm text-foreground">{staff.specialization}</p>
-                </div>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                  <PaginationItem key={pageNum}>
+                    <PaginationLink
+                      onClick={() => setPage(pageNum)}
+                      isActive={page === pageNum}
+                      className={`cursor-pointer rounded-full px-3 py-1 text-sm ${
+                        page === pageNum
+                          ? "bg-red-100 text-red-700 font-medium"
+                          : "hover:bg-slate-100"
+                      }`}
+                    >
+                      {pageNum}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
 
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => navigate(`/manager/staff/${staff.id}`)}
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    Chi tiết
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                    className={`cursor-pointer rounded-full px-3 ${
+                      page >= totalPages ? "pointer-events-none opacity-40" : "hover:bg-slate-100"
+                    }`}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
         )}
       </div>
     </div>
   );
 }
-

@@ -1,7 +1,19 @@
 import { useEffect, useState } from "react";
-import { Calendar, Users, Wrench, TrendingUp, TrendingDown, Clock, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import {
+  Calendar,
+  Users,
+  Wrench,
+  TrendingUp,
+  TrendingDown,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+} from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { fetchAppointments } from "@/services/appointmentService";
+import { format } from "date-fns";
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -15,9 +27,12 @@ export default function Dashboard() {
     revenue: 0,
     revenueChange: 0,
   });
+  const [recentAppointments, setRecentAppointments] = useState([]);
+  const [recentLoading, setRecentLoading] = useState(true);
+  const [recentError, setRecentError] = useState(null);
 
   useEffect(() => {
-    // Mock data - sẽ thay bằng API call sau
+    // Mock cho thống kê – có thể thay bằng API riêng
     setStats({
       totalAppointments: 156,
       todayAppointments: 12,
@@ -29,6 +44,33 @@ export default function Dashboard() {
       revenue: 125000000,
       revenueChange: 12.5,
     });
+
+    const loadRecentAppointments = async () => {
+      try {
+        setRecentLoading(true);
+        setRecentError(null);
+
+        // Lấy 5 lịch hẹn mới nhất cho dashboard
+        const response = await fetchAppointments({ page: 1, pageSize: 5 });
+
+        // Sau interceptor, data thường có dạng { statusCode, data: { rowDatas, total, ... } }
+        const data =
+          response?.data?.data?.rowDatas ||
+          response?.data?.rowDatas ||
+          response?.rowDatas ||
+          [];
+
+        setRecentAppointments(data.slice(0, 5));
+      } catch (error) {
+        console.error("Error fetching recent appointments:", error);
+        setRecentError("Không thể tải danh sách lịch hẹn gần đây.");
+        setRecentAppointments([]);
+      } finally {
+        setRecentLoading(false);
+      }
+    };
+
+    loadRecentAppointments();
   }, []);
 
   const formatCurrency = (amount) => {
@@ -38,68 +80,69 @@ export default function Dashboard() {
     }).format(amount);
   };
 
-  const recentAppointments = [
-    {
-      id: 1,
-      customerName: "Nguyễn Văn A",
-      phone: "0901234567",
-      service: "Bảo dưỡng định kỳ",
-      time: "09:00",
-      status: "pending",
-      staff: "Trần Thị B",
-    },
-    {
-      id: 2,
-      customerName: "Lê Thị C",
-      phone: "0907654321",
-      service: "Sửa chữa lốp",
-      time: "10:30",
-      status: "completed",
-      staff: "Phạm Văn D",
-    },
-    {
-      id: 3,
-      customerName: "Hoàng Văn E",
-      phone: "0912345678",
-      service: "Thay dầu nhớt",
-      time: "14:00",
-      status: "pending",
-      staff: "Nguyễn Thị F",
-    },
-    {
-      id: 4,
-      customerName: "Đỗ Thị G",
-      phone: "0923456789",
-      service: "Kiểm tra tổng thể",
-      time: "15:30",
-      status: "cancelled",
-      staff: "Lê Văn H",
-    },
-  ];
+  // Định dạng slotTime "H13_14" -> "13:00 - 14:00"
+  const formatSlotTime = (slotTime) => {
+    if (!slotTime) return "—";
+    if (!slotTime.startsWith("H")) return slotTime;
+    const parts = slotTime.replace("H", "").split("_");
+    if (parts.length === 2) {
+      const [start, end] = parts;
+      return `${start}:00 - ${end}:00`;
+    }
+    return slotTime;
+  };
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case "pending":
-        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Chờ xử lý</Badge>;
-      case "completed":
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Hoàn thành</Badge>;
-      case "cancelled":
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Đã hủy</Badge>;
+  const formatAppointmentType = (type) => {
+    switch (type) {
+      case "WARRANTY_TYPE":
+        return "Bảo hành";
+      case "MAINTENANCE_TYPE":
+        return "Bảo dưỡng";
+      case "REPAIR_TYPE":
+        return "Sửa chữa";
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return type || "—";
     }
   };
 
+  const getStatusBadge = (status) => {
+    const s = status?.toUpperCase();
+    if (!s) return <Badge variant="secondary">—</Badge>;
+
+    if (
+      s === "PENDING" ||
+      s === "APPROVED" ||
+      s === "QUOTE_APPROVED" ||
+      s === "WAITING_FOR_PAYMENT"
+    ) {
+      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Chờ xử lý</Badge>;
+    }
+
+    if (s === "COMPLETED" || s === "REPAIR_COMPLETED") {
+      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Hoàn thành</Badge>;
+    }
+
+    if (s === "CANCELLED" || s === "CANCELED" || s === "PAYMENT_FAILED") {
+      return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Đã hủy</Badge>;
+    }
+
+    return <Badge variant="secondary">{status}</Badge>;
+  };
+
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard Trung tâm Dịch vụ</h1>
-        <p className="text-muted-foreground">Tổng quan hoạt động của trung tâm dịch vụ</p>
-      </div>
+    <div className="min-h-screen bg-slate-50">
+      <div className="p-8 max-w-7xl mx-auto space-y-6">
+        <div className="mb-2">
+          <h1 className="text-2xl font-semibold text-slate-900">Dashboard Trung tâm Dịch vụ</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Tổng quan hoạt động của trung tâm dịch vụ
+          </p>
+          <div className="mt-3 h-[2px] w-24 rounded-full bg-red-500/70" />
+        </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card>
+        <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tổng lịch hẹn</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -112,7 +155,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Nhân viên</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
@@ -125,7 +168,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Doanh thu tháng</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -139,7 +182,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Lịch hẹn chờ xử lý</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
@@ -155,7 +198,7 @@ export default function Dashboard() {
 
       {/* Appointments Status */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card>
+        <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -170,7 +213,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-yellow-600" />
@@ -185,7 +228,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <XCircle className="h-5 w-5 text-red-600" />
@@ -202,43 +245,97 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Appointments */}
-      <Card>
+      <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
         <CardHeader>
           <CardTitle>Lịch hẹn gần đây</CardTitle>
-          <CardDescription>Danh sách các lịch hẹn mới nhất</CardDescription>
+          <CardDescription>Danh sách 5 lịch hẹn mới nhất</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Khách hàng</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Dịch vụ</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Thời gian</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Nhân viên</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Trạng thái</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentAppointments.map((appointment) => (
-                  <tr key={appointment.id} className="border-b border-border hover:bg-muted/50 transition-colors">
-                    <td className="py-3 px-4">
-                      <div>
-                        <div className="font-medium text-foreground">{appointment.customerName}</div>
-                        <div className="text-sm text-muted-foreground">{appointment.phone}</div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-foreground">{appointment.service}</td>
-                    <td className="py-3 px-4 text-foreground">{appointment.time}</td>
-                    <td className="py-3 px-4 text-foreground">{appointment.staff}</td>
-                    <td className="py-3 px-4">{getStatusBadge(appointment.status)}</td>
+            {recentLoading ? (
+              <div className="py-8 text-center text-sm text-slate-500">
+                Đang tải lịch hẹn gần đây...
+              </div>
+            ) : recentError ? (
+              <div className="py-8 text-center text-sm text-red-500">{recentError}</div>
+            ) : recentAppointments.length === 0 ? (
+              <div className="py-8 text-center text-sm text-slate-500">
+                Chưa có lịch hẹn nào gần đây.
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase w-12">
+                      STT
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">
+                      Mã lịch hẹn
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">
+                      Khách hàng
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">
+                      Loại dịch vụ
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">
+                      Ngày/giờ
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">
+                      Trung tâm
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">
+                      Trạng thái
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {recentAppointments.map((appointment, index) => {
+                    const customerName =
+                      `${appointment.customer?.firstName || ""} ${
+                        appointment.customer?.lastName || ""
+                      }`.trim() || "—";
+                    const phone = appointment.customer?.phone || "—";
+                    const service = formatAppointmentType(appointment.type);
+                    const time = appointment.appointmentDate
+                      ? format(new Date(appointment.appointmentDate), "HH:mm")
+                      : formatSlotTime(appointment.slotTime);
+                    const centerName =
+                      appointment.serviceCenter?.name ||
+                      appointment.serviceCenter?.code ||
+                      "—";
+
+                    return (
+                      <tr
+                        key={appointment.id}
+                        className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
+                      >
+                        <td className="py-3 px-4 text-center text-sm text-slate-600">
+                          {index + 1}
+                        </td>
+                        <td className="py-3 px-4 text-sm font-medium text-slate-900">
+                          {appointment.code || "—"}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div>
+                            <div className="font-medium text-slate-900">{customerName}</div>
+                            <div className="text-xs text-slate-500">{phone}</div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-sm text-slate-900">{service}</td>
+                        <td className="py-3 px-4 text-sm text-slate-900">{time || "—"}</td>
+                        <td className="py-3 px-4 text-sm text-slate-900">{centerName}</td>
+                        <td className="py-3 px-4">{getStatusBadge(appointment.status)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
