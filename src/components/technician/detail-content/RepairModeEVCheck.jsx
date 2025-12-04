@@ -732,10 +732,26 @@ export default function RepairModeEVCheck({
   useEVCheckHub(evCheckId, handleSignalRUpdate);
 
   // ========= CONTROL FLAG =========
+  // ✅ Chỉ cho phép sửa khi vừa vào làm EVCheck (chưa gửi báo giá)
+  // Sau khi gửi báo giá (INSPECTION_COMPLETED) thì disable hết các trường (trừ cột Trạng thái)
   const canEditFields =
     !readOnly &&
     evCheckStatus !== "INSPECTION_COMPLETED" &&
-    evCheckStatus !== "QUOTE_APPROVED";
+    evCheckStatus !== "QUOTE_APPROVED" &&
+    evCheckStatus !== "REPAIR_IN_PROGRESS" &&
+    evCheckStatus !== "REPAIR_COMPLETED" &&
+    evCheckStatus !== "COMPLETED";
+  
+  // ✅ Cho phép thay đổi cột Trạng thái:
+  // - Cho sửa khi chưa gửi báo giá (để set trạng thái ban đầu)
+  // - KHÔNG cho sửa khi mới gửi báo giá (INSPECTION_COMPLETED) - chờ duyệt
+  // - Cho sửa khi đã được duyệt (QUOTE_APPROVED) hoặc đang sửa chữa (REPAIR_IN_PROGRESS)
+  // - Không cho sửa khi đã hoàn thành
+  const canEditStatus =
+    !readOnly &&
+    evCheckStatus !== "INSPECTION_COMPLETED" && // ✅ Không cho sửa khi mới gửi báo giá (chờ duyệt)
+    evCheckStatus !== "REPAIR_COMPLETED" &&
+    evCheckStatus !== "COMPLETED";
 
   // ✅ Tự động lưu các hạng mục pin khi đã có đủ thông tin
   useEffect(() => {
@@ -797,9 +813,15 @@ export default function RepairModeEVCheck({
   }, [details, canEditFields, loading, evCheckId]); // Chỉ chạy khi details, canEditFields, loading hoặc evCheckId thay đổi
 
   const handleChange = (index, field, value) => {
-    if (evCheckStatus === "INSPECTION_COMPLETED" && field !== "status") return;
-    if (evCheckStatus === "QUOTE_APPROVED" && field !== "status") return;
-    if (!canEditFields && field !== "status") return;
+    // ✅ Cho phép thay đổi status nếu canEditStatus = true
+    if (field === "status") {
+      if (!canEditStatus) return;
+    } else {
+      // ✅ Các trường khác chỉ cho phép sửa khi canEditFields = true
+      if (evCheckStatus === "INSPECTION_COMPLETED") return;
+      if (evCheckStatus === "QUOTE_APPROVED") return;
+      if (!canEditFields) return;
+    }
 
     // ✅ Ngăn chọn REPLACE hoặc REPAIR khi còn bảo hành
     if (field === "remedies" && (value === "REPLACE" || value === "REPAIR")) {
@@ -816,6 +838,14 @@ export default function RepairModeEVCheck({
     const currentRow = details[index];
     
     updateRow(index, { [field]: value });
+
+    // ✅ Khi chọn lại cột Phụ tùng, reset cột Phụ tùng thay thế
+    if (field === "partItemId") {
+      updateRow(index, {
+        proposedReplacePartId: "",
+        replacePartName: "",
+      });
+    }
 
     if (field === "remedies") {
       if (value !== "REPLACE") {
@@ -1088,10 +1118,10 @@ export default function RepairModeEVCheck({
 
   // ========= CỘT TABLE =========
   const baseColumns = [
-    { title: "STT", render: (_, __, i) => i + 1, width: 50 },
+    { title: "STT", render: (_, __, i) => i + 1, width: 35, align: "center" },
     {
       title: "Bộ phận",
-      width: 250,
+      width: 120,
       ellipsis: {
         showTitle: false,
       },
@@ -1184,7 +1214,7 @@ export default function RepairModeEVCheck({
     },
     {
       title: "Hình ảnh",
-      width: 90,
+      width: 50,
       align: "center",
       render: (_, r) => {
         // ✅ Lấy image từ partItem.part.image hoặc từ vehiclePartOptions
@@ -1225,7 +1255,7 @@ export default function RepairModeEVCheck({
     },
     {
       title: "Kết quả",
-      width: 350,
+      width: 120,
       render: (_, r, i) => {
         // ✅ Kiểm tra nếu bộ phận là PIN (kiểm tra nhiều trường hợp)
         const partName = r.partItem?.part?.name || r.displayName || "";
@@ -1303,7 +1333,7 @@ export default function RepairModeEVCheck({
     },
     {
       title: "Biện pháp",
-      width: 110,
+      width: 90,
       render: (_, r, i) => {
         const isWarranty = checkWarrantyStatus(r.partItem);
 
@@ -1330,7 +1360,7 @@ export default function RepairModeEVCheck({
 
     {
       title: "Bảo hành",
-      width: 80,
+      width: 60,
       render: (_, r) => {
         const partItem = r.partItem;
         if (!partItem) return "Không";
@@ -1340,7 +1370,7 @@ export default function RepairModeEVCheck({
     },
     {
       title: "Phụ tùng thay thế",
-      width: 220,
+      width: 130,
       ellipsis: {
         showTitle: false,
       },
@@ -1520,21 +1550,22 @@ export default function RepairModeEVCheck({
     },
     {
       title: "SL",
-      width: 70,
+      width: 50,
+      align: "center",
       render: (_, r, i) => (
         <Input
           type='number'
           value={r.quantity}
           onChange={(e) => handleChange(i, "quantity", e.target.value)}
           disabled={readOnly || !canEditFields}
-          style={{ width: 60 }}
+          style={{ width: "100%", maxWidth: "100%" }}
         />
       ),
     },
-    { title: "ĐV", width: 50, render: (_, r) => r.unit || "-" },
+    { title: "ĐV", width: 35, align: "center", render: (_, r) => r.unit || "-" },
     {
       title: "Giá PT",
-      width: 110,
+      width: 60,
       render: (_, r) =>
         r.remedies !== "REPLACE"
           ? "—"
@@ -1542,22 +1573,22 @@ export default function RepairModeEVCheck({
     },
     {
       title: "Giá DV",
-      width: 110,
+      width: 60,
       render: (_, r) => Number(r.priceService || 0).toLocaleString(),
     },
-    {
-      title: "Tổng",
-      width: 110,
-      render: (_, r) =>
-        r.totalAmount ? `${Number(r.totalAmount).toLocaleString()}đ` : "-",
-    },
+    // {
+    //   title: "Tổng",
+    //   width: 70,
+    //   render: (_, r) =>
+    //     r.totalAmount ? `${Number(r.totalAmount).toLocaleString()}đ` : "-",
+    // },
     {
       title: "Trạng thái phụ tùng",
-      width: 150,
+      width: 100,
       render: (_, r) => {
         // ✅ Hiển thị exportNoteStatus nếu có (không chỉ khi COMPLETED)
         const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
-        if (!status) return <span style={{ color: "#999" }}>—</span>;
+        if (!status) return <span style={{ color: "#999" }}>Chưa có</span>;
         
         // ✅ Format status với Tag và màu sắc
         const getStatusColor = (s) => {
@@ -1620,12 +1651,12 @@ export default function RepairModeEVCheck({
               });
               setStatusChanges((prev) => ({ ...prev, ...changes }));
             }}
-            disabled={readOnly || !canEditFields}></Checkbox>
+            disabled={readOnly || !canEditStatus}></Checkbox>
         )}
         <span>Trạng thái</span>
       </div>
     ),
-    width: 220,
+    width: 120,
     render: (_, r, i) => {
       const stat = REPAIR_STATUS[r.status] || REPAIR_STATUS.PENDING;
 
@@ -1640,7 +1671,7 @@ export default function RepairModeEVCheck({
                 e.target.checked ? "COMPLETED" : "PENDING"
               );
             }}
-            disabled={readOnly || !canEditFields}
+            disabled={readOnly || !canEditStatus}
           />
           <Tag
             color={stat.color}
@@ -1651,7 +1682,7 @@ export default function RepairModeEVCheck({
                 padding: "2px 8px",
             }}
             onClick={() => {
-              if (r.status !== "COMPLETED" && !readOnly) {
+              if (r.status !== "COMPLETED" && !readOnly && canEditStatus) {
                 handleChange(i, "status", "COMPLETED");
               }
               }}>
@@ -1717,7 +1748,12 @@ export default function RepairModeEVCheck({
   } : undefined;
 
   let columns = baseColumns;
-  if (!readOnly && evCheckStatus === "REPAIR_IN_PROGRESS") {
+  // ✅ Hiển thị cột Trạng thái chỉ khi đã được duyệt báo giá hoặc đang sửa chữa
+  // Ẩn cột khi mới gửi báo giá (INSPECTION_COMPLETED) - chờ duyệt
+  if (!readOnly && (
+    evCheckStatus === "QUOTE_APPROVED" ||
+    evCheckStatus === "REPAIR_IN_PROGRESS"
+  )) {
     columns = [...columns, statusColumn];
   }
 
@@ -1759,17 +1795,20 @@ export default function RepairModeEVCheck({
                 </Button>
               </div>
             )}
-        <Table
+        <div className="repair-mode-table" style={{ width: '100%', overflow: 'hidden', maxWidth: '100%' }}>
+          <Table
             key={`rma-table-${selectedRMAItems.size}`} // ✅ Force re-render khi selection thay đổi
-          columns={columns}
-          dataSource={details}
-          rowKey='id'
+            columns={columns}
+            dataSource={details}
+            rowKey='id'
             rowSelection={rowSelection} // ✅ Dùng rowSelection thay vì cột RMA
             scroll={{ x: false }}
-          pagination={false}
-          size='small'
-          bordered
-        />
+            pagination={false}
+            size='small'
+            bordered
+            style={{ width: '100%', maxWidth: '100%' }}
+          />
+        </div>
         </>
       )}
 

@@ -1,4 +1,4 @@
-import { CalendarCheck, LogOut, Plus, List, LayoutDashboard } from "lucide-react";
+import { CalendarCheck, LogOut, Plus, List, LayoutDashboard ,BookOpen} from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -26,7 +26,7 @@ const menuItems = [
       { title: "Danh sách", icon: List, url: "/staff/booking/list" },
     ],
   },
-  { title: "Bảo hành", icon: CalendarCheck, url: "/staff/warranty" },
+  { title: "Bảo hành", icon: BookOpen, url: "/staff/warranty" },
 ];
 
 export function StaffSidebar() {

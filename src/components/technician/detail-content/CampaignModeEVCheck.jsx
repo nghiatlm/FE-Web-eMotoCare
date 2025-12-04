@@ -710,10 +710,15 @@ export default function CampaignModeEVCheck({
   useEVCheckHub(evCheckId, handleSignalRUpdate);
 
   // ========= CONTROL FLAG =========
+  // ✅ Chỉ cho phép sửa khi vừa vào làm EVCheck (chưa gửi báo giá)
+  // Sau khi gửi báo giá (INSPECTION_COMPLETED) thì disable hết
   const canEditFields =
     !readOnly &&
     evCheckStatus !== "INSPECTION_COMPLETED" &&
-    evCheckStatus !== "QUOTE_APPROVED";
+    evCheckStatus !== "QUOTE_APPROVED" &&
+    evCheckStatus !== "REPAIR_IN_PROGRESS" &&
+    evCheckStatus !== "REPAIR_COMPLETED" &&
+    evCheckStatus !== "COMPLETED";
 
   // ✅ Campaign: Không tự động lưu khi chọn biện pháp, chỉ lưu khi gửi báo giá
   // Để tránh reload trang và mất dữ liệu phụ tùng thay thế
@@ -987,10 +992,10 @@ export default function CampaignModeEVCheck({
 
   // ========= CỘT TABLE =========
   const baseColumns = [
-    { title: "STT", render: (_, __, i) => i + 1, width: 50 },
+    { title: "STT", render: (_, __, i) => i + 1, width: 35 },
     {
       title: "Bộ phận",
-      width: 250,
+      width: 120,
       ellipsis: {
         showTitle: false,
       },
@@ -1042,7 +1047,7 @@ export default function CampaignModeEVCheck({
     },
     {
       title: "Hình ảnh",
-      width: 90,
+      width: 50,
       align: "center",
       render: (_, r) => {
         // ✅ Lấy image từ partItem.part.image hoặc từ vehiclePartOptions
@@ -1083,7 +1088,7 @@ export default function CampaignModeEVCheck({
     },
     {
       title: "Kết quả",
-      width: 350,
+      width: 120,
       render: (_, r, i) => {
         // ✅ Kiểm tra nếu bộ phận là PIN (kiểm tra nhiều trường hợp)
         const partName = r.partItem?.part?.name || r.displayName || "";
@@ -1161,25 +1166,28 @@ export default function CampaignModeEVCheck({
     },
     {
       title: "Biện pháp",
-      width: 110,
+      width: 90,
       render: (_, r, i) => {
+        const remediesLabel = r.remedies === "REPLACE" ? "Thay thế" : r.remedies === "REPAIR" ? "Sửa chữa" : "Chọn";
         return (
-          <Select
-            placeholder='Chọn'
-            value={r.remedies}
-            style={{ width: 100 }}
-            onChange={(v) => handleChange(i, "remedies", v)}
-            disabled={readOnly || !canEditFields}>
-            <Option value='REPLACE'>Thay thế</Option>
-            <Option value='REPAIR'>Sửa chữa</Option>
-          </Select>
+          <Tooltip title={remediesLabel} placement="topLeft">
+            <Select
+              placeholder='Chọn'
+              value={r.remedies}
+              style={{ width: 100 }}
+              onChange={(v) => handleChange(i, "remedies", v)}
+              disabled={readOnly || !canEditFields}>
+              <Option value='REPLACE'>Thay thế</Option>
+              <Option value='REPAIR'>Sửa chữa</Option>
+            </Select>
+          </Tooltip>
         );
       },
     },
 
     {
       title: "Bảo hành",
-      width: 80,
+      width: 60,
       render: (_, r) => {
         const partItem = r.partItem;
         if (!partItem) return "Không";
@@ -1189,7 +1197,7 @@ export default function CampaignModeEVCheck({
     },
     {
       title: "Phụ tùng thay thế",
-      width: 220,
+      width: 130,
       ellipsis: {
         showTitle: false,
       },
@@ -1214,7 +1222,7 @@ export default function CampaignModeEVCheck({
     },
     {
       title: "SL",
-      width: 70,
+      width: 50,
       render: (_, r, i) => (
         <Input
           type='number'
@@ -1225,10 +1233,10 @@ export default function CampaignModeEVCheck({
         />
       ),
     },
-    { title: "ĐV", width: 50, render: (_, r) => r.unit || "-" },
+    { title: "ĐV", width: 35, render: (_, r) => r.unit || "-" },
     {
       title: "Giá PT",
-      width: 110,
+      width: 60,
       render: (_, r) =>
         r.remedies !== "REPLACE"
           ? "—"
@@ -1236,18 +1244,18 @@ export default function CampaignModeEVCheck({
     },
     {
       title: "Giá DV",
-      width: 110,
+      width: 60,
       render: (_, r) => Number(r.priceService || 0).toLocaleString(),
     },
     {
       title: "Tổng",
-      width: 110,
+      width: 70,
       render: (_, r) =>
         r.totalAmount ? `${Number(r.totalAmount).toLocaleString()}đ` : "-",
     },
     {
       title: "Trạng thái phụ tùng",
-      width: 150,
+      width: 100,
       render: (_, r) => {
         // ✅ Hiển thị exportNoteStatus nếu có (không chỉ khi COMPLETED)
         const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
@@ -1375,15 +1383,18 @@ export default function CampaignModeEVCheck({
         </div>
       ) : (
         <>
-        <Table
-          columns={columns}
-          dataSource={details}
-          rowKey='id'
-          scroll={{ x: false }}
-          pagination={false}
-          size='small'
-          bordered
-        />
+        <div className="repair-mode-table" style={{ width: '100%', overflow: 'hidden', maxWidth: '100%' }}>
+          <Table
+            columns={columns}
+            dataSource={details}
+            rowKey='id'
+            scroll={{ x: false }}
+            pagination={false}
+            size='small'
+            bordered
+            style={{ width: '100%', maxWidth: '100%' }}
+          />
+        </div>
         </>
       )}
 

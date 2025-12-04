@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Form, InputNumber, DatePicker, Button, Select, Input, Card, Divider, Row, Col, Space, Descriptions, Tag, Spin } from "antd";
 import { User, Car, Calendar, Clock, FileText, Settings, Wrench, Search, Phone, Mail, MapPin, Hash } from "lucide-react";
+import { toast } from "@/components/ui/sonner";
 import dayjs from "dayjs";
 
 import { getCustomersService } from "../../services/customerService";
@@ -111,6 +112,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
   // ✅ Hàm gọi API để lấy thông tin từ số khung
   const handleChassisNumberLookup = async (chassisNumber) => {
     if (!chassisNumber || chassisNumber.trim() === "") {
+      toast.warning("Vui lòng nhập số khung để tìm kiếm!");
       return;
     }
 
@@ -157,11 +159,17 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
         // ✅ Enable các form items khác
         setIsChassisNumberLoaded(true);
         console.log("✅ isChassisNumberLoaded set to true");
+        
+        // ✅ Toast thành công
+        toast.success("Tìm thấy thông tin xe và khách hàng!");
     } catch (error) {
       console.error("❌ Lỗi lấy thông tin từ số khung:", error);
       setVehicleInfo(null);
       setIsChassisNumberLoaded(false);
-      // ✅ Có thể thêm toast notification ở đây
+      
+      // ✅ Toast lỗi
+      const errorMessage = error?.response?.data?.message || error?.message || "Không tìm thấy thông tin từ số khung. Vui lòng kiểm tra lại!";
+      toast.error(errorMessage);
     }
   };
 

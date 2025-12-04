@@ -480,10 +480,10 @@ export default function RMARepairModeEVCheck({
 
   // ========= CỘT TABLE =========
   const baseColumns = [
-    { title: "STT", render: (_, __, i) => i + 1, width: 50 },
+    { title: "STT", render: (_, __, i) => i + 1, width: 35 },
     {
       title: "Bộ phận",
-      width: 250,
+      width: 120,
       ellipsis: {
         showTitle: false,
       },
@@ -540,7 +540,7 @@ export default function RMARepairModeEVCheck({
     },
     {
       title: "Hình ảnh",
-      width: 90,
+      width: 50,
       align: "center",
       render: (_, r) => {
         const imageUrl = 
@@ -579,7 +579,7 @@ export default function RMARepairModeEVCheck({
     },
     {
       title: "Kết quả",
-      width: 350,
+      width: 120,
       render: (_, r, i) => (
         <Input.TextArea
           placeholder='Nhập kết quả kiểm tra...'
@@ -598,7 +598,7 @@ export default function RMARepairModeEVCheck({
     },
     {
       title: "Biện pháp",
-      width: 110,
+      width: 90,
       render: (_, r, i) => {
         // ✅ Map remedies sang tiếng Việt
         const getRemediesLabel = (remedies) => {
@@ -619,21 +619,23 @@ export default function RMARepairModeEVCheck({
         // ✅ Chỉ cho phép "Thay thế" vì đã có replacePart từ RMA
         // ✅ Dùng labelInValue để hiển thị tiếng Việt
         return (
-          <Select
-            placeholder='Chọn'
-            value={{ value: remediesValue, label: remediesLabel }}
-            labelInValue
-            style={{ width: 100 }}
-            onChange={(v) => handleChange(i, "remedies", v.value || v)}
-            disabled={readOnly || !canEditFields || true}>
-            <Option value='REPLACE'>Thay thế</Option>
-          </Select>
+          <Tooltip title={remediesLabel} placement="topLeft">
+            <Select
+              placeholder='Chọn'
+              value={{ value: remediesValue, label: remediesLabel }}
+              labelInValue
+              style={{ width: 100 }}
+              onChange={(v) => handleChange(i, "remedies", v.value || v)}
+              disabled={readOnly || !canEditFields || true}>
+              <Option value='REPLACE'>Thay thế</Option>
+            </Select>
+          </Tooltip>
         );
       },
     },
     {
       title: "Bảo hành",
-      width: 80,
+      width: 60,
       render: (_, r) => {
         const partItem = r.partItem;
         if (!partItem) return "Không";
@@ -688,7 +690,7 @@ export default function RMARepairModeEVCheck({
     // },
     {
       title: "SL",
-      width: 70,
+      width: 50,
       render: (_, r, i) => (
         <Input
           type='number'
@@ -699,10 +701,10 @@ export default function RMARepairModeEVCheck({
         />
       ),
     },
-    { title: "ĐV", width: 50, render: (_, r) => r.unit || "-" },
+    { title: "ĐV", width: 35, render: (_, r) => r.unit || "-" },
     {
       title: "Trạng thái phụ tùng",
-      width: 150,
+      width: 100,
       render: (_, r) => {
         // ✅ Hiển thị exportNoteStatus nếu có (không chỉ khi COMPLETED)
         const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
@@ -764,7 +766,7 @@ export default function RMARepairModeEVCheck({
   // Cột trạng thái cho mode sửa chữa
   const statusColumn = {
     title: <span>Trạng thái</span>,
-    width: 220,
+    width: 120,
     render: (_, r, i) => {
       const stat = REPAIR_STATUS[r.status] || REPAIR_STATUS.PENDING;
 
@@ -808,17 +810,20 @@ export default function RMARepairModeEVCheck({
           <Spin />
         </div>
       ) : (
-        <Table
-          columns={columns}
-          dataSource={details}
-          rowKey='id'
-          scroll={{ x: false }}
-          pagination={false}
-          size='small'
-          bordered
-          // ✅ RMA Repair Mode: Không có rowSelection (checkbox) và không có nút tạo RMA
-          // Vì đây là sửa chữa từ RMA rồi, không cần tạo RMA nữa
-        />
+        <div className="repair-mode-table" style={{ width: '100%', overflow: 'hidden', maxWidth: '100%' }}>
+          <Table
+            columns={columns}
+            dataSource={details}
+            rowKey='id'
+            scroll={{ x: false }}
+            pagination={false}
+            size='small'
+            bordered
+            style={{ width: '100%', maxWidth: '100%' }}
+            // ✅ RMA Repair Mode: Không có rowSelection (checkbox) và không có nút tạo RMA
+            // Vì đây là sửa chữa từ RMA rồi, không cần tạo RMA nữa
+          />
+        </div>
       )}
 
       {!readOnly && (
