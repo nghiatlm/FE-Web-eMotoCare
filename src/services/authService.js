@@ -5,10 +5,8 @@ export const authService = {
     const res = await api.post("/v1/auths/login/staff", { email, password });
     console.log("Response login:", res);
 
-    const user = res.data;
-
-    localStorage.setItem("user", JSON.stringify(user));
-    return user;
+    // Trả về toàn bộ response để có thể kiểm tra structure
+    return res.data;
   },
 
   async verifyOtp(otp, email) {

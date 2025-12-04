@@ -328,13 +328,14 @@ export default function StaffBookingDetailPage() {
     }
   };
 
-  // ✅ Xác nhận hủy lịch hẹn
+  // ✅ TRƯỜNG HỢP 1: Xác nhận hủy lịch hẹn (Staff hủy trên UI)
+  // Flow: Tính tiền → Thanh toán → Cập nhật status thành CANCELED
   const handleConfirmCancel = async () => {
     setIsCancelModalOpen(false);
     
     // ✅ Nếu có phí hủy, mở modal thanh toán trước (chưa cập nhật status)
     if (cancellationFee > 0) {
-      setIsPendingCancel(true); // ✅ Đánh dấu đang chờ thanh toán để hủy
+      setIsPendingCancel(true); // ✅ Đánh dấu đang chờ thanh toán để hủy (staff hủy)
       setIsPaymentModalOpen(true);
       toast.info("Vui lòng thanh toán phí hủy để hoàn tất việc hủy lịch hẹn.");
     } else {
@@ -342,6 +343,7 @@ export default function StaffBookingDetailPage() {
       try {
         await changeAppointmentStatusService(booking.id, "CANCELED", {
           cancellationFee: 0,
+          cancelledBy: "STAFF"
         });
         updateStatus(booking.id, "CANCELED", booking.technician);
         toast.success("Đã hủy lịch hẹn thành công!");
@@ -355,10 +357,12 @@ export default function StaffBookingDetailPage() {
   // ✅ Xử lý sau khi thanh toán thành công
   const handlePaymentSuccess = async (paymentResult) => {
     if (isPendingCancel) {
-      // ✅ Nếu đang chờ thanh toán để hủy: sau khi thanh toán thành công, mới cập nhật status thành CANCELED
+      // ✅ TRƯỜNG HỢP 1: Staff hủy trên UI
+      // Tính tiền → Thanh toán → Cập nhật status thành CANCELED
       try {
         await changeAppointmentStatusService(booking.id, "CANCELED", {
           cancellationFee: cancellationFee,
+          cancelledBy: "STAFF"
         });
         
         updateStatus(booking.id, "CANCELED", booking.technician);
@@ -370,9 +374,10 @@ export default function StaffBookingDetailPage() {
         setIsPendingCancel(false);
       }
     } else if (status === "CANCELED") {
-      // ✅ Nếu đã hủy rồi và thanh toán phí hủy: chỉ cần reload để cập nhật trạng thái thanh toán
+      // ✅ TRƯỜNG HỢP 2: Khách hủy từ mobile/UI khách
+      // Trạng thái đã là CANCELED → Tính tiền → Thanh toán → CHỈ cập nhật payment status, KHÔNG cập nhật appointment status
       toast.success("Đã thanh toán phí hủy thành công!");
-      await loadBookingDetail(); // ✅ Reload để cập nhật thông tin booking
+      await loadBookingDetail(); // ✅ Reload để cập nhật thông tin booking (payment status)
     }
   };
 
@@ -545,20 +550,6 @@ export default function StaffBookingDetailPage() {
                   }
                 />
               </div>
-              {selectedTechnician && (
-                <div style={{
-                  padding: "12px 16px",
-                  background: "#ffffff",
-                  borderRadius: 6,
-                  border: "1px solid #f0f0f0",
-                  marginBottom: 16
-                }}>
-                  <p style={{ margin: 0, fontSize: 14, color: "#595959" }}>
-                    Đã chọn: <strong>{selectedTechnician.firstName} {selectedTechnician.lastName}</strong>
-                    {selectedTechnician.staffCode && ` (${selectedTechnician.staffCode})`}
-                  </p>
-                </div>
-              )}
               <Button
                 type='primary'
                 block
@@ -667,7 +658,7 @@ export default function StaffBookingDetailPage() {
               </div>
               
               {/* ✅ Hiển thị phí hủy nếu có */}
-              {booking.cancellationFee > 0 && (
+              {booking.cancellationFee > 0 ? (
                 <div style={{ 
                   marginTop: 16, 
                   padding: 16, 
@@ -695,6 +686,53 @@ export default function StaffBookingDetailPage() {
                         setIsPaymentModalOpen(true);
                       }}>
                       Thanh toán phí hủy
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                // ✅ Nếu chưa có phí hủy, hiển thị nút để tính phí hủy
+                <div style={{ 
+                  marginTop: 16, 
+                  padding: 16, 
+                  backgroundColor: "#f0f0f0", 
+                  borderRadius: 8, 
+                  border: "1px solid #d9d9d9" 
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 14, color: "#595959", fontWeight: 600 }}>
+                        Chưa tính phí hủy lịch hẹn
+                      </p>
+                      <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#8c8c8c" }}>
+                        Vui lòng tính phí hủy dựa trên các hạng mục đã kiểm tra
+                      </p>
+                    </div>
+                    <Button
+                      type="primary"
+                      danger
+                      size="large"
+                      loading={isCalculatingFee}
+                      onClick={async () => {
+                        // ✅ TRƯỜNG HỢP 2: Khách đã hủy từ mobile/UI khách
+                        // Flow: Trạng thái đã CANCELED → Tính tiền → Thanh toán → CHỈ cập nhật payment status, KHÔNG cập nhật appointment status
+                        setIsCalculatingFee(true);
+                        try {
+                          const fee = await calculateCancellationFee();
+                          if (fee > 0) {
+                            setCancellationFee(fee);
+                            setIsPendingCancel(false); // ✅ Không phải đang chờ hủy, mà là thanh toán phí hủy cho lịch đã hủy
+                            setIsPaymentModalOpen(true);
+                          } else {
+                            toast.info("Không có phí hủy cho lịch hẹn này.");
+                          }
+                        } catch (error) {
+                          console.error("Lỗi tính phí hủy:", error);
+                          toast.error("Không thể tính phí hủy. Vui lòng thử lại!");
+                        } finally {
+                          setIsCalculatingFee(false);
+                        }
+                      }}>
+                       Thanh toán phí hủy
                     </Button>
                   </div>
                 </div>

@@ -65,21 +65,20 @@ export default function VerifyOTP() {
       // Xóa email tạm
       localStorage.removeItem("pendingEmail");
 
-      // Redirect theo role
+      // Lưu role để redirect sau khi hiển thị VerifySuccess
       const roleName = user.accountResponse?.roleName;
-      if (roleName === "ROLE_ADMIN") {
-        navigate("/admin");
-      } else if (roleName === "ROLE_MANAGER") {
-        navigate("/manager");
-      } else if (roleName === "ROLE_STAFF") {
-        navigate("/staff");
-      } else if (roleName === "ROLE_TECHNICIAN") {
-        navigate("/technician");
-      } else if (roleName === "ROLE_STOREKEEPER") {
-        navigate("/storekeeper");
-      } else {
-        navigate("/");
-      }
+      const redirectPath = 
+        roleName === "ROLE_ADMIN" ? "/admin" :
+        roleName === "ROLE_MANAGER" ? "/manager" :
+        roleName === "ROLE_STAFF" ? "/staff" :
+        roleName === "ROLE_TECHNICIAN" ? "/technician" :
+        roleName === "ROLE_STOREKEEPER" ? "/storekeeper" :
+        "/";
+
+      // Redirect đến trang VerifySuccess với các thông tin cần thiết
+      navigate(`/verify-success?type=otp&email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(redirectPath)}`, {
+        replace: true
+      });
 
       toast.success("Xác thực OTP thành công!");
     } catch (error) {

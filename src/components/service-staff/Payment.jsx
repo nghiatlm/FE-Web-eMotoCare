@@ -18,8 +18,9 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
   useEffect(() => {
     if (!open || !appointmentId) return;
 
-    // ✅ Nếu đang chờ thanh toán phí hủy, hiển thị phí hủy
-    if (isPendingCancel && cancellationFee > 0) {
+    // ✅ TRƯỜNG HỢP 1: Staff hủy - đang chờ thanh toán phí hủy để hủy lịch
+    // ✅ TRƯỜNG HỢP 2: Khách hủy - lịch đã bị hủy, cần thanh toán phí hủy
+    if (cancellationFee > 0 && (isPendingCancel || booking?.status === "CANCELED")) {
       setQuoteItems([{
         id: 'cancellation-fee',
         name: 'Phí hủy lịch hẹn',
@@ -120,8 +121,8 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
           paymentMethod === "PAY_OS_CENTER" ? "PAY_OS_CENTER" : "CASH",
         currency: "VND",
         appointmentId,
-        returnUrl: "https://modernestate.vercel.app/payment-success",
-        callbackUrl: "https://modernestate.vercel.app/payment-success",
+        returnUrl: "https://emotocare.vercel.app/payment-success",
+        callbackUrl: "https://emotocare.vercel.app/payment-failed",
       };
 
       // ✅ Luôn gọi API, truyền paymentMethod (CASH hoặc PAY_OS_CENTER)

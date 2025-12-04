@@ -9,7 +9,7 @@ export const STATUS_MAP = {
   APPOINTMENT_BOOKED: "Đã đặt lịch",
   CANCELED: "Đã hủy",
   CHECKED_IN: "Đã check-in",
-  QUOTE_APPROVED: "Được xác nhận",
+  QUOTE_APPROVED: "Đã xác nhận",
   REPAIR_COMPLETED: "Hoàn tất sửa chữa",
   COMPLETED: "Đã hoàn thành",
   REJECTED: "Bị từ chối",
