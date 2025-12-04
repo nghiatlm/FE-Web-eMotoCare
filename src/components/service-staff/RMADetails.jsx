@@ -1,6 +1,6 @@
 // src/components/staff/RMADetails.jsx
 import React, { useState, useMemo } from "react";
-import { Table, Spin, Button, Modal, Card, Tag, Image, Space, Divider, Typography } from "antd";
+import { Table, Spin, Button, Modal, Card, Tag, Image, Space, Divider, Typography, Tooltip } from "antd";
 import { toast } from "@/components/ui/sonner";
 import { Calendar, User, FileText, Package, Clock, CheckCircle, Tag as TagIcon } from "lucide-react";
 
@@ -56,9 +56,9 @@ function PartNameCell({ row }) {
   
   return (
     <div>
-      <div style={{ fontWeight: 500, marginBottom: 4 }}>{partName || "—"}</div>
+      <div style={{ fontWeight: 500, marginBottom: 2, fontSize: 12 }}>{partName || "—"}</div>
       {serialNumber && partName !== serialNumber && (
-        <div style={{ fontSize: 12, color: "#8c8c8c" }}>
+        <div style={{ fontSize: 11, color: "#8c8c8c" }}>
           S/N: {serialNumber}
         </div>
       )}
@@ -420,8 +420,8 @@ function RMADetails({ rma, details = [], loading }) {
           </Space>
         }
         style={{ borderRadius: 8 }}
-        headStyle={{ borderBottom: "1px solid #f0f0f0", padding: "16px 24px" }}
-        bodyStyle={{ padding: "24px" }}>
+        headStyle={{ borderBottom: "1px solid #f0f0f0", padding: "12px 16px" }}
+        bodyStyle={{ padding: "12px" }}>
       {loading ? (
           <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
             <Spin size="large" />
@@ -432,7 +432,7 @@ function RMADetails({ rma, details = [], loading }) {
           rowKey='id'
           bordered
           pagination={false}
-            size="middle"
+            size="small"
             scroll={{ x: false }}
             expandable={{
               expandedRowRender: (record) => {
@@ -674,12 +674,12 @@ function RMADetails({ rma, details = [], loading }) {
             {
               title: "STT",
               render: (_, __, idx) => idx + 1,
-              width: 60,
+              width: 50,
                 align: "center",
               },
               {
                 title: "Hình ảnh",
-                width: 100,
+                width: 70,
                 align: "center",
                 render: (_, row) => {
                   const imageUrl = 
@@ -690,8 +690,8 @@ function RMADetails({ rma, details = [], loading }) {
                     <Image
                       src={imageUrl}
                       alt='Part Item'
-                      width={60}
-                      height={60}
+                      width={50}
+                      height={50}
                       style={{ objectFit: "cover", borderRadius: 4 }}
                       preview
                     />
@@ -702,39 +702,43 @@ function RMADetails({ rma, details = [], loading }) {
             },
             {
               title: "Phụ tùng",
-                width: 200,
+                width: 160,
                 render: (_, row) => <PartNameCell row={row} />,
               },
               {
                 title: "Số lượng",
                 dataIndex: "quantity",
-                width: 100,
+                width: 80,
                 align: "center",
                 render: (qty) => qty || 1,
               },
               {
                 title: "Lý do",
                 dataIndex: "reason",
-                width: 200,
+                width: 140,
                 ellipsis: {
-                  showTitle: false,
+                  showTitle: true,
                 },
                 render: (reason) => (
-                  <span title={reason}>{reason || "—"}</span>
+                  <Tooltip title={reason} placement="topLeft">
+                    <span style={{ fontSize: 12 }}>{reason || "—"}</span>
+                  </Tooltip>
                 ),
               },
               {
                 title: "Kết quả",
                 dataIndex: "result",
-                width: 200,
+                width: 140,
                 ellipsis: {
-                  showTitle: false,
+                  showTitle: true,
                 },
                 render: (result) => (
                   result ? (
-                    <span title={result} style={{ color: "#ff4d4f", fontWeight: 500 }}>
-                      {result}
-                    </span>
+                    <Tooltip title={result} placement="topLeft">
+                      <span title={result} style={{ color: "#ff4d4f", fontWeight: 500, fontSize: 12 }}>
+                        {result}
+                      </span>
+                    </Tooltip>
                   ) : (
                     <span style={{ color: "#bfbfbf" }}>—</span>
                   )
@@ -743,8 +747,11 @@ function RMADetails({ rma, details = [], loading }) {
             {
                 title: "Giải pháp",
                 dataIndex: "solution",
-                width: 150,
+                width: 130,
                 align: "center",
+                ellipsis: {
+                  showTitle: true,
+                },
                 render: (solution) => {
                   if (!solution) return <span style={{ color: "#bfbfbf" }}>—</span>;
                   
@@ -764,48 +771,35 @@ function RMADetails({ rma, details = [], loading }) {
                     "NONE": "default",
                   };
                   
+                  const solutionText = solutionMap[solution] || solution;
+                  
                   return (
-                    <Tag color={colorMap[solution] || "default"}>
-                      {solutionMap[solution] || solution}
-                    </Tag>
+                    <Tooltip title={solutionText} placement="top">
+                      <Tag 
+                        color={colorMap[solution] || "default"} 
+                        style={{ 
+                          fontSize: 11,
+                          padding: "2px 8px",
+                          margin: 0,
+                          maxWidth: "120px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          display: "inline-block"
+                        }}>
+                        {solutionText}
+                      </Tag>
+                    </Tooltip>
                   );
                 },
               },
             {
-              title: "Ngày gửi",
-              dataIndex: "releaseDateRMA",
-                width: 140,
-              render: (d) =>
-                  d ? (
-                    <Space>
-                      <Clock size={14} style={{ color: "#8c8c8c" }} />
-                      <span>{new Date(d).toLocaleDateString("vi-VN")}</span>
-                    </Space>
-                  ) : (
-                    <span style={{ color: "#bfbfbf" }}>—</span>
-                  ),
-            },
-            {
-              title: "Hạn bảo hành",
-              dataIndex: "expirationDateRMA",
-                width: 140,
-              render: (d) =>
-                  d ? (
-                    <Space>
-                      <Calendar size={14} style={{ color: "#8c8c8c" }} />
-                      <span>{new Date(d).toLocaleDateString("vi-VN")}</span>
-                    </Space>
-                  ) : (
-                    <span style={{ color: "#bfbfbf" }}>—</span>
-                  ),
-            },
-            {
               title: "Trạng thái",
               dataIndex: "status",
-                width: 140,
+                width: 100,
                 align: "center",
                 render: (st) => (
-                  <Tag color={getStatusColor(st)} >
+                  <Tag color={getStatusColor(st)} style={{ fontSize: 12 }}>
                     {getStatusText(st)}
                   </Tag>
                 ),

@@ -99,7 +99,7 @@ export default function BatteryDataDisplay({ evCheckDetailId, canImport = true }
           onClick={() => navigate(`/technician/battery/${evCheckDetailId}`)}
           style={{ backgroundColor: "#ff4d4f", borderColor: "#ff4d4f" }}
         >
-          Xem chi tiết Pin
+         Chi tiết Pin
         </Button>
       </div>
 

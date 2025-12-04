@@ -77,6 +77,22 @@ export default function RepairModeEVCheck({
     return !!(row.rmaDetail || row.rmaDetailId || row.rmaDetail?.id);
   };
 
+  // ✅ Kiểm tra item có bảo hành và đã gửi đi bảo hành (cần ngăn cập nhật trạng thái)
+  const isWarrantyItemSent = (row) => {
+    if (!checkWarrantyStatus(row?.partItem)) return false;
+    
+    // ✅ Nếu đã có RMA → đã gửi đi bảo hành
+    if (hasRMA(row)) return true;
+    
+    // ✅ Nếu kết quả khác "Tốt" → đã gửi đi bảo hành (ví dụ: "Hư cần bảo hành")
+    const result = (row.result || "").trim().toLowerCase();
+    const isNotGood = result !== "tốt" && result !== "tot" && result !== "";
+    if (isNotGood) return true;
+    
+    // ✅ Nếu kết quả là "Tốt" → chưa gửi đi bảo hành (chỉ bôi trơn/kiểm tra) → cho phép cập nhật
+    return false;
+  };
+
   // ✅ Cho phép tạo RMA khi: còn bảo hành + có partItem + kết quả khác "Tốt" (hoặc rỗng) + chưa có RMA
   const isRMAEligible = (row) => {
     const result = (row.result || "").trim().toLowerCase();
@@ -406,7 +422,9 @@ export default function RepairModeEVCheck({
 
   // ========= UPDATE GIÁ CÔNG =========
   const updatePriceService = async (index, remedies, rowData = null) => {
-    if (!["REPAIR", "REPLACE"].includes(remedies)) {
+    // ✅ Cập nhật: Lấy giá dịch vụ cho CHECK, REPAIR, REPLACE
+    // NONE (Bôi trơn) không có giá dịch vụ
+    if (!["CHECK", "REPAIR", "REPLACE"].includes(remedies)) {
       updateRow(index, { priceService: 0 });
       return;
     }
@@ -652,11 +670,11 @@ export default function RepairModeEVCheck({
         setDetails(mapped);
         toast.success(`Đã tải ${mapped.length} hạng mục từ DB.`);
         
-        // ✅ Tự động gọi giá dịch vụ cho các items có remedies là REPAIR hoặc REPLACE
+        // ✅ Tự động gọi giá dịch vụ cho các items có remedies là CHECK, REPAIR hoặc REPLACE
         mapped.forEach((row, index) => {
           if (
             (!row.priceService || Number(row.priceService) === 0) &&
-            ["REPAIR", "REPLACE"].includes(row.remedies) &&
+            ["CHECK", "REPAIR", "REPLACE"].includes(row.remedies) &&
             row.partItem
           ) {
             // ✅ Truyền row data vào để có thể lấy partTypeId
@@ -816,6 +834,16 @@ export default function RepairModeEVCheck({
     // ✅ Cho phép thay đổi status nếu canEditStatus = true
     if (field === "status") {
       if (!canEditStatus) return;
+      
+      // ✅ Ngăn cập nhật trạng thái khi item có bảo hành và đã gửi đi bảo hành
+      // - Nếu có RMA → đã gửi đi bảo hành
+      // - Nếu kết quả khác "Tốt" → đã gửi đi bảo hành (ví dụ: "Hư cần bảo hành")
+      // - Nếu kết quả là "Tốt" → chưa gửi đi bảo hành (chỉ bôi trơn/kiểm tra) → vẫn cho cập nhật
+      const currentRow = details[index];
+      if (isWarrantyItemSent(currentRow)) {
+        toast.error("Không thể cập nhật trạng thái cho bộ phận đã gửi đi bảo hành.");
+        return;
+      }
     } else {
       // ✅ Các trường khác chỉ cho phép sửa khi canEditFields = true
       if (evCheckStatus === "INSPECTION_COMPLETED") return;
@@ -860,7 +888,6 @@ export default function RepairModeEVCheck({
       updatePriceService(index, value, updatedRow);
       
       // ✅ Tự động lưu nếu là pin và chưa có ID thật
-      const currentRow = details[index];
       const partName = currentRow?.partItem?.part?.name || currentRow?.displayName || "";
       const partCode = currentRow?.partItem?.part?.code || "";
       const partNameLower = partName.toLowerCase();
@@ -1055,8 +1082,27 @@ export default function RepairModeEVCheck({
       setLoading(true);
       const loadingToast = toast.loading("Đang cập nhật trạng thái hạng mục...");
 
-      // ✅ Cập nhật từng detail
+      // ✅ Lọc bỏ các item đã gửi đi bảo hành khỏi statusChanges trước khi cập nhật
+      const filteredStatusChanges = {};
       for (const [detailId, newStatus] of Object.entries(statusChanges)) {
+        const detail = details.find(d => d.id === detailId);
+        // ✅ Bỏ qua item đã gửi đi bảo hành (có RMA hoặc kết quả khác "Tốt")
+        if (detail && isWarrantyItemSent(detail)) {
+          console.log(`⚠️ Bỏ qua cập nhật trạng thái cho detail ${detailId} (đã gửi đi bảo hành)`);
+          continue;
+        }
+        filteredStatusChanges[detailId] = newStatus;
+      }
+
+      // ✅ Nếu không còn item nào để cập nhật
+      if (!Object.keys(filteredStatusChanges).length) {
+        toast.dismiss(loadingToast);
+        toast.warning("Không có item nào được cập nhật. Các item đã gửi đi bảo hành không thể cập nhật trạng thái.");
+        return;
+      }
+
+      // ✅ Cập nhật từng detail (chỉ những item không có bảo hành)
+      for (const [detailId, newStatus] of Object.entries(filteredStatusChanges)) {
         console.log(`📤 Cập nhật detail ${detailId} với status: ${newStatus}`);
         await updateEVCheckDetailService(detailId, { status: newStatus });
       }
@@ -1186,9 +1232,9 @@ export default function RepairModeEVCheck({
             
             updateRow(i, updatedRow);
             
-            // ✅ Tự động gọi giá dịch vụ nếu remedies đã là REPAIR hoặc REPLACE
+            // ✅ Tự động gọi giá dịch vụ nếu remedies đã là CHECK, REPAIR hoặc REPLACE
             const currentRemedies = details[i]?.remedies || "NONE";
-            if (["REPAIR", "REPLACE"].includes(currentRemedies)) {
+            if (["CHECK", "REPAIR", "REPLACE"].includes(currentRemedies)) {
               // ✅ Tạo row data mới với partItem vừa chọn, đảm bảo có partTypeId
               const rowDataWithNewPartItem = { 
                 ...details[i], 
@@ -1628,24 +1674,31 @@ export default function RepairModeEVCheck({
   const statusColumn = {
     title: (
       <div className='flex items-center gap-2'>
-        {details.filter((d) => d.id).length > 0 && (
+        {details.filter((d) => d.id && !isWarrantyItemSent(d)).length > 0 && (
           <Checkbox
-            checked={details.every((d) => d.status === "COMPLETED")}
+            checked={details.filter(d => !isWarrantyItemSent(d)).every((d) => d.status === "COMPLETED")}
             indeterminate={
-              details.some((d) => d.status === "COMPLETED") &&
-              details.some((d) => d.status !== "COMPLETED")
+              details.filter(d => !isWarrantyItemSent(d)).some((d) => d.status === "COMPLETED") &&
+              details.filter(d => !isWarrantyItemSent(d)).some((d) => d.status !== "COMPLETED")
             }
             onChange={(e) => {
               const checked = e.target.checked;
-              const updated = details.map((item) => ({
-                ...item,
-                status: checked ? "COMPLETED" : "PENDING",
-              }));
+              const updated = details.map((item) => {
+                // ✅ Chỉ cập nhật status cho item chưa gửi đi bảo hành
+                if (isWarrantyItemSent(item)) {
+                  return item; // Giữ nguyên item đã gửi đi bảo hành
+                }
+                return {
+                  ...item,
+                  status: checked ? "COMPLETED" : "PENDING",
+                };
+              });
               setDetails(updated);
 
               const changes = {};
               updated.forEach((item) => {
-                if (item.id && checked) {
+                // ✅ Chỉ thêm vào statusChanges nếu chưa gửi đi bảo hành
+                if (item.id && checked && !isWarrantyItemSent(item)) {
                   changes[item.id] = "COMPLETED";
                 }
               });
@@ -1659,6 +1712,10 @@ export default function RepairModeEVCheck({
     width: 120,
     render: (_, r, i) => {
       const stat = REPAIR_STATUS[r.status] || REPAIR_STATUS.PENDING;
+      // ✅ Disable khi item đã gửi đi bảo hành (có RMA hoặc kết quả khác "Tốt")
+      // Nếu còn bảo hành nhưng kết quả là "Tốt" (chỉ bôi trơn/kiểm tra) → vẫn cho cập nhật
+      const isWarrantySent = isWarrantyItemSent(r);
+      const isDisabled = readOnly || !canEditStatus || isWarrantySent;
 
       return (
         <div className='flex items-center gap-2'>
@@ -1671,18 +1728,19 @@ export default function RepairModeEVCheck({
                 e.target.checked ? "COMPLETED" : "PENDING"
               );
             }}
-            disabled={readOnly || !canEditStatus}
+            disabled={isDisabled}
           />
           <Tag
             color={stat.color}
               style={{
-              cursor: r.status !== "COMPLETED" ? "pointer" : "default",
+              cursor: !isDisabled && r.status !== "COMPLETED" ? "pointer" : "default",
                 fontWeight: 500,
                 borderRadius: 8,
                 padding: "2px 8px",
+                opacity: isDisabled ? 0.6 : 1,
             }}
             onClick={() => {
-              if (r.status !== "COMPLETED" && !readOnly && canEditStatus) {
+              if (r.status !== "COMPLETED" && !isDisabled) {
                 handleChange(i, "status", "COMPLETED");
               }
               }}>

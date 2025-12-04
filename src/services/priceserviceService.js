@@ -31,12 +31,13 @@ export const fetchPriceServices = async (params = {}) => {
 };
 
 /**
- * 🔹 Lấy laborCost theo partTypeId và remedies ("REPAIR" hoặc "REPLACE")
+ * 🔹 Lấy giá dịch vụ (price) theo partTypeId và remedies
  * - Dùng cache để tối ưu
  * - Lọc phần tử mới nhất theo effectiveDate nếu có nhiều bản ghi
+ * - Lấy trường "price" (giá dịch vụ) thay vì "laborCost" (phí gia công)
  * @param {string} partTypeId - ID của loại phụ tùng
- * @param {('REPAIR'|'REPLACE')} remedies - Biện pháp sửa chữa
- * @returns {Promise<number>} laborCost hoặc 0 nếu không có
+ * @param {('NONE'|'CHECK'|'REPAIR'|'REPLACE')} remedies - Biện pháp sửa chữa
+ * @returns {Promise<number>} price (giá dịch vụ) hoặc 0 nếu không có
  */
 export const getLaborCostByRemediesService = async (partTypeId, remedies) => {
   if (!remedies) return 0;
@@ -83,8 +84,9 @@ export const getLaborCostByRemediesService = async (partTypeId, remedies) => {
         new Date(a.effectiveDate || 0).getTime()
     )[0];
 
-    const cost = Number(latest?.laborCost || 0);
-    console.log(`✅ [getLaborCostByRemediesService] Đã lấy được laborCost: ${cost} từ price service:`, latest);
+    // ✅ Lấy price (giá dịch vụ) thay vì laborCost (phí gia công)
+    const cost = Number(latest?.price || 0);
+    console.log(`✅ [getLaborCostByRemediesService] Đã lấy được price (giá dịch vụ): ${cost} từ price service:`, latest);
     laborCostCache.set(cacheKey, cost);
     return cost;
   } catch (err) {
