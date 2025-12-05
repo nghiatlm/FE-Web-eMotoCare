@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Search, Plus, Download, Filter, Building2, MapPin, Mail, Phone, Hash, Info, Clock, Calendar, Users, CheckCircle, XCircle } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Search, Plus, Download, Filter, Building2, MapPin, Mail, Phone, Hash, Info, Clock, Calendar, Users, CheckCircle, XCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,7 @@ export default function Branches() {
   const [selected, setSelected] = useState(null);
   const [branchDetail, setBranchDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const formRef = useRef(null);
 
   const [form, setForm] = useState({
     code: "",
@@ -141,6 +142,8 @@ export default function Branches() {
     } finally {
       setIsAddOpen(false);
       resetForm();
+      // Scroll back to top after successful submission
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -179,7 +182,6 @@ export default function Branches() {
       };
       window?.applyEditBranch?.(selected.id, mapped);
     } catch (err) {
-      // Fallback to local update if API fails
       window?.applyEditBranch?.(selected.id, { ...form });
     } finally {
       setIsEditOpen(false);
@@ -189,7 +191,7 @@ export default function Branches() {
 
   return (
   <div className="min-h-screen bg-slate-50">
-      <div className="p-8 max-w-7xl mx-auto">
+      <div className="p-8 max-w-[95%] mx-auto">
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-slate-900">Quản lý chi nhánh</h1>
           <p className="mt-1 text-sm text-slate-500">Theo dõi và quản lý hệ thống chi nhánh</p>
@@ -254,7 +256,15 @@ export default function Branches() {
             )}
 
             <div className="flex items-center gap-3 ml-auto">
-              <Button className="gap-2 bg-red-600 hover:bg-red-700 shadow-sm" onClick={() => setIsAddOpen(true)}>
+              <Button 
+                className="gap-2 bg-red-600 hover:bg-red-700 shadow-sm" 
+                onClick={() => {
+                  setIsAddOpen(true);
+                  setTimeout(() => {
+                    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }, 100);
+                }}
+              >
                 <Plus className="h-4 w-4" />
                 Thêm chi nhánh
               </Button>
@@ -264,66 +274,112 @@ export default function Branches() {
 
         <BranchesTable search={search} status={status} manager={manager} />
 
-        <Dialog open={isAddOpen} onOpenChange={(o) => { setIsAddOpen(o); if (!o) resetForm(); }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Thêm chi nhánh</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleAddSubmit} className="space-y-4">
+        {/* Inline Add Branch Form */}
+        {isAddOpen && (
+          <div ref={formRef} className="mt-6 bg-white rounded-2xl border border-slate-200/60 shadow-lg shadow-slate-200/50 overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-top-4">
+            {/* Header với gradient */}
+            <div className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100/50 px-6 py-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/80 rounded-lg shadow-sm">
+                    <Building2 className="h-5 w-5 text-red-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">Thêm chi nhánh mới</h2>
+                    <p className="text-xs text-slate-500 mt-0.5">Điền thông tin để tạo chi nhánh mới</p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setIsAddOpen(false);
+                    resetForm();
+                  }}
+                  className="h-9 w-9 text-slate-500 hover:text-slate-700 hover:bg-white/80 rounded-lg transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Form Content */}
+            <form onSubmit={handleAddSubmit} className="p-6 space-y-5">
+              {/* Tên chi nhánh */}
               <div className="space-y-2">
                 <Label>Tên chi nhánh</Label>
-                <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="VD: GreenWheel" required/>
+                <Input 
+                  value={form.name} 
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} 
+                  placeholder="VD: GreenWheel" 
+                  required
+                  className="bg-slate-50 border-slate-200 focus-visible:ring-red-500/70"
+                />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Mã chi nhánh (code)</Label>
-                  <Input value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} placeholder="VD: SC-HCM-001" />
+                  <Label>Email</Label>
+                  <Input 
+                    type="email" 
+                    value={form.email} 
+                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} 
+                    placeholder="VD: alo@example.com"
+                    className="bg-slate-50 border-slate-200 focus-visible:ring-red-500/70"
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="VD: alo@example.com" />
+                  <Label>Số điện thoại</Label>
+                  <Input 
+                    value={form.phone} 
+                    onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} 
+                    placeholder="VD: 098xxxxxxx" 
+                    required
+                    className="bg-slate-50 border-slate-200 focus-visible:ring-red-500/70"
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Mô tả</Label>
-                <Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Mô tả ngắn về chi nhánh" />
+                <Input 
+                  value={form.description} 
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} 
+                  placeholder="Mô tả ngắn về chi nhánh"
+                  className="bg-slate-50 border-slate-200 focus-visible:ring-red-500/70"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Địa chỉ</Label>
-                <Input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} placeholder="VD: 123 Đường Lê Lợi" required/>
+                <Input 
+                  value={form.location} 
+                  onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} 
+                  placeholder="VD: 123 Đường Lê Lợi" 
+                  required
+                  className="bg-slate-50 border-slate-200 focus-visible:ring-red-500/70"
+                />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Số điện thoại</Label>
-                  <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="VD: 098xxxxxxx" required/>
-                </div>
+              <div className="flex items-center gap-3 pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsAddOpen(false);
+                    resetForm();
+                  }}
+                  className="flex-1 sm:flex-initial border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 h-11 font-medium"
+                >
+                  Hủy
+                </Button>
+                <Button 
+                  type="submit" 
+                  className="flex-1 sm:flex-initial bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 shadow-md shadow-red-500/25 hover:shadow-lg hover:shadow-red-500/30 transition-all duration-200 h-11 font-semibold"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Thêm chi nhánh
+                </Button>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Giờ hoạt động</Label>
-                  <Input value={form.hours} onChange={(e) => setForm((f) => ({ ...f, hours: e.target.value }))} placeholder="VD: 08:00 – 17:00 (T2 – T7)" required/>
-                </div>
-                <div className="space-y-2">
-                  <Label>Trạng thái</Label>
-                  <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn trạng thái" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="suspended">Suspended</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => { setIsAddOpen(false); }}>Hủy</Button>
-                <Button type="submit" className="bg-primary hover:bg-primary/90">Thêm</Button>
-              </DialogFooter>
             </form>
-          </DialogContent>
-        </Dialog>
+          </div>
+        )}
 
         <Dialog open={isEditOpen} onOpenChange={(o) => { setIsEditOpen(o); if (!o) setSelected(null); }}>
           <DialogContent>

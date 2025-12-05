@@ -28,6 +28,15 @@ export default function BranchDetail() {
   const [loading, setLoading] = useState(true);
   const [isCreateSlotOpen, setIsCreateSlotOpen] = useState(false);
   const [isCreatingSlot, setIsCreatingSlot] = useState(false);
+  const [selectedWeekStart, setSelectedWeekStart] = useState(() => {
+    // Mặc định là thứ 2 của tuần hiện tại
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+    const monday = new Date(today.setDate(diff));
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+  });
   const [slotForm, setSlotForm] = useState({
     date: "",
     slotTime: "",
@@ -464,12 +473,23 @@ export default function BranchDetail() {
                   <div className="h-9 w-9 rounded-full bg-red-500/10 flex items-center justify-center">
                     <Calendar className="h-5 w-5 text-red-600" />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <CardTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
                       Lịch làm việc
                       {branchDetail.serviceCenterSlots && branchDetail.serviceCenterSlots.length > 0 && (
                         <Badge variant="secondary" className="ml-1 rounded-full px-2 py-0.5 text-[11px] bg-slate-100 text-slate-700">
-                          {branchDetail.serviceCenterSlots.length} slot
+                          {(() => {
+                            // Đếm số slot trong tuần được chọn
+                            const weekDays = Array.from({ length: 7 }, (_, i) => {
+                              const date = new Date(selectedWeekStart);
+                              date.setDate(date.getDate() + i);
+                              return format(date, "yyyy-MM-dd");
+                            });
+                            const slotsInWeek = branchDetail.serviceCenterSlots.filter(slot => 
+                              weekDays.includes(slot.date)
+                            );
+                            return slotsInWeek.length;
+                          })()} slot
                         </Badge>
                       )}
                     </CardTitle>
@@ -478,13 +498,58 @@ export default function BranchDetail() {
                     </p>
                   </div>
                 </div>
-                {/* Admin chỉ xem lịch làm việc, không tạo slot */}
+                {/* Date picker để chọn tuần */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "justify-start text-left font-normal",
+                        !selectedWeekStart && "text-muted-foreground"
+                      )}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {selectedWeekStart ? format(selectedWeekStart, "dd/MM/yyyy", { locale: vi }) : "Chọn tuần"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <CalendarComponent
+                      mode="single"
+                      selected={selectedWeekStart}
+                      onSelect={(date) => {
+                        if (date) {
+                          // Đảm bảo chọn thứ 2 của tuần
+                          const day = date.getDay();
+                          const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+                          const monday = new Date(date.setDate(diff));
+                          monday.setHours(0, 0, 0, 0);
+                          setSelectedWeekStart(monday);
+                        }
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </CardHeader>
             <CardContent>
               {branchDetail.serviceCenterSlots && branchDetail.serviceCenterSlots.length > 0 ? (
                 <div className="space-y-4">
                   {(() => {
+                    // Tạo mảng 7 ngày trong tuần
+                    const weekDays = Array.from({ length: 7 }, (_, i) => {
+                      const date = new Date(selectedWeekStart);
+                      date.setDate(date.getDate() + i);
+                      const dayOfWeek = date.getDay();
+                      const dayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+                      return {
+                        date: format(date, "yyyy-MM-dd"),
+                        dateObj: new Date(date),
+                        dayName: dayNames[dayOfWeek]
+                      };
+                    });
+
+                    // Group slots theo ngày
                     const groupedByDate = branchDetail.serviceCenterSlots.reduce((acc, slot) => {
                       const date = slot.date;
                       if (!acc[date]) {
@@ -494,34 +559,27 @@ export default function BranchDetail() {
                       return acc;
                     }, {});
 
-                    const sortedDates = Object.keys(groupedByDate).sort();
-
-                    return sortedDates.map((date) => {
-                      const slots = groupedByDate[date];
-                      const firstSlot = slots[0];
-                      const vietnameseDay = firstSlot.dayOfWeek === 'Saturday' ? 'Thứ Bảy' : 
-                                           firstSlot.dayOfWeek === 'Sunday' ? 'Chủ Nhật' :
-                                           firstSlot.dayOfWeek === 'Monday' ? 'Thứ Hai' :
-                                           firstSlot.dayOfWeek === 'Tuesday' ? 'Thứ Ba' :
-                                           firstSlot.dayOfWeek === 'Wednesday' ? 'Thứ Tư' :
-                                           firstSlot.dayOfWeek === 'Thursday' ? 'Thứ Năm' :
-                                           firstSlot.dayOfWeek === 'Friday' ? 'Thứ Sáu' : firstSlot.dayOfWeek;
+                    return weekDays.map((dayInfo) => {
+                      const slots = groupedByDate[dayInfo.date] || [];
 
                       return (
-                        <div key={date} className="border border-border rounded-lg p-4 space-y-3">
+                        <div key={dayInfo.date} className="border border-border rounded-lg p-4 space-y-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-primary" />
                               <h4 className="font-semibold text-foreground">
-                                {vietnameseDay}, {format(new Date(date), "dd/MM/yyyy", { locale: vi })}
+                                {dayInfo.dayName}, {format(dayInfo.dateObj, "dd/MM/yyyy", { locale: vi })}
                               </h4>
                             </div>
-                            <Badge variant="outline" className="text-xs">
-                              {slots.length} khung giờ
-                            </Badge>
+                            {slots.length > 0 && (
+                              <Badge variant="outline" className="text-xs">
+                                {slots.length} khung giờ
+                              </Badge>
+                            )}
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                            {slots.map((slot) => {
+                          {slots.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                              {slots.map((slot) => {
                               const slotLabel =
                                 SLOT_TIME_OPTIONS.find((opt) => opt.value === slot.slotTime)?.label ||
                                 "-";
@@ -553,8 +611,13 @@ export default function BranchDetail() {
                                   </div>
                                 </div>
                               );
-                            })}
-                          </div>
+                              })}
+                            </div>
+                          ) : (
+                            <div className="text-center py-4 text-sm text-slate-400">
+                              Không có slot nào trong ngày này
+                            </div>
+                          )}
                         </div>
                       );
                     });

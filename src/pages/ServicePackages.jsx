@@ -80,7 +80,7 @@ export default function ServicePackages() {
 
   return (
   <div className="min-h-screen bg-slate-50">
-      <div className="p-8 max-w-7xl mx-auto">
+      <div className="p-8 max-w-[95%] mx-auto">
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-2">
             <Package className="h-6 w-6 text-red-600" />

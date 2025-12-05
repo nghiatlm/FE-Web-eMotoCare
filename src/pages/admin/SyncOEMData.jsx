@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { syncMaintenancePlansData } from "@/api/maintenancePlansApi";
 import { syncCampaignsData } from "@/api/campaignsApi";
+import { syncModelData } from "@/api/modelsApi";
 
 const SYNC_STATUS = {
   IDLE: "idle",
@@ -29,9 +30,9 @@ const SYNC_STATUS = {
 
 const DATA_TYPES = [
   {
-    id: "vehicles",
-    label: "Dữ liệu xe",
-    description: "Đồng bộ thông tin xe, model, phiên bản từ hệ thống OEM",
+    id: "models",
+    label: "Model xe",
+    description: "Đồng bộ thông tin model xe từ hệ thống OEM",
     icon: Bike,
     buttonBg: "bg-red-600 dark:bg-red-700",
     buttonHover: "hover:bg-red-700 dark:hover:bg-red-800",
@@ -39,7 +40,7 @@ const DATA_TYPES = [
     iconBg: "bg-red-100 dark:bg-red-900/20",
     iconColor: "text-red-600 dark:text-red-400",
     progressColor: "bg-red-400",
-    hasApi: false, // Chưa có API
+    hasApi: true,
   },
   {
     id: "parts",
@@ -79,19 +80,6 @@ const DATA_TYPES = [
     iconColor: "text-red-600 dark:text-red-400",
     progressColor: "bg-red-400",
     hasApi: true,
-  },
-  {
-    id: "warranty",
-    label: "Bảo hành",
-    description: "Đồng bộ thông tin chính sách bảo hành từ OEM",
-    icon: Shield,
-    buttonBg: "bg-red-600 dark:bg-red-700",
-    buttonHover: "hover:bg-red-700 dark:hover:bg-red-800",
-    buttonText: "text-white",
-    iconBg: "bg-red-100 dark:bg-red-900/20",
-    iconColor: "text-red-600 dark:text-red-400",
-    progressColor: "bg-red-400",
-    hasApi: false, // Chưa có API
   },
 ];
 
@@ -206,6 +194,9 @@ export default function SyncOEMData() {
       // Call actual API - gọi API tương ứng với loại dữ liệu
       let response;
       switch (typeId) {
+        case "models":
+          response = await syncModelData();
+          break;
         case "maintenance-plans":
           response = await syncMaintenancePlansData();
           break;
@@ -359,7 +350,7 @@ export default function SyncOEMData() {
               <Card
                 key={type.id}
                 className={cn(
-                  "border-2 transition-all duration-200 hover:shadow-lg",
+                  "border-2 transition-all duration-200 hover:shadow-lg flex flex-col h-full",
                   isSyncing && "border-blue-400 shadow-blue-200/50",
                   isSuccess && "border-emerald-400 shadow-emerald-200/50",
                   isError && "border-red-400 shadow-red-200/50",
@@ -390,7 +381,7 @@ export default function SyncOEMData() {
                     {getStatusBadge(state.status)}
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="flex flex-col flex-1 space-y-4">
                   {/* Progress bar khi đang đồng bộ */}
                   {isSyncing && (
                     <div className="space-y-2">
@@ -432,18 +423,19 @@ export default function SyncOEMData() {
                   )}
 
                   {/* Nút đồng bộ */}
-                  <Button
-                    onClick={() => handleSync(type.id)}
-                    disabled={isSyncing || !type.hasApi}
-                    size="sm"
-                    className={cn(
-                      "w-full h-9 font-medium shadow-md transition-all text-sm",
-                      type.hasApi
-                        ? cn(type.buttonBg, type.buttonHover, type.buttonText)
-                        : "bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed",
-                      "disabled:opacity-50 disabled:cursor-not-allowed"
-                    )}
-                  >
+                  <div className="mt-auto pt-2">
+                    <Button
+                      onClick={() => handleSync(type.id)}
+                      disabled={isSyncing || !type.hasApi}
+                      size="sm"
+                      className={cn(
+                        "w-full h-10 font-medium shadow-md transition-all text-sm",
+                        type.hasApi
+                          ? cn(type.buttonBg, type.buttonHover, type.buttonText)
+                          : "bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed",
+                        "disabled:opacity-50 disabled:cursor-not-allowed"
+                      )}
+                    >
                     {isSyncing ? (
                       <>
                         <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
@@ -465,7 +457,8 @@ export default function SyncOEMData() {
                         Đồng bộ
                       </>
                     )}
-                  </Button>
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             );

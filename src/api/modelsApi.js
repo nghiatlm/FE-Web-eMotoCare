@@ -31,3 +31,25 @@ export const getModelById = (id) => {
   return api.get(`${BASE_URL}/${id}`);
 };
 
+/**
+ * Đồng bộ dữ liệu model từ hệ thống OEM
+ * @returns {Promise} Response từ API
+ */
+export const syncModelData = async () => {
+  try {
+    const response = await api.post(`${BASE_URL}/sync-model`);
+    return response;
+  } catch (error) {
+    // Log error chỉ trong development mode để tránh conflict với browser extensions
+    if (import.meta.env.DEV) {
+      try {
+        console.error("Error in syncModelData:", error);
+      } catch (logError) {
+        // Ignore logging errors
+      }
+    }
+    // Re-throw error để component có thể handle
+    throw error;
+  }
+};
+

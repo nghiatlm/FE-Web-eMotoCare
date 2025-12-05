@@ -156,6 +156,7 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
           <thead>
             <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
               <th className="text-center py-4 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide w-16">STT</th>
+              <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide">Mã chi nhánh</th>
               <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide">Tên chi nhánh</th>
               <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide">Địa chỉ</th>
               <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide">Số điện thoại</th>
@@ -195,6 +196,9 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
                 >
                   <td className="py-4 px-4 text-center text-sm font-medium text-slate-600">
                     {i + 1}
+                  </td>
+                  <td className="py-4 px-6">
+                    <span className="font-semibold text-slate-900 text-sm">{b.code}</span>
                   </td>
                   <td className="py-4 px-6">
                     <span className="font-semibold text-slate-900 text-sm">{b.name}</span>
