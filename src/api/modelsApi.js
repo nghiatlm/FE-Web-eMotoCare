@@ -1,8 +1,6 @@
 import api from "./api";
 
 const BASE_URL = "/v1/models";
-const user = JSON.parse(localStorage.getItem("user"));
-const token = user?.token;
 
 /**
  * Lấy danh sách vehicle models
@@ -20,10 +18,8 @@ export const getModels = (params = {}) => {
     ...(params.search && { search: params.search }),
     ...(params.status && { status: params.status }),
   };
-  return api.get(BASE_URL, { 
-    params: queryParams,
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  // Token đã được gắn sẵn qua axios interceptor trong api.js
+  return api.get(BASE_URL, { params: queryParams });
 };
 
 /**
@@ -32,8 +28,6 @@ export const getModels = (params = {}) => {
  * @returns {Promise} Response từ API
  */
 export const getModelById = (id) => {
-  return api.get(`${BASE_URL}/${id}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  return api.get(`${BASE_URL}/${id}`);
 };
 

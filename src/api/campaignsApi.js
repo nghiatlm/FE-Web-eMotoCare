@@ -69,3 +69,25 @@ export const updateCampaign = (id, data) => api.put(`${BASE_URL}/${id}`, data);
  */
 export const deleteCampaign = (id) => api.delete(`${BASE_URL}/${id}`);
 
+/**
+ * Đồng bộ dữ liệu chiến dịch từ hệ thống OEM
+ * @returns {Promise} Response từ API
+ */
+export const syncCampaignsData = async () => {
+  try {
+    const response = await api.post(`${BASE_URL}/sync-data`);
+    return response;
+  } catch (error) {
+    // Log error chỉ trong development mode để tránh conflict với browser extensions
+    if (import.meta.env.DEV) {
+      try {
+        console.error("Error in syncCampaignsData:", error);
+      } catch (logError) {
+        // Ignore logging errors
+      }
+    }
+    // Re-throw error để component có thể handle
+    throw error;
+  }
+};
+
