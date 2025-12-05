@@ -196,6 +196,7 @@ export default function CreateImportNotePage() {
     [filteredParts, parts, selectedPartId],
   );
 
+  // Thêm phụ tùng vào danh sách
   const handleAddPartToList = () => {
     // Validate
     if (!selectedPartTypeId) {
@@ -230,7 +231,7 @@ export default function CreateImportNotePage() {
     const partImage = selectedPart?.image || form.newPartImage?.trim() || "";
 
     const newPart = {
-      id: Date.now().toString(), 
+      id: Date.now().toString(), // Temporary ID
       partTypeId: selectedPartTypeId,
       partId: partId,
       partName: partName,
@@ -241,11 +242,12 @@ export default function CreateImportNotePage() {
       warrantyPeriod: Number(form.warrantyPeriod) || 0,
       warrantyStartDate: form.warrantyStartDate,
       hasManufacturerWarranty: hasManufacturerWarranty,
-      selectedPart: selectedPart,
+      selectedPart: selectedPart, // Lưu lại để hiển thị
     };
 
     setAddedParts([...addedParts, newPart]);
 
+    // Reset form
     setSelectedPartId("");
     setSelectedPartTypeId("");
     setForm({
@@ -267,11 +269,13 @@ export default function CreateImportNotePage() {
     });
   };
 
+  // Xóa phụ tùng khỏi danh sách
   const handleRemovePart = (partId) => {
     setAddedParts(addedParts.filter((p) => p.id !== partId));
   };
 
   const handleSubmit = async () => {
+    // Kiểm tra danh sách phụ tùng đã thêm
     if (addedParts.length === 0) {
       toast({
         title: "Thiếu thông tin",
@@ -296,6 +300,8 @@ export default function CreateImportNotePage() {
       const importFromValue = form.importFrom?.trim() || "Chưa xác định";
       const supplierValue = form.supplier?.trim() || "Chưa xác định";
 
+      // Tạo partItemRequest cho tất cả các phụ tùng
+      // Tất cả sẽ được gộp vào một partRequest với partItemRequest là array
       const partItemRequests = addedParts.flatMap((part) => {
         const warrantyPeriod = Number(part.warrantyPeriod) || 0;
         const basePrice = Number(part.price) || 0;
@@ -318,7 +324,10 @@ export default function CreateImportNotePage() {
           warantyEndDate = endDate.toISOString();
         }
 
+        // Nếu có serialNumber và quantity > 1, tạo từng item riêng
+        // Nếu không có serialNumber hoặc quantity = 1, gộp thành 1 item
         if (part.hasManufacturerWarranty && part.serialNumber && quantity > 1) {
+          // Tạo từng item với serialNumber khác nhau
           const items = [];
           for (let i = 0; i < quantity; i++) {
             items.push({
@@ -334,6 +343,7 @@ export default function CreateImportNotePage() {
           }
           return items;
         } else {
+          // Gộp thành 1 item
           return [{
             partId: part.partId || null,
             quantity: quantity,
@@ -347,9 +357,12 @@ export default function CreateImportNotePage() {
         }
       });
 
+      // Lấy thông tin part đầu tiên để làm partRequest chính
+      // (hoặc có thể để null nếu có nhiều part khác nhau)
       const firstPart = addedParts[0];
       const hasMultipleParts = addedParts.some(p => p.partId !== firstPart.partId);
 
+      // Tạo payload với một partRequest chứa tất cả partItemRequest
       const payload = {
         type: form.type || "SUPPLIER",
         importById: staffId,
@@ -362,9 +375,11 @@ export default function CreateImportNotePage() {
           partId: hasMultipleParts ? null : (firstPart.partId || null),
           name: hasMultipleParts ? "" : (firstPart.partName || ""),
           image: hasMultipleParts ? "" : (firstPart.partImage || ""),
-          partItemRequest: partItemRequests,
+          partItemRequest: partItemRequests, // Array chứa tất cả partItem của nhiều part
         },
       };
+
+      console.log("📤 Creating import note with payload:", payload);
 
       const response = await createImportNote(payload);
 
@@ -395,6 +410,7 @@ export default function CreateImportNotePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="p-6 sm:p-8 max-w-6xl mx-auto space-y-6 pb-20">
+        {/* Header */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Button
@@ -853,6 +869,7 @@ export default function CreateImportNotePage() {
                 </div>
               )}
 
+              {/* Nút thêm phụ tùng vào danh sách */}
               <div className="flex justify-end pt-4 border-t">
                 <Button
                   type="button"
@@ -868,6 +885,7 @@ export default function CreateImportNotePage() {
           </Card>
         </div>
 
+        {/* Danh sách phụ tùng đã thêm */}
         {addedParts.length > 0 && (
           <Card className="border-border/70 shadow-sm">
             <CardHeader>

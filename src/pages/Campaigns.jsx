@@ -490,4 +490,3 @@ export default function Campaigns() {
     </div>
   );
 }
-

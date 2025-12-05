@@ -11,7 +11,6 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
 
-  // Load email đã lưu khi component mount
   useEffect(() => {
     const savedEmail = localStorage.getItem("rememberedEmail");
     if (savedEmail) {
@@ -32,7 +31,6 @@ export default function Login() {
       const res = await login(email, password);
       console.log("Đăng nhập thành công:", res);
 
-      // Lưu hoặc xóa email dựa trên checkbox "Ghi nhớ đăng nhập"
       if (rememberMe) {
         localStorage.setItem("rememberedEmail", email);
       } else {

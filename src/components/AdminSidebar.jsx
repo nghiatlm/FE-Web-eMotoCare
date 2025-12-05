@@ -33,7 +33,7 @@ const sections = [
       { title: "Xe", icon: Bike, url: "/admin/vehicles" },
       { title: "Chi nhánh", icon: Store, url: "/admin/branches" },
       { title: "Gói dịch vụ", icon: Package, url: "/admin/service-packages" },
-      { title: "Campaign", icon: Megaphone, url: "/admin/campaigns" },
+      { title: "Chiến dịch", icon: Megaphone, url: "/admin/campaigns" },
       { title: "Người dùng", icon: Users, url: "/admin/users" },
     ],
   },
