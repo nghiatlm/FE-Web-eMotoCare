@@ -19,6 +19,8 @@ import {
   Bike as ScooterIcon,
   ChevronDown,
   ChevronUp,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -146,6 +149,7 @@ export default function WarrantyDetail() {
   const [datePickerMonths, setDatePickerMonths] = useState({});
   const [parts, setParts] = useState([]);
   const [loadingParts, setLoadingParts] = useState(false);
+  const [openPartPopovers, setOpenPartPopovers] = useState({});
 
   // Helper function để generate years
   const generateYears = () => {
@@ -1299,50 +1303,72 @@ export default function WarrantyDetail() {
                                 {isExpanded && (
                                   <div className="p-6 space-y-6">
                                     {/* Thông tin chi tiết RMA */}
-                                    <div className="rounded-lg border border-border/60 bg-card shadow-sm overflow-hidden">
-                                      <div className="bg-muted/30 border-b border-border/60 px-5 py-3">
+                                    <div className="rounded-xl border border-border/60 bg-card shadow-sm overflow-hidden">
+                                      <div className="bg-primary/5 border-b border-primary/20 px-5 py-3">
                                         <div className="flex items-center gap-2">
-                                          <h3 className="text-base font-semibold text-foreground">Thông tin RMA</h3>
+                                          <h3 className="text-base font-semibold tracking-tight text-primary">
+                                            Thông tin RMA
+                                          </h3>
                                         </div>
                                       </div>
-                                      <div className="grid gap-4 px-5 py-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
-                                        <div className="space-y-2">
+                                      <div className="grid gap-5 px-5 py-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+                                        <div className="space-y-1.5">
                                           <div className="flex items-center gap-2">
                                             <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                                              <p className="text-sm text-muted-foreground">Lý do</p>
+                                            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Lý do</p>
                                           </div>
-                                          <p className="text-base font-semibold text-foreground leading-relaxed">{reason}</p>
+                                          <p className="text-sm md:text-base font-medium text-foreground leading-relaxed">
+                                            {reason}
+                                          </p>
                                         </div>
-                                        <div className="space-y-2">
+                                        <div className="space-y-1.5">
                                           <div className="flex items-center gap-2">
                                             <Calendar className="h-4 w-4 text-muted-foreground" />
-                                            <p className="text-sm text-muted-foreground">Ngày phát hành</p>
+                                            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                              Ngày phát hành
+                                            </p>
                                           </div>
-                                          <p className="text-base font-semibold text-foreground">{releaseDate}</p>
+                                          <p className="text-sm md:text-base font-semibold text-foreground">{releaseDate}</p>
                                         </div>
-                                        <div className="space-y-2">
+                                        <div className="space-y-1.5">
                                           <div className="flex items-center gap-2">
                                             <Calendar className="h-4 w-4 text-muted-foreground" />
-                                            <p className="text-sm text-muted-foreground">Ngày hết hạn</p>
+                                            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                              Ngày hết hạn
+                                            </p>
                                           </div>
-                                          <p className="text-base font-semibold text-foreground">{expirationDate}</p>
+                                          <p className="text-sm md:text-base font-semibold text-foreground">{expirationDate}</p>
                                         </div>
-                                        {(result && result !== "—") && (
-                                          <div className="space-y-2 md:col-span-3">
-                                            <div className="flex items-center gap-2">
-                                              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                                              <p className="text-sm text-muted-foreground">Kết quả</p>
+                                        {((result && result !== "—") || (solution && solution !== "—")) && (
+                                          <div className="md:col-span-3 pt-4 mt-2 border-t border-dashed border-border/70">
+                                            <div className="grid gap-4 md:grid-cols-2">
+                                              {(result && result !== "—") && (
+                                                <div className="space-y-1.5">
+                                                  <div className="flex items-center gap-2">
+                                                    <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                                                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                                      Kết quả
+                                                    </p>
+                                                  </div>
+                                                  <p className="text-sm md:text-base font-medium text-foreground leading-relaxed">
+                                                    {result}
+                                                  </p>
+                                                </div>
+                                              )}
+                                              {(solution && solution !== "—") && (
+                                                <div className="space-y-1.5">
+                                                  <div className="flex items-center gap-2">
+                                                    <MessageSquareIcon className="h-4 w-4 text-muted-foreground" />
+                                                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                                      Giải pháp
+                                                    </p>
+                                                  </div>
+                                                  <p className="text-sm md:text-base font-medium text-foreground leading-relaxed">
+                                                    {solution}
+                                                  </p>
+                                                </div>
+                                              )}
                                             </div>
-                                            <p className="text-base font-medium text-foreground leading-relaxed">{result}</p>
-                                          </div>
-                                        )}
-                                        {(solution && solution !== "—") && (
-                                          <div className="space-y-2 md:col-span-3">
-                                            <div className="flex items-center gap-2">
-                                              <MessageSquareIcon className="h-4 w-4 text-muted-foreground" />
-                                              <p className="text-sm text-muted-foreground">Giải pháp</p>
-                                            </div>
-                                            <p className="text-base font-medium text-foreground leading-relaxed">{solution}</p>
                                           </div>
                                         )}
                                       </div>
@@ -1350,17 +1376,24 @@ export default function WarrantyDetail() {
 
                                     {/* Form nhập thông tin hãng - chỉ hiển thị khi status là APPROVED */}
                                     {detailStatus?.toUpperCase() === "APPROVED" && (
-                                      <div className="rounded-lg border-2 border-green-200 bg-green-50/30 shadow-sm overflow-hidden">
-                                        <div className="bg-green-100/50 border-b border-green-200 px-5 py-3">
+                                      <div className="rounded-xl border border-red-200/80 bg-red-50/70 shadow-sm overflow-hidden">
+                                        <div className="bg-red-600/5 border-b border-red-200/80 px-5 py-3">
                                           <div className="flex items-center gap-2">
-                                            <CheckCircle2 className="h-5 w-5 text-green-600" />
-                                            <h3 className="text-base font-semibold text-foreground">Phản hồi của hãng</h3>
+                                            <CheckCircle2 className="h-5 w-5 text-red-500" />
+                                            <h3 className="text-base font-semibold tracking-tight text-red-800">
+                                              Phản hồi của hãng
+                                            </h3>
                                           </div>
                                         </div>
-                                        <div className="p-5 space-y-4">
-                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                              <Label htmlFor={`rmaNumber-${detailId}`}>Số RMA</Label>
+                                        <div className="p-5 space-y-5">
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                            <div className="space-y-1.5">
+                                              <Label
+                                                htmlFor={`rmaNumber-${detailId}`}
+                                                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                                              >
+                                                Số RMA
+                                              </Label>
                                               <Input
                                                 id={`rmaNumber-${detailId}`}
                                                 value={detailForms[detailId]?.rmaNumber || detail.rmaNumber || ""}
@@ -1368,8 +1401,13 @@ export default function WarrantyDetail() {
                                                 placeholder="Nhập số RMA"
                                               />
                                             </div>
-                                            <div className="space-y-2">
-                                              <Label htmlFor={`inspector-${detailId}`}>Người kiểm tra</Label>
+                                            <div className="space-y-1.5">
+                                              <Label
+                                                htmlFor={`inspector-${detailId}`}
+                                                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                                              >
+                                                Người kiểm tra
+                                              </Label>
                                               <Input
                                                 id={`inspector-${detailId}`}
                                                 value={detailForms[detailId]?.inspector || detail.inspector || ""}
@@ -1377,8 +1415,13 @@ export default function WarrantyDetail() {
                                                 placeholder="Nhập tên người kiểm tra"
                                               />
                                             </div>
-                                            <div className="space-y-2">
-                                              <Label htmlFor={`releaseDate-${detailId}`}>Ngày phát hành RMA</Label>
+                                            <div className="space-y-1.5">
+                                              <Label
+                                                htmlFor={`releaseDate-${detailId}`}
+                                                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                                              >
+                                                Ngày phát hành RMA
+                                              </Label>
                                               <Popover>
                                                 <PopoverTrigger asChild>
                                                   <Button
@@ -1388,7 +1431,7 @@ export default function WarrantyDetail() {
                                                       !(detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA) && "text-muted-foreground"
                                                     )}
                                                   >
-                                                    <Calendar className="mr-2 h-4 w-4" />
+                                                    <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
                                                     {detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA ? (
                                                       format(new Date(detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA), "MM/dd/yyyy")
                                                     ) : (
@@ -1447,8 +1490,13 @@ export default function WarrantyDetail() {
                                                 </PopoverContent>
                                               </Popover>
                                             </div>
-                                            <div className="space-y-2">
-                                              <Label htmlFor={`expirationDate-${detailId}`}>Ngày hết hạn RMA</Label>
+                                            <div className="space-y-1.5">
+                                              <Label
+                                                htmlFor={`expirationDate-${detailId}`}
+                                                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                                              >
+                                                Ngày hết hạn RMA
+                                              </Label>
                                               <Popover>
                                                 <PopoverTrigger asChild>
                                                   <Button
@@ -1458,7 +1506,7 @@ export default function WarrantyDetail() {
                                                       !(detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA) && "text-muted-foreground"
                                                     )}
                                                   >
-                                                    <Calendar className="mr-2 h-4 w-4" />
+                                                    <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
                                                     {detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA ? (
                                                       format(new Date(detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA), "MM/dd/yyyy")
                                                     ) : (
@@ -1519,19 +1567,30 @@ export default function WarrantyDetail() {
                                             </div>
                                           </div>
                                           
-                                          <div className="space-y-2">
-                                            <Label htmlFor={`result-${detailId}`}>Kết quả kiểm tra</Label>
+                                          <div className="space-y-1.5">
+                                            <Label
+                                              htmlFor={`result-${detailId}`}
+                                              className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                                            >
+                                              Kết quả kiểm tra
+                                            </Label>
                                             <Textarea
                                               id={`result-${detailId}`}
                                               value={detailForms[detailId]?.result || detail.result || ""}
                                               onChange={(e) => handleFormChange(detailId, "result", e.target.value)}
                                               placeholder="Nhập kết quả kiểm tra từ hãng"
                                               rows={3}
+                                              className="resize-none"
                                             />
                                           </div>
 
-                                          <div className="space-y-2">
-                                            <Label htmlFor={`solution-${detailId}`}>Giải pháp</Label>
+                                          <div className="space-y-1.5">
+                                            <Label
+                                              htmlFor={`solution-${detailId}`}
+                                              className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                                            >
+                                              Giải pháp
+                                            </Label>
                                             <Textarea
                                               id={`solution-${detailId}`}
                                               value={
@@ -1542,44 +1601,98 @@ export default function WarrantyDetail() {
                                               onChange={(e) => handleFormChange(detailId, "solution", e.target.value)}
                                               placeholder="Nhập giải pháp từ hãng (thay thế, sửa chữa, v.v.)"
                                               rows={3}
+                                              className="resize-none"
                                             />
                                           </div>
 
                                           {/* Form nhập thông tin phụ tùng thay thế */}
-                                          <div className="rounded-lg border-2 border-teal-200 bg-teal-50/30 shadow-sm overflow-hidden mt-4">
-                                            <div className="bg-teal-100/50 border-b border-teal-200 px-5 py-3">
+                                          <div className="rounded-xl border border-red-200/80 bg-red-50/70 shadow-sm overflow-hidden mt-4">
+                                            <div className="bg-red-600/5 border-b border-red-200/80 px-5 py-3">
                                               <div className="flex items-center gap-2">
-                                                <Package className="h-5 w-5 text-teal-600" />
-                                                <h3 className="text-base font-semibold text-foreground">Bộ phận thay thế (Tùy chọn)</h3>
+                                                <Package className="h-5 w-5 text-red-500" />
+                                                <h3 className="text-base font-semibold tracking-tight text-red-800">
+                                                  Bộ phận thay thế (Tùy chọn)
+                                                </h3>
                                               </div>
                                             </div>
-                                            <div className="p-5 space-y-4">
-                                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                  <Label htmlFor={`replacePartId-${detailId}`}>Phụ tùng</Label>
-                                                  <Select
-                                                    value={
-                                                      detailForms[detailId]?.replacePartId || detail.replacePart?.partId || undefined
-                                                    }
-                                                    onValueChange={(value) => {
-                                                      handleFormChange(detailId, "replacePartId", value);
-                                                    }}
-                                                    disabled={loadingParts}
+                                            <div className="p-5 space-y-5">
+                                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                                <div className="space-y-1.5">
+                                                  <Label
+                                                    htmlFor={`replacePartId-${detailId}`}
+                                                    className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
                                                   >
-                                                    <SelectTrigger>
-                                                      <SelectValue placeholder={loadingParts ? "Đang tải..." : "Chọn phụ tùng (tùy chọn)"} />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                      {parts.map((part) => (
-                                                        <SelectItem key={part.id} value={part.id}>
-                                                        {part.name}
-                                                        </SelectItem>
-                                                      ))}
-                                                    </SelectContent>
-                                                  </Select>
+                                                    Phụ tùng
+                                                  </Label>
+                                                  <Popover
+                                                    open={openPartPopovers[detailId] || false}
+                                                    onOpenChange={(open) => {
+                                                      setOpenPartPopovers(prev => ({
+                                                        ...prev,
+                                                        [detailId]: open
+                                                      }));
+                                                    }}
+                                                  >
+                                                    <PopoverTrigger asChild>
+                                                      <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        aria-expanded={openPartPopovers[detailId]}
+                                                        className="w-full justify-between"
+                                                        disabled={loadingParts}
+                                                      >
+                                                        {(() => {
+                                                          const selectedPartId = detailForms[detailId]?.replacePartId || detail.replacePart?.partId;
+                                                          const selectedPart = parts.find(part => part.id === selectedPartId);
+                                                          return selectedPart ? selectedPart.name : (loadingParts ? "Đang tải..." : "Chọn phụ tùng (tùy chọn)");
+                                                        })()}
+                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                      </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-[min(400px,90vw)] p-0">
+                                                      <Command>
+                                                        <CommandInput placeholder="Tìm phụ tùng..." />
+                                                        <CommandList>
+                                                          <CommandEmpty>Không tìm thấy phụ tùng.</CommandEmpty>
+                                                          <CommandGroup>
+                                                            {parts.map((part) => {
+                                                              const selectedPartId = detailForms[detailId]?.replacePartId || detail.replacePart?.partId;
+                                                              const isSelected = part.id === selectedPartId;
+                                                              return (
+                                                                <CommandItem
+                                                                  key={part.id}
+                                                                  value={`${part.name} ${part.code || ""}`}
+                                                                  onSelect={() => {
+                                                                    handleFormChange(detailId, "replacePartId", part.id);
+                                                                    setOpenPartPopovers(prev => ({
+                                                                      ...prev,
+                                                                      [detailId]: false
+                                                                    }));
+                                                                  }}
+                                                                >
+                                                                  <Check
+                                                                    className={cn(
+                                                                      "mr-2 h-4 w-4",
+                                                                      isSelected ? "opacity-100" : "opacity-0"
+                                                                    )}
+                                                                  />
+                                                                  {part.name}
+                                                                </CommandItem>
+                                                              );
+                                                            })}
+                                                          </CommandGroup>
+                                                        </CommandList>
+                                                      </Command>
+                                                    </PopoverContent>
+                                                  </Popover>
                                                 </div>
-                                                <div className="space-y-2">
-                                                  <Label htmlFor={`replacePartSerial-${detailId}`}>Số serial</Label>
+                                                <div className="space-y-1.5">
+                                                  <Label
+                                                    htmlFor={`replacePartSerial-${detailId}`}
+                                                    className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                                                  >
+                                                    Số serial
+                                                  </Label>
                                                   <Input
                                                     id={`replacePartSerial-${detailId}`}
                                                     value={detailForms[detailId]?.replacePartSerial || detail.replacePart?.serialNumber || ""}
@@ -1587,8 +1700,13 @@ export default function WarrantyDetail() {
                                                     placeholder="Nhập số serial (VD: PIN-2025-L01-000123)"
                                                   />
                                                 </div>
-                                                <div className="space-y-2">
-                                                  <Label htmlFor={`replacePartWarrantyPeriod-${detailId}`}>Thời hạn bảo hành (tháng)</Label>
+                                                <div className="space-y-1.5">
+                                                  <Label
+                                                    htmlFor={`replacePartWarrantyPeriod-${detailId}`}
+                                                    className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                                                  >
+                                                    Thời hạn bảo hành (tháng)
+                                                  </Label>
                                                   <Input
                                                     id={`replacePartWarrantyPeriod-${detailId}`}
                                                     type="number"
@@ -1598,8 +1716,13 @@ export default function WarrantyDetail() {
                                                     placeholder="Nhập số tháng (VD: 12)"
                                                   />
                                                 </div>
-                                                <div className="space-y-2">
-                                                  <Label htmlFor={`replacePartWarrantyStart-${detailId}`}>Ngày bắt đầu BH</Label>
+                                                <div className="space-y-1.5">
+                                                  <Label
+                                                    htmlFor={`replacePartWarrantyStart-${detailId}`}
+                                                    className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                                                  >
+                                                    Ngày bắt đầu BH
+                                                  </Label>
                                                   <Popover>
                                                     <PopoverTrigger asChild>
                                                       <Button
@@ -1780,7 +1903,7 @@ export default function WarrantyDetail() {
                                       <div className="rounded-lg border border-border/60 bg-card shadow-sm overflow-hidden">
                                         <div className="bg-muted/30 border-b border-border/60 px-5 py-3">
                                           <div className="flex items-center gap-2">
-                                            <h3 className="text-base font-semibold text-foreground">Phụ tùng gốc</h3>
+                                            <h3 className="text-base font-semibold text-foreground">Phụ tùng cần bảo hành</h3>
                                           </div>
                                         </div>
                                         <div className="px-5 py-4 space-y-4">
