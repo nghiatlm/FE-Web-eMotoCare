@@ -26,7 +26,7 @@ export default function Branches() {
   const formRef = useRef(null);
 
   const [form, setForm] = useState({
-    code: "",
+    code: "", // Code do BE tự tạo, chỉ để hiển thị
     name: "",
     description: "",
     email: "",
@@ -76,7 +76,6 @@ export default function Branches() {
     window.openEditBranch = (row) => {
       setSelected(row);
       setForm({
-        code: row.code || "",
         name: row.name || "",
         description: row.description || "",
         email: row.email || "",
@@ -107,7 +106,6 @@ export default function Branches() {
 
     // Build API body per backend contract
     const body = {
-      code: form.code || `SC-${Date.now()}`,
       name: form.name,
       description: form.description || "",
       email: form.email || "",
@@ -121,9 +119,11 @@ export default function Branches() {
     try {
       const res = await createServiceCenter(body);
       const created = res?.data || res;
+      const createdId = created?.id || created?.code || tmpId;
+      const createdCode = created?.code || created?.serviceCenterCode || "";
       const mapped = {
-        id: created?.id || created?.code || tmpId,
-        code: created?.code || form.code,
+        id: createdId,
+        code: createdCode,
         name: created?.name || form.name,
         location: created?.address || form.location,
         phone: created?.phone || form.phone,
@@ -153,7 +153,6 @@ export default function Branches() {
 
     const statusUpper = String(form.status || "active").toUpperCase();
     const body = {
-      code: form.code,
       name: form.name,
       description: form.description || "",
       email: form.email || "",
@@ -168,7 +167,6 @@ export default function Branches() {
       const res = await updateServiceCenter(selected.id, body);
       const updated = res?.data || res;
       const mapped = {
-        code: updated?.code ?? form.code,
         name: updated?.name ?? form.name,
         description: updated?.description ?? form.description,
         email: updated?.email ?? form.email,
@@ -398,10 +396,7 @@ export default function Branches() {
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Mã chi nhánh (code)</Label>
-                  <Input value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} />
-                </div>
+                
                 <div className="space-y-2">
                   <Label>Email</Label>
                   <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
@@ -491,15 +486,7 @@ export default function Branches() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Hash className="h-4 w-4" />
-                          <span>Mã chi nhánh</span>
-                        </div>
-                        <p className="text-base font-semibold text-foreground">
-                          {branchDetail?.code || selected?.code || "—"}
-                        </p>
-                      </div>
+
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Building2 className="h-4 w-4" />

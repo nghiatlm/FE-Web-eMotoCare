@@ -231,7 +231,14 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                        onClick={() => navigate(`/admin/branches/${b.id}`)}
+                        onClick={() => {
+                          if (!b.id) {
+                            console.error("BranchesTable: Cannot navigate - branch id is missing", b);
+                            return;
+                          }
+                          console.log("BranchesTable: Navigating to branch detail:", b.id);
+                          navigate(`/admin/branches/${b.id}`);
+                        }}
                         title="Xem chi tiết"
                       >
                         <Eye className="h-4 w-4" />

@@ -65,18 +65,31 @@ export default function BranchDetail() {
   };
 
   const fetchBranchDetail = async () => {
-    if (id) {
-      try {
-        setLoading(true);
-        const response = await getServiceCenterById(id);
-        if (response.success && response.data) {
-          setBranchDetail(response.data);
-        }
-      } catch (error) {
-        console.error("Error fetching branch detail:", error);
-      } finally {
-        setLoading(false);
+    if (!id) {
+      console.error("BranchDetail: No id provided");
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      console.log("BranchDetail: Fetching branch with id:", id);
+      const response = await getServiceCenterById(id);
+      console.log("BranchDetail: API response:", response);
+      
+      // Xử lý nhiều cấu trúc response khác nhau
+      const branchData = response?.data || response?.data?.data || response;
+      
+      if (branchData) {
+        setBranchDetail(branchData);
+        console.log("BranchDetail: Set branch detail:", branchData);
+      } else {
+        console.error("BranchDetail: No data in response");
       }
+    } catch (error) {
+      console.error("Error fetching branch detail:", error);
+    } finally {
+      setLoading(false);
     }
   };
 

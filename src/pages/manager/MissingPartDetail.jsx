@@ -15,10 +15,10 @@ import {
   Phone,
   ChevronDown,
   ChevronUp,
-  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { getExportNoteOutOfStockById, updateExportNoteDetail } from "@/api/exportNotesApi";
@@ -26,24 +26,28 @@ import { getServiceCenterInventories } from "@/api/serviceCenterInventoriesApi";
 
 const statusClassMap = {
   PENDING: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700",
+  PROCESSING: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-300 dark:border-blue-700",
   APPROVED: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-300 dark:border-blue-700",
   EXPORTING: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-300 dark:border-purple-700",
   COMPLETED: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-300 dark:border-green-700",
   CANCELLED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-300 dark:border-red-700",
-  OUT_OF_STOCK: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-300 dark:border-red-700",
+  OUT_OF_STOCK: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700",
   STOCK_FOUND: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-300 dark:border-green-700",
-  STOCK_NOT_FOUND: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-300 dark:border-red-700",
+  STOCK_NOT_FOUND: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700",
+  NOT_FOUND: "bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300 border-pink-300 dark:border-pink-700",
 };
 
 const statusLabelMap = {
   PENDING: "Chờ duyệt",
+  PROCESSING: "Đang xử lý",
   APPROVED: "Đã duyệt",
   EXPORTING: "Đang xuất",
   COMPLETED: "Hoàn thành",
   CANCELLED: "Đã hủy",
-  OUT_OF_STOCK: "Hết hàng",
+  OUT_OF_STOCK: "Hết hàng trong kho",
   STOCK_FOUND: "Đã tìm thấy hàng",
-  STOCK_NOT_FOUND: "Không tìm thấy hàng",
+  STOCK_NOT_FOUND: "Hết hàng trong kho",
+  NOT_FOUND: "Không tìm thấy hàng",
 };
 
 const getStatusBadgeClass = (status) => statusClassMap[status] || "bg-muted text-muted-foreground border-border";
@@ -210,7 +214,7 @@ export default function MissingPartDetail() {
     });
   };
 
-  const handleUpdateStatus = async (detailId) => {
+  const handleStatusChange = async (detailId, newStatus) => {
     if (!detailId) {
       toast({
         title: "Lỗi",
@@ -224,7 +228,7 @@ export default function MissingPartDetail() {
       setUpdatingStatus((prev) => ({ ...prev, [detailId]: true }));
 
       const updateData = {
-        status: "STOCK_FOUND",
+        status: newStatus,
       };
 
       const response = await updateExportNoteDetail(detailId, updateData);
@@ -240,7 +244,7 @@ export default function MissingPartDetail() {
           if (!prev) return prev;
 
           const updatedDetails = (prev.exportNoteDetails || []).map((detail) =>
-            detail.id === detailId ? { ...detail, status: "STOCK_FOUND" } : detail
+            detail.id === detailId ? { ...detail, status: newStatus } : detail
           );
 
           return {
@@ -345,16 +349,6 @@ export default function MissingPartDetail() {
       subText: exportNote.serviceCenter?.address,
     },
     {
-      icon: User,
-      label: "Người xuất",
-      value: exportNote.exportBy
-        ? `${exportNote.exportBy.firstName || ""} ${exportNote.exportBy.lastName || ""}`.trim() ||
-          exportNote.exportBy.staffCode ||
-          "—"
-        : "—",
-      subText: exportNote.exportBy?.staffCode ? `Mã: ${exportNote.exportBy.staffCode}` : undefined,
-    },
-    {
       icon: FileText,
       label: "Ghi chú",
       value: exportNote.note || "—",
@@ -419,12 +413,6 @@ export default function MissingPartDetail() {
             >
               Danh sách phụ tùng đề xuất
             </TabsTrigger>
-            <TabsTrigger
-              value="log"
-              className="data-[state=active]:bg-white data-[state=active]:text-foreground data-[state=active]:shadow-sm font-semibold dark:data-[state=active]:bg-muted"
-            >
-              Nhật ký
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="parts" className="mt-4">
@@ -475,12 +463,35 @@ export default function MissingPartDetail() {
                             <td className="py-4 px-6 text-sm text-muted-foreground">{item.description || "—"}</td>
                             <td className="py-4 px-6 text-sm font-bold text-foreground">{item.quantity}</td>
                             <td className="py-4 px-6">
-                              <Badge
-                                variant="secondary"
-                                className={getStatusBadgeClass(item.status || "OUT_OF_STOCK")}
+                              <Select
+                                value={item.status === "STOCK_FOUND" || item.status === "NOT_FOUND" 
+                                  ? item.status
+                                  : item.status === "STOCK_NOT_FOUND" || item.status === "OUT_OF_STOCK"
+                                    ? undefined 
+                                    : undefined}
+                                onValueChange={(value) => handleStatusChange(item.detailId, value)}
+                                disabled={updatingStatus[item.detailId] || item.status === "COMPLETED"}
                               >
-                                {getStatusLabel(item.status || "OUT_OF_STOCK")}
-                              </Badge>
+                                <SelectTrigger className={`w-[180px] h-8 text-xs border ${getStatusBadgeClass(
+                                  item.status === "STOCK_FOUND" 
+                                    ? "STOCK_FOUND"
+                                    : item.status === "NOT_FOUND"
+                                    ? "NOT_FOUND"
+                                    : item.status === "STOCK_NOT_FOUND" || item.status === "OUT_OF_STOCK"
+                                    ? "STOCK_NOT_FOUND"
+                                    : "NOT_FOUND"
+                                )}`}>
+                                  <SelectValue placeholder={getStatusLabel(item.status || "STOCK_NOT_FOUND")}>
+                                    {item.status === "STOCK_FOUND" || item.status === "NOT_FOUND"
+                                      ? getStatusLabel(item.status)
+                                      : getStatusLabel(item.status || "STOCK_NOT_FOUND")}
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="STOCK_FOUND">Đã tìm thấy hàng</SelectItem>
+                                  <SelectItem value="NOT_FOUND">Không tìm thấy hàng</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </td>
                             <td className="py-4 px-6">
                               <div className="flex items-center gap-2">
@@ -497,16 +508,6 @@ export default function MissingPartDetail() {
                                 >
                                   <Search className="h-4 w-4" />
                                   {expandedPartId === item.id ? "Thu gọn" : "Tìm kiếm"}
-                                </Button>
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  className="gap-2 border border-green-200 dark:border-green-900/50 bg-white text-green-600 hover:bg-green-50"
-                                  onClick={() => handleUpdateStatus(item.detailId)}
-                                  disabled={updatingStatus[item.detailId] || item.status === "STOCK_FOUND"}
-                                >
-                                  <RefreshCw className={`h-4 w-4 ${updatingStatus[item.detailId] ? "animate-spin" : ""}`} />
-                                  {updatingStatus[item.detailId] ? "Đang cập nhật..." : "Cập nhật trạng thái"}
                                 </Button>
                               </div>
                             </td>
@@ -602,10 +603,7 @@ export default function MissingPartDetail() {
                                                             <MapPin className="h-3.5 w-3.5" />
                                                             <span>{branch.serviceCenterName}</span>
                                                           </div>
-                                                          <div className="flex items-center gap-2">
-                                                            <User className="h-3.5 w-3.5" />
-                                                            <span>QL kho: {branch.keeper || "—"}</span>
-                                                          </div>
+                                                      
                                                           <div className="flex items-center gap-2">
                                                             <Phone className="h-3.5 w-3.5" />
                                                             <span>{branch.phone || "—"}</span>
@@ -705,18 +703,6 @@ export default function MissingPartDetail() {
                     )}
                   </tbody>
                 </table>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="log" className="mt-4">
-            <div className="bg-card rounded-xl border border-border shadow-md p-12 text-center">
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center">
-                  <FileText className="h-10 w-10 text-muted-foreground/50" />
-                </div>
-                <p className="text-lg font-semibold text-foreground">Nhật ký</p>
-                <p className="text-sm text-muted-foreground">Chức năng này sẽ được cập nhật sớm</p>
               </div>
             </div>
           </TabsContent>
