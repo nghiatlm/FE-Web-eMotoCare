@@ -201,8 +201,7 @@ export default function StaffWarrantyPage() {
       {/* ✅ HEADER */}
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#ff4d4f", display: "flex", alignItems: "center", gap: 12 }}>
-          <Shield size={28} />
-          Danh sách Phiếu Bảo hành (RMA)
+          Danh sách phiếu bảo hành 
         </h2>
       </div>
 

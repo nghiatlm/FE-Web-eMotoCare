@@ -88,7 +88,7 @@ export default function BatteryImportModal({
       title={
         <div className="flex items-center gap-2">
           <UploadIcon className="h-5 w-5" style={{ color: "#ff4d4f" }} />
-          <span>Import dữ liệu Pin</span>
+          <span>Nhập dữ liệu Pin</span>
         </div>
       }
       open={open}

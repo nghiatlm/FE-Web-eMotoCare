@@ -723,10 +723,26 @@ export default function CampaignModeEVCheck({
   // ✅ Campaign: Không tự động lưu khi chọn biện pháp, chỉ lưu khi gửi báo giá
   // Để tránh reload trang và mất dữ liệu phụ tùng thay thế
 
+  // ✅ Kiểm tra item có vấn đề về kho (hết hàng hoặc chờ xuất kho)
+  const hasStockIssue = (row) => {
+    const exportStatus = row?.exportNoteStatus || exportNoteStatusMap[row?.id];
+    const exportStatusUpper = (exportStatus || "").toUpperCase();
+    return exportStatusUpper === "STOCK_NOT_FOUND" || exportStatusUpper === "STOCK_FOUND";
+  };
+
   const handleChange = (index, field, value) => {
     if (evCheckStatus === "INSPECTION_COMPLETED" && field !== "status") return;
     if (evCheckStatus === "QUOTE_APPROVED" && field !== "status") return;
     if (!canEditFields && field !== "status") return;
+
+    // ✅ Kiểm tra trạng thái xuất kho: Nếu hết hàng hoặc chờ xuất kho thì không cho tick hoàn thành
+    if (field === "status" && value === "COMPLETED") {
+      const currentRow = details[index];
+      if (hasStockIssue(currentRow)) {
+        toast.error("Không thể đánh dấu hoàn thành khi phụ tùng hết hàng hoặc đang chờ xuất kho.");
+        return;
+      }
+    }
 
     updateRow(index, { [field]: value });
 
@@ -995,9 +1011,9 @@ export default function CampaignModeEVCheck({
     { title: "STT", render: (_, __, i) => i + 1, width: 35 },
     {
       title: "Bộ phận",
-      width: 120,
+      width: 180,
       ellipsis: {
-        showTitle: false,
+        showTitle: true,
       },
       render: (_, r, i) => {
         const displayName = r.displayName || "";
@@ -1007,6 +1023,7 @@ export default function CampaignModeEVCheck({
           showSearch
           placeholder='Chọn bộ phận'
           value={r.partItemId || undefined}
+          style={{ width: "100%", minWidth: "160px" }}
           onChange={(v) => {
             const sel = vehiclePartOptions.find((p) => p.partItemId === v);
             const partItem = sel?.partItem;
@@ -1035,7 +1052,6 @@ export default function CampaignModeEVCheck({
           options={vehiclePartOptions}
           loading={vehiclePartLoading}
           disabled={readOnly || !canEditFields}
-              style={{ width: "100%", maxWidth: "100%" }}
           filterOption={(input, opt) =>
             opt.label.toLowerCase().includes(input.toLowerCase())
           }
@@ -1197,9 +1213,9 @@ export default function CampaignModeEVCheck({
     },
     {
       title: "Phụ tùng thay thế",
-      width: 130,
+      width: 200,
       ellipsis: {
-        showTitle: false,
+        showTitle: true,
       },
       render: (_, r, i) => {
         const replacePartName = r.replacePartName || "";
@@ -1208,7 +1224,7 @@ export default function CampaignModeEVCheck({
         if (replacePartName) {
           return (
             <Tooltip title={replacePartName} placement="topLeft">
-              <span style={{ color: "#1890ff", fontWeight: 500 }}>
+              <span style={{ color: "#1890ff", fontWeight: 500, whiteSpace: "nowrap", overflow: "visible" }}>
                 {replacePartName}
               </span>
             </Tooltip>
@@ -1299,24 +1315,31 @@ export default function CampaignModeEVCheck({
   const statusColumn = {
     title: (
       <div className='flex items-center gap-2'>
-        {details.filter((d) => d.id).length > 0 && (
+        {details.filter((d) => d.id && !hasStockIssue(d)).length > 0 && (
           <Checkbox
-            checked={details.every((d) => d.status === "COMPLETED")}
+            checked={details.filter(d => !hasStockIssue(d)).every((d) => d.status === "COMPLETED")}
             indeterminate={
-              details.some((d) => d.status === "COMPLETED") &&
-              details.some((d) => d.status !== "COMPLETED")
+              details.filter(d => !hasStockIssue(d)).some((d) => d.status === "COMPLETED") &&
+              details.filter(d => !hasStockIssue(d)).some((d) => d.status !== "COMPLETED")
             }
             onChange={(e) => {
               const checked = e.target.checked;
-              const updated = details.map((item) => ({
-                ...item,
-                status: checked ? "COMPLETED" : "PENDING",
-              }));
+              const updated = details.map((item) => {
+                // ✅ Chỉ cập nhật status cho item không có vấn đề kho
+                if (hasStockIssue(item)) {
+                  return item; // Giữ nguyên item có vấn đề kho
+                }
+                return {
+                  ...item,
+                  status: checked ? "COMPLETED" : "PENDING",
+                };
+              });
               setDetails(updated);
 
               const changes = {};
               updated.forEach((item) => {
-                if (item.id && checked) {
+                // ✅ Chỉ thêm vào statusChanges nếu không có vấn đề kho
+                if (item.id && checked && !hasStockIssue(item)) {
                   changes[item.id] = "COMPLETED";
                 }
               });
@@ -1330,6 +1353,10 @@ export default function CampaignModeEVCheck({
     width: 220,
     render: (_, r, i) => {
       const stat = REPAIR_STATUS[r.status] || REPAIR_STATUS.PENDING;
+      
+      // ✅ Kiểm tra trạng thái xuất kho: Nếu hết hàng hoặc chờ xuất kho thì không cho tick hoàn thành
+      const isStockIssue = hasStockIssue(r);
+      const isDisabled = readOnly || !canEditFields || isStockIssue;
 
       return (
         <div className='flex items-center gap-2'>
@@ -1342,18 +1369,19 @@ export default function CampaignModeEVCheck({
                 e.target.checked ? "COMPLETED" : "PENDING"
               );
             }}
-            disabled={readOnly || !canEditFields}
+            disabled={isDisabled}
           />
           <Tag
             color={stat.color}
               style={{
-              cursor: r.status !== "COMPLETED" ? "pointer" : "default",
+              cursor: !isDisabled && r.status !== "COMPLETED" ? "pointer" : "default",
                 fontWeight: 500,
                 borderRadius: 8,
                 padding: "2px 8px",
+                opacity: isDisabled ? 0.6 : 1,
             }}
             onClick={() => {
-              if (r.status !== "COMPLETED" && !readOnly) {
+              if (r.status !== "COMPLETED" && !isDisabled) {
                 handleChange(i, "status", "COMPLETED");
               }
               }}>

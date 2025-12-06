@@ -239,6 +239,7 @@ function RMADetails({ rma, details = [], loading }) {
       chassisNumber: rma?.vehicle?.chassisNumber,
       serviceCenterId: rma?.staff?.serviceCenterId,
       estimatedCost: 0,
+      type: "REPAIR_TYPE", // ✅ Set sẵn type là "Sửa chữa" khi tạo lịch từ RMA
       // ✅ Truyền đầy đủ thông tin customer và vehicle để hiển thị
       customer: rma?.customer,
       vehicle: rma?.vehicle,

@@ -6,12 +6,14 @@ export const getAppointments = ({
   page = 1,
   pageSize = 20,
   serviceCenterId,
+  technicianId,
   search,
   status,
 } = {}) => {
   const params = { page, pageSize };
 
   if (serviceCenterId) params.serviceCenterId = serviceCenterId;
+  if (technicianId) params.technicianId = technicianId;
   if (search) params.search = search.trim();
   if (status && status !== "all") params.status = status;
 

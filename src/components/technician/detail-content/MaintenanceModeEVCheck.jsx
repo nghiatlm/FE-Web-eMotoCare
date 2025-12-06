@@ -376,6 +376,13 @@ export default function MaintenanceModeEVCheck({
     return !!(row.rmaDetail || row.rmaDetailId || row.rmaDetail?.id);
   };
 
+  // ✅ Kiểm tra item có vấn đề về kho (hết hàng hoặc chờ xuất kho)
+  const hasStockIssue = (row) => {
+    const exportStatus = row?.exportNoteStatus || exportNoteStatusMap[row?.id];
+    const exportStatusUpper = (exportStatus || "").toUpperCase();
+    return exportStatusUpper === "STOCK_NOT_FOUND" || exportStatusUpper === "STOCK_FOUND";
+  };
+
   // ✅ Cho phép tạo RMA khi: còn bảo hành + có partItem + kết quả khác "Tốt" (hoặc rỗng) + chưa có RMA
   const isRMAEligible = (row) => {
     const result = (row.result || "").trim().toLowerCase();
@@ -482,6 +489,15 @@ export default function MaintenanceModeEVCheck({
           "Bộ phận đang trong thời gian bảo hành. Chỉ cho phép 'Kiểm tra' hoặc 'Bôi trơn'."
         );
         return; // Không cho thay đổi
+      }
+    }
+
+    // ✅ Kiểm tra trạng thái xuất kho: Nếu hết hàng hoặc chờ xuất kho thì không cho tick hoàn thành
+    if (field === "status" && value === "COMPLETED") {
+      const currentRow = evCheckDetails.find((r) => r.id === recordId);
+      if (hasStockIssue(currentRow)) {
+        toast.error("Không thể đánh dấu hoàn thành khi phụ tùng hết hàng hoặc đang chờ xuất kho.");
+        return;
       }
     }
 
@@ -654,9 +670,9 @@ export default function MaintenanceModeEVCheck({
     { title: "STT", render: (_, __, idx) => idx + 1, width: 35 },
     {
       title: "Hạng mục",
-      width: 120,
+      width: 180,
       ellipsis: {
-        showTitle: false,
+        showTitle: true,
       },
       render: (_, r) => {
         const partName = r.maintenanceStageDetail?.part?.name || r.partName || "—";
@@ -664,9 +680,8 @@ export default function MaintenanceModeEVCheck({
           <Tooltip title={partName} placement="topLeft">
             <span style={{ 
               display: "block",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap"
+              whiteSpace: "nowrap",
+              overflow: "visible"
             }}>
               {partName}
             </span>
@@ -813,9 +828,9 @@ export default function MaintenanceModeEVCheck({
     },
     {
       title: "Phụ tùng thay thế",
-      width: 130,
+      width: 200,
       ellipsis: {
-        showTitle: false,
+        showTitle: true,
       },
       render: (_, r, i) => {
         const isWarranty = checkWarrantyStatus(r.partItem);
@@ -878,7 +893,7 @@ export default function MaintenanceModeEVCheck({
                 isWarranty
           }
           loading={partLoading}
-              style={{ width: "100%", maxWidth: "100%" }}
+              style={{ width: "100%", minWidth: "180px" }}
               onDropdownVisibleChange={async (open) => {
                 // ✅ Load suggested parts khi mở dropdown với partTypeId từ bộ phận hiện tại (giống repair mode)
                 if (open) {
@@ -1104,24 +1119,31 @@ export default function MaintenanceModeEVCheck({
   const statusColumnForRepair = {
     title: (
       <div className='flex items-center gap-2'>
-        {evCheckDetails.filter((d) => d.id).length > 0 && (
+        {evCheckDetails.filter((d) => d.id && !hasStockIssue(d)).length > 0 && (
           <Checkbox
-            checked={evCheckDetails.every((d) => d.status === "COMPLETED")}
+            checked={evCheckDetails.filter(d => !hasStockIssue(d)).every((d) => d.status === "COMPLETED")}
             indeterminate={
-              evCheckDetails.some((d) => d.status === "COMPLETED") &&
-              evCheckDetails.some((d) => d.status !== "COMPLETED")
+              evCheckDetails.filter(d => !hasStockIssue(d)).some((d) => d.status === "COMPLETED") &&
+              evCheckDetails.filter(d => !hasStockIssue(d)).some((d) => d.status !== "COMPLETED")
             }
             onChange={(e) => {
               const checked = e.target.checked;
-              const updated = evCheckDetails.map((item) => ({
-                ...item,
-                status: checked ? "COMPLETED" : "PENDING",
-              }));
+              const updated = evCheckDetails.map((item) => {
+                // ✅ Chỉ cập nhật status cho item không có vấn đề kho
+                if (hasStockIssue(item)) {
+                  return item; // Giữ nguyên item có vấn đề kho
+                }
+                return {
+                  ...item,
+                  status: checked ? "COMPLETED" : "PENDING",
+                };
+              });
               setEvCheckDetails(updated);
 
               const changes = {};
               updated.forEach((item) => {
-                if (item.id && checked) {
+                // ✅ Chỉ thêm vào statusChanges nếu không có vấn đề kho
+                if (item.id && checked && !hasStockIssue(item)) {
                   changes[item.id] = "COMPLETED";
                 }
               });
@@ -1135,6 +1157,10 @@ export default function MaintenanceModeEVCheck({
     width: 120,
     render: (_, r, i) => {
       const stat = REPAIR_STATUS[r.status] || REPAIR_STATUS.PENDING;
+      
+      // ✅ Kiểm tra trạng thái xuất kho: Nếu hết hàng hoặc chờ xuất kho thì không cho tick hoàn thành
+      const isStockIssue = hasStockIssue(r);
+      const isDisabled = readOnly || isStockIssue;
 
       return (
         <div className='flex items-center gap-2'>
@@ -1147,18 +1173,19 @@ export default function MaintenanceModeEVCheck({
                 e.target.checked ? "COMPLETED" : "PENDING"
               );
             }}
-            disabled={readOnly}
+            disabled={isDisabled}
           />
           <Tag
             color={stat.color}
             style={{
-              cursor: r.status !== "COMPLETED" ? "pointer" : "default",
+              cursor: !isDisabled && r.status !== "COMPLETED" ? "pointer" : "default",
               fontWeight: 500,
               borderRadius: 8,
               padding: "2px 8px",
+              opacity: isDisabled ? 0.6 : 1,
             }}
             onClick={() => {
-              if (r.status !== "COMPLETED" && !readOnly) {
+              if (r.status !== "COMPLETED" && !isDisabled) {
                 handleChange(r.id, "status", "COMPLETED");
               }
             }}>

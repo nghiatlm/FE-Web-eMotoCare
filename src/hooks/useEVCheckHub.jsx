@@ -18,132 +18,167 @@ export default function useEVCheckHub(evCheckId, onUpdate) {
   useEffect(() => {
     if (!evCheckId) return;
 
-    // Lấy token từ localStorage
-    const user = JSON.parse(localStorage.getItem("user"));
-    const token = user?.token || "";
+    // nếu hub AllowAnonymous thì token cũng được, không có cũng không sao
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const token = user?.token;
 
-    if (!token) {
-      console.warn("⚠️ No token found, cannot connect to SignalR hub");
-      return;
-    }
-
-    // Lấy API base URL từ env
-    let API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-    
-    // ✅ Nếu không có env, dùng URL mặc định (có thể thay đổi sau)
-    if (!API_BASE_URL) {
-      // ✅ Dùng URL từ code example hoặc URL thực tế của bạn
-      // Có thể thay đổi URL này hoặc tạo file .env
-      API_BASE_URL = "https://bemodernestate.site"; // ✅ Thay bằng URL thực tế của bạn
-      console.warn("⚠️ VITE_API_BASE_URL not set in .env file");
-      console.warn("⚠️ Using default URL:", API_BASE_URL);
-      console.warn("⚠️ Please create .env file with: VITE_API_BASE_URL=https://your-api-url.com/api");
-    }
-    
-    // ✅ Loại bỏ `/api` khỏi URL vì hub URL không có `/api`
-    // Ví dụ: `http://localhost:8083/api` → `http://localhost:8083`
-    // Hoặc: `https://bemodernestate.site/api` → `https://bemodernestate.site`
-    let baseUrl = API_BASE_URL.replace(/\/api\/?$/, "");
-    
+    // base URL có /api thì bỏ đi
+    let API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://bemodernestate.site/api";
+    const baseUrl = API_BASE_URL.replace(/\/api\/?$/, "");
     const hubUrl = `${baseUrl}/hubs/notify`;
 
-    console.log("🔌 Connecting to SignalR hub:", hubUrl);
+    console.log("🔌 Connecting to EVCheck SignalR hub:", hubUrl);
 
-    // Tạo connection
-    // ✅ Backend yêu cầu negotiate trước (có connection ID trong log trước)
-    // ✅ Gửi token trong cả Authorization header (cho negotiate) và accessTokenFactory (cho WebSocket)
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(hubUrl, {
-        skipNegotiation: false, // ✅ Cần negotiate để backend tạo connection ID
-        transport: signalR.HttpTransportType.WebSockets, // ✅ Ưu tiên WebSockets
-        accessTokenFactory: () => token, // ✅ Token cho WebSocket connection (query parameter)
-        headers: {
-          Authorization: `Bearer ${token}`, // ✅ Token cho negotiate request (Authorization header)
-        },
+        // hub AllowAnonymous nên không bắt buộc, nhưng để cũng được
+        accessTokenFactory: token ? () => token : undefined,
+        // 🔒 CHỈ dùng LongPolling cho chắc, giống Appointment
+        transport: signalR.HttpTransportType.LongPolling,
       })
-      .withAutomaticReconnect({
-        nextRetryDelayInMilliseconds: (retryContext) => {
-          // Retry sau 0s, 2s, 10s, 30s, sau đó mỗi 30s
-          if (retryContext.previousRetryCount === 0) return 0;
-          if (retryContext.previousRetryCount === 1) return 2000;
-          if (retryContext.previousRetryCount === 2) return 10000;
-          return 30000;
-        },
-      })
+      .withAutomaticReconnect()
+      .configureLogging(signalR.LogLevel.Information)
       .build();
 
     connectionRef.current = connection;
 
-    // ✅ Listen for updates - Định nghĩa trước để dùng trong startConnection
-    const handleReceiveUpdate = (entity, data) => {
-      console.log("📩 ReceiveUpdate:", entity, data);
-
+    const handleReceiveCreate = (entity, data) => {
+      console.log("📩 [useEVCheckHub] ReceiveCreate:", { entity, data, evCheckId, hasCallback: !!onUpdateRef.current });
       // Nếu là dữ liệu của EVCheck và ID trùng
       if (entity === "EVCheck" && data?.id === evCheckId) {
-        console.log("🔄 EVCheck updated, reloading data...");
-        // Gọi callback để reload data (dùng ref để tránh stale closure)
-        if (onUpdateRef.current && typeof onUpdateRef.current === "function") {
-          onUpdateRef.current();
+        console.log("🔄 [useEVCheckHub] EVCheck created, reloading data...");
+        if (onUpdateRef.current) {
+          try {
+            // ✅ Truyền entity và data vào callback nếu callback chấp nhận tham số
+            if (onUpdateRef.current.length > 0) {
+              console.log("📩 [useEVCheckHub] Calling callback with params:", { entity, data });
+              onUpdateRef.current(entity, data);
+            } else {
+              console.log("📩 [useEVCheckHub] Calling callback without params");
+              onUpdateRef.current();
+            }
+          } catch (error) {
+            console.error("❌ [useEVCheckHub] Error in callback:", error);
+          }
+        } else {
+          console.warn("⚠️ [useEVCheckHub] No callback registered");
         }
       }
     };
 
-    // Start connection với fallback transport
+    const handleReceiveUpdate = (entity, data) => {
+      console.log("📩 [useEVCheckHub] ReceiveUpdate:", { entity, data, evCheckId, hasCallback: !!onUpdateRef.current });
+      // Nếu là dữ liệu của EVCheck và ID trùng
+      if (entity === "EVCheck" && data?.id === evCheckId) {
+        console.log("🔄 [useEVCheckHub] EVCheck updated, reloading data...");
+        if (onUpdateRef.current) {
+          try {
+            // ✅ Truyền entity và data vào callback nếu callback chấp nhận tham số
+            if (onUpdateRef.current.length > 0) {
+              console.log("📩 [useEVCheckHub] Calling callback with params:", { entity, data });
+              onUpdateRef.current(entity, data);
+            } else {
+              console.log("📩 [useEVCheckHub] Calling callback without params");
+              onUpdateRef.current();
+            }
+          } catch (error) {
+            console.error("❌ [useEVCheckHub] Error in callback:", error);
+          }
+        } else {
+          console.warn("⚠️ [useEVCheckHub] No callback registered");
+        }
+      }
+    };
+
+    // ✅ Đăng ký listeners trước khi start
+    connection.on("ReceiveCreate", handleReceiveCreate);
+    connection.on("ReceiveUpdate", handleReceiveUpdate);
+    connection.on("ReceiveDelete", (entity, data) => {
+      console.log("📩 [useEVCheckHub] ReceiveDelete:", { entity, data, evCheckId });
+      // Nếu là dữ liệu của EVCheck và ID trùng
+      if (entity === "EVCheck" && data?.id === evCheckId) {
+        console.log("🔄 [useEVCheckHub] EVCheck deleted, reloading data...");
+        if (onUpdateRef.current) {
+          try {
+            // ✅ Truyền entity và data vào callback nếu callback chấp nhận tham số
+            if (onUpdateRef.current.length > 0) {
+              onUpdateRef.current(entity, data);
+            } else {
+              onUpdateRef.current();
+            }
+          } catch (error) {
+            console.error("❌ [useEVCheckHub] Error in callback:", error);
+          }
+        }
+      }
+    });
+
+    connection.onreconnected((id) => console.log("✅ [useEVCheckHub] SignalR reconnected:", id));
+    connection.onreconnecting((e) => console.log("🔄 [useEVCheckHub] SignalR reconnecting...", e));
+    connection.onclose((e) => console.log("❌ [useEVCheckHub] SignalR connection closed:", e));
+
+    // ✅ Start connection và xử lý lỗi
     const startConnection = async () => {
       try {
-        // ✅ Negotiate trước để lấy connection ID
         await connection.start();
         console.log("✅ Connected to EVCheck SignalR hub");
         console.log("📡 Connection ID:", connection.connectionId);
-        console.log("📡 Transport:", connection.connection?.transport?.name || "Unknown");
       } catch (err) {
-        console.warn("⚠️ SignalR WebSocket connection failed:", err.message);
-        
-        // ✅ Kiểm tra token
-        if (!token) {
-          console.warn("⚠️ No token available for SignalR connection");
+        // ✅ Ignore AbortError (xảy ra khi cleanup được gọi trước khi start hoàn tất)
+        if (err.name === "AbortError" || 
+            err.message?.includes("AbortError") || 
+            err.message?.includes("stop() was called") ||
+            err.message?.includes("Failed to start the HttpConnection before stop()")) {
+          console.log("ℹ️ [useEVCheckHub] Connection start aborted (cleanup called)");
           return;
         }
         
-        // ✅ Nếu 401, có thể token không hợp lệ hoặc backend chưa cấu hình middleware
-        if (err.message?.includes("401") || err.message?.includes("Unauthorized")) {
-          console.warn("⚠️ Token authentication failed (401).");
-          console.warn("ℹ️ Backend may need middleware to convert token from query parameter to Authorization header.");
-          console.warn("ℹ️ Real-time updates are disabled. App will continue to work normally.");
+        // ✅ Xử lý lỗi 404 - endpoint không tồn tại
+        if (err.message?.includes("404") || err.statusCode === 404) {
+          console.warn("⚠️ [useEVCheckHub] Endpoint not found (404). Hub URL:", hubUrl);
+          console.warn("ℹ️ Backend may need to configure SignalR route for EVCheck.");
+          console.warn("ℹ️ Real-time updates disabled, app vẫn chạy bình thường.");
           return;
         }
         
-        // ✅ Không fallback SSE vì EventSource cũng không hỗ trợ custom headers
-        console.warn("ℹ️ Real-time updates for EVCheck are disabled.");
-        console.warn("ℹ️ Backend may need to configure SignalR to accept token from query parameter.");
-        console.warn("ℹ️ App will continue to work normally, but EVCheck updates require page reload.");
+        console.error("❌ [useEVCheckHub] EVCheck SignalR connection error:", err);
+        console.warn("ℹ️ Real-time updates disabled, app vẫn chạy bình thường.");
       }
     };
 
     startConnection();
 
-    connection.on("ReceiveUpdate", handleReceiveUpdate);
-
-    // Handle reconnection
-    connection.onreconnecting((error) => {
-      console.log("🔄 SignalR reconnecting...", error);
-    });
-
-    connection.onreconnected((connectionId) => {
-      console.log("✅ SignalR reconnected:", connectionId);
-    });
-
-    connection.onclose((error) => {
-      console.log("❌ SignalR connection closed:", error);
-    });
-
-    // Cleanup
+    // ✅ Cleanup function
     return () => {
       if (connectionRef.current) {
-        console.log("🔌 Disconnecting from SignalR hub");
-        connectionRef.current.off("ReceiveUpdate", handleReceiveUpdate);
-        connectionRef.current.stop();
-        connectionRef.current = null;
+        console.log("🔌 [useEVCheckHub] Cleanup: Disconnecting from SignalR hub");
+        
+        const currentConnection = connectionRef.current;
+        connectionRef.current = null; // ✅ Set null trước để tránh race condition
+        
+        try {
+          // ✅ Kiểm tra state và cleanup
+          if (currentConnection.state !== signalR.HubConnectionState.Disconnected) {
+            currentConnection.off("ReceiveCreate", handleReceiveCreate);
+            currentConnection.off("ReceiveUpdate", handleReceiveUpdate);
+            currentConnection.off("ReceiveDelete");
+            
+            // ✅ Stop và ignore AbortError
+            currentConnection.stop().catch(err => {
+              // ✅ Ignore các lỗi khi cleanup (có thể connection đã đóng)
+              if (!err.message?.includes("AbortError") && 
+                  !err.message?.includes("stop() was called") &&
+                  !err.message?.includes("Cannot start")) {
+                console.warn("⚠️ [useEVCheckHub] Error during stop:", err.message);
+              }
+            });
+          }
+        } catch (err) {
+          // ✅ Ignore cleanup errors
+          if (!err.message?.includes("AbortError")) {
+            console.warn("⚠️ [useEVCheckHub] Cleanup error:", err.message);
+          }
+        }
       }
     };
   }, [evCheckId]); // ✅ Chỉ depend vào evCheckId, không depend vào onUpdate

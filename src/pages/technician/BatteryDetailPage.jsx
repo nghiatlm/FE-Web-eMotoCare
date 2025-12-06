@@ -399,7 +399,6 @@ export default function BatteryDetailPage() {
             Quay lại
           </Button>
           <div className="flex items-center gap-2">
-            <Battery className="h-6 w-6" style={{ color: "#ff4d4f" }} />
             <Title level={2} style={{ margin: 0, color: "#ff4d4f" }}>
               Chi tiết dữ liệu Pin
             </Title>
@@ -760,8 +759,8 @@ export default function BatteryDetailPage() {
                       },
                     ];
 
-                    // ✅ Hiển thị conclusion riêng biệt và nổi bật hơn
-                    const hasConclusion = conclusionObj.conclusion;
+                    // ✅ Hiển thị solution riêng biệt và nổi bật hơn (key mới trong cấu trúc mới)
+                    const hasSolution = conclusionObj.solution || conclusionObj.conclusion;
 
                     return (
                       <div className="space-y-6">
@@ -918,17 +917,17 @@ export default function BatteryDetailPage() {
                         </div>
 
                         {/* ✅ Kết luận cuối cùng - nổi bật và chiếm full width */}
-                        {hasConclusion && (
+                        {hasSolution && (
                           <Card
                             style={{
-                              backgroundColor: conclusionObj.conclusion.includes("Bảo Hành") || conclusionObj.conclusion.includes("Thay Thế")
+                              backgroundColor: (conclusionObj.solution || conclusionObj.conclusion || "").includes("Bảo Hành") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("Thay Thế")
                                 ? "#fff1f0"
-                                : conclusionObj.conclusion.includes("tốt") || conclusionObj.conclusion.includes("bình thường")
+                                : (conclusionObj.solution || conclusionObj.conclusion || "").includes("tốt") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("bình thường")
                                 ? "#f6ffed"
                                 : "#fffbe6",
-                              border: conclusionObj.conclusion.includes("Bảo Hành") || conclusionObj.conclusion.includes("Thay Thế")
+                              border: (conclusionObj.solution || conclusionObj.conclusion || "").includes("Bảo Hành") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("Thay Thế")
                                 ? "2px solid #ff4d4f"
-                                : conclusionObj.conclusion.includes("tốt") || conclusionObj.conclusion.includes("bình thường")
+                                : (conclusionObj.solution || conclusionObj.conclusion || "").includes("tốt") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("bình thường")
                                 ? "2px solid #52c41a"
                                 : "2px solid #faad14",
                               borderRadius: "12px",
@@ -941,9 +940,9 @@ export default function BatteryDetailPage() {
                               <div className="flex items-center gap-3">
                                 <div
                                   style={{
-                                    color: conclusionObj.conclusion.includes("Bảo Hành") || conclusionObj.conclusion.includes("Thay Thế")
+                                    color: (conclusionObj.solution || conclusionObj.conclusion || "").includes("Bảo Hành") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("Thay Thế")
                                       ? "#ff4d4f"
-                                      : conclusionObj.conclusion.includes("tốt") || conclusionObj.conclusion.includes("bình thường")
+                                      : (conclusionObj.solution || conclusionObj.conclusion || "").includes("tốt") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("bình thường")
                                       ? "#52c41a"
                                       : "#faad14",
                                     display: "flex",
@@ -952,9 +951,9 @@ export default function BatteryDetailPage() {
                                     width: "40px",
                                     height: "40px",
                                     borderRadius: "10px",
-                                    backgroundColor: conclusionObj.conclusion.includes("Bảo Hành") || conclusionObj.conclusion.includes("Thay Thế")
+                                    backgroundColor: (conclusionObj.solution || conclusionObj.conclusion || "").includes("Bảo Hành") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("Thay Thế")
                                       ? "#ff4d4f20"
-                                      : conclusionObj.conclusion.includes("tốt") || conclusionObj.conclusion.includes("bình thường")
+                                      : (conclusionObj.solution || conclusionObj.conclusion || "").includes("tốt") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("bình thường")
                                       ? "#52c41a20"
                                       : "#faad1420",
                                   }}
@@ -965,16 +964,16 @@ export default function BatteryDetailPage() {
                                   level={4} 
                                   style={{ 
                                     margin: 0,
-                                    color: conclusionObj.conclusion.includes("Bảo Hành") || conclusionObj.conclusion.includes("Thay Thế")
+                                    color: (conclusionObj.solution || conclusionObj.conclusion || "").includes("Bảo Hành") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("Thay Thế")
                                       ? "#ff4d4f"
-                                      : conclusionObj.conclusion.includes("tốt") || conclusionObj.conclusion.includes("bình thường")
+                                      : (conclusionObj.solution || conclusionObj.conclusion || "").includes("tốt") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("bình thường")
                                       ? "#52c41a"
                                       : "#faad14",
                                     fontWeight: 700,
                                     fontSize: "18px",
                                   }}
                                 >
-                                  Kết luận
+                                  Giải pháp
                                 </Title>
                               </div>
                               <div
@@ -988,7 +987,7 @@ export default function BatteryDetailPage() {
                                   textAlign: "justify",
                                 }}
                               >
-                                {conclusionObj.conclusion.split(/(\*\*.*?\*\*)/g).map((part, index) => {
+                                {(conclusionObj.solution || conclusionObj.conclusion || "").split(/(\*\*.*?\*\*)/g).map((part, index) => {
                                   if (part.startsWith("**") && part.endsWith("**")) {
                                     const text = part.replace(/\*\*/g, "");
                                     return (

@@ -1,7 +1,9 @@
 // src/components/service-staff/BookingForm.jsx
 import { useEffect, useState, useRef } from "react";
-import { Form, InputNumber, DatePicker, Button, Select, Input, Card, Divider, Row, Col, Space, Descriptions, Tag, Spin } from "antd";
-import { User, Car, Calendar, Clock, FileText, Settings, Wrench, Search, Phone, Mail, MapPin, Hash } from "lucide-react";
+import { Form, InputNumber, DatePicker, Button, Select, Input, Card, Divider, Row, Col, Space, Descriptions, Tag, Spin, Typography } from "antd";
+import { User, Car, CarFront, Calendar, Clock, FileText, Settings, Wrench, Search, Phone, Mail, MapPin, Hash, Palette } from "lucide-react";
+
+const { Text, Title } = Typography;
 import { toast } from "@/components/ui/sonner";
 import dayjs from "dayjs";
 
@@ -628,138 +630,143 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
               {/* ✅ Hiển thị thông tin sau khi nhập số khung */}
               {vehicleInfo ? (
                 <div style={{ marginTop: 16 }}>
-                  <Row gutter={[16, 16]} style={{ display: "flex" }}>
-                    {/* Thông tin khách hàng */}
+                  <Row gutter={16}>
+                    {/* Card khách hàng */}
                     {vehicleInfo.customer && (
-                      <Col xs={24} md={12} style={{ display: "flex" }}>
-                        <Card 
-                          title={
-                            <Space>
-                              <div style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: "#e6f7ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <User size={20} style={{ color: "#1890ff" }} />
+                      <Col xs={24} lg={12}>
+                        <Card
+                          size="small"
+                          bodyStyle={{ padding: 16 }}
+                          style={{
+                            borderRadius: 14,
+                            border: "1px solid #f5f5f5",
+                            background: "#fff",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
+                            <Space size={8}>
+                              <div
+                                style={{
+                                  width: 28,
+                                  height: 28,
+                                  borderRadius: "999px",
+                                  background: "rgba(24, 144, 255, 0.1)",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                <User size={16} color="#1890ff" />
                               </div>
-                              <span style={{ fontWeight: 600, fontSize: 16 }}>Thông tin khách hàng</span>
+                              <Text strong>Thông tin khách hàng</Text>
                             </Space>
-                          }
-                          style={{ borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.08)", width: "100%", display: "flex", flexDirection: "column" }}
-                          headStyle={{ borderBottom: "1px solid #f0f0f0", padding: "18px 24px", backgroundColor: "#fafafa" }}
-                          bodyStyle={{ padding: "24px", flex: 1 }}>
-                          <Descriptions column={1} size="middle" colon={false} style={{ margin: 0 }}>
-                            <Descriptions.Item 
-                              label={
-                                <Space size={6}>
-                                  <User size={16} style={{ color: "#595959" }} />
-                                  <span style={{ fontWeight: 500 }}>Họ tên</span>
-                                </Space>
-                              }
-                              style={{ paddingBottom: 12 }}>
-                              <span style={{ fontWeight: 500, fontSize: 15 }}>
-                                {vehicleInfo.customer.firstName} {vehicleInfo.customer.lastName}
-                              </span>
-                            </Descriptions.Item>
-                            <Descriptions.Item 
-                              label={
-                                <Space size={6}>
-                                  <Hash size={16} style={{ color: "#595959" }} />
-                                  <span style={{ fontWeight: 500 }}>Mã KH</span>
-                                </Space>
-                              }
-                              style={{ paddingBottom: 12 }}>
-                              <Tag color="blue" style={{ fontSize: 13, padding: "4px 12px" }}>
+                          </div>
+
+                          <Divider style={{ margin: "8px 0" }} />
+
+                          <Space direction="vertical" size={6} style={{ width: "100%" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between" }}>
+                              <Text type="secondary">Họ tên</Text>
+                              <Text strong>{vehicleInfo.customer.firstName} {vehicleInfo.customer.lastName}</Text>
+                            </div>
+
+                            <div style={{ display: "flex", justifyContent: "space-between" }}>
+                              <Space size={6}>
+                                <Hash size={14} style={{ color: "#8c8c8c" }} />
+                                <Text type="secondary">Mã KH</Text>
+                              </Space>
+                              <Tag color="blue" style={{ borderRadius: 999 }}>
                                 {vehicleInfo.customer.customerCode}
                               </Tag>
-                            </Descriptions.Item>
-                            <Descriptions.Item 
-                              label={
-                                <Space size={6}>
-                                  <Phone size={16} style={{ color: "#595959" }} />
-                                  <span style={{ fontWeight: 500 }}>SĐT</span>
-                                </Space>
-                              }
-                              style={{ paddingBottom: 12 }}>
-                              {vehicleInfo.customer.account?.phone || "N/A"}
-                            </Descriptions.Item>
-                            <Descriptions.Item 
-                              label={
-                                <Space size={6}>
-                                  <Mail size={16} style={{ color: "#595959" }} />
-                                  <span style={{ fontWeight: 500 }}>Email</span>
-                                </Space>
-                              }
-                              style={{ paddingBottom: 0 }}>
-                              {vehicleInfo.customer.account?.email || "N/A"}
-                            </Descriptions.Item>
-                          </Descriptions>
+                            </div>
+
+                            <div style={{ display: "flex", justifyContent: "space-between" }}>
+                              <Space size={6}>
+                                <Phone size={14} style={{ color: "#8c8c8c" }} />
+                                <Text type="secondary">SĐT</Text>
+                              </Space>
+                              <Text strong>{vehicleInfo.customer.account?.phone || "N/A"}</Text>
+                            </div>
+
+                            <div style={{ display: "flex", justifyContent: "space-between" }}>
+                              <Space size={6}>
+                                <Mail size={14} style={{ color: "#8c8c8c" }} />
+                                <Text type="secondary">Email</Text>
+                              </Space>
+                              <Text strong>{vehicleInfo.customer.account?.email || "N/A"}</Text>
+                            </div>
+                          </Space>
                         </Card>
                       </Col>
                     )}
-                    
-                    {/* Thông tin xe */}
+
+                    {/* Card xe */}
                     {vehicleInfo.vehicle && (
-                      <Col xs={24} md={12} style={{ display: "flex" }}>
-                        <Card 
-                          title={
-                            <Space>
-                              <div style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: "#fff7e6", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <Car size={20} style={{ color: "#fa8c16" }} />
+                      <Col xs={24} lg={12}>
+                        <Card
+                          size="small"
+                          bodyStyle={{ padding: 16 }}
+                          style={{
+                            borderRadius: 14,
+                            border: "1px solid #f5f5f5",
+                            background: "#fff",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                            <Space size={8}>
+                              <div
+                                style={{
+                                  width: 28,
+                                  height: 28,
+                                  borderRadius: "999px",
+                                  background: "rgba(250, 173, 20, 0.12)",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                <CarFront size={16} color="#fa8c16" />
                               </div>
-                              <span style={{ fontWeight: 600, fontSize: 16 }}>Thông tin xe</span>
+                              <Text strong>Thông tin xe</Text>
                             </Space>
-                          }
-                          style={{ borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.08)", width: "100%", display: "flex", flexDirection: "column" }}
-                          headStyle={{ borderBottom: "1px solid #f0f0f0", padding: "18px 24px", backgroundColor: "#fafafa" }}
-                          bodyStyle={{ padding: "24px", flex: 1 }}>
-                          <Descriptions column={1} size="middle" colon={false} style={{ margin: 0 }}>
-                            <Descriptions.Item 
-                              label={
-                                <Space size={6}>
-                                  <Car size={16} style={{ color: "#595959" }} />
-                                  <span style={{ fontWeight: 500 }}>Mẫu xe</span>
-                                </Space>
-                              }
-                              style={{ paddingBottom: 12 }}>
-                              <span style={{ fontWeight: 500, fontSize: 15 }}>{vehicleInfo.vehicle.modelName || "N/A"}</span>
-                            </Descriptions.Item>
-                            <Descriptions.Item 
-                              label={
-                                <Space size={6}>
-                                  <Hash size={16} style={{ color: "#595959" }} />
-                                  <span style={{ fontWeight: 500 }}>Số khung</span>
-                                </Space>
-                              }
-                              style={{ paddingBottom: 12 }}>
-                              <Tag color="orange" style={{ fontSize: 13, padding: "4px 12px" }}>
+                          </div>
+
+                          <Divider style={{ margin: "8px 0" }} />
+
+                          <Space direction="vertical" size={6} style={{ width: "100%" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between" }}>
+                              <Text type="secondary">Mẫu xe</Text>
+                              <Text strong>{vehicleInfo.vehicle.modelName || "N/A"}</Text>
+                            </div>
+
+                            <div style={{ display: "flex", justifyContent: "space-between" }}>
+                              <Space size={6}>
+                                <Hash size={14} style={{ color: "#8c8c8c" }} />
+                                <Text type="secondary">Số khung</Text>
+                              </Space>
+                              <Tag color="gold" style={{ borderRadius: 999 }}>
                                 {vehicleInfo.vehicle.chassisNumber || "N/A"}
                               </Tag>
-                            </Descriptions.Item>
-                            <Descriptions.Item 
-                              label={
-                                <Space size={6}>
-                                  <Hash size={16} style={{ color: "#595959" }} />
-                                  <span style={{ fontWeight: 500 }}>Số máy</span>
-                                </Space>
-                              }
-                              style={{ paddingBottom: 12 }}>
-                              {vehicleInfo.vehicle.engineNumber || "N/A"}
-                            </Descriptions.Item>
-                            <Descriptions.Item 
-                              label={
-                                <Space size={6}>
-                                  <Car size={16} style={{ color: "#595959" }} />
-                                  <span style={{ fontWeight: 500 }}>Màu sắc</span>
-                                </Space>
-                              }
-                              style={{ paddingBottom: 0 }}>
-                              <Tag color="purple" style={{ fontSize: 13, padding: "4px 12px" }}>
+                            </div>
+
+                            <div style={{ display: "flex", justifyContent: "space-between" }}>
+                              <Text type="secondary">Số máy</Text>
+                              <Text strong>{vehicleInfo.vehicle.engineNumber || "N/A"}</Text>
+                            </div>
+
+                            <div style={{ display: "flex", justifyContent: "space-between" }}>
+                              <Space size={6}>
+                                <Palette size={14} style={{ color: "#8c8c8c" }} />
+                                <Text type="secondary">Màu sắc</Text>
+                              </Space>
+                              <Tag color="purple" style={{ borderRadius: 999 }}>
                                 {vehicleInfo.vehicle.color || "N/A"}
                               </Tag>
-                            </Descriptions.Item>
-                          </Descriptions>
+                            </div>
+                          </Space>
                         </Card>
                       </Col>
                     )}
-                    
-                   
                   </Row>
                 </div>
               ) : null}

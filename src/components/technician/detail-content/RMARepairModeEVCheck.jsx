@@ -483,9 +483,9 @@ export default function RMARepairModeEVCheck({
     { title: "STT", render: (_, __, i) => i + 1, width: 35 },
     {
       title: "Bộ phận",
-      width: 120,
+      width: 180,
       ellipsis: {
-        showTitle: false,
+        showTitle: true,
       },
       render: (_, r, i) => {
         const displayName = r.displayName || "";
@@ -512,6 +512,7 @@ export default function RMARepairModeEVCheck({
               showSearch
               placeholder='Chọn bộ phận'
               value={partItemId || undefined}
+              style={{ width: "100%", minWidth: "160px" }}
               onChange={(v) => {
                 const sel = allOptions.find((p) => p.partItemId === v);
                 const partItem = sel?.partItem;
@@ -527,7 +528,6 @@ export default function RMARepairModeEVCheck({
               options={allOptions}
               loading={vehiclePartLoading}
               disabled={readOnly || !canEditFields}
-              style={{ width: "100%", maxWidth: "100%" }}
               filterOption={(input, opt) =>
                 opt.label.toLowerCase().includes(input.toLowerCase())
               }
