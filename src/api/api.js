@@ -21,7 +21,6 @@ api.interceptors.request.use(
           headers: config.headers,
         });
       } catch (logError) {
-        // Ignore logging errors để tránh ảnh hưởng đến request
       }
     }
 

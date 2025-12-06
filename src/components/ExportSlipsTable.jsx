@@ -33,14 +33,21 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
       
       if (response.success && response.data) {
         // Transform API data to match UI format
-        const transformedRows = response.data.rowDatas.map(item => ({
-          id: item.code || item.id,
-          exportTo: item.exportTo || "N/A",
-          date: item.exportDate || item.createdAt || "",
-          totalQuantity: item.totalQuantity || 0,
-          status: item.exportNoteStatus || item.status || "PENDING",
-          rawData: item
-        }));
+        const transformedRows = response.data.rowDatas.map(item => {
+          // Tính tổng số lượng phụ tùng cần xuất từ exportNoteDetails
+          const totalPartsQuantity = item.exportNoteDetails?.reduce((sum, detail) => {
+            return sum + (detail.quantity || 0);
+          }, 0) || item.totalQuantity || 0;
+          
+          return {
+            id: item.code || item.id,
+            exportTo: item.exportTo || "N/A",
+            date: item.exportDate || item.createdAt || "",
+            totalQuantity: totalPartsQuantity,
+            status: item.exportNoteStatus || item.status || "PENDING",
+            rawData: item
+          };
+        });
         
         setRows(transformedRows);
         setTotal(response.data.total || 0);
@@ -167,11 +174,11 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
   // Loading state
   if (loading) {
     return (
-      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-        <div className="flex items-center justify-center py-16">
-          <div className="text-center space-y-4">
-            <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-red-200 border-t-red-500 dark:border-red-900 dark:border-t-red-600"></div>
-            <p className="text-muted-foreground text-sm font-medium">Đang tải phiếu xuất...</p>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+            <p className="text-muted-foreground text-sm">Đang tải phiếu xuất...</p>
           </div>
         </div>
       </div>
@@ -181,14 +188,11 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
   // Error state
   if (error) {
     return (
-      <div className="bg-card rounded-xl border border-red-200 dark:border-red-900/50 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-center py-16">
-          <div className="text-center space-y-3">
-            <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto">
-              <FileUp className="h-8 w-8 text-red-600 dark:text-red-400" />
-            </div>
-            <p className="text-red-600 dark:text-red-400 font-semibold">Lỗi khi tải phiếu xuất</p>
-            <p className="text-muted-foreground text-sm max-w-md">{error}</p>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <p className="text-red-600 dark:text-red-400 mb-2">Lỗi khi tải phiếu xuất</p>
+            <p className="text-muted-foreground text-sm">{error}</p>
           </div>
         </div>
       </div>
@@ -196,42 +200,58 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
   }
 
   return (
-    <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
       <div className="overflow-x-auto">
         <table className="w-full table-fixed">
+          <colgroup>
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '15%' }} />
+            <col style={{ width: '15%' }} />
+            <col className="w-32" />
+          </colgroup>
           <thead>
-            <tr className="bg-gradient-to-r from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-b-2 border-red-200/50 dark:border-red-800/30">
-              <th className="text-center py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[18%]">
+            <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
                 Mã phiếu
               </th>
-              <th className="text-center py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[15%]">
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
                 Người nhận
               </th>
-              <th className="text-center py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[12%]">
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
                 Tổng SL
               </th>
-              <th className="text-center py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[12%]">
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
                 Ngày xuất
               </th>
-              <th className="text-center py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[13%]">
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
                 Trạng thái
               </th>
-              <th className="text-center py-4 px-6 text-sm font-semibold text-foreground uppercase tracking-wide w-[30%]">
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
                 Thao tác
               </th>
             </tr>
           </thead>
+        </table>
+      </div>
+      <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+        <table className="w-full table-fixed">
+          <colgroup>
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '15%' }} />
+            <col style={{ width: '15%' }} />
+            <col className="w-32" />
+          </colgroup>
           <tbody>
             {filtered.length === 0 && !loading ? (
               <tr>
-                <td colSpan="6" className="py-16 px-6 text-center">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
-                      <FileUp className="h-8 w-8 text-muted-foreground/50" />
-                    </div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      {search || status ? "Không tìm thấy phiếu xuất phù hợp" : "Chưa có phiếu xuất nào"}
-                    </p>
+                <td colSpan="6" className="py-12 px-6 text-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <p className="text-muted-foreground text-sm">Không tìm thấy phiếu xuất phù hợp</p>
+                    <p className="text-xs text-muted-foreground">{search || status ? "Hãy thay đổi từ khóa hoặc bộ lọc" : "Chưa có phiếu xuất nào"}</p>
                   </div>
                 </td>
               </tr>
@@ -239,79 +259,51 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
               filtered.map((slip, i) => (
                 <tr
                   key={`${slip.id}-${i}`}
-                  className={`border-b border-border/50 hover:bg-red-50/50 dark:hover:bg-red-950/10 transition-all duration-200 ${
-                    i % 2 === 0 ? "bg-card" : "bg-muted/30"
+                  className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+                    i % 2 === 0 ? "bg-white" : "bg-slate-50/40"
                   }`}
                 >
                   <td className="py-4 px-6 text-center">
-                    <div className="flex items-center justify-center">
-                      <span className="text-sm font-semibold text-foreground">
-                        {slip.id}
-                      </span>
-                    </div>
+                    <span className="text-sm text-foreground font-medium">
+                      {slip.id}
+                    </span>
                   </td>
                   <td className="py-4 px-6 text-center">
-                    <div className="flex items-center justify-center">
-                      <span className="text-sm text-foreground/90">{getServiceCenterName(slip.exportTo)}</span>
-                    </div>
+                    <span className="text-sm text-foreground">{getServiceCenterName(slip.exportTo)}</span>
                   </td>
                   <td className="py-4 px-6 text-center">
-                    <div className="flex items-center justify-center">
-                      <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-semibold bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800">
-                        {slip.totalQuantity}
-                      </span>
-                    </div>
+                    <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-800 border border-red-200">
+                      {slip.totalQuantity}
+                    </span>
                   </td>
                   <td className="py-4 px-6 text-center">
-                    <div className="flex items-center justify-center">
-                      <span className="text-sm text-foreground/90">
-                        {slip.date ? new Date(slip.date).toLocaleDateString('vi-VN', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric'
-                        }) : 'N/A'}
-                      </span>
-                    </div>
+                    <span className="text-sm text-foreground">
+                      {slip.date ? new Date(slip.date).toLocaleDateString('vi-VN', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                      }) : 'N/A'}
+                    </span>
                   </td>
                   <td className="py-4 px-6 text-center">
-                    <div className="flex items-center justify-center">
-                      <Badge
-                        variant="secondary"
-                        className={`border ${getStatusBadgeClass(slip.status)}`}
-                      >
-                        {getStatusLabel(slip.status)}
-                      </Badge>
-                    </div>
+                    <Badge
+                      variant="secondary"
+                      className={`border ${getStatusBadgeClass(slip.status)}`}
+                    >
+                      {getStatusLabel(slip.status)}
+                    </Badge>
                   </td>
                   <td className="py-4 px-6 text-center">
-                    <div className="flex items-center justify-center gap-2 flex-wrap">
+                    <div className="flex items-center justify-center gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="gap-1.5 h-8 px-3 text-xs font-medium hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        className="gap-1.5 h-8 px-3 text-xs font-medium hover:bg-blue-50 hover:text-blue-600 transition-colors"
                         onClick={() => window?.openViewExportSlip?.(slip)}
                       >
                         <Eye className="h-3.5 w-3.5" />
                         Chi tiết
                       </Button>
-                      {/* <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-primary/10 dark:hover:bg-primary/20 transition-colors"
-                        onClick={() => window?.openEditExportSlip?.(slip)}
-                        title="Chỉnh sửa"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="gap-1.5 h-8 px-3 text-xs font-medium hover:bg-green-50 dark:hover:bg-green-950/30 hover:text-green-600 dark:hover:text-green-400 transition-colors"
-                        onClick={() => window?.printExportSlip?.(slip)}
-                      >
-                        <Printer className="h-3.5 w-3.5" />
-                        In phiếu
-                      </Button> */}
                     </div>
                   </td>
                 </tr>

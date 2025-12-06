@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, MapPin, User2, Phone, Loader2, Package } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStaffByAccountId } from "@/api/staffsApi";
-import { getPartItemsByServiceCenter } from "@/api/partitemsApi";
+import { getPartItems } from "@/api/partitemsApi";
 
 const buildBranchInfoFromStaff = (staff) => {
   if (!staff) return null;
@@ -21,13 +21,6 @@ const buildBranchInfoFromStaff = (staff) => {
   };
 };
 
-const normalizePartCode = (item) => {
-  const serialNumber = item.serialNumber || "";
-  const serialParts = serialNumber.split("-");
-  const serialPrefix = serialParts.length > 1 ? serialParts.slice(0, -1).join("-") : serialNumber;
-  return (item.part?.code || serialPrefix || serialNumber || item.id || "").toLowerCase();
-};
-
 const formatDate = (value) => {
   if (!value) return "—";
   try {
@@ -40,14 +33,34 @@ const formatDate = (value) => {
 const getStatusLabel = (status) => {
   if (!status) return "Khả dụng";
   const statusUpper = status.toUpperCase();
-  if (statusUpper === "ACTIVE") return "Khả dụng";
-  if (statusUpper === "IN_ACTIVE" || statusUpper === "INACTIVE") return "Không khả dụng";
-  return status;
+  const statusMap = {
+    "ACTIVE": "Khả dụng",
+    "IN_ACTIVE": "Không khả dụng",
+    "INACTIVE": "Không khả dụng",
+    "IN_STOCK": "Trong kho",
+    "INSTALLED": "Đã lắp đặt",
+    "MANUFACTURER_RECALL": "Thu hồi từ nhà sản xuất"
+  };
+  return statusMap[statusUpper] || status;
+};
+
+const getStatusBadgeClass = (status) => {
+  if (!status) return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  const statusUpper = status.toUpperCase();
+  const classMap = {
+    "ACTIVE": "bg-emerald-50 text-emerald-700 border-emerald-200",
+    "IN_ACTIVE": "bg-slate-100 text-slate-700 border-slate-300",
+    "INACTIVE": "bg-slate-100 text-slate-700 border-slate-300",
+    "IN_STOCK": "bg-blue-50 text-blue-700 border-blue-200",
+    "INSTALLED": "bg-purple-50 text-purple-700 border-purple-200",
+    "MANUFACTURER_RECALL": "bg-red-50 text-red-700 border-red-200"
+  };
+  return classMap[statusUpper] || "bg-slate-100 text-slate-700 border-slate-300";
 };
 
 export default function StorekeeperAccessoryDetail() {
   const { inventoryId, partCode } = useParams();
-  const decodedPartCode = decodeURIComponent(partCode || "").toLowerCase();
+  const partId = partCode; // partCode giờ là partId
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -60,6 +73,7 @@ export default function StorekeeperAccessoryDetail() {
   const [partDetail, setPartDetail] = useState(null);
 
   const locationServiceCenterId = location.state?.serviceCenterId;
+  const locationPartId = location.state?.partId;
 
   useEffect(() => {
     if (locationServiceCenterId) {
@@ -84,7 +98,6 @@ export default function StorekeeperAccessoryDetail() {
           setError("Không tìm thấy chi nhánh của bạn.");
         }
       } catch (err) {
-        console.error("Error fetching staff info:", err);
         setError("Không thể tải thông tin chi nhánh.");
       }
     };
@@ -92,46 +105,41 @@ export default function StorekeeperAccessoryDetail() {
   }, [serviceCenterId, branchInfo, user]);
 
   useEffect(() => {
-    if (!serviceCenterId || !decodedPartCode) return;
+    const resolvedPartId = locationPartId || partId;
+    if (!serviceCenterId || !resolvedPartId) return;
 
     const fetchDetail = async () => {
       setLoading(true);
       setError("");
       try {
-        const response = await getPartItemsByServiceCenter(serviceCenterId);
-        // API trả về: { statusCode, success, message, data: [...] } - data là array trực tiếp
-        let rows = [];
-        if (Array.isArray(response?.data)) {
-          // data là array trực tiếp
-          rows = response.data;
-        } else if (Array.isArray(response)) {
-          // response là array trực tiếp
-          rows = response;
-        } else if (response?.data?.rowDatas) {
-          // fallback: nếu có nested rowDatas
-          rows = response.data.rowDatas;
-        } else if (response?.rowDatas) {
-          // fallback: nếu rowDatas ở root
-          rows = response.rowDatas;
-        }
+        // Gọi API với partId và serviceCenterId
+        const response = await getPartItems({
+          partId: resolvedPartId,
+          serviceCenterId,
+          page: 1,
+          pageSize: 1000,
+        });
 
-        const matchingItems = (rows || []).filter(
-          (item) => normalizePartCode(item) === decodedPartCode,
-        );
+        const partItemsData = response?.data || response;
+        const partItemsList = partItemsData?.rowDatas || partItemsData?.data || [];
 
-        if (!matchingItems.length) {
+        if (!partItemsList.length) {
           setError("Chưa có partItem nào cho phụ tùng này.");
           setPartDetail(null);
           return;
         }
 
+        // Lấy thông tin part từ partItem đầu tiên
+        const firstPartItem = partItemsList[0];
+        const part = firstPartItem?.part || {};
+
         const detail = {
-          partCode: matchingItems[0]?.part?.code || partCode,
-          partName: matchingItems[0]?.part?.name || decodedPartCode.toUpperCase(),
-          partImage: matchingItems[0]?.part?.image,
-          partType: matchingItems[0]?.part?.partType?.name || "—",
-          totalQty: matchingItems.reduce((sum, item) => sum + (item.quantity || 0), 0),
-          serials: matchingItems.map((item) => ({
+          partCode: part.code || resolvedPartId,
+          partName: part.name || "Phụ tùng",
+          partImage: part.image,
+          partType: part.partType?.name || "—",
+          totalQty: partItemsList.reduce((sum, item) => sum + (item.quantity || 0), 0),
+          serials: partItemsList.map((item) => ({
             id: item.id,
             serialNumber: item.serialNumber || item.id,
             quantity: item.quantity || 1,
@@ -144,7 +152,6 @@ export default function StorekeeperAccessoryDetail() {
         };
         setPartDetail(detail);
       } catch (err) {
-        console.error("Error fetching part detail:", err);
         setError("Không thể tải dữ liệu phụ tùng. Vui lòng thử lại sau.");
         setPartDetail(null);
       } finally {
@@ -153,7 +160,7 @@ export default function StorekeeperAccessoryDetail() {
     };
 
     fetchDetail();
-  }, [serviceCenterId, decodedPartCode, partCode]);
+  }, [serviceCenterId, partId, locationPartId]);
 
   const warehouseLines = useMemo(() => {
     if (!branchInfo) return ["", "", ""];
@@ -167,7 +174,7 @@ export default function StorekeeperAccessoryDetail() {
   const getAlertVariant = () => {
     if (!partDetail) return { text: "Đủ", className: "bg-emerald-100 text-emerald-700 border border-emerald-200" };
     if (partDetail.totalQty === 0) return { text: "Hết", className: "bg-rose-100 text-rose-700 border border-rose-200" };
-    if (partDetail.totalQty < 10) return { text: "Sắp thiếu", className: "bg-amber-100 text-amber-700 border border-amber-200" };
+    if (partDetail.totalQty < 10) return { text: "Sắp hết", className: "bg-amber-100 text-amber-700 border border-amber-200" };
     return { text: "Đủ", className: "bg-emerald-100 text-emerald-700 border border-emerald-200" };
   };
 
@@ -303,11 +310,7 @@ export default function StorekeeperAccessoryDetail() {
                         <div className="flex items-center justify-center">
                           <Badge 
                             variant="outline" 
-                            className={`px-3 py-1.5 rounded-md font-semibold text-xs border shadow-sm ${
-                              (serial.status || "ACTIVE").toUpperCase() === "ACTIVE" 
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
-                                : "bg-slate-100 text-slate-700 border-slate-300"
-                            }`}
+                            className={`px-3 py-1.5 rounded-md font-semibold text-xs border shadow-sm ${getStatusBadgeClass(serial.status || "ACTIVE")}`}
                           >
                             {getStatusLabel(serial.status || "ACTIVE")}
                           </Badge>
