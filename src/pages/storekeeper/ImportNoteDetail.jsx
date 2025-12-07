@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "react-toastify";
 import { getImportNoteById } from "@/api/importNotesApi";
 import { getPartItemById } from "@/api/partitemsApi";
 
@@ -51,7 +51,6 @@ const formatCurrency = (value) =>
 export default function ImportNoteDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [importNote, setImportNote] = useState(null);
   const [partItemsDetails, setPartItemsDetails] = useState({}); // Lưu chi tiết partItem theo partItemId
@@ -75,10 +74,9 @@ export default function ImportNoteDetail() {
       } catch (error) {
         if (active) {
           setImportNote(null);
-          toast({
-            title: "Lỗi",
-            description: error?.message || "Không thể tải chi tiết phiếu nhập",
-            variant: "destructive"
+          toast.error(`Lỗi: ${error?.message || "Không thể tải chi tiết phiếu nhập"}`, {
+            position: "top-right",
+            autoClose: 4000,
           });
         }
       } finally {
@@ -92,7 +90,7 @@ export default function ImportNoteDetail() {
     return () => {
       active = false;
     };
-  }, [id, toast]);
+  }, [id]);
 
   // Fetch partItem details cho mỗi detail
   useEffect(() => {
@@ -298,7 +296,7 @@ export default function ImportNoteDetail() {
                 <table className="w-full">
                   <thead>
                     <tr className="bg-gradient-to-r from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-b-2 border-red-200/50 dark:border-red-800/30">
-                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">#</th>
+                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">STT</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Hình ảnh</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Tên phụ tùng</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Serial/Batch</th>

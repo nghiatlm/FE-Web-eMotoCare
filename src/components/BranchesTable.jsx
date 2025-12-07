@@ -41,7 +41,7 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
           pageSize,
         });
 
-        const payload = res; // axios interceptor returns response.data
+        const payload = res; 
         const list =
           payload?.rowDatas ||
           payload?.data?.rowDatas ||
@@ -110,17 +110,14 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
 
     let result = rows;
 
-    // status filter (ignore empty or "all")
     if (status && status !== "all") {
       result = result.filter((r) => r.status === status);
     }
 
-    // manager filter (ignore empty or "all")
     if (manager && manager !== "all") {
       result = result.filter((r) => r.manager === manager);
     }
 
-    // text search across selected fields
     if (q) {
       result = result.filter((r) =>
         [r.id, r.name, r.location, r.phone, r.manager, r.hours]
@@ -152,22 +149,45 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
   return (
   <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full table-fixed">
+          <colgroup>
+            <col style={{ width: '70px' }} />
+            <col style={{ width: '150px' }} />
+            <col style={{ width: '200px' }} />
+            <col style={{ width: '250px' }} />
+            <col style={{ width: '150px' }} />
+            <col style={{ width: '140px' }} />
+            <col style={{ width: '150px' }} />
+          </colgroup>
           <thead>
             <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
-              <th className="text-center py-4 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide w-16">STT</th>
-              <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide">Mã chi nhánh</th>
-              <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide">Tên chi nhánh</th>
-              <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide">Địa chỉ</th>
-              <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide">Số điện thoại</th>
-              <th className="text-center py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide">Trạng thái</th>
-              <th className="text-center py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide w-32">Thao tác</th>
+              <th className="text-center py-4 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">STT</th>
+              <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Mã chi nhánh</th>
+              <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Tên chi nhánh</th>
+              <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Địa chỉ</th>
+              <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Số điện thoại</th>
+              <th className="text-center py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Trạng thái</th>
+              <th className="text-center py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Thao tác</th>
             </tr>
           </thead>
+        </table>
+      </div>
+
+      <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+        <table className="w-full table-fixed">
+          <colgroup>
+            <col style={{ width: '70px' }} />
+            <col style={{ width: '150px' }} />
+            <col style={{ width: '200px' }} />
+            <col style={{ width: '250px' }} />
+            <col style={{ width: '150px' }} />
+            <col style={{ width: '140px' }} />
+            <col style={{ width: '150px' }} />
+          </colgroup>
           <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
-                <td colSpan="6" className="py-16 px-6 text-center">
+                <td colSpan="7" className="py-16 px-6 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <div className="relative">
                       <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-primary"></div>
@@ -179,7 +199,7 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan="6" className="py-16 px-6 text-center">
+                <td colSpan="7" className="py-16 px-6 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <Building2 className="h-12 w-12 text-slate-300" />
                     <p className="text-base font-medium text-muted-foreground">Không tìm thấy chi nhánh</p>
@@ -188,35 +208,35 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
               </tr>
             ) : (
               filtered.map((b, i) => (
-              <tr 
+                <tr 
                   key={b.id} 
                   className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
                     i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'
                   }`}
                 >
-                  <td className="py-4 px-4 text-center text-sm font-medium text-slate-600">
-                    {i + 1}
+                  <td className="py-4 px-4 text-center text-sm font-medium text-slate-600 align-top whitespace-nowrap">
+                    {(page - 1) * pageSize + i + 1}
                   </td>
-                  <td className="py-4 px-6">
-                    <span className="font-semibold text-slate-900 text-sm">{b.code}</span>
+                  <td className="py-4 px-6 align-top">
+                    <span className="font-semibold text-slate-900 text-sm whitespace-nowrap overflow-hidden text-ellipsis block">{b.code || "—"}</span>
                   </td>
-                  <td className="py-4 px-6">
-                    <span className="font-semibold text-slate-900 text-sm">{b.name}</span>
+                  <td className="py-4 px-6 align-top">
+                    <span className="font-semibold text-slate-900 text-sm whitespace-nowrap overflow-hidden text-ellipsis block">{b.name}</span>
                   </td>
-                  <td className="py-4 px-6">
-                    <span className="text-sm text-slate-700">{b.location || "—"}</span>
+                  <td className="py-4 px-6 align-top">
+                    <span className="text-sm text-slate-700 whitespace-nowrap overflow-hidden text-ellipsis block">{b.location || "—"}</span>
                   </td>
-                  <td className="py-4 px-6">
-                    <span className="text-sm text-slate-700">{formatPhoneNumber(b.phone) || "—"}</span>
+                  <td className="py-4 px-6 align-top">
+                    <span className="text-sm text-slate-700 whitespace-nowrap overflow-hidden text-ellipsis block">{formatPhoneNumber(b.phone) || "—"}</span>
                   </td>
-                  <td className="py-4 px-6">
+                  <td className="py-4 px-6 text-center align-top whitespace-nowrap">
                     <div className="flex items-center justify-center">
-                      <span className={statusBadge(b.status)}>
+                      <span className={`${statusBadge(b.status)} whitespace-nowrap`}>
                         {b.status === "active" ? "Hoạt động" : b.status === "inactive" ? "Ngưng hoạt động" : b.status === "suspended" ? "Tạm dừng" : b.status}
                       </span>
                     </div>
                   </td>
-                  <td className="py-4 px-6">
+                  <td className="py-4 px-6 text-center align-top whitespace-nowrap">
                     <div className="flex items-center justify-center gap-2">
                       <Button
                         variant="ghost"
@@ -265,7 +285,6 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
         </table>
       </div>
 
-      {/* Pagination */}
       {total > 0 && (
         <div className="flex items-center justify-center px-6 py-4 border-t border-slate-200/80 bg-slate-50/60">
           <Pagination>

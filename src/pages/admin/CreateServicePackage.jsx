@@ -13,12 +13,11 @@ import { vi } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { createPriceService } from "@/api/priceServicesApi";
 import { getPartTypes } from "@/api/partsApi";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "react-toastify";
 
 export default function CreateServicePackage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [partTypes, setPartTypes] = useState([]);
   const [loadingPartTypes, setLoadingPartTypes] = useState(false);
@@ -183,10 +182,9 @@ export default function CreateServicePackage() {
         }
       } catch (error) {
         console.error("Error fetching part types:", error);
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải danh sách loại phụ tùng",
-          variant: "destructive"
+        toast.error("Lỗi: Không thể tải danh sách loại phụ tùng", {
+          position: "top-right",
+          autoClose: 4000,
         });
       } finally {
         setLoadingPartTypes(false);
@@ -194,17 +192,16 @@ export default function CreateServicePackage() {
     };
 
     fetchPartTypes();
-  }, [toast]);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validate form
     if (!validateForm()) {
-      toast({
-        title: "Lỗi validation",
-        description: "Vui lòng kiểm tra lại các trường đã nhập",
-        variant: "destructive"
+      toast.error("Lỗi validation: Vui lòng kiểm tra lại các trường đã nhập", {
+        position: "top-right",
+        autoClose: 4000,
       });
       return;
     }
@@ -241,9 +238,9 @@ export default function CreateServicePackage() {
 
       // Handle response - API returns { statusCode, success, message, data }
       if (response?.success || response?.statusCode === 200) {
-        toast({
-          title: "Thành công",
-          description: response?.message || "Tạo bảng giá dịch vụ thành công",
+        toast.success(response?.message || "Tạo bảng giá dịch vụ thành công", {
+          position: "top-right",
+          autoClose: 4000,
         });
         navigate("/admin/service-packages");
       } else {
@@ -252,10 +249,9 @@ export default function CreateServicePackage() {
     } catch (error) {
       console.error("❌ Error creating price service:", error);
       const errorMessage = error?.response?.data?.message || error?.message || error?.data?.message || "Không thể tạo bảng giá dịch vụ. Vui lòng thử lại.";
-      toast({
-        title: "Lỗi",
-        description: errorMessage,
-        variant: "destructive"
+      toast.error(`Lỗi: ${errorMessage}`, {
+        position: "top-right",
+        autoClose: 5000,
       });
     } finally {
       setSaving(false);

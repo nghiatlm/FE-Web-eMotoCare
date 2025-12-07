@@ -16,13 +16,12 @@ import { createCampaign } from "@/api/campaignsApi";
 import { getModels } from "@/api/modelsApi";
 import { getParts } from "@/api/partsApi";
 import { SERVICE_TYPE_MAP } from "@/utils/constants";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "react-toastify";
 import { authService } from "@/services/authService";
 import { uploadFile } from "@/utils/firebaseUpload";
 
 export default function CreateCampaign() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   
@@ -61,10 +60,9 @@ export default function CreateCampaign() {
         setModels(modelsData);
       } catch (error) {
         console.error("Error fetching models:", error);
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải danh sách models",
-          variant: "destructive"
+        toast.error("Lỗi: Không thể tải danh sách models", {
+          position: "top-right",
+          autoClose: 4000,
         });
       } finally {
         setLoadingModels(false);
@@ -72,7 +70,7 @@ export default function CreateCampaign() {
     };
 
     fetchModels();
-  }, [toast]);
+  }, []);
 
   // Load parts on mount
   useEffect(() => {
@@ -84,10 +82,9 @@ export default function CreateCampaign() {
         setParts(partsData);
       } catch (error) {
         console.error("Error fetching parts:", error);
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải danh sách parts",
-          variant: "destructive"
+        toast.error("Lỗi: Không thể tải danh sách parts", {
+          position: "top-right",
+          autoClose: 4000,
         });
       } finally {
         setLoadingParts(false);
@@ -95,7 +92,7 @@ export default function CreateCampaign() {
     };
 
     fetchParts();
-  }, [toast]);
+  }, []);
 
   const handleChange = (field, value) => {
     setForm(prev => ({
@@ -119,20 +116,18 @@ export default function CreateCampaign() {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng chọn file ảnh",
-        variant: "destructive"
+      toast.error("Lỗi: Vui lòng chọn file ảnh", {
+        position: "top-right",
+        autoClose: 4000,
       });
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "Lỗi",
-        description: "Kích thước ảnh không được vượt quá 5MB",
-        variant: "destructive"
+      toast.error("Lỗi: Kích thước ảnh không được vượt quá 5MB", {
+        position: "top-right",
+        autoClose: 4000,
       });
       return;
     }
@@ -225,10 +220,9 @@ export default function CreateCampaign() {
     
     // Validate form
     if (!validateForm()) {
-      toast({
-        title: "Lỗi validation",
-        description: "Vui lòng kiểm tra lại các trường đã nhập",
-        variant: "destructive"
+      toast.error("Lỗi validation: Vui lòng kiểm tra lại các trường đã nhập", {
+        position: "top-right",
+        autoClose: 4000,
       });
       return;
     }
@@ -241,10 +235,9 @@ export default function CreateCampaign() {
       const userId = user?.accountResponse?.id || user?.id;
       
       if (!userId) {
-        toast({
-          title: "Lỗi",
-          description: "Không tìm thấy thông tin người dùng",
-          variant: "destructive"
+        toast.error("Lỗi: Không tìm thấy thông tin người dùng", {
+          position: "top-right",
+          autoClose: 4000,
         });
         return;
       }
@@ -258,16 +251,15 @@ export default function CreateCampaign() {
           const fileExtension = selectedImage.name.split('.').pop();
           const fileName = `campaigns/${timestamp}_${selectedImage.name}`;
           attachmentUrl = await uploadFile(fileName, selectedImage);
-          toast({
-            title: "Thành công",
-            description: "Tải ảnh lên thành công",
+          toast.success("Tải ảnh lên thành công", {
+            position: "top-right",
+            autoClose: 4000,
           });
         } catch (error) {
           console.error("Error uploading image:", error);
-          toast({
-            title: "Lỗi",
-            description: "Không thể tải ảnh lên. Vui lòng thử lại.",
-            variant: "destructive"
+          toast.error("Lỗi: Không thể tải ảnh lên. Vui lòng thử lại.", {
+            position: "top-right",
+            autoClose: 4000,
           });
           return;
         } finally {
@@ -324,9 +316,9 @@ export default function CreateCampaign() {
 
       // Handle response - API returns { statusCode, success, message, data }
       if (response?.success || response?.statusCode === 200) {
-        toast({
-          title: "Thành công",
-          description: response?.message || "Tạo campaign thành công",
+        toast.success(response?.message || "Tạo campaign thành công", {
+          position: "top-right",
+          autoClose: 4000,
         });
         navigate("/admin/campaigns");
       } else {
@@ -335,10 +327,9 @@ export default function CreateCampaign() {
     } catch (error) {
       console.error("❌ Error creating campaign:", error);
       const errorMessage = error?.response?.data?.message || error?.message || error?.data?.message || "Không thể tạo campaign. Vui lòng thử lại.";
-      toast({
-        title: "Lỗi",
-        description: errorMessage,
-        variant: "destructive"
+      toast.error(`Lỗi: ${errorMessage}`, {
+        position: "top-right",
+        autoClose: 5000,
       });
     } finally {
       setSaving(false);

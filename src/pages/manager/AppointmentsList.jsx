@@ -8,12 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useNavigate } from "react-router-dom";
 import { getAppointments } from "@/api/appointmentsApi";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "react-toastify";
 import { format } from "date-fns";
 
 export default function AppointmentsList() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
@@ -131,10 +130,9 @@ export default function AppointmentsList() {
     } catch (err) {
       console.error("❌ Error fetching appointments:", err);
       setError("Không thể tải danh sách lịch hẹn. Vui lòng thử lại sau.");
-      toast({
-        title: "Lỗi",
-        description: err?.message || err?.data?.message || "Không thể tải danh sách lịch hẹn",
-        variant: "destructive",
+      toast.error(`Lỗi: ${err?.message || err?.data?.message || "Không thể tải danh sách lịch hẹn"}`, {
+        position: "top-right",
+        autoClose: 4000,
       });
     } finally {
       setLoading(false);

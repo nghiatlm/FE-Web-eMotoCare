@@ -30,9 +30,9 @@ export const createUser = (userData) => {
 };
 
 export const updateUser = (userId, userData) => {
-  return api.put(`${BASE_URL}/${userId}`, userData, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  // API interceptor sẽ tự động thêm Authorization header
+  // Nên không cần truyền header ở đây nữa
+  return api.put(`${BASE_URL}/${userId}`, userData);
 };
 
 export const deleteUser = (userId) => {

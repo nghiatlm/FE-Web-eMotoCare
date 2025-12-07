@@ -8,15 +8,13 @@ import {
   Loader2,
   Server,
   Bike,
-  Wrench,
-  Shield,
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "react-toastify";
 import { syncMaintenancePlansData } from "@/api/maintenancePlansApi";
 import { syncCampaignsData } from "@/api/campaignsApi";
 import { syncModelData } from "@/api/modelsApi";
@@ -41,19 +39,6 @@ const DATA_TYPES = [
     iconColor: "text-red-600 dark:text-red-400",
     progressColor: "bg-red-400",
     hasApi: true,
-  },
-  {
-    id: "parts",
-    label: "Phụ tùng",
-    description: "Đồng bộ danh mục phụ tùng, linh kiện từ hệ thống OEM",
-    icon: Wrench,
-    buttonBg: "bg-red-600 dark:bg-red-700",
-    buttonHover: "hover:bg-red-700 dark:hover:bg-red-800",
-    buttonText: "text-white",
-    iconBg: "bg-red-100 dark:bg-red-900/20",
-    iconColor: "text-red-600 dark:text-red-400",
-    progressColor: "bg-red-400",
-    hasApi: false, // Chưa có API
   },
   {
     id: "maintenance-plans",
@@ -84,7 +69,6 @@ const DATA_TYPES = [
 ];
 
 export default function SyncOEMData() {
-  const { toast } = useToast();
   const [syncStates, setSyncStates] = useState(() => {
     const initialState = {};
     DATA_TYPES.forEach((type) => {
@@ -150,17 +134,14 @@ export default function SyncOEMData() {
   const handleSync = async (typeId) => {
     const dataType = DATA_TYPES.find((t) => t.id === typeId);
     
-    // Kiểm tra xem có API cho loại này không
     if (!dataType?.hasApi) {
-      toast({
-        title: "Chưa có API",
-        description: `Chức năng đồng bộ ${dataType?.label} đang được phát triển. Vui lòng thử lại sau.`,
-        variant: "default",
+      toast.info(`Chức năng đồng bộ ${dataType?.label} đang được phát triển. Vui lòng thử lại sau.`, {
+        position: "top-right",
+        autoClose: 4000,
       });
       return;
     }
 
-    // Update state to syncing
     setSyncStates((prev) => ({
       ...prev,
       [typeId]: {
@@ -174,7 +155,6 @@ export default function SyncOEMData() {
     let progressInterval = null;
     
     try {
-      // Simulate progress update
       progressInterval = setInterval(() => {
         setSyncStates((prev) => {
           const currentProgress = prev[typeId].progress;
@@ -191,7 +171,6 @@ export default function SyncOEMData() {
         });
       }, 300);
 
-      // Call actual API - gọi API tương ứng với loại dữ liệu
       let response;
       switch (typeId) {
         case "models":
@@ -207,21 +186,17 @@ export default function SyncOEMData() {
           throw new Error(`API chưa được triển khai cho loại: ${typeId}`);
       }
 
-      // Clear interval trước khi xử lý response
       if (progressInterval) {
         clearInterval(progressInterval);
         progressInterval = null;
       }
 
-      // Check response (response đã là data từ interceptor)
-      // Kiểm tra nhiều trường hợp success
       const isSuccess = 
         response?.success === true || 
         response?.statusCode === 200 || 
         (response?.success !== false && response !== null && response !== undefined);
 
       if (isSuccess) {
-        // Success
         setSyncStates((prev) => ({
           ...prev,
           [typeId]: {
@@ -232,21 +207,22 @@ export default function SyncOEMData() {
           },
         }));
 
-        toast({
-          title: "Đồng bộ thành công",
-          description: response?.data || response?.message || `Đã đồng bộ ${dataType?.label} thành công!`,
-        });
+        toast.success(
+          `Đã đồng bộ ${dataType?.label} thành công!`,
+          {
+            position: "top-right",
+            autoClose: 4000,
+          }
+        );
       } else {
         throw new Error(response?.message || "Đồng bộ thất bại");
       }
     } catch (error) {
-      // Đảm bảo clear interval trong trường hợp lỗi
       if (progressInterval) {
         clearInterval(progressInterval);
         progressInterval = null;
       }
 
-      // Xử lý lỗi - kiểm tra nhiều cách error có thể được trả về
       const errorMessage = 
         error?.response?.data?.message || 
         error?.data?.message || 
@@ -263,32 +239,27 @@ export default function SyncOEMData() {
         },
       }));
 
-      toast({
-        title: "Đồng bộ thất bại",
-        description: errorMessage,
-        variant: "destructive",
+      toast.error(`Đồng bộ ${dataType?.label} thất bại: ${errorMessage}`, {
+        position: "top-right",
+        autoClose: 5000,
       });
     }
   };
 
   const handleSyncAll = async () => {
-    // Chỉ sync các loại có API
     const typesWithApi = DATA_TYPES.filter((type) => type.hasApi);
     
     if (typesWithApi.length === 0) {
-      toast({
-        title: "Thông báo",
-        description: "Hiện tại chưa có API đồng bộ nào khả dụng.",
-        variant: "default",
+      toast.info("Hiện tại chưa có API đồng bộ nào khả dụng.", {
+        position: "top-right",
+        autoClose: 4000,
       });
       return;
     }
 
-    // Sync all types with API sequentially
     for (const type of typesWithApi) {
       if (syncStates[type.id].status !== SYNC_STATUS.SYNCING) {
         await handleSync(type.id);
-        // Wait a bit between each sync to avoid overwhelming the server
         await new Promise((resolve) => setTimeout(resolve, 800));
       }
     }
@@ -301,7 +272,6 @@ export default function SyncOEMData() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3 p-5 rounded-xl bg-card border border-border shadow-sm">
             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400">
@@ -310,7 +280,6 @@ export default function SyncOEMData() {
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
                 Đồng bộ dữ liệu OEM
-                <Sparkles className="h-5 w-5 text-red-500/60" />
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
                 Đồng bộ dữ liệu từ hệ thống OEM vào hệ thống quản lý
@@ -337,7 +306,6 @@ export default function SyncOEMData() {
           </div>
         </div>
 
-        {/* Danh sách các loại dữ liệu cần đồng bộ */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           {DATA_TYPES.map((type) => {
             const Icon = type.icon;
@@ -382,7 +350,6 @@ export default function SyncOEMData() {
                   </div>
                 </CardHeader>
                 <CardContent className="flex flex-col flex-1 space-y-4">
-                  {/* Progress bar khi đang đồng bộ */}
                   {isSyncing && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-xs">
@@ -404,7 +371,6 @@ export default function SyncOEMData() {
                     </div>
                   )}
 
-                  {/* Thông tin lần đồng bộ cuối */}
                   {state.lastSync && !isSyncing && (
                     <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                       <Clock className="h-3 w-3" />
@@ -412,7 +378,6 @@ export default function SyncOEMData() {
                     </div>
                   )}
 
-                  {/* Error message */}
                   {isError && state.error && (
                     <div className="p-3 rounded-lg bg-red-50/80 dark:bg-red-950/20 border border-red-200 dark:border-red-900">
                       <div className="flex items-start gap-2">
@@ -422,7 +387,6 @@ export default function SyncOEMData() {
                     </div>
                   )}
 
-                  {/* Nút đồng bộ */}
                   <div className="mt-auto pt-2">
                     <Button
                       onClick={() => handleSync(type.id)}
@@ -465,40 +429,73 @@ export default function SyncOEMData() {
           })}
         </div>
 
-        {/* Thông tin tổng quan */}
-        <Card className="border border-border shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold text-slate-900 dark:text-slate-100">
-              Thông tin đồng bộ
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Tổng quan về trạng thái đồng bộ dữ liệu
-            </CardDescription>
+        <Card className="border-2 border-slate-200 dark:border-slate-700 shadow-lg bg-white dark:bg-slate-800">
+          <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-b border-slate-200 dark:border-slate-700">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-red-500 to-red-600 text-white shadow-md">
+                <Database className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                  Thông tin đồng bộ
+                </CardTitle>
+                <CardDescription className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                  Tổng quan về trạng thái đồng bộ dữ liệu
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {DATA_TYPES.map((type) => {
                 const state = syncStates[type.id];
+                const Icon = type.icon;
                 return (
                   <div
                     key={type.id}
-                    className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50"
+                    className={cn(
+                      "relative p-5 rounded-xl border-2 transition-all duration-200",
+                      "bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900",
+                      state.status === SYNC_STATUS.SUCCESS && "border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/20 shadow-emerald-100 dark:shadow-emerald-900/20",
+                      state.status === SYNC_STATUS.ERROR && "border-red-300 dark:border-red-700 bg-red-50/50 dark:bg-red-950/20 shadow-red-100 dark:shadow-red-900/20",
+                      state.status === SYNC_STATUS.SYNCING && "border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/20 shadow-blue-100 dark:shadow-blue-900/20",
+                      state.status === SYNC_STATUS.IDLE && "border-slate-200 dark:border-slate-700 shadow-slate-100 dark:shadow-slate-900/20"
+                    )}
                   >
-                    <p className="text-xs text-muted-foreground mb-1">{type.label}</p>
-                    <div className="flex items-center justify-center gap-1">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={cn(
+                        "flex h-10 w-10 items-center justify-center rounded-lg flex-shrink-0",
+                        state.status === SYNC_STATUS.SUCCESS && "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400",
+                        state.status === SYNC_STATUS.ERROR && "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400",
+                        state.status === SYNC_STATUS.SYNCING && "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
+                        state.status === SYNC_STATUS.IDLE && "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
+                      )}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex-1 line-clamp-1">
+                        {type.label}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 mb-2">
                       {state.status === SYNC_STATUS.SUCCESS && (
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                       )}
                       {state.status === SYNC_STATUS.ERROR && (
-                        <AlertCircle className="h-4 w-4 text-red-600" />
+                        <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
                       )}
                       {state.status === SYNC_STATUS.SYNCING && (
-                        <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                        <Loader2 className="h-5 w-5 text-blue-600 dark:text-blue-400 animate-spin flex-shrink-0" />
                       )}
                       {state.status === SYNC_STATUS.IDLE && (
-                        <Clock className="h-4 w-4 text-slate-400" />
+                        <Clock className="h-5 w-5 text-slate-400 flex-shrink-0" />
                       )}
-                      <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                      <span className={cn(
+                        "text-sm font-medium",
+                        state.status === SYNC_STATUS.SUCCESS && "text-emerald-700 dark:text-emerald-300",
+                        state.status === SYNC_STATUS.ERROR && "text-red-700 dark:text-red-300",
+                        state.status === SYNC_STATUS.SYNCING && "text-blue-700 dark:text-blue-300",
+                        state.status === SYNC_STATUS.IDLE && "text-slate-600 dark:text-slate-400"
+                      )}>
                         {state.status === SYNC_STATUS.SUCCESS
                           ? "Đã đồng bộ"
                           : state.status === SYNC_STATUS.ERROR
@@ -508,6 +505,11 @@ export default function SyncOEMData() {
                           : "Chưa đồng bộ"}
                       </span>
                     </div>
+                    {state.lastSync && state.status !== SYNC_STATUS.SYNCING && (
+                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                        {formatDateTime(state.lastSync)}
+                      </p>
+                    )}
                   </div>
                 );
               })}

@@ -4,9 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatPhoneNumber } from "@/utils/formatters";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { getUsers } from "@/api/usersApi";
-import { updateUserStatus } from "@/api/usersApi";
-import { useToast } from "@/hooks/use-toast";
+import { getUsers, updateUserStatus, deleteUser, updateUser as updateUserApi } from "@/api/usersApi";
+import { toast } from "react-toastify";
 
 export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }) {
     const [users, setUsers] = useState([]);
@@ -15,7 +14,6 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
     const [pageSize] = useState(10);
     const [total, setTotal] = useState(0);
     const [error, setError] = useState(null);
-    const { toast } = useToast();
 
     const transformRoleName = (roleName) => {
         switch (roleName) {
@@ -86,7 +84,6 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
         );
     };
     
-    // Expose functions to parent component
     useEffect(() => {
         window.addUserToTable = addUser;
         window.updateUserInTable = updateUser;
@@ -218,24 +215,51 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
       </p>
       
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        {/* Header table (không scroll) */}
+        <div className="overflow-x-auto">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '60px' }} />
+              <col style={{ width: '80px' }} />
+              <col style={{ width: '150px' }} />
+              <col style={{ width: '200px' }} />
+              <col style={{ width: '180px' }} />
+              <col style={{ width: '150px' }} />
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '120px' }} />
+            </colgroup>
+            <thead>
+              <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
+                <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">STT</th>
+                <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">Ảnh đại diện</th>
+                <th className="text-left py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Số điện thoại</th>
+                <th className="text-left py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Email</th>
+                <th className="text-left py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Họ tên</th>
+                <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Vai trò</th>
+                <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Trạng thái</th>
+                <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Thao tác</th>
+              </tr>
+            </thead>
+          </table>
+        </div>
+
+        {/* Body table (scroll riêng, thanh scroll dừng dưới header) */}
         <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
-          <table className="w-full">
-          <thead>
-            <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
-              <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-16">STT</th>
-              <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-32">Ảnh đại diện</th>
-              <th className="text-left py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Số điện thoại</th>
-              <th className="text-left py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Email</th>
-              <th className="text-left py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Họ tên</th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Vai trò</th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Trạng thái</th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase w-32">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '60px' }} />
+              <col style={{ width: '80px' }} />
+              <col style={{ width: '150px' }} />
+              <col style={{ width: '200px' }} />
+              <col style={{ width: '180px' }} />
+              <col style={{ width: '150px' }} />
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '120px' }} />
+            </colgroup>
+            <tbody>
             {filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan="9" className="py-12 px-6 text-center">
+                <td colSpan="8" className="py-12 px-6 text-center">
                   <div className="flex flex-col items-center gap-2">
                     <p className="text-muted-foreground text-sm">Không tìm thấy người dùng</p>
                     <p className="text-xs text-muted-foreground">Hãy thay đổi từ khóa hoặc bộ lọc</p>
@@ -293,21 +317,26 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
                         className="h-8 w-8 text-red-600 hover:text-red-700"
                         onClick={async () => {
                           try {
-                            await updateUserStatus(user.id, "IN_ACTIVE");
-                            if (window.updateUserInTable) {
-                              window.updateUserInTable({ ...user, status: "blocked" });
-                            }
-                            toast({
-                              title: "Đã chặn người dùng",
-                              description: `${user.fullName} đã bị chặn`,
-                              className: "bg-amber-50 border-amber-400 text-amber-900",
+                            // Call DELETE API to block user (set inactive)
+                            await deleteUser(user.id);
+                            
+                            // Update state directly without refreshing
+                            setUsers(prevUsers =>
+                              prevUsers.map(u =>
+                                u.id === user.id
+                                  ? { ...u, status: "blocked", rawData: { ...u.rawData, stattus: "IN_ACTIVE" } }
+                                  : u
+                              )
+                            );
+                            
+                            toast.success(`Đã chặn người dùng: ${user.fullName} đã bị chặn (inactive)`, {
+                              position: "top-right",
+                              autoClose: 4000,
                             });
                           } catch (e) {
-                            toast({
-                              title: "Chặn không thành công",
-                              description: e?.message || "Không thể chặn người dùng",
-                              variant: "destructive",
-                              className: "bg-red-50 border-red-400 text-red-900",
+                            toast.error(`Chặn không thành công: ${e?.message || "Không thể chặn người dùng"}`, {
+                              position: "top-right",
+                              autoClose: 5000,
                             });
                           }
                         }}
@@ -322,21 +351,37 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
                         className="h-8 w-8 text-green-600 hover:text-green-700"
                         onClick={async () => {
                           try {
-                            await updateUserStatus(user.id, "ACTIVE");
-                            if (window.updateUserInTable) {
-                              window.updateUserInTable({ ...user, status: "active" });
+                            const roleName = user.rawData?.roleName;
+                            
+                            if (!roleName) {
+                              toast.error("Lỗi: Không tìm thấy vai trò của người dùng", {
+                                position: "top-right",
+                                autoClose: 4000,
+                              });
+                              return;
                             }
-                            toast({
-                              title: "Đã mở khóa người dùng",
-                              description: `${user.fullName} đã được kích hoạt lại`,
-                              className: "bg-green-50 border-green-400 text-green-900",
+                            
+                            await updateUserApi(user.id, {
+                              roleName: roleName,
+                              status: "ACTIVE"
+                            });
+                            
+                            setUsers(prevUsers =>
+                              prevUsers.map(u =>
+                                u.id === user.id
+                                  ? { ...u, status: "active", rawData: { ...u.rawData, stattus: "ACTIVE" } }
+                                  : u
+                              )
+                            );
+                            
+                            toast.success(`Đã mở khóa người dùng: ${user.fullName} đã được kích hoạt lại`, {
+                              position: "top-right",
+                              autoClose: 4000,
                             });
                           } catch (e) {
-                            toast({
-                              title: "Mở khóa không thành công",
-                              description: e?.message || "Không thể mở khóa người dùng",
-                              variant: "destructive",
-                              className: "bg-red-50 border-red-400 text-red-900",
+                            toast.error(`Mở khóa không thành công: ${e?.response?.data?.message || e?.message || "Không thể mở khóa người dùng"}`, {
+                              position: "top-right",
+                              autoClose: 5000,
                             });
                           }
                         }}
