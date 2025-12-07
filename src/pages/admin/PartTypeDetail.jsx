@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from "@/components/ui/textarea";
 import { getPartTypeById } from "@/api/partsApi";
 import { getPriceServices, createPriceService, updatePriceService, getPriceServiceById } from "@/api/priceServicesApi";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "react-toastify";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -22,7 +22,6 @@ import { cn } from "@/lib/utils";
 export default function PartTypeDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
   
   const [partType, setPartType] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -80,10 +79,9 @@ export default function PartTypeDetail() {
         }
       } catch (error) {
         console.error("Error fetching part type:", error);
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải thông tin loại phụ tùng",
-          variant: "destructive"
+        toast.error("Lỗi: Không thể tải thông tin loại phụ tùng", {
+          position: "top-right",
+          autoClose: 4000,
         });
         navigate("/admin/service-packages");
       } finally {
@@ -118,10 +116,9 @@ export default function PartTypeDetail() {
       setServicePackages(filtered);
     } catch (error) {
       console.error("Error fetching service packages:", error);
-      toast({
-        title: "Lỗi",
-        description: "Không thể tải danh sách gói dịch vụ",
-        variant: "destructive"
+      toast.error("Lỗi: Không thể tải danh sách gói dịch vụ", {
+        position: "top-right",
+        autoClose: 4000,
       });
       setServicePackages([]);
     } finally {
@@ -284,10 +281,9 @@ export default function PartTypeDetail() {
     e.preventDefault();
     
     if (!validateForm()) {
-      toast({
-        title: "Lỗi validation",
-        description: "Vui lòng kiểm tra lại các trường đã nhập",
-        variant: "destructive"
+      toast.error("Lỗi validation: Vui lòng kiểm tra lại các trường đã nhập", {
+        position: "top-right",
+        autoClose: 4000,
       });
       return;
     }
@@ -319,9 +315,9 @@ export default function PartTypeDetail() {
       const response = await createPriceService(payload);
 
       if (response?.success || response?.statusCode === 200) {
-        toast({
-          title: "Thành công",
-          description: response?.message || "Tạo bảng giá dịch vụ thành công",
+        toast.success(response?.message || "Tạo bảng giá dịch vụ thành công", {
+          position: "top-right",
+          autoClose: 4000,
         });
         
         // Reset form
@@ -347,10 +343,9 @@ export default function PartTypeDetail() {
     } catch (error) {
       console.error("Error creating price service:", error);
       const errorMessage = error?.response?.data?.message || error?.message || error?.data?.message || "Không thể tạo bảng giá dịch vụ. Vui lòng thử lại.";
-      toast({
-        title: "Lỗi",
-        description: errorMessage,
-        variant: "destructive"
+      toast.error(`Lỗi: ${errorMessage}`, {
+        position: "top-right",
+        autoClose: 5000,
       });
     } finally {
       setSaving(false);
@@ -406,10 +401,9 @@ export default function PartTypeDetail() {
       setEditErrors({});
     } catch (error) {
       console.error("Error loading price service:", error);
-      toast({
-        title: "Lỗi",
-        description: "Không thể tải thông tin bảng giá dịch vụ",
-        variant: "destructive"
+      toast.error("Lỗi: Không thể tải thông tin bảng giá dịch vụ", {
+        position: "top-right",
+        autoClose: 4000,
       });
       setIsEditDialogOpen(false);
     } finally {
@@ -466,9 +460,9 @@ export default function PartTypeDetail() {
       const response = await updatePriceService(priceServiceId, payload);
 
       if (response?.success || response?.statusCode === 200) {
-        toast({
-          title: "Thành công",
-          description: response?.message || "Cập nhật bảng giá dịch vụ thành công",
+        toast.success(response?.message || "Cập nhật bảng giá dịch vụ thành công", {
+          position: "top-right",
+          autoClose: 4000,
         });
         
         setIsEditDialogOpen(false);
@@ -482,10 +476,9 @@ export default function PartTypeDetail() {
     } catch (error) {
       console.error("Error updating price service:", error);
       const errorMessage = error?.response?.data?.message || error?.message || error?.data?.message || "Không thể cập nhật bảng giá dịch vụ. Vui lòng thử lại.";
-      toast({
-        title: "Lỗi",
-        description: errorMessage,
-        variant: "destructive"
+      toast.error(`Lỗi: ${errorMessage}`, {
+        position: "top-right",
+        autoClose: 5000,
       });
     } finally {
       setLoadingEdit(false);

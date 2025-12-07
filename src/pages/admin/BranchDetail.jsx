@@ -15,7 +15,7 @@ import { getServiceCenterById, createServiceCenterSlot } from "@/api/serviceCent
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { CheckCircle, XCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "react-toastify";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -23,7 +23,6 @@ import { cn } from "@/lib/utils";
 export default function BranchDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [branchDetail, setBranchDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isCreateSlotOpen, setIsCreateSlotOpen] = useState(false);
@@ -120,10 +119,9 @@ export default function BranchDetail() {
   // Handle create slot
   const handleCreateSlot = async () => {
     if (!slotForm.date || !slotForm.slotTime) {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng điền đầy đủ thông tin (Ngày và Khung giờ)",
-        variant: "destructive",
+      toast.error("Lỗi: Vui lòng điền đầy đủ thông tin (Ngày và Khung giờ)", {
+        position: "top-right",
+        autoClose: 4000,
       });
       return;
     }
@@ -143,9 +141,9 @@ export default function BranchDetail() {
 
       await createServiceCenterSlot(id, slotData);
       
-      toast({
-        title: "Thành công",
-        description: "Tạo slot thành công!",
+      toast.success("Tạo slot thành công!", {
+        position: "top-right",
+        autoClose: 4000,
       });
 
       // Reset form
@@ -162,10 +160,9 @@ export default function BranchDetail() {
       await fetchBranchDetail();
     } catch (error) {
       console.error("Error creating slot:", error);
-      toast({
-        title: "Lỗi",
-        description: error?.response?.data?.message || error?.message || "Không thể tạo slot. Vui lòng thử lại.",
-        variant: "destructive",
+      toast.error(`Lỗi: ${error?.response?.data?.message || error?.message || "Không thể tạo slot. Vui lòng thử lại."}`, {
+        position: "top-right",
+        autoClose: 5000,
       });
     } finally {
       setIsCreatingSlot(false);

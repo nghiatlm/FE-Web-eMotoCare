@@ -30,14 +30,13 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "react-toastify";
 import { createUser } from "@/api/usersApi";
 import { getServiceCenters } from "@/api/serviceCentersApi";
 import { uploadFile } from "@/utils/firebaseUpload";
 
 export default function CreateUserPage() {
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const [formData, setFormData] = useState({
     phone: "",
@@ -154,8 +153,14 @@ export default function CreateUserPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Form submitted", formData);
 
     if (!validateForm()) {
+      console.log("Validation failed", errors);
+      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc", {
+        position: "top-right",
+        autoClose: 4000,
+      });
       return;
     }
 
@@ -186,11 +191,9 @@ export default function CreateUserPage() {
           avatarUrl = await uploadFile(path, selectedAvatar);
         } catch (error) {
           console.error("Error uploading avatar:", error);
-          toast({
-            title: "Lỗi tải ảnh đại diện",
-            description:
-              error.message || "Không thể tải ảnh đại diện lên. Vui lòng thử lại.",
-            variant: "destructive",
+          toast.error(`Lỗi tải ảnh đại diện: ${error.message || "Không thể tải ảnh đại diện lên. Vui lòng thử lại."}`, {
+            position: "top-right",
+            autoClose: 4000,
           });
           setIsLoading(false);
           setUploadingAvatar(false);
@@ -232,16 +235,18 @@ export default function CreateUserPage() {
       }
 
       // Call API to create user
+      console.log("Calling API with payload:", payload);
       const response = await createUser(payload);
+      console.log("API response:", response);
 
       if (response?.success !== false) {
         if (window.refreshUserList) {
           window.refreshUserList();
         }
 
-        toast({
-          title: "Tạo người dùng thành công",
-          description: response?.message || "Đã tạo người dùng mới thành công!",
+        toast.success(response?.message || "Đã tạo người dùng mới thành công!", {
+          position: "top-right",
+          autoClose: 4000,
         });
 
         navigate("/admin/users");
@@ -250,11 +255,10 @@ export default function CreateUserPage() {
       }
     } catch (error) {
       console.error("Error creating user:", error);
-      toast({
-        title: "Tạo người dùng thất bại",
-        description:
-          error.message || "Không thể tạo người dùng. Vui lòng thử lại.",
-        variant: "destructive",
+      const errorMessage = error.response?.data?.message || error.message || "Không thể tạo người dùng. Vui lòng thử lại.";
+      toast.error(`Tạo người dùng thất bại: ${errorMessage}`, {
+        position: "top-right",
+        autoClose: 5000,
       });
     } finally {
       setIsLoading(false);
@@ -273,19 +277,17 @@ export default function CreateUserPage() {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng chọn file ảnh hợp lệ.",
-        variant: "destructive",
+      toast.error("Lỗi: Vui lòng chọn file ảnh hợp lệ.", {
+        position: "top-right",
+        autoClose: 4000,
       });
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "Lỗi",
-        description: "Kích thước ảnh không được vượt quá 5MB.",
-        variant: "destructive",
+      toast.error("Lỗi: Kích thước ảnh không được vượt quá 5MB.", {
+        position: "top-right",
+        autoClose: 4000,
       });
       return;
     }
@@ -593,6 +595,23 @@ export default function CreateUserPage() {
                   </Select>
                   {errors.position && (
                     <p className="text-sm text-destructive">{errors.position}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="address" className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Địa chỉ <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="address"
+                    placeholder="VD: 123 Đường ABC, Quận XYZ, TP.HCM"
+                    value={formData.address}
+                    onChange={(e) => handleInputChange("address", e.target.value)}
+                    className={errors.address ? "border-destructive" : ""}
+                  />
+                  {errors.address && (
+                    <p className="text-sm text-destructive">{errors.address}</p>
                   )}
                 </div>
 

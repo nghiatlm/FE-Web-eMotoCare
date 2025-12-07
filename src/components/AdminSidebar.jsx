@@ -8,6 +8,7 @@ import {
   RefreshCw,
   LogOut,
   Car,
+  Wrench,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -34,6 +35,7 @@ const sections = [
       { title: "Model xe", icon: Car, url: "/admin/models" },
       { title: "Chi nhánh", icon: Store, url: "/admin/branches" },
       { title: "Gói dịch vụ", icon: Package, url: "/admin/service-packages" },
+      { title: "Lịch bảo dưỡng", icon: Wrench, url: "/admin/maintenance-plans" },
       { title: "Chiến dịch", icon: Megaphone, url: "/admin/campaigns" },
       { title: "Người dùng", icon: Users, url: "/admin/users" },
     ],

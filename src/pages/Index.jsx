@@ -85,22 +85,18 @@ const Index = () => {
             try {
                 setLoading(true);
                 
-                // Fetch service centers - lấy tất cả để hiển thị với scroll
                 const serviceCentersResponse = await getServiceCenters({ page: 1, pageSize: 100 });
                 const serviceCentersData = serviceCentersResponse?.data || serviceCentersResponse || {};
                 const centers = serviceCentersData?.rowDatas || serviceCentersData?.data?.rowDatas || [];
                 setServiceCenters(centers);
                 const totalBranches = serviceCentersData?.total || centers.length;
                 
-                // Fetch campaigns (chiến dịch)
                 const campaignsResponse = await getCampaigns({ page: 1, pageSize: 1000, status: 'ACTIVE' });
                 const campaignsData = campaignsResponse?.data || campaignsResponse || {};
                 const campaigns = campaignsData?.rowDatas || campaignsData?.data?.rowDatas || [];
-                // Đếm số campaigns có status ACTIVE (có thể filter thêm theo ngày)
                 const activeCampaigns = campaigns.filter(c => {
                     const status = c.status?.toUpperCase();
                     if (status === 'ACTIVE') return true;
-                    // Nếu không có status, kiểm tra theo ngày
                     if (c.startDate && c.endDate) {
                         const now = new Date();
                         const start = new Date(c.startDate);
@@ -110,15 +106,12 @@ const Index = () => {
                     return false;
                 }).length;
                 
-                // Fetch warranty claims (bảo hành)
                 const rmasResponse = await getRmas({ page: 1, pageSize: 1000 });
                 const rmasData = rmasResponse?.data || rmasResponse || {};
                 const totalWarranty = rmasData?.total || rmasData?.rowDatas?.length || 0;
 
-                // Mock doanh thu - có thể thay bằng API thực tế sau
-                const totalRevenue = 45231000; // 45.231.000 VNĐ
+                const totalRevenue = 157000; 
 
-                // Calculate changes (mock - có thể tính từ API)
                 setStats({
                     totalRevenue,
                     totalRevenueChange: 12.5,
@@ -131,7 +124,6 @@ const Index = () => {
                 });
             } catch (error) {
                 console.error("Error fetching stats:", error);
-                // Giữ nguyên mock data nếu có lỗi
             } finally {
                 setLoading(false);
             }

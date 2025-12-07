@@ -255,11 +255,11 @@ export default function ImportSlipsTable({ search = "", typeFilter = "", statusF
                     <span className="text-sm text-foreground">{slip.importByName}</span>
                   </td>
                   <td className="py-4 px-6 text-center">
-                    <div className="flex items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-1.5">
                       <Button
                         variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        size="sm"
+                        className="gap-1.5 h-8 px-3 text-xs font-medium hover:bg-red-50 hover:text-red-600 transition-colors"
                         onClick={() => {
                           if (slip.rawData?.id) {
                             navigate(`/storekeeper/import-slips/${slip.rawData.id}`);
@@ -268,7 +268,8 @@ export default function ImportSlipsTable({ search = "", typeFilter = "", statusF
                         title="Xem chi tiết"
                         disabled={!slip.rawData?.id}
                       >
-                        <Eye className="h-4 w-4" /> Chi tiết
+                        <Eye className="h-4 w-4" /> 
+                        Chi tiết
                       </Button>
                     </div>
                   </td>
