@@ -608,8 +608,21 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
             bodyStyle={{ padding: "24px" }}>
             <Form.Item
               label={
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <Car size={18} style={{ color: "#ff4d4f" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: "10px",
+                      background: "linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: "0 2px 8px rgba(255, 77, 79, 0.3)",
+                    }}
+                  >
+                    <Car size={18} color="#fff" />
+                  </div>
                   <span style={{ fontSize: 15, fontWeight: 600, color: "#262626" }}>Nhập số khung để tìm thông tin</span>
                 </div>
               }
@@ -732,12 +745,12 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                                 width: 40,
                                 height: 40,
                                 borderRadius: "10px",
-                                background: "linear-gradient(135deg, #1890ff 0%, #096dd9 100%)",
+                                background: "linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%)",
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
                                 marginRight: 12,
-                                boxShadow: "0 2px 8px rgba(24, 144, 255, 0.3)",
+                                boxShadow: "0 2px 8px rgba(255, 77, 79, 0.3)",
                               }}
                             >
                               <User size={20} color="#fff" />
@@ -755,7 +768,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
 
                           <Space direction="vertical" size={16} style={{ width: "100%" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                              <Text type="secondary" style={{ fontSize: 14 }}>Họ tên</Text>
+                              <Text type="secondary" style={{ fontSize: 14, fontWeight: 600 }}>Họ tên</Text>
                               <Text strong style={{ fontSize: 14, color: "#262626" }}>
                                 {vehicleInfo.customer.firstName} {vehicleInfo.customer.lastName}
                               </Text>
@@ -763,11 +776,11 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
 
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                               <Space size={8}>
-                                <Hash size={16} style={{ color: "#bfbfbf" }} />
-                                <Text type="secondary" style={{ fontSize: 14 }}>Mã KH</Text>
+                                <Hash size={16} style={{ color: "#ff4d4f" }} />
+                                <Text type="secondary" style={{ fontSize: 14, fontWeight: 600 }}>Mã KH</Text>
                               </Space>
                               <Tag 
-                                color="blue" 
+                                color="red" 
                                 style={{ 
                                   borderRadius: 6, 
                                   padding: "4px 12px",
@@ -782,8 +795,8 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
 
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                               <Space size={8}>
-                                <Phone size={16} style={{ color: "#bfbfbf" }} />
-                                <Text type="secondary" style={{ fontSize: 14 }}>SĐT</Text>
+                                <Phone size={16} style={{ color: "#ff4d4f" }} />
+                                <Text type="secondary" style={{ fontSize: 14, fontWeight: 600 }}>SĐT</Text>
                               </Space>
                               <Text strong style={{ fontSize: 14, color: "#262626" }}>
                                 {vehicleInfo.customer.account?.phone || "N/A"}
@@ -792,8 +805,8 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
 
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                               <Space size={8}>
-                                <Mail size={16} style={{ color: "#bfbfbf" }} />
-                                <Text type="secondary" style={{ fontSize: 14 }}>Email</Text>
+                                <Mail size={16} style={{ color: "#ff4d4f" }} />
+                                <Text type="secondary" style={{ fontSize: 14, fontWeight: 600 }}>Email</Text>
                               </Space>
                               <Text strong style={{ fontSize: 14, color: "#262626" }}>
                                 {vehicleInfo.customer.account?.email || "N/A"}
@@ -823,12 +836,12 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                                 width: 40,
                                 height: 40,
                                 borderRadius: "10px",
-                                background: "linear-gradient(135deg, #fa8c16 0%, #d46b08 100%)",
+                                background: "linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%)",
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
                                 marginRight: 12,
-                                boxShadow: "0 2px 8px rgba(250, 140, 22, 0.3)",
+                                boxShadow: "0 2px 8px rgba(255, 77, 79, 0.3)",
                               }}
                             >
                               <CarFront size={20} color="#fff" />
@@ -846,7 +859,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
 
                           <Space direction="vertical" size={16} style={{ width: "100%" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                              <Text type="secondary" style={{ fontSize: 14 }}>Mẫu xe</Text>
+                              <Text type="secondary" style={{ fontSize: 14, fontWeight: 600 }}>Mẫu xe</Text>
                               <Text strong style={{ fontSize: 14, color: "#262626" }}>
                                 {vehicleInfo.vehicle.modelName || "N/A"}
                               </Text>
@@ -854,11 +867,11 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
 
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                               <Space size={8}>
-                                <Hash size={16} style={{ color: "#bfbfbf" }} />
-                                <Text type="secondary" style={{ fontSize: 14 }}>Số khung</Text>
+                                <Hash size={16} style={{ color: "#ff4d4f" }} />
+                                <Text type="secondary" style={{ fontSize: 14, fontWeight: 600 }}>Số khung</Text>
                               </Space>
                               <Tag 
-                                color="gold" 
+                                color="red" 
                                 style={{ 
                                   borderRadius: 6, 
                                   padding: "4px 12px",
@@ -872,7 +885,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                             </div>
 
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                              <Text type="secondary" style={{ fontSize: 14 }}>Số máy</Text>
+                              <Text type="secondary" style={{ fontSize: 14, fontWeight: 600 }}>Số máy</Text>
                               <Text strong style={{ fontSize: 14, color: "#262626" }}>
                                 {vehicleInfo.vehicle.engineNumber || "N/A"}
                               </Text>
@@ -880,11 +893,11 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
 
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                               <Space size={8}>
-                                <Palette size={16} style={{ color: "#bfbfbf" }} />
-                                <Text type="secondary" style={{ fontSize: 14 }}>Màu sắc</Text>
+                                <Palette size={16} style={{ color: "#ff4d4f" }} />
+                                <Text type="secondary" style={{ fontSize: 14, fontWeight: 600 }}>Màu sắc</Text>
                               </Space>
                               <Tag 
-                                color="purple" 
+                                color="red" 
                                 style={{ 
                                   borderRadius: 6, 
                                   padding: "4px 12px",
@@ -926,11 +939,11 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                   width: 36,
                   height: 36,
                   borderRadius: "10px",
-                  background: "linear-gradient(135deg, #722ed1 0%, #531dab 100%)",
+                  background: "linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  boxShadow: "0 2px 8px rgba(114, 46, 209, 0.3)",
+                  boxShadow: "0 2px 8px rgba(255, 77, 79, 0.3)",
                 }}
               >
                 <Calendar size={18} color="#fff" />
@@ -958,7 +971,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
       <Form.Item
                 label={
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Calendar size={16} style={{ color: "#8c8c8c" }} />
+                    <Calendar size={16} style={{ color: "#ff4d4f" }} />
                     <span style={{ fontSize: 14, fontWeight: 500, color: "#262626" }}>Ngày hẹn</span>
                   </div>
                 }
@@ -982,7 +995,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
       <Form.Item
                 label={
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Clock size={16} style={{ color: "#8c8c8c" }} />
+                    <Clock size={16} style={{ color: "#ff4d4f" }} />
                     <span style={{ fontSize: 14, fontWeight: 500, color: "#262626" }}>Khung giờ</span>
                   </div>
                 }
@@ -1015,11 +1028,11 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                   width: 36,
                   height: 36,
                   borderRadius: "10px",
-                  background: "linear-gradient(135deg, #52c41a 0%, #389e0d 100%)",
+                  background: "linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  boxShadow: "0 2px 8px rgba(82, 196, 26, 0.3)",
+                  boxShadow: "0 2px 8px rgba(255, 77, 79, 0.3)",
                 }}
               >
                 <Settings size={18} color="#fff" />
@@ -1047,7 +1060,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
               <Form.Item
                 label={
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Wrench size={16} style={{ color: "#8c8c8c" }} />
+                    <Wrench size={16} style={{ color: "#ff4d4f" }} />
                     <span style={{ fontSize: 14, fontWeight: 500, color: "#262626" }}>Loại dịch vụ</span>
                   </div>
                 }
@@ -1076,7 +1089,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                 <Form.Item
                   label={
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <FileText size={16} style={{ color: "#8c8c8c" }} />
+                      <FileText size={16} style={{ color: "#ff4d4f" }} />
                       <span style={{ fontSize: 14, fontWeight: 500, color: "#262626" }}>Chiến dịch</span>
                     </div>
                   }
@@ -1115,7 +1128,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                 <Form.Item
                   label={
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <FileText size={16} style={{ color: "#8c8c8c" }} />
+                      <FileText size={16} style={{ color: "#ff4d4f" }} />
                       <span style={{ fontSize: 14, fontWeight: 500, color: "#262626" }}>Triệu hồi</span>
                     </div>
                   }
@@ -1154,7 +1167,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                 <Form.Item
                   label={
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <FileText size={16} style={{ color: "#8c8c8c" }} />
+                      <FileText size={16} style={{ color: "#ff4d4f" }} />
                       <span style={{ fontSize: 14, fontWeight: 500, color: "#262626" }}>Mốc bảo dưỡng</span>
                     </div>
                   }
@@ -1192,7 +1205,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
           <Form.Item
             label={
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <FileText size={16} style={{ color: "#8c8c8c" }} />
+                <FileText size={16} style={{ color: "#ff4d4f" }} />
                 <span style={{ fontSize: 14, fontWeight: 500, color: "#262626" }}>
                   {form.getFieldValue("type") === "REPAIR_TYPE" ? "Tình trạng xe" : "Ghi chú"}
                 </span>

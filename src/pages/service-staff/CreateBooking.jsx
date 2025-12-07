@@ -71,7 +71,20 @@ const CreateBooking = () => {
       <Card
         title={
           <Space>
-            <Calendar size={20} style={{ color: "#ff4d4f" }} />
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "10px",
+                background: "linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 2px 8px rgba(255, 77, 79, 0.3)",
+              }}
+            >
+              <Calendar size={18} color="#fff" />
+            </div>
             <span>Tạo lịch hẹn mới</span>
           </Space>
         }
