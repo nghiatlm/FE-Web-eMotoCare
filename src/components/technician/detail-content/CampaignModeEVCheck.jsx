@@ -579,7 +579,24 @@ export default function CampaignModeEVCheck({
           
           if (matchingPart) {
             // ✅ Kiểm tra xem đã có detail với bộ phận này chưa
-            const existingDetail = mapped.find(d => d.partItemId === matchingPart.partItemId);
+            // Kiểm tra theo nhiều tiêu chí để tránh duplicate:
+            // 1. Theo partItemId (nếu khớp)
+            // 2. Theo partId (recallPartId) trong proposedReplacePartId
+            // 3. Theo partId trong partItem.part.id
+            const existingDetail = mapped.find(d => {
+              // Kiểm tra theo partItemId
+              if (d.partItemId === matchingPart.partItemId) return true;
+              
+              // Kiểm tra theo proposedReplacePartId (recallPartId)
+              if (d.proposedReplacePartId === recallPartId) return true;
+              
+              // Kiểm tra theo partId trong partItem
+              const detailPartId = d.partItem?.part?.id || 
+                                   vehiclePartOptions.find(vp => vp.partItemId === d.partItemId)?.partId || null;
+              if (detailPartId === recallPartId) return true;
+              
+              return false;
+            });
             
             if (!existingDetail) {
               // ✅ Nếu chưa có, tự động tạo row mới với bộ phận này
@@ -612,7 +629,29 @@ export default function CampaignModeEVCheck({
       }
 
       if (mapped.length > 0) {
-        setDetails(mapped);
+        // ✅ Filter duplicate để tránh hiển thị trùng lặp
+        // Dùng Map để giữ lại detail đầu tiên theo key: `${partItemId}_${proposedReplacePartId}`
+        const uniqueDetailsMap = new Map();
+        mapped.forEach((detail) => {
+          const partItemId = detail.partItemId || "";
+          const proposedReplacePartId = detail.proposedReplacePartId || "";
+          const key = `${partItemId}_${proposedReplacePartId}`;
+          
+          // ✅ Ưu tiên detail có id (đã lưu vào DB) hơn detail mới (isNew)
+          if (!uniqueDetailsMap.has(key)) {
+            uniqueDetailsMap.set(key, detail);
+          } else {
+            const existing = uniqueDetailsMap.get(key);
+            // Nếu detail hiện tại có id (đã lưu) và detail trong map chưa có id, thay thế
+            if (detail.id && !existing.id) {
+              uniqueDetailsMap.set(key, detail);
+            }
+          }
+        });
+        
+        const uniqueDetails = Array.from(uniqueDetailsMap.values());
+        console.log(`✅ Campaign: Filter duplicate - ${mapped.length} -> ${uniqueDetails.length} details`);
+        setDetails(uniqueDetails);
       } else {
         // ✅ Nếu không có detail và có recallPartIds, tự động tạo rows
         if (!readOnly && recallPartIdsList && recallPartIdsList.length > 0 && vehiclePartOptions.length > 0) {
@@ -718,6 +757,9 @@ export default function CampaignModeEVCheck({
     evCheckStatus !== "REPAIR_IN_PROGRESS" &&
     evCheckStatus !== "REPAIR_COMPLETED" &&
     evCheckStatus !== "COMPLETED";
+  
+  // ✅ Cho phép edit status khi REPAIR_IN_PROGRESS (khác với canEditFields)
+  const canEditStatus = !readOnly && evCheckStatus === "REPAIR_IN_PROGRESS";
 
   // ✅ Campaign: Không tự động lưu khi chọn biện pháp, chỉ lưu khi gửi báo giá
   // Để tránh reload trang và mất dữ liệu phụ tùng thay thế
@@ -732,6 +774,8 @@ export default function CampaignModeEVCheck({
   const handleChange = (index, field, value) => {
     if (evCheckStatus === "INSPECTION_COMPLETED" && field !== "status") return;
     if (evCheckStatus === "QUOTE_APPROVED" && field !== "status") return;
+    // ✅ Cho phép edit status khi REPAIR_IN_PROGRESS (khác với canEditFields)
+    if (field === "status" && !canEditStatus) return;
     if (!canEditFields && field !== "status") return;
 
     // ✅ Kiểm tra trạng thái xuất kho: Nếu hết hàng hoặc chờ xuất kho thì không cho tick hoàn thành
@@ -1015,16 +1059,48 @@ export default function CampaignModeEVCheck({
         showTitle: true,
       },
       render: (_, r, i) => {
-        const displayName = r.displayName || "";
+        // ✅ Campaign: Lấy displayName từ recallPartNameMap nếu có partId khớp với recallPartId
+        let displayName = r.displayName || "";
+        const partItemId = r.partItemId || "";
+        const partId = r.partItem?.part?.id || 
+                       vehiclePartOptions.find(vp => vp.partItemId === r.partItemId)?.partId || null;
+        
+        // ✅ Tìm lại displayName từ recallPartNameMap hoặc vehiclePartOptions
+        if (!displayName || displayName === partItemId) {
+          if (partId && recallPartIds.includes(partId)) {
+            displayName = recallPartNameMap[partId] || "";
+          }
+          if (!displayName || displayName === partItemId) {
+            const sel = vehiclePartOptions.find((p) => p.partItemId === partItemId);
+            displayName = sel?.label || displayName || partItemId || "";
+          }
+        }
+        
+        // ✅ Tìm option tương ứng với partItemId
+        const selectedOption = vehiclePartOptions.find((p) => p.partItemId === partItemId);
+        
+        // ✅ Nếu không tìm thấy trong options nhưng có displayName, thêm vào options tạm thời
+        const allOptions = [...vehiclePartOptions];
+        if (partItemId && displayName && !selectedOption) {
+          allOptions.push({
+            partItemId,
+            value: partItemId,
+            label: displayName,
+            price: r.pricePart || 0,
+            partItem: r.partItem || null,
+            partId: partId || null,
+          });
+        }
+        
         return (
-          <Tooltip title={displayName} placement="topLeft">
+          <Tooltip title={displayName || partItemId} placement="topLeft">
         <Select
           showSearch
           placeholder='Chọn bộ phận'
-          value={r.partItemId || undefined}
+          value={partItemId || undefined}
           style={{ width: "100%", minWidth: "160px" }}
           onChange={(v) => {
-            const sel = vehiclePartOptions.find((p) => p.partItemId === v);
+            const sel = allOptions.find((p) => p.partItemId === v);
             const partItem = sel?.partItem;
             const partId = sel?.partId || partItem?.part?.id || null;
 
@@ -1033,22 +1109,24 @@ export default function CampaignModeEVCheck({
             // ✅ Campaign: Tự động gán recallPartId vào proposedReplacePartId nếu partId khớp
             let proposedReplacePartId = "";
             let replacePartName = "";
+            let finalDisplayName = sel?.label || "";
             
             if (partId && recallPartIds.includes(partId)) {
               proposedReplacePartId = partId; // recallPartId = partId
               replacePartName = recallPartNameMap[partId] || "";
+              finalDisplayName = recallPartNameMap[partId] || sel?.label || "";
               console.log(`✅ Campaign: Tự động gán recallPartId ${partId} vào phụ tùng đề xuất`);
             }
 
             updateRow(i, {
-              displayName: sel?.label || "",
+              displayName: finalDisplayName,
               pricePart: sel?.price || 0,
               partItem,
               proposedReplacePartId: proposedReplacePartId || r.proposedReplacePartId || "",
               replacePartName: replacePartName || r.replacePartName || "",
             });
           }}
-          options={vehiclePartOptions}
+          options={allOptions}
           loading={vehiclePartLoading}
           disabled={readOnly || !canEditFields}
           filterOption={(input, opt) =>
@@ -1347,7 +1425,7 @@ export default function CampaignModeEVCheck({
               });
               setStatusChanges((prev) => ({ ...prev, ...changes }));
             }}
-            disabled={readOnly || !canEditFields}></Checkbox>
+            disabled={!canEditStatus}></Checkbox>
         )}
         <span>Trạng thái</span>
       </div>
@@ -1358,7 +1436,9 @@ export default function CampaignModeEVCheck({
       
       // ✅ Kiểm tra trạng thái xuất kho: Nếu hết hàng hoặc chờ xuất kho thì không cho tick hoàn thành
       const isStockIssue = hasStockIssue(r);
-      const isDisabled = readOnly || !canEditFields || isStockIssue;
+      // ✅ Cho phép tick status khi REPAIR_IN_PROGRESS (bất kể canEditFields)
+      const canEditStatus = !readOnly && evCheckStatus === "REPAIR_IN_PROGRESS";
+      const isDisabled = !canEditStatus || isStockIssue;
 
       return (
         <div className='flex items-center gap-2'>

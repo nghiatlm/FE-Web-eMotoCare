@@ -175,6 +175,11 @@ export default function MaintenanceModeEVCheck({
             console.log(`✅ Cached partTypeId for partId ${partIdFromItem}:`, partTypeIdFromItem);
           }
 
+          // ✅ Kiểm tra bảo hành: Nếu còn bảo hành thì không tính tiền dịch vụ
+          const partItemForPrice = item.partItem || item.maintenanceStageDetail?.partItem || null;
+          const isWarranty = checkWarrantyStatus(partItemForPrice);
+          const initialPriceService = isWarranty ? 0 : Number(item.priceService || 0);
+
         return {
           ...item,
             proposedReplacePartId: proposedReplacePartId,
@@ -188,10 +193,10 @@ export default function MaintenanceModeEVCheck({
           quantity: item.quantity ?? 1,
           unit: item.unit ?? "cái",
           pricePart,
-          priceService: Number(item.priceService || 0),
+          priceService: initialPriceService, // ✅ Set = 0 nếu còn bảo hành
           totalAmount:
             (item.remedies === "REPLACE" ? pricePart : 0) +
-            Number(item.priceService || 0),
+            initialPriceService,
           status: normalizedStatus,
             exportNoteStatus, // ✅ Lưu export note status
           };
@@ -209,11 +214,12 @@ export default function MaintenanceModeEVCheck({
 
       setEvCheckDetails(mapped);
 
-      // Auto set labor cost nếu chưa có
+      // ✅ Tự động gọi giá dịch vụ cho các items có remedies là NONE, CHECK, REPAIR hoặc REPLACE
       mapped.forEach((row) => {
         if (
           (!row.priceService || Number(row.priceService) === 0) &&
-          ["REPAIR", "REPLACE"].includes(row.remedies)
+          ["NONE", "CHECK", "REPAIR", "REPLACE"].includes(row.remedies) &&
+          (row.partItem || row.maintenanceStageDetail?.part)
         ) {
           // ✅ Truyền row data vào để có thể lấy partTypeId
           updateLaborCostForRow(row.id, row.remedies, row);
@@ -292,7 +298,8 @@ export default function MaintenanceModeEVCheck({
   };
 
   const updateLaborCostForRow = async (recordId, remedies, rowData = null) => {
-    if (!["REPAIR", "REPLACE"].includes(remedies)) {
+    // ✅ Cập nhật: Lấy giá dịch vụ cho NONE, CHECK, REPAIR, REPLACE
+    if (!["NONE", "CHECK", "REPAIR", "REPLACE"].includes(remedies)) {
       setEvCheckDetails((prev) =>
         prev.map((row) => {
           if (row.id !== recordId) return row;
@@ -318,17 +325,42 @@ export default function MaintenanceModeEVCheck({
         return;
       }
       
+      // ✅ Kiểm tra bảo hành: Nếu còn bảo hành thì không tính tiền dịch vụ
+      const partItem = currentRow?.partItem || currentRow?.maintenanceStageDetail?.partItem || null;
+      if (checkWarrantyStatus(partItem)) {
+        console.log(`⚠️ [updateLaborCostForRow] Bộ phận còn bảo hành, không tính giá dịch vụ`);
+        setEvCheckDetails((prev) =>
+          prev.map((row) => {
+            if (row.id !== recordId) return row;
+            const pricePart = Number(row.pricePart || 0);
+            const validPart = row.remedies === "REPLACE" ? pricePart : 0;
+            return {
+              ...row,
+              priceService: 0,
+              totalAmount: validPart + 0,
+            };
+          })
+        );
+        return;
+      }
+      
       // ✅ Lấy partTypeId từ cache hoặc từ partItem/maintenanceStageDetail
       const partId = currentRow?.partItem?.part?.id || currentRow?.maintenanceStageDetail?.part?.id || null;
       let partTypeId = null;
       
-      if (partId) {
-        // Ưu tiên lấy từ cache
+      // ✅ Ưu tiên 1: Lấy từ _partTypeId nếu có (đã được set khi chọn partItem)
+      if (currentRow?._partTypeId) {
+        partTypeId = currentRow._partTypeId;
+        console.log(`🔍 [updateLaborCostForRow] partTypeId from rowData._partTypeId: ${partTypeId}`);
+      }
+      
+      // ✅ Ưu tiên 2: Lấy từ cache nếu có partId
+      if (!partTypeId && partId) {
         partTypeId = partTypeIdCache[partId] || null;
         console.log(`🔍 [updateLaborCostForRow] partId: ${partId}, partTypeId from cache: ${partTypeId}`);
       }
       
-      // ✅ Nếu không có trong cache, lấy từ partItem hoặc maintenanceStageDetail
+      // ✅ Ưu tiên 3: Lấy từ partItem hoặc maintenanceStageDetail
       if (!partTypeId) {
         partTypeId = currentRow?.partItem?.part?.partType?.id || 
                      currentRow?.maintenanceStageDetail?.part?.partType?.id || null;

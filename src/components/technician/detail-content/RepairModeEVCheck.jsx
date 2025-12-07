@@ -1657,7 +1657,7 @@ export default function RepairModeEVCheck({
       render: (_, r) => {
         // ✅ Hiển thị exportNoteStatus nếu có (không chỉ khi COMPLETED)
         const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
-        if (!status) return <span style={{ color: "#999" }}>Chưa có</span>;
+        if (!status) return "";
         
         // ✅ Format status với Tag và màu sắc
         const getStatusColor = (s) => {
