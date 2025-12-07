@@ -11,8 +11,7 @@ import {
   Checkbox,
   Tooltip,
 } from "antd";
-import { toast } from "@/components/ui/sonner";
-
+import { toast } from "react-toastify";
 import {
   fetchEVCheckDetailsServiceMain,
   updateEVCheckService,
@@ -225,7 +224,7 @@ export default function MaintenanceModeEVCheck({
       setStatusChanges({});
     } catch (err) {
       console.error("Lỗi tải chi tiết EV Check:", err);
-      toast.error("Không thể tải chi tiết EV Check!");
+      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tải chi tiết EV Check!"));
       setEvCheckDetails([]);
     } finally {
       setLoading(false);
@@ -278,7 +277,7 @@ export default function MaintenanceModeEVCheck({
       // Chỉ log để debug, không làm gián đoạn UX
       // Axios interceptor đã unwrap error.response.data, nên check e?.statusCode
       if (e?.statusCode !== 500 && e?.response?.status !== 500) {
-        toast.error("Không tải được danh sách phụ tùng đề xuất");
+        toast.error((e?.response?.data?.message || e?.data?.message || e?.message || "Không tải được danh sách phụ tùng đề xuất"));
       } else {
         console.warn("⚠️ Backend API lỗi 500, bỏ qua để không làm gián đoạn UX");
       }
@@ -625,7 +624,7 @@ export default function MaintenanceModeEVCheck({
     } catch (err) {
       console.error("Lỗi xác nhận báo giá:", err);
       toast.dismiss(loadingToast);
-      toast.error("Lỗi khi gửi dữ liệu!");
+      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Lỗi khi gửi dữ liệu!"));
     } finally {
       setLoading(false);
     }
@@ -652,7 +651,7 @@ export default function MaintenanceModeEVCheck({
     } catch (err) {
       console.error("Cập nhật trạng thái thất bại:", err);
       toast.dismiss(loadingToast);
-      toast.error("Không thể cập nhật trạng thái hạng mục!");
+      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể cập nhật trạng thái hạng mục!"));
     } finally {
       setLoading(false);
     }

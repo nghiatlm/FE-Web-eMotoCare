@@ -6,8 +6,7 @@ import {
   Upload
 } from "lucide-react";
 import BatteryImportModal from "./BatteryImportModal";
-import { toast } from "@/components/ui/sonner";
-
+import { toast } from "react-toastify";
 export default function BatteryDataDisplay({ evCheckDetailId, canImport = true }) {
   const navigate = useNavigate();
   const [batteryData, setBatteryData] = useState(null);

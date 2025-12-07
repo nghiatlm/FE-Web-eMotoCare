@@ -1,6 +1,6 @@
 import { STATUS_COLORS, STATUS_MAP } from "../../utils/constants";
 import { Drawer, Button, Tag, Divider, Select } from "antd";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { UserPlus, UserCheck } from "lucide-react";
@@ -73,8 +73,8 @@ export default function BookingDetailDrawer({
         setLoadingTechs(true);
         const list = await fetchTechnicians();
         setTechnicians(list);
-      } catch {
-        toast.error("Không thể tải danh sách kỹ thuật viên");
+      } catch (err) {
+        toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tải danh sách kỹ thuật viên"));
       } finally {
         setLoadingTechs(false);
       }
@@ -129,7 +129,7 @@ export default function BookingDetailDrawer({
       toast.success("Đã gán kỹ thuật viên và tạo EVCheck!");
     } catch (error) {
       console.error("Lỗi gán kỹ thuật viên:", error);
-      toast.error(error.message || "Không thể gán kỹ thuật viên!");
+      toast.error((error?.response?.data?.message || error?.data?.message || error?.message || "Không thể gán kỹ thuật viên!"));
     }
   };
 
@@ -145,7 +145,7 @@ export default function BookingDetailDrawer({
       onUpdateStatus?.(booking.id, newStatus, booking.technician);
       onClose();
     } catch (e) {
-      toast.error(e.message || "Không thể cập nhật trạng thái!");
+      toast.error((e?.response?.data?.message || e?.data?.message || e?.message || "Không thể cập nhật trạng thái!"));
     }
   };
 
@@ -169,7 +169,7 @@ export default function BookingDetailDrawer({
       onClose();
     } catch (error) {
       console.error("Lỗi check-in:", error);
-      toast.error(error.message || "Check-in thất bại!");
+      toast.error((error?.response?.data?.message || error?.data?.message || error?.message || "Check-in thất bại!"));
     }
   };
 

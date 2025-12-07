@@ -4,7 +4,7 @@ import { Form, InputNumber, DatePicker, Button, Select, Input, Card, Divider, Ro
 import { User, Car, CarFront, Calendar, Clock, FileText, Settings, Wrench, Search, Phone, Mail, MapPin, Hash, Palette } from "lucide-react";
 
 const { Text, Title } = Typography;
-import { toast } from "@/components/ui/sonner";
+import { toast } from "react-toastify";
 import dayjs from "dayjs";
 
 import { getCustomersService } from "../../services/customerService";
@@ -205,8 +205,8 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
       setVehicleInfo(null);
       setIsChassisNumberLoaded(false);
       
-      // ✅ Toast lỗi
-      const errorMessage = error?.response?.data?.message || error?.message || "Không tìm thấy thông tin từ số khung. Vui lòng kiểm tra lại!";
+      // ✅ Toast lỗi - lấy từ BE
+      const errorMessage = error?.response?.data?.message || error?.data?.message || error?.message || "Không tìm thấy thông tin từ số khung. Vui lòng kiểm tra lại!";
       toast.error(errorMessage);
     } finally {
       setIsSearchingChassis(false);

@@ -10,8 +10,7 @@ import {
 } from "../../utils/constants.js";
 
 import { Drawer, Divider, Button, Input, Spin } from "antd";
-import { toast } from "@/components/ui/sonner";
-
+import { toast } from "react-toastify";
 import {
   fetchEVCheckByAppointmentService,
   updateEVCheckService,
@@ -117,7 +116,7 @@ export default function TechnicianBookingDetailDrawer({
           }
         } catch (err) {
           console.error("Lỗi tải EV Check:", err);
-          toast.error("Không thể tải EV Check!");
+          toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tải EV Check!"));
         } finally {
           setLoading(false);
         }
@@ -156,7 +155,7 @@ export default function TechnicianBookingDetailDrawer({
     } catch (err) {
       console.error("Lỗi cập nhật KM:", err);
       toast.dismiss(loadingToast);
-      toast.error(err?.message || "Không thể cập nhật số KM!");
+      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể cập nhật số KM!"));
     } finally {
       setLoading(false);
     }

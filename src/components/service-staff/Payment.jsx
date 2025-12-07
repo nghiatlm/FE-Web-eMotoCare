@@ -1,6 +1,6 @@
 // src/components/Payment.jsx
 import { Modal, Table, Radio, Button, Spin, Empty, Tag } from "antd";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import { createPaymentLinkService } from "../../services/paymentService";
 import { fetchEVCheckByAppointmentService } from "../../services/evcheckService";
@@ -154,7 +154,7 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
       }
     } catch (e) {
       console.error(e);
-      toast.error(e.message || "Không thể tạo yêu cầu thanh toán");
+      toast.error(e?.response?.data?.message || e?.data?.message || e?.message || "Không thể tạo yêu cầu thanh toán");
     } finally {
       setLoading(false);
     }

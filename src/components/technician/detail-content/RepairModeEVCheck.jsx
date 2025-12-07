@@ -1,7 +1,7 @@
 // src/components/technician/detail-content/RepairModeEVCheck.jsx
 import { useState, useEffect, useCallback } from "react";
 import { Table, Input, Select, Button, Spin, Tag, Checkbox, Tooltip } from "antd";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "react-toastify";
 import {
   fetchEVCheckDetailsServiceRe as getRepairDetailsList,
   updateEVCheckDetailService,
@@ -281,7 +281,7 @@ export default function RepairModeEVCheck({
         setVehiclePartOptions(options);
       } catch (err) {
         console.error("Không load được phụ tùng xe:", err);
-        toast.error("Không tải được phụ tùng gắn trên xe!");
+        toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không tải được phụ tùng gắn trên xe!"));
         setVehiclePartOptions([]);
       } finally {
         setVehiclePartLoading(false);
@@ -338,7 +338,7 @@ export default function RepairModeEVCheck({
       // Chỉ log để debug, không làm gián đoạn UX
       // Axios interceptor đã unwrap error.response.data, nên check e?.statusCode
       if (e?.statusCode !== 500 && e?.response?.status !== 500) {
-        toast.error("Không tải được danh sách phụ tùng đề xuất");
+        toast.error((e?.response?.data?.message || e?.data?.message || e?.message || "Không tải được danh sách phụ tùng đề xuất"));
       } else {
         console.warn("⚠️ Backend API lỗi 500, bỏ qua để không làm gián đoạn UX");
       }
@@ -400,7 +400,7 @@ export default function RepairModeEVCheck({
         setReplacePartOptions(options);
       } catch (err) {
         console.error("Không load được phụ tùng kho:", err);
-        toast.error("Không tải được phụ tùng trong kho!");
+        toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không tải được phụ tùng trong kho!"));
         setReplacePartOptions([]);
       } finally {
         setReplacePartLoading(false);
@@ -716,7 +716,7 @@ export default function RepairModeEVCheck({
       setStatusChanges({});
     } catch (err) {
       console.error("❌ Lỗi khi tải chi tiết EV Check:", err);
-      toast.error("Không thể tải dữ liệu chi tiết!");
+      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tải dữ liệu chi tiết!"));
       setDetails(readOnly ? [] : [createEmptyRow()]);
     } finally {
       setLoading(false);
@@ -994,7 +994,7 @@ export default function RepairModeEVCheck({
       }
     } catch (err) {
       console.error("Lỗi khi lưu hạng mục:", err);
-      if (!silent) toast.error("Không thể lưu hạng mục!");
+      if (!silent) toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể lưu hạng mục!"));
       return null;
     }
   };
@@ -1086,7 +1086,7 @@ export default function RepairModeEVCheck({
     } catch (err) {
       console.error("Lỗi khi lưu EV Check Detail:", err);
       toast.dismiss(loadingToast);
-      toast.error("Không thể lưu hạng mục sửa chữa!");
+      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể lưu hạng mục sửa chữa!"));
     } finally {
       setLoading(false);
     }
@@ -1179,7 +1179,7 @@ export default function RepairModeEVCheck({
       console.error("❌ Cập nhật trạng thái thất bại:", err);
       console.error("❌ Error details:", err.response?.data || err.message);
       toast.dismiss(loadingToast);
-      toast.error("Không thể cập nhật trạng thái hạng mục!");
+      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể cập nhật trạng thái hạng mục!"));
     } finally {
       setLoading(false);
     }

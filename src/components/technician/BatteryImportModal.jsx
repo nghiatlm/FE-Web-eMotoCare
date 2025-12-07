@@ -2,8 +2,7 @@ import { useState } from "react";
 import { Modal, Upload, Button } from "antd";
 import { Upload as UploadIcon, FileText } from "lucide-react";
 import { importBatteryDataService } from "../../services/batteryService";
-import { toast } from "@/components/ui/sonner";
-
+import { toast } from "react-toastify";
 const { Dragger } = Upload;
 
 export default function BatteryImportModal({ 
@@ -49,7 +48,7 @@ export default function BatteryImportModal({
       onClose();
     } catch (error) {
       console.error("Lỗi import:", error);
-      toast.error(error?.response?.data?.message || "Import dữ liệu pin thất bại!");
+      toast.error((error?.response?.data?.message || error?.data?.message || error?.message || "Import dữ liệu pin thất bại!"));
     } finally {
       setLoading(false);
     }

@@ -3,7 +3,7 @@
 // Khác với RepairModeEVCheck: đã có sẵn replacePart từ RMA, không cần chọn lại
 import { useState, useEffect, useCallback } from "react";
 import { Table, Input, Select, Button, Spin, Tag, Tooltip } from "antd";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "react-toastify";
 import {
   fetchEVCheckDetailsServiceRe as getRepairDetailsList,
   updateEVCheckDetailService,
@@ -136,7 +136,7 @@ export default function RMARepairModeEVCheck({
         setVehiclePartOptions(options);
       } catch (err) {
         console.error("Không load được phụ tùng xe:", err);
-        toast.error("Không tải được phụ tùng gắn trên xe!");
+        toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không tải được phụ tùng gắn trên xe!"));
         setVehiclePartOptions([]);
       } finally {
         setVehiclePartLoading(false);
@@ -294,7 +294,7 @@ export default function RMARepairModeEVCheck({
       setStatusChanges({});
     } catch (err) {
       console.error("❌ Lỗi khi tải chi tiết EV Check:", err);
-      toast.error("Không thể tải dữ liệu chi tiết!");
+      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tải dữ liệu chi tiết!"));
       setDetails([]);
     } finally {
       setLoading(false);
@@ -472,7 +472,7 @@ export default function RMARepairModeEVCheck({
     } catch (err) {
       console.error("❌ Cập nhật trạng thái thất bại:", err);
       toast.dismiss(loadingToast);
-      toast.error("Không thể cập nhật trạng thái hạng mục!");
+      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể cập nhật trạng thái hạng mục!"));
     } finally {
       setLoading(false);
     }

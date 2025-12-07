@@ -1,7 +1,7 @@
 // src/components/staff/RMADetails.jsx
 import React, { useState, useMemo } from "react";
 import { Table, Spin, Button, Modal, Card, Tag, Image, Space, Divider, Typography, Tooltip } from "antd";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "react-toastify";
 import { Calendar, User, FileText, Package, Clock, CheckCircle, Tag as TagIcon } from "lucide-react";
 
 const { Text } = Typography;
@@ -296,7 +296,7 @@ function RMADetails({ rma, details = [], loading }) {
       setBookingOpen(false);
     } catch (err) {
       console.error("Lỗi tạo lịch hẹn từ RMA:", err);
-      toast.error(err?.response?.data?.message || err?.message || "Không thể tạo lịch hẹn. Vui lòng thử lại.");
+      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tạo lịch hẹn. Vui lòng thử lại."));
     } finally {
       setBookingLoading(false);
     }

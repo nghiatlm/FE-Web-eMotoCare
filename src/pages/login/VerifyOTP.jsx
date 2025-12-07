@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import AuthLayout from "../../components/authlayout/AuthLayout";
 import { authService } from "@/services/authService";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "react-toastify";
 
 export default function VerifyOTP() {
   const navigate = useNavigate();

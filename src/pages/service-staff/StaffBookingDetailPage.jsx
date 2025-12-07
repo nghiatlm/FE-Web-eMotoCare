@@ -1,6 +1,6 @@
 import { STATUS_COLORS, STATUS_MAP } from "../../utils/constants";
 import { Button, Tag, Divider, Select, Card, Spin, Modal } from "antd";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -139,7 +139,7 @@ export default function StaffBookingDetailPage() {
         const list = await fetchTechnicians();
         setTechnicians(list);
       } catch {
-        toast.error("Không thể tải danh sách kỹ thuật viên");
+        toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tải danh sách kỹ thuật viên"));
       } finally {
         setLoadingTechs(false);
       }
@@ -223,7 +223,7 @@ export default function StaffBookingDetailPage() {
       toast.success("Đã gán kỹ thuật viên và tạo EVCheck!");
     } catch (error) {
       console.error("Lỗi gán kỹ thuật viên:", error);
-      toast.error(error.message || "Không thể gán kỹ thuật viên!");
+      toast.error((error?.response?.data?.message || error?.data?.message || error?.message || "Không thể gán kỹ thuật viên!"));
     }
   };
 
@@ -323,7 +323,7 @@ export default function StaffBookingDetailPage() {
       setIsCancelModalOpen(true);
     } catch (error) {
       console.error("Lỗi tính phí hủy:", error);
-      toast.error("Không thể tính phí hủy. Vui lòng thử lại!");
+      toast.error((error?.response?.data?.message || error?.data?.message || error?.message || "Không thể tính phí hủy. Vui lòng thử lại!"));
     } finally {
       setIsCalculatingFee(false);
     }
@@ -350,7 +350,7 @@ export default function StaffBookingDetailPage() {
         toast.success("Đã hủy lịch hẹn thành công!");
         navigate("/staff/booking/list");
       } catch (e) {
-        toast.error(e.message || "Không thể hủy lịch hẹn!");
+        toast.error((e?.response?.data?.message || e?.data?.message || e?.message || "Không thể hủy lịch hẹn!"));
       }
     }
   };
@@ -371,7 +371,7 @@ export default function StaffBookingDetailPage() {
         toast.success("Đã thanh toán phí hủy và hủy lịch hẹn thành công!");
         navigate("/staff/booking/list");
       } catch (e) {
-        toast.error(e.message || "Không thể cập nhật trạng thái hủy!");
+        toast.error((e?.response?.data?.message || e?.data?.message || e?.message || "Không thể cập nhật trạng thái hủy!"));
         setIsPendingCancel(false);
       }
     } else if (status === "CANCELED") {
@@ -394,7 +394,7 @@ export default function StaffBookingDetailPage() {
       updateStatus(booking.id, newStatus, booking.technician);
       navigate("/staff/booking/list");
     } catch (e) {
-      toast.error(e.message || "Không thể cập nhật trạng thái!");
+      toast.error((e?.response?.data?.message || e?.data?.message || e?.message || "Không thể cập nhật trạng thái!"));
     }
   };
 
@@ -414,7 +414,7 @@ export default function StaffBookingDetailPage() {
       updateStatus(booking.id, "CHECKED_IN");
     } catch (error) {
       console.error("Lỗi check-in:", error);
-      toast.error(error.message || "Check-in thất bại!");
+      toast.error((error?.response?.data?.message || error?.data?.message || error?.message || "Check-in thất bại!"));
     }
   };
 
@@ -730,7 +730,7 @@ export default function StaffBookingDetailPage() {
                           }
                         } catch (error) {
                           console.error("Lỗi tính phí hủy:", error);
-                          toast.error("Không thể tính phí hủy. Vui lòng thử lại!");
+                          toast.error((error?.response?.data?.message || error?.data?.message || error?.message || "Không thể tính phí hủy. Vui lòng thử lại!"));
                         } finally {
                           setIsCalculatingFee(false);
                         }

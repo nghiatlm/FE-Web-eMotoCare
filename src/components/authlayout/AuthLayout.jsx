@@ -4,9 +4,9 @@ export default function AuthLayout({ title, children }) {
       <div className='max-w-md w-full bg-white rounded-2xl shadow-xl p-8'>
         <div className='text-center mb-6'>
           <img
-            src='/logo.png'
+            src='/logored.png'
             alt='Logo'
-            className='mx-auto w-20 h-20 object-contain mb-3'
+            className='mx-auto w-24 h-24 object-contain mb-3'
           />
           <h2 className='text-2xl font-bold text-gray-800'>{title}</h2>
           <p className='text-gray-500 text-sm mt-1'>

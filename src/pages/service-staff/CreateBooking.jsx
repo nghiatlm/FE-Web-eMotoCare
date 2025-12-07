@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Card, Space } from "antd";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { Calendar } from "lucide-react";
 import BookingForm from "../../components/service-staff/BookingForm";
@@ -60,7 +60,7 @@ const CreateBooking = () => {
       }
     } catch (error) {
       console.error("Lỗi tạo lịch hẹn:", error);
-      toast.error(error?.response?.data?.message || error?.message || "Tạo lịch hẹn thất bại!");
+      toast.error((error?.response?.data?.message || error?.data?.message || error?.message || "Tạo lịch hẹn thất bại!"));
     } finally {
       setLoading(false);
     }
