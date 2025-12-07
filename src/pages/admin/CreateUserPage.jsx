@@ -153,8 +153,14 @@ export default function CreateUserPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Form submitted", formData);
 
     if (!validateForm()) {
+      console.log("Validation failed", errors);
+      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc", {
+        position: "top-right",
+        autoClose: 4000,
+      });
       return;
     }
 
@@ -229,7 +235,9 @@ export default function CreateUserPage() {
       }
 
       // Call API to create user
+      console.log("Calling API with payload:", payload);
       const response = await createUser(payload);
+      console.log("API response:", response);
 
       if (response?.success !== false) {
         if (window.refreshUserList) {
@@ -247,7 +255,8 @@ export default function CreateUserPage() {
       }
     } catch (error) {
       console.error("Error creating user:", error);
-      toast.error(`Tạo người dùng thất bại: ${error.message || "Không thể tạo người dùng. Vui lòng thử lại."}`, {
+      const errorMessage = error.response?.data?.message || error.message || "Không thể tạo người dùng. Vui lòng thử lại.";
+      toast.error(`Tạo người dùng thất bại: ${errorMessage}`, {
         position: "top-right",
         autoClose: 5000,
       });
@@ -586,6 +595,23 @@ export default function CreateUserPage() {
                   </Select>
                   {errors.position && (
                     <p className="text-sm text-destructive">{errors.position}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="address" className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Địa chỉ <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="address"
+                    placeholder="VD: 123 Đường ABC, Quận XYZ, TP.HCM"
+                    value={formData.address}
+                    onChange={(e) => handleInputChange("address", e.target.value)}
+                    className={errors.address ? "border-destructive" : ""}
+                  />
+                  {errors.address && (
+                    <p className="text-sm text-destructive">{errors.address}</p>
                   )}
                 </div>
 
