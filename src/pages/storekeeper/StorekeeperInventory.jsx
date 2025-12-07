@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStaffByAccountId } from "@/api/staffsApi";
-import { getPartItemsByServiceCenter } from "@/api/partitemsApi";
+import { getPartItems } from "@/api/partitemsApi";
+import { getParts } from "@/api/partsApi";
 import { getServiceCenterById } from "@/api/serviceCentersApi";
 
 const STOCK_THRESHOLD = 10;
@@ -24,11 +25,15 @@ const aggregatePartItems = (partItems, branchInfo) => {
   (partItems || []).forEach((item) => {
     if (!item) return;
     const part = item.part || {};
-    const partCode = normalizePartCode(item);
-    if (!map.has(partCode)) {
-      map.set(partCode, {
-        id: part.id || partCode,
-        partId: part.id,
+    // Dùng part.id làm key để đảm bảo mỗi part được hiển thị riêng biệt
+    const partId = part.id;
+    if (!partId) return; // Bỏ qua nếu không có part.id
+    
+    if (!map.has(partId)) {
+      const partCode = part.code || normalizePartCode(item);
+      map.set(partId, {
+        id: partId,
+        partId: partId,
         serviceCenterId: branchInfo?.id || null,
         partCode,
         partName: part.name || "Phụ tùng",
@@ -40,7 +45,7 @@ const aggregatePartItems = (partItems, branchInfo) => {
         minStock: STOCK_THRESHOLD,
       });
     }
-    const entry = map.get(partCode);
+    const entry = map.get(partId);
     // QUAN TRỌNG: Lấy quantity từ item (partItem) ở ngoài, KHÔNG phải từ part.quantity ở trong
     // item.quantity là số lượng thực tế của partItem trong kho
     // part.quantity là số lượng tổng của part (không dùng ở đây)
@@ -74,7 +79,7 @@ const getAlertBadge = (alert) => {
     case "out":
       return { label: "Hết", className: "bg-rose-100 text-rose-700 border border-rose-200" };
     case "low":
-      return { label: "Sắp thiếu", className: "bg-amber-100 text-amber-700 border border-amber-200" };
+      return { label: "Sắp hết", className: "bg-amber-100 text-amber-700 border border-amber-200" };
     default:
       return { label: "Đủ", className: "bg-emerald-100 text-emerald-700 border border-emerald-200" };
   }
@@ -176,7 +181,7 @@ export default function StorekeeperInventory() {
             const centerRes = await getServiceCenterById(resolvedServiceCenterId);
             serviceCenter = centerRes?.data || centerRes;
           } catch (centerErr) {
-            console.error("Error fetching service center:", centerErr);
+            // Silent error handling
           }
         }
 
@@ -197,7 +202,6 @@ export default function StorekeeperInventory() {
           });
         }
       } catch (err) {
-        console.error("Error fetching staff info:", err);
         if (isMounted) {
           setError("Không thể tải thông tin thủ kho.");
         }
@@ -215,25 +219,80 @@ export default function StorekeeperInventory() {
       setLoading(true);
       setError("");
       try {
-        const response = await getPartItemsByServiceCenter(serviceCenterId);
-        // API trả về: { statusCode, success, message, data: [...] } - data là array trực tiếp
-        let rows = [];
-        if (Array.isArray(response?.data)) {
-          // data là array trực tiếp
-          rows = response.data;
-        } else if (Array.isArray(response)) {
-          // response là array trực tiếp
-          rows = response;
-        } else if (response?.data?.rowDatas) {
-          // fallback: nếu có nested rowDatas
-          rows = response.data.rowDatas;
-        } else if (response?.rowDatas) {
-          // fallback: nếu rowDatas ở root
-          rows = response.rowDatas;
+        const partsResponse = await getParts({
+          serviceCenterId,
+          page: 1,
+          pageSize: 1000, 
+        });
+
+        const partsData = partsResponse?.data || partsResponse;
+        const partsList = partsData?.rowDatas || partsData?.data || [];
+
+
+        if (partsList.length === 0) {
+          setParts([]);
+          setLoading(false);
+          return;
         }
-        setParts(aggregatePartItems(rows, branchInfo));
+
+        const allPartItems = [];
+        const partsMap = new Map(); 
+        
+        partsList.forEach((part) => {
+          partsMap.set(part.id, {
+            ...part,
+            hasPartItems: false,
+          });
+        });
+        
+        let processedCount = 0;
+        let errorCount = 0;
+        
+        await Promise.all(
+          partsList.map(async (part, index) => {
+            try {
+              const partItemsResponse = await getPartItems({
+                partId: part.id,
+                serviceCenterId,
+                page: 1,
+                pageSize: 1000, // Lấy tất cả partItems của part này
+              });
+
+              const partItemsData = partItemsResponse?.data || partItemsResponse;
+              const partItemsList = partItemsData?.rowDatas || partItemsData?.data || [];
+
+              if (partItemsList.length > 0) {
+                // Thêm part info vào mỗi partItem để aggregatePartItems có thể sử dụng
+                partItemsList.forEach((partItem) => {
+                  allPartItems.push({
+                    ...partItem,
+                    part: {
+                      ...part,
+                      ...partItem.part, // Ưu tiên part từ partItem nếu có
+                    },
+                  });
+                });
+                partsMap.set(part.id, { ...part, hasPartItems: true });
+              } else {
+                allPartItems.push({
+                  id: `empty-${part.id}`,
+                  quantity: 0,
+                  part: part,
+                });
+              }
+              processedCount++;
+            } catch (err) {
+              errorCount++;
+              allPartItems.push({
+                id: `error-${part.id}`,
+                quantity: 0,
+                part: part,
+              });
+            }
+          })
+        );
+        setParts(aggregatePartItems(allPartItems, branchInfo));
       } catch (err) {
-        console.error("Error loading part items:", err);
         setError("Không thể tải tồn kho phụ tùng. Vui lòng thử lại sau.");
         setParts([]);
       } finally {
@@ -273,11 +332,12 @@ export default function StorekeeperInventory() {
 
   const handleNavigateDetail = (part) => {
     navigate(
-      `/storekeeper/accessories/${serviceCenterId || "current"}/${encodeURIComponent(part.partCode)}`,
+      `/storekeeper/accessories/${serviceCenterId || "current"}/${part.partId || part.id}`,
       {
         state: {
           serviceCenterId: part.serviceCenterId || serviceCenterId,
           branchInfo,
+          partId: part.partId || part.id,
         },
       },
     );
@@ -344,7 +404,7 @@ export default function StorekeeperInventory() {
             <SelectContent>
               <SelectItem value="all">Tất cả</SelectItem>
               <SelectItem value="sufficient">Đủ</SelectItem>
-              <SelectItem value="low">Sắp thiếu</SelectItem>
+              <SelectItem value="low">Sắp hết</SelectItem>
               <SelectItem value="out">Hết</SelectItem>
             </SelectContent>
           </Select>
@@ -370,41 +430,70 @@ export default function StorekeeperInventory() {
           </Button>
         </div>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-white shadow-lg overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full table-fixed">
+              <colgroup>
+                <col className="w-16" />
+                <col style={{ width: 'auto' }} />
+                <col style={{ width: 'auto' }} />
+                <col style={{ width: 'auto' }} />
+                <col style={{ width: 'auto' }} />
+                <col style={{ width: 'auto' }} />
+                <col style={{ width: '200px' }} />
+                <col style={{ width: 'auto' }} />
+                <col className="w-32" />
+              </colgroup>
               <thead>
-                <tr className="bg-gradient-to-r from-red-50 via-red-50/90 to-red-100/50 dark:from-red-950/20 dark:via-red-950/15 dark:to-red-900/10 border-b-2 border-red-200/60 dark:border-red-800/30">
-                  <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
+                  <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    STT
+                  </th>
+                  <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
                     Hình ảnh
                   </th>
-                  <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
                     Mã phụ tùng
                   </th>
-                  <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
                     Tên phụ tùng
                   </th>
-                  <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
                     ĐVT
                   </th>
-                  <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
                     Tồn khả dụng
                   </th>
-                  <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider min-w-[200px]">
+                  <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
                     Mức cảnh báo
                   </th>
-                  <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
                     Trạng thái tồn
                   </th>
-                  <th className="text-center py-5 px-6 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider w-32">
+                  <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
                     Thao tác
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200/80">
+            </table>
+          </div>
+          <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+            <table className="w-full table-fixed">
+              <colgroup>
+                <col className="w-16" />
+                <col style={{ width: 'auto' }} />
+                <col style={{ width: 'auto' }} />
+                <col style={{ width: 'auto' }} />
+                <col style={{ width: 'auto' }} />
+                <col style={{ width: 'auto' }} />
+                <col style={{ width: '200px' }} />
+                <col style={{ width: 'auto' }} />
+                <col className="w-32" />
+              </colgroup>
+              <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-20 text-center">
+                    <td colSpan={9} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center justify-center gap-4">
                         <div className="relative">
                           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-primary"></div>
@@ -416,7 +505,7 @@ export default function StorekeeperInventory() {
                   </tr>
                 ) : visibleParts.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-16 text-center">
+                    <td colSpan={9} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <PackagePlus className="h-12 w-12 text-slate-300" />
                         <p className="text-sm font-medium text-muted-foreground">Không có phụ tùng phù hợp</p>
@@ -424,14 +513,18 @@ export default function StorekeeperInventory() {
                     </td>
                   </tr>
                 ) : (
-                  visibleParts.map((part) => {
+                  visibleParts.map((part, index) => {
                     const badge = getAlertBadge(part.alert);
+                    const stt = (tablePage - 1) * pageSize + index + 1;
                     return (
                       <tr
                         key={part.id}
-                        className={`${getRowBackground(part.alert)} transition-all duration-200 ease-in-out group`}
+                        className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-slate-50/40"}`}
                       >
-                        <td className="py-5 px-6 text-center">
+                        <td className="py-4 px-4 text-center">
+                          <span className="text-sm text-slate-600">{stt}</span>
+                        </td>
+                        <td className="py-4 px-4 text-center">
                           <div className="flex items-center justify-center">
                             {part.partImage ? (
                               <div className="relative h-14 w-14 rounded-lg overflow-hidden ring-2 ring-slate-100 shadow-md group-hover:ring-2 group-hover:ring-primary/20 transition-all">
@@ -448,20 +541,20 @@ export default function StorekeeperInventory() {
                             )}
                           </div>
                         </td>
-                        <td className="py-5 px-6 text-center">
-                          <span className="font-bold text-primary text-sm">{part.partCode}</span>
+                        <td className="py-4 px-6 text-center">
+                          <span className="text-sm text-foreground">{part.partCode}</span>
                         </td>
-                        <td className="py-5 px-6 text-center">
+                        <td className="py-4 px-6 text-center">
                           <div className="space-y-1">
-                            <p className="font-semibold text-slate-900 text-sm leading-tight">{part.partName}</p>
+                            <p className="text-sm font-medium text-foreground leading-tight">{part.partName}</p>
                           </div>
                         </td>
-                        <td className="py-5 px-6 text-center">
+                        <td className="py-4 px-6 text-center">
                           <span className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium text-slate-700 bg-slate-100">
                             {part.unit}
                           </span>
                         </td>
-                        <td className="py-5 px-6 text-center">
+                        <td className="py-4 px-6 text-center">
                           <div className="space-y-1">
                             <div className={`text-2xl font-bold ${getQuantityColor(part.alert)}`}>
                               {part.totalQty}
@@ -469,19 +562,19 @@ export default function StorekeeperInventory() {
                             <p className="text-xs text-slate-500 font-medium">Min: {part.minStock}</p>
                           </div>
                         </td>
-                        <td className="py-5 px-6 text-center">
+                        <td className="py-4 px-6 text-center">
                           <div className="flex items-center justify-center">
                             <StockBar current={part.totalQty} min={part.minStock} />
                           </div>
                         </td>
-                        <td className="py-5 px-6 text-center">
+                        <td className="py-4 px-6 text-center">
                           <div className="flex items-center justify-center">
                             <Badge className={`${badge.className} px-3 py-1.5 rounded-md font-semibold text-xs shadow-sm`}>
                               {badge.label}
                             </Badge>
                           </div>
                         </td>
-                        <td className="py-5 px-6 text-center">
+                        <td className="py-4 px-6 text-center">
                           <div className="flex items-center justify-center">
                             <Button
                               variant="ghost"

@@ -238,7 +238,7 @@ export default function AccessoryInventory() {
       case "sufficient":
         return "Đủ";
       case "low":
-        return "Sắp thiếu";
+        return "Sắp hết";
       case "out":
         return "Hết";
       default:
@@ -325,7 +325,7 @@ export default function AccessoryInventory() {
               <SelectContent>
                 <SelectItem value="all">Tất cả</SelectItem>
                 <SelectItem value="sufficient">Đủ</SelectItem>
-                <SelectItem value="low">Sắp thiếu</SelectItem>
+                <SelectItem value="low">Sắp hết</SelectItem>
                 <SelectItem value="out">Hết</SelectItem>
               </SelectContent>
             </Select>
@@ -466,7 +466,7 @@ export default function AccessoryInventory() {
                             <span className="text-muted-foreground">Min: {item.minStock}</span>
                             {item.quantity < item.minStock ? (
                               <span className="text-orange-600 font-medium">
-                                Sắp thiếu: {item.minStock - item.quantity}
+                                Sắp hết: {item.minStock - item.quantity}
                               </span>
                             ) : item.quantity > item.minStock * 1.1 ? (
                               <span className="text-green-600 font-medium">

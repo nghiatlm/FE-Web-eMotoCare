@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { createExportNote } from "@/api/exportNotesApi";
-import { getPartItemsByServiceCenter } from "@/api/partitemsApi";
+import { getPartItems } from "@/api/partitemsApi";
 import { getServiceCenters } from "@/api/serviceCentersApi";
 import { useServiceCenter } from "@/hooks/useServiceCenter";
 import {
@@ -99,7 +99,11 @@ export default function CreateExportSlipPage() {
     try {
       setLoadingPartItems(true);
 
-      const response = await getPartItemsByServiceCenter(serviceCenterId);
+      const response = await getPartItems({
+        serviceCenterId: serviceCenterId,
+        page: 1,
+        pageSize: 1000
+      });
       
       let items = [];
       

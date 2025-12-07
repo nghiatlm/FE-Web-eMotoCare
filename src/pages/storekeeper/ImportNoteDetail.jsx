@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "react-toastify";
 import { getImportNoteById } from "@/api/importNotesApi";
 import { getPartItemById } from "@/api/partitemsApi";
 
@@ -51,7 +51,6 @@ const formatCurrency = (value) =>
 export default function ImportNoteDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [importNote, setImportNote] = useState(null);
   const [partItemsDetails, setPartItemsDetails] = useState({}); // Lưu chi tiết partItem theo partItemId
@@ -75,10 +74,9 @@ export default function ImportNoteDetail() {
       } catch (error) {
         if (active) {
           setImportNote(null);
-          toast({
-            title: "Lỗi",
-            description: error?.message || "Không thể tải chi tiết phiếu nhập",
-            variant: "destructive"
+          toast.error(`Lỗi: ${error?.message || "Không thể tải chi tiết phiếu nhập"}`, {
+            position: "top-right",
+            autoClose: 4000,
           });
         }
       } finally {
@@ -92,7 +90,7 @@ export default function ImportNoteDetail() {
     return () => {
       active = false;
     };
-  }, [id, toast]);
+  }, [id]);
 
   // Fetch partItem details cho mỗi detail
   useEffect(() => {
@@ -298,7 +296,7 @@ export default function ImportNoteDetail() {
                 <table className="w-full">
                   <thead>
                     <tr className="bg-gradient-to-r from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-b-2 border-red-200/50 dark:border-red-800/30">
-                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">#</th>
+                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">STT</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Hình ảnh</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Tên phụ tùng</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">Serial/Batch</th>
@@ -390,13 +388,132 @@ export default function ImportNoteDetail() {
           </TabsContent>
 
           <TabsContent value="log" className="mt-4">
-            <div className="bg-card rounded-xl border border-border shadow-md p-12 text-center">
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center">
-                  <FileText className="h-10 w-10 text-muted-foreground/50" />
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Nhật ký nhập kho</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
+                        <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-12">STT</th>
+                        <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">Mã phụ tùng</th>
+                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Tên phụ tùng</th>
+                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Serial</th>
+                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Số lượng</th>
+                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Đơn giá</th>
+                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Thành tiền</th>
+                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Ngày tạo</th>
+                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Ngày cập nhật</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {details.length === 0 ? (
+                        <tr>
+                          <td colSpan={10} className="py-12 px-6 text-center">
+                            <div className="flex flex-col items-center gap-2">
+                              <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
+                                <FileText className="h-8 w-8 text-muted-foreground/50" />
+                              </div>
+                              <p className="text-sm text-muted-foreground">Chưa có nhật ký nhập kho</p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        details.map((detail, idx) => {
+                          const partItemDetail = detail.partItemId 
+                            ? (partItemsDetails[detail.partItemId] || detail.partItem)
+                            : detail.partItem;
+                          
+                          const part = partItemDetail?.part || detail.partItem?.part;
+                          const code = part?.code || "N/A";
+                          const name = part?.name || "N/A";
+                          const serial = partItemDetail?.serialNumber || detail.partItem?.serialNumber || "—";
+                          const partItemStatus = partItemDetail?.status || detail.partItem?.status || "N/A";
+                          
+                          const importDate = detail.createdAt
+                            ? new Date(detail.createdAt).toLocaleString('vi-VN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                            : "N/A";
+                          const updateDate = detail.updatedAt && detail.updatedAt !== detail.createdAt
+                            ? new Date(detail.updatedAt).toLocaleString('vi-VN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                            : "—";
+
+                          const getPartItemStatusLabel = (status) => {
+                            const statusMap = {
+                              "ACTIVE": "Khả dụng",
+                              "IN_ACTIVE": "Không khả dụng",
+                              "INACTIVE": "Không khả dụng",
+                              "IN_STOCK": "Trong kho",
+                              "INSTALLED": "Đã lắp đặt",
+                              "MANUFACTURER_RECALL": "Thu hồi từ nhà sản xuất"
+                            };
+                            return statusMap[status] || status || "N/A";
+                          };
+
+                          const getPartItemStatusBadgeClass = (status) => {
+                            const classMap = {
+                              "ACTIVE": "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 border-green-300 dark:border-green-700",
+                              "IN_ACTIVE": "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400 border-gray-300 dark:border-gray-700",
+                              "INACTIVE": "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400 border-gray-300 dark:border-gray-700",
+                              "IN_STOCK": "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 border-blue-300 dark:border-blue-700",
+                              "INSTALLED": "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400 border-purple-300 dark:border-purple-700",
+                              "MANUFACTURER_RECALL": "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400 border-red-300 dark:border-red-700"
+                            };
+                            return classMap[status] || "bg-muted text-muted-foreground border-border";
+                          };
+
+                          return (
+                            <tr
+                              key={detail.id || idx}
+                              className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+                                idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"
+                              }`}
+                            >
+                              <td className="py-4 px-4 text-center">
+                                <span className="text-sm text-slate-600">{idx + 1}</span>
+                              </td>
+                              <td className="py-4 px-4 text-center">
+                                <span className="text-sm font-medium text-foreground">{code}</span>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <span className="text-sm text-foreground">{name}</span>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <span className="text-sm font-medium text-primary">{serial}</span>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <span className="text-sm text-foreground">{detail.quantity || 0}</span>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <span className="text-sm text-foreground">{detail.unitPrice ? formatCurrency(detail.unitPrice) : "—"}</span>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <span className="text-sm font-medium text-foreground">{detail.totalPrice ? formatCurrency(detail.totalPrice) : "—"}</span>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <span className="text-sm text-foreground">{importDate}</span>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <span className="text-sm text-foreground">{updateDate}</span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-                <p className="text-lg font-semibold text-foreground">Nhật ký</p>
-                <p className="text-sm text-muted-foreground">Chức năng này sẽ được cập nhật sớm</p>
               </div>
             </div>
           </TabsContent>

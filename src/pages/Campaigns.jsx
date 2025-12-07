@@ -251,7 +251,7 @@ export default function Campaigns() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="p-8 max-w-7xl mx-auto space-y-6">
+      <div className="p-8 max-w-[95%] mx-auto space-y-6">
         {/* Header */}
         <div className="mb-2">
           <div className="flex items-center gap-2">
@@ -490,4 +490,3 @@ export default function Campaigns() {
     </div>
   );
 }
-

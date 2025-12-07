@@ -1,5 +1,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Routes, Route, Navigate } from "react-router-dom";
@@ -16,7 +18,6 @@ import VerifySuccess from "./pages/VerifySuccess";
 
 // admin
 import WarrantyClaims from "./pages/WarrantyClaims";
-import Vehicles from "./pages/Vehicles";
 import UserManagement from "./pages/UserManagement";
 import Index from "./pages/Index";
 import Branches from "./pages/Branches";
@@ -30,6 +31,10 @@ import CampaignDetail from "./pages/CampaignDetail";
 import CreateCampaign from "./pages/admin/CreateCampaign";
 import CreateUserPage from "./pages/admin/CreateUserPage";
 import SyncOEMData from "./pages/admin/SyncOEMData";
+import Models from "./pages/admin/Models";
+import ModelDetail from "./pages/admin/ModelDetail";
+import MaintenancePlans from "./pages/admin/MaintenancePlans";
+import MaintenancePlanDetail from "./pages/admin/MaintenancePlanDetail";
 import NotFound from "./pages/NotFound";
 
 // service staff
@@ -82,7 +87,23 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-
+      <ToastContainer
+        position="top-right"
+        autoClose={4000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+        limit={5}
+        style={{ zIndex: 9999 }}
+        toastClassName="!rounded-lg !shadow-lg"
+        bodyClassName="!text-sm"
+        progressClassName="!bg-green-500"
+      />
         <Routes>
         {/* Mở web vào thẳng màn login */}
         <Route path="/" element={<Navigate to="/login" replace />} />
@@ -124,7 +145,8 @@ const App = () => (
                           path="warranty-claims"
                           element={<WarrantyClaims />}
                         />
-                        <Route path="vehicles" element={<Vehicles />} />
+                        <Route path="models" element={<Models />} />
+                        <Route path="models/:id" element={<ModelDetail />} />
                         <Route
                           path="service-packages"
                           element={<ServicePackages />}
@@ -139,8 +161,24 @@ const App = () => (
                         />
                         <Route path="campaigns" element={<Campaigns />} />
                         <Route
+                          path="campaigns/new"
+                          element={<CreateCampaign />}
+                        />
+                        <Route
                           path="campaigns/:id"
                           element={<CampaignDetail />}
+                        />
+                        <Route
+                          path="sync-oem"
+                          element={<SyncOEMData />}
+                        />
+                        <Route
+                          path="maintenance-plans"
+                          element={<MaintenancePlans />}
+                        />
+                        <Route
+                          path="maintenance-plans/:id"
+                          element={<MaintenancePlanDetail />}
                         />
                         <Route path="*" element={<NotFound />} />
                       </Routes>

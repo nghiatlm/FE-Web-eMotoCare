@@ -544,16 +544,6 @@ export default function ExportNoteDetail() {
       subText: exportNote.serviceCenter?.address,
     },
     {
-      icon: User,
-      label: "Người xuất",
-      value: exportNote.exportBy
-        ? `${exportNote.exportBy.firstName || ""} ${exportNote.exportBy.lastName || ""}`.trim() ||
-          exportNote.exportBy.staffCode ||
-          "—"
-        : "—",
-      subText: exportNote.exportBy?.staffCode ? `Mã: ${exportNote.exportBy.staffCode}` : undefined,
-    },
-    {
       icon: FileText,
       label: "Ghi chú",
       value: exportNote.note || "—",
@@ -637,7 +627,7 @@ export default function ExportNoteDetail() {
               value="log"
               className="data-[state=active]:bg-white data-[state=active]:text-foreground data-[state=active]:shadow-sm font-semibold dark:data-[state=active]:bg-muted"
             >
-              Nhật ký & Số lần xuất
+              Lịch sử xuất kho
             </TabsTrigger>
           </TabsList>
 
@@ -849,13 +839,115 @@ export default function ExportNoteDetail() {
           </TabsContent>
 
           <TabsContent value="log" className="mt-4">
-            <div className="bg-card rounded-xl border border-border shadow-md p-12 text-center">
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center">
-                  <FileText className="h-10 w-10 text-muted-foreground/50" />
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+              <div className="p-6">
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
+                        <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-12">STT</th>
+                        <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">Mã phụ tùng</th>
+                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Tên phụ tùng</th>
+                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Serial</th>
+                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Số lượng</th>
+                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Đơn giá</th>
+                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Thành tiền</th>
+                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Trạng thái</th>
+                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Ngày tạo</th>
+                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Ngày cập nhật</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {exportDetails.length === 0 ? (
+                        <tr>
+                          <td colSpan={10} className="py-12 px-6 text-center">
+                            <div className="flex flex-col items-center gap-2">
+                              <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
+                                <FileText className="h-8 w-8 text-muted-foreground/50" />
+                              </div>
+                              <p className="text-sm text-muted-foreground">Chưa có nhật ký xuất kho</p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        exportDetails.map((detail, idx) => {
+                          const partItem = detail.partItem;
+                          const part = detail.proposedReplacePart;
+                          const exportDate = detail.createdAt
+                            ? new Date(detail.createdAt).toLocaleString('vi-VN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                            : "N/A";
+                          const updateDate = detail.updatedAt && detail.updatedAt !== detail.createdAt
+                            ? new Date(detail.updatedAt).toLocaleString('vi-VN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                            : "—";
+
+                          return (
+                            <tr
+                              key={detail.id || idx}
+                              className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+                                idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"
+                              }`}
+                            >
+                              <td className="py-4 px-4 text-center">
+                                <span className="text-sm text-slate-600">{idx + 1}</span>
+                              </td>
+                              <td className="py-4 px-4 text-center">
+                                <span className="text-sm font-medium text-foreground">{part?.code || "N/A"}</span>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <span className="text-sm text-foreground">{part?.name || "N/A"}</span>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <span className="text-sm font-medium text-primary">{partItem?.serialNumber || "—"}</span>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <span className="text-sm text-foreground">{detail.quantity || 0}</span>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <span className="text-sm text-foreground">{detail.unitPrice ? formatCurrency(detail.unitPrice) : "—"}</span>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <span className="text-sm font-medium text-foreground">{detail.totalPrice ? formatCurrency(detail.totalPrice) : "—"}</span>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <Badge
+                                  variant="secondary"
+                                  className={`border ${
+                                    detail.status === "COMPLETED"
+                                      ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 border-green-300 dark:border-green-700"
+                                      : detail.status === "STOCK_FOUND"
+                                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 border-blue-300 dark:border-blue-700"
+                                      : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400 border-yellow-300 dark:border-yellow-700"
+                                  }`}
+                                >
+                                  {getDetailStatusLabel(detail.status)}
+                                </Badge>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <span className="text-sm text-foreground">{exportDate}</span>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <span className="text-sm text-foreground">{updateDate}</span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-                <p className="text-lg font-semibold text-foreground">Nhật ký & Số lần xuất</p>
-                <p className="text-sm text-muted-foreground">Chức năng này sẽ được cập nhật sớm</p>
               </div>
             </div>
           </TabsContent>

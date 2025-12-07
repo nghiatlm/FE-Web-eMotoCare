@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Search, Plus, Download, Filter, Building2, MapPin, Mail, Phone, Hash, Info, Clock, Calendar, Users, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,9 +23,9 @@ export default function Branches() {
   const [selected, setSelected] = useState(null);
   const [branchDetail, setBranchDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const formRef = useRef(null);
 
   const [form, setForm] = useState({
-    code: "",
     name: "",
     description: "",
     email: "",
@@ -38,8 +38,9 @@ export default function Branches() {
     longitude: "",
   });
 
+
   const resetForm = () => {
-    setForm({ code: "", name: "", description: "", email: "", location: "", phone: "", manager: "", hours: "", status: "active", latitude: "", longitude: "" });
+    setForm({ name: "", description: "", email: "", location: "", phone: "", manager: "", hours: "", status: "active", latitude: "", longitude: "" });
   };
 
   // Fetch branch detail when viewing
@@ -102,11 +103,11 @@ export default function Branches() {
   const handleAddSubmit = async (e) => {
     e.preventDefault();
     const tmpId = `BR-${Date.now()}`;
-    const statusUpper = String(form.status || "active").toUpperCase();
 
     // Build API body per backend contract
+    // Status is automatically set to ACTIVE when creating a branch
+    // Code is not sent - backend will generate it
     const body = {
-      code: form.code || `SC-${Date.now()}`,
       name: form.name,
       description: form.description || "",
       email: form.email || "",
@@ -114,7 +115,7 @@ export default function Branches() {
       address: form.location,
       latitude: form.latitude || "",
       longitude: form.longitude || "",
-      status: statusUpper,
+      status: "ACTIVE",
     };
 
     try {
@@ -122,7 +123,7 @@ export default function Branches() {
       const created = res?.data || res;
       const mapped = {
         id: created?.id || created?.code || tmpId,
-        code: created?.code || form.code,
+        code: created?.code || "",
         name: created?.name || form.name,
         location: created?.address || form.location,
         phone: created?.phone || form.phone,
@@ -130,17 +131,19 @@ export default function Branches() {
         description: created?.description || form.description,
         manager: form.manager,
         hours: form.hours,
-        status: String((created?.status || form.status || "active")).toLowerCase(),
+        status: String((created?.status || "ACTIVE")).toLowerCase(),
         latitude: created?.latitude || form.latitude,
         longitude: created?.longitude || form.longitude,
       };
       window?.applyAddBranch?.(mapped);
     } catch (err) {
-      const newBranch = { id: tmpId, ...form };
+      const newBranch = { id: tmpId, code: "", ...form, status: "active" };
       window?.applyAddBranch?.(newBranch);
     } finally {
       setIsAddOpen(false);
       resetForm();
+      // Scroll back to top after successful submission
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -254,7 +257,13 @@ export default function Branches() {
             )}
 
             <div className="flex items-center gap-3 ml-auto">
-              <Button className="gap-2 bg-red-600 hover:bg-red-700 shadow-sm" onClick={() => setIsAddOpen(true)}>
+              <Button className="gap-2 bg-red-600 hover:bg-red-700 shadow-sm" onClick={() => {
+                setIsAddOpen(true);
+                // Scroll to form after a short delay to ensure it's rendered
+                setTimeout(() => {
+                  formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+              }}>
                 <Plus className="h-4 w-4" />
                 Thêm chi nhánh
               </Button>
@@ -264,66 +273,74 @@ export default function Branches() {
 
         <BranchesTable search={search} status={status} manager={manager} />
 
-        <Dialog open={isAddOpen} onOpenChange={(o) => { setIsAddOpen(o); if (!o) resetForm(); }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Thêm chi nhánh</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleAddSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Tên chi nhánh</Label>
-                <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="VD: GreenWheel" required/>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Mã chi nhánh (code)</Label>
-                  <Input value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} placeholder="VD: SC-HCM-001" />
+        {/* Inline form for adding new branch */}
+        {isAddOpen && (
+          <div ref={formRef} className="mt-6">
+            <Card className="border-2 border-red-200 shadow-lg">
+              <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50 border-b">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    <Plus className="h-5 w-5 text-red-600" />
+                    Thêm chi nhánh mới
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setIsAddOpen(false);
+                      resetForm();
+                    }}
+                    className="text-slate-500 hover:text-slate-700"
+                  >
+                    ✕
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="VD: alo@example.com" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Mô tả</Label>
-                <Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Mô tả ngắn về chi nhánh" />
-              </div>
-              <div className="space-y-2">
-                <Label>Địa chỉ</Label>
-                <Input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} placeholder="VD: 123 Đường Lê Lợi" required/>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Số điện thoại</Label>
-                  <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="VD: 098xxxxxxx" required/>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Giờ hoạt động</Label>
-                  <Input value={form.hours} onChange={(e) => setForm((f) => ({ ...f, hours: e.target.value }))} placeholder="VD: 08:00 – 17:00 (T2 – T7)" required/>
-                </div>
-                <div className="space-y-2">
-                  <Label>Trạng thái</Label>
-                  <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn trạng thái" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="suspended">Suspended</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => { setIsAddOpen(false); }}>Hủy</Button>
-                <Button type="submit" className="bg-primary hover:bg-primary/90">Thêm</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <form onSubmit={handleAddSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Tên chi nhánh</Label>
+                    <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="VD: GreenWheel" required/>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Email</Label>
+                      <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="VD: alo@example.com" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Số điện thoại</Label>
+                      <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="VD: 098xxxxxxx" required/>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Mô tả</Label>
+                    <Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Mô tả ngắn về chi nhánh" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Địa chỉ</Label>
+                    <Input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} placeholder="VD: 123 Đường Lê Lợi" required/>
+                  </div>
+                  <div className="flex items-center gap-3 pt-4 border-t">
+                    <Button type="submit" className="bg-red-600 hover:bg-red-700">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Thêm chi nhánh
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setIsAddOpen(false);
+                        resetForm();
+                      }}
+                    >
+                      Hủy
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         <Dialog open={isEditOpen} onOpenChange={(o) => { setIsEditOpen(o); if (!o) setSelected(null); }}>
           <DialogContent>
