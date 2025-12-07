@@ -48,7 +48,6 @@ export default function Campaigns() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  // const [campaigns] = useState(mockCampaigns);
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -134,7 +133,7 @@ export default function Campaigns() {
       width: 80,
     },
     {
-      title: "Tên campaign",
+      title: "Tên chiến dịch",
       dataIndex: "name",
       key: "name",
       render: (_, record) => (
@@ -201,12 +200,12 @@ export default function Campaigns() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="p-6 md:p-8 space-y-6">
+      <div className="p-6 md:p-8 max-w-[95%] mx-auto space-y-6">
         {/* Header */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Megaphone className="h-6 w-6 text-primary" />
-            <h1 className="text-3xl font-semibold text-foreground">Danh sách Campaign</h1>
+            <h1 className="text-3xl font-semibold text-foreground">Danh sách chiến dịch</h1>
           </div>
           <p className="text-muted-foreground">Quản lý các chiến dịch khuyến mãi và ưu đãi</p>
         </div>
@@ -220,7 +219,7 @@ export default function Campaigns() {
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Tìm kiếm theo mã, tên hoặc mô tả campaign"
+                  placeholder="Tìm kiếm theo mã, tên hoặc mô tả"
                   className="pl-9"
                 />
               </div>
@@ -246,7 +245,6 @@ export default function Campaigns() {
                   setDateRange([null, null]);
                   setTypeFilter("");
                   setModelId("");
-                  // reset pagination and refetch
                   fetchCampaigns(1, pagination.pageSize);
                 }}
               >
@@ -282,13 +280,12 @@ export default function Campaigns() {
               </div>
               <Button className="gap-2 ml-auto" size="sm">
                 <Plus className="h-4 w-4" />
-                Tạo campaign mới
+                Tạo chiến dịch mới
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Table (Ant Design) */}
         <Card className="rounded-2xl border border-slate-200/80 bg-white shadow-lg overflow-hidden">
           <CardContent>
             {loading ? (
@@ -297,7 +294,7 @@ export default function Campaigns() {
               </div>
             ) : filteredCampaigns.length === 0 ? (
               <div className="py-12">
-                <Empty description={error ? `Lỗi: ${error}` : "Không tìm thấy campaign phù hợp"} />
+                <Empty description={error ? `Lỗi: ${error}` : "Không tìm thấy chiến dịch phù hợp"} />
               </div>
             ) : (
               <div>

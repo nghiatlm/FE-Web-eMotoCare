@@ -16,7 +16,6 @@ import VerifySuccess from "./pages/VerifySuccess";
 
 // admin
 import WarrantyClaims from "./pages/WarrantyClaims";
-import Vehicles from "./pages/Vehicles";
 import UserManagement from "./pages/UserManagement";
 import Index from "./pages/Index";
 import Branches from "./pages/Branches";
@@ -30,6 +29,8 @@ import CampaignDetail from "./pages/CampaignDetail";
 import CreateCampaign from "./pages/admin/CreateCampaign";
 import CreateUserPage from "./pages/admin/CreateUserPage";
 import SyncOEMData from "./pages/admin/SyncOEMData";
+import Models from "./pages/admin/Models";
+import ModelDetail from "./pages/admin/ModelDetail";
 import NotFound from "./pages/NotFound";
 
 // service staff
@@ -124,7 +125,8 @@ const App = () => (
                           path="warranty-claims"
                           element={<WarrantyClaims />}
                         />
-                        <Route path="vehicles" element={<Vehicles />} />
+                        <Route path="models" element={<Models />} />
+                        <Route path="models/:id" element={<ModelDetail />} />
                         <Route
                           path="service-packages"
                           element={<ServicePackages />}
@@ -139,8 +141,16 @@ const App = () => (
                         />
                         <Route path="campaigns" element={<Campaigns />} />
                         <Route
+                          path="campaigns/new"
+                          element={<CreateCampaign />}
+                        />
+                        <Route
                           path="campaigns/:id"
                           element={<CampaignDetail />}
+                        />
+                        <Route
+                          path="sync-oem"
+                          element={<SyncOEMData />}
                         />
                         <Route path="*" element={<NotFound />} />
                       </Routes>

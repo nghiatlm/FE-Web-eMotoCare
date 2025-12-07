@@ -19,6 +19,8 @@ import { getServiceCenterById } from "@/api/serviceCentersApi";
 export default function ImportSlipsPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedSlip, setSelectedSlip] = useState(null);
@@ -369,6 +371,46 @@ export default function ImportSlipsPage() {
               />
             </div>
 
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Loại phiếu" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="SUPPLIER">Nhà cung cấp</SelectItem>
+                <SelectItem value="TRANSFER_IN">Nhận điều chuyển</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Trạng thái" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="PENDING">Chờ duyệt</SelectItem>
+                <SelectItem value="APPROVED">Đã duyệt</SelectItem>
+                <SelectItem value="IMPORTING">Đang nhập</SelectItem>
+                <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
+                <SelectItem value="CANCELLED">Đã hủy</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {(typeFilter || statusFilter || search) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setTypeFilter("");
+                  setStatusFilter("");
+                  setSearch("");
+                }}
+                className="border-transparent text-slate-600 hover:text-red-600 hover:bg-red-50"
+              >
+                Xóa lọc
+              </Button>
+            )}
+
             <div className="flex items-center gap-3 ml-auto">
               <Button
                 className="gap-2 bg-primary hover:bg-primary/90"
@@ -381,7 +423,7 @@ export default function ImportSlipsPage() {
           </div>
         </div>
 
-        <ImportSlipsTable search={search} />
+        <ImportSlipsTable search={search} typeFilter={typeFilter} statusFilter={statusFilter} />
       </div>
 
       {/* Edit Import Slip Dialog */}

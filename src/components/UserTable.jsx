@@ -212,7 +212,7 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
     return (<div>
       <p className="text-sm text-slate-500 mb-4">
         {hasActiveFilters 
-          ? `Hiển thị ${filteredUsers.length} / ${users.length} người dùng (đã lọc)`
+          ? `Hiển thị ${filteredUsers.length} người dùng (đã lọc từ ${total} người dùng)`
           : `Hiển thị ${users.length} / ${total} người dùng`
         }
       </p>

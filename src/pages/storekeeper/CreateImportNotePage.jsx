@@ -67,10 +67,8 @@ export default function CreateImportNotePage() {
   const [warrantyDateError, setWarrantyDateError] = useState("");
   const isTransferType = form.type === "TRANSFER_IN";
   
-  // Danh sách các phụ tùng đã thêm
   const [addedParts, setAddedParts] = useState([]);
   
-  // Form hiện tại cho phụ tùng đang nhập
   const [currentPartForm, setCurrentPartForm] = useState({
     partTypeId: "",
     partId: "",
@@ -84,7 +82,6 @@ export default function CreateImportNotePage() {
     hasManufacturerWarranty: false,
   });
 
-  // Helper function to get today's date without time
   const getTodayDateOnly = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
