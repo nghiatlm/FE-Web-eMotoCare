@@ -29,6 +29,7 @@ import Campaigns from "./pages/Campaigns";
 import CampaignDetail from "./pages/CampaignDetail";
 import CreateCampaign from "./pages/admin/CreateCampaign";
 import CreateUserPage from "./pages/admin/CreateUserPage";
+import UserDetail from "./pages/admin/UserDetail";
 import SyncOEMData from "./pages/admin/SyncOEMData";
 import Models from "./pages/admin/Models";
 import ModelDetail from "./pages/admin/ModelDetail";
@@ -133,6 +134,7 @@ const App = () => (
                         <Route path="" element={<Index />} />
                         <Route path="users" element={<UserManagement />} />
                         <Route path="users/create" element={<CreateUserPage />} />
+                        <Route path="users/:id" element={<UserDetail />} />
                         <Route path="branches" element={<Branches />} />
                         <Route path="branches/:id" element={<BranchDetail />} />
                         <Route

@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
-import { Pencil, Ban, Unlock } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Pencil, Ban, Unlock, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatPhoneNumber } from "@/utils/formatters";
@@ -8,6 +9,7 @@ import { getUsers, updateUserStatus, deleteUser, updateUser as updateUserApi } f
 import { toast } from "react-toastify";
 
 export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }) {
+    const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
@@ -301,12 +303,22 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
                     <Button 
                       variant="ghost" 
                       size="icon" 
+                      className="h-8 w-8 text-blue-600 hover:text-blue-700"
+                      onClick={() => navigate(`/admin/users/${user.id}`)}
+                      title="Xem chi tiết"
+                    >
+                      <Eye className="h-4 w-4"/>
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
                       className="h-8 w-8 text-muted-foreground hover:text-foreground"
                       onClick={() => {
                         if (window.openEditUserDialog) {
                           window.openEditUserDialog(user);
                         }
                       }}
+                      title="Chỉnh sửa"
                     >
                       <Pencil className="h-4 w-4"/>
                     </Button>
