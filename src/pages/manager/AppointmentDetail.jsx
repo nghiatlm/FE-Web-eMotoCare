@@ -144,6 +144,10 @@ export default function AppointmentDetail() {
         return "Bảo dưỡng";
       case "REPAIR_TYPE":
         return "Sửa chữa";
+      case "CAMPAIGN_TYPE":
+        return "Chiến dịch";
+      case "RECALL_TYPE":
+        return "Triệu hồi";
       default:
         return type || "—";
     }

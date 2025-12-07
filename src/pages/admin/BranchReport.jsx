@@ -35,7 +35,6 @@ export default function BranchReport() {
     fetchBranchDetail();
   }, [id]);
 
-  // Mock data for charts
   const revenueData = [
     { month: "Tháng 1", revenue: 125000000, appointments: 45 },
     { month: "Tháng 2", revenue: 138000000, appointments: 52 },
