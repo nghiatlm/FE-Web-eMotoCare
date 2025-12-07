@@ -41,7 +41,7 @@ export default function Dashboard() {
       pendingAppointments: 45,
       completedAppointments: 98,
       cancelledAppointments: 13,
-      revenue: 125000000,
+      revenue: 105000,
       revenueChange: 12.5,
     });
 
@@ -100,6 +100,10 @@ export default function Dashboard() {
         return "Bảo dưỡng";
       case "REPAIR_TYPE":
         return "Sửa chữa";
+      case "CAMPAIGN_TYPE":
+        return "Chiến dịch";
+      case "RECALL_TYPE":
+        return "Triệu hồi";
       default:
         return type || "—";
     }

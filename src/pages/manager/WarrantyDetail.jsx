@@ -38,7 +38,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getRmaById, updateRmaDetail } from "@/api/rmasApi";
-import { getParts } from "@/api/partsApi";
+import { getParts, getPartById } from "@/api/partsApi";
 
 const STATUS_META = {
   PENDING: {
@@ -150,6 +150,8 @@ export default function WarrantyDetail() {
   const [parts, setParts] = useState([]);
   const [loadingParts, setLoadingParts] = useState(false);
   const [openPartPopovers, setOpenPartPopovers] = useState({});
+  const [partInfoMap, setPartInfoMap] = useState({}); // Map partId -> part info
+  const [savedDetails, setSavedDetails] = useState(new Set()); // Track các detail đã lưu thông tin
 
   // Helper function để generate years
   const generateYears = () => {
@@ -192,6 +194,17 @@ export default function WarrantyDetail() {
       const response = await getRmaById(id);
       const data = response?.data || response;
       setRma(data);
+      
+      // Đánh dấu các detail đã có replacePart là đã lưu
+      if (data?.rmaDetails) {
+        const savedDetailIds = new Set();
+        data.rmaDetails.forEach((detail) => {
+          if (detail.replacePart && detail.replacePart.id) {
+            savedDetailIds.add(detail.id);
+          }
+        });
+        setSavedDetails(savedDetailIds);
+      }
     } catch (err) {
       console.error("Error fetching RMA detail:", err);
       setError("Không thể tải thông tin RMA. Vui lòng thử lại sau.");
@@ -227,6 +240,110 @@ export default function WarrantyDetail() {
     };
     fetchParts();
   }, []);
+
+  // Fetch part info for partItems and replaceParts
+  useEffect(() => {
+    if (!rma?.rmaDetails) return;
+
+    const fetchPartInfos = async () => {
+      const newPartInfoMap = {};
+      const fetchPromises = [];
+
+      rma.rmaDetails.forEach((detail) => {
+        const partItem = detail.evCheckDetail?.partItem;
+        const replacePart = detail.evCheckDetail?.replacePart;
+
+        // Fetch part info for partItem
+        if (partItem) {
+          // Check if part object exists
+          if (partItem.part) {
+            newPartInfoMap[partItem.part.id] = partItem.part;
+          } else if (partItem.partId) {
+            // Fetch part info if not in map
+            fetchPromises.push(
+              getPartById(partItem.partId)
+                .then((response) => {
+                  const partData = response?.data?.data || response?.data || response;
+                  if (partData) {
+                    newPartInfoMap[partItem.partId] = partData;
+                  }
+                })
+                .catch((error) => {
+                  console.error("Error fetching part info for partItem:", error);
+                })
+            );
+          }
+        }
+
+        // Fetch part info for replacePart
+        if (replacePart) {
+          // Check if part object exists
+          if (replacePart.part) {
+            newPartInfoMap[replacePart.part.id] = replacePart.part;
+          } else if (replacePart.partId) {
+            // Fetch part info if not in map
+            fetchPromises.push(
+              getPartById(replacePart.partId)
+                .then((response) => {
+                  const partData = response?.data?.data || response?.data || response;
+                  if (partData) {
+                    newPartInfoMap[replacePart.partId] = partData;
+                  }
+                })
+                .catch((error) => {
+                  console.error("Error fetching part info for replacePart:", error);
+                })
+            );
+          }
+        }
+      });
+
+      // Update map with parts that are already available
+      if (Object.keys(newPartInfoMap).length > 0) {
+        setPartInfoMap((prevMap) => ({ ...prevMap, ...newPartInfoMap }));
+      }
+
+      // Fetch missing parts and update map
+      if (fetchPromises.length > 0) {
+        await Promise.all(fetchPromises);
+        setPartInfoMap((prevMap) => ({ ...prevMap, ...newPartInfoMap }));
+      }
+    };
+
+    fetchPartInfos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rma?.rmaDetails]);
+
+  // Tự động set replacePartId từ partItem.partId cho các detail APPROVED
+  useEffect(() => {
+    if (!rma?.rmaDetails) return;
+    
+    rma.rmaDetails.forEach((detail) => {
+      if (detail.status?.toUpperCase() === "APPROVED") {
+        const detailId = detail.id;
+        const evCheckDetail = detail.evCheckDetail;
+        const partItem = evCheckDetail?.partItem;
+        const partItemPartId = partItem?.part?.id || partItem?.partId;
+        const currentReplacePartId = detailForms[detailId]?.replacePartId || detail.replacePart?.partId;
+        const isDetailSaved = savedDetails.has(detailId);
+        
+        // Tự động set replacePartId từ partItem nếu chưa có và chưa lưu
+        if (partItemPartId && !currentReplacePartId && !isDetailSaved) {
+          setDetailForms(prev => {
+            if (prev[detailId]?.replacePartId) return prev; // Đã set rồi thì không set lại
+            return {
+              ...prev,
+              [detailId]: {
+                ...prev[detailId],
+                replacePartId: partItemPartId
+              }
+            };
+          });
+        }
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rma?.rmaDetails, savedDetails]);
 
   if (loading) {
     return (
@@ -326,6 +443,12 @@ export default function WarrantyDetail() {
       case "IN_ACTIVE":
       case "INACTIVE":
         return "Không hoạt động";
+      case "IN_STOCK":
+        return "Còn trong kho";
+      case "INSTALLED":
+        return "Đã lắp đặt";
+      case "MANUFACTURER_RECALL":
+        return "Nhà sản xuất thu hồi";
       case "PENDING":
         return "Chờ xác nhận";
       case "PROCESSING":
@@ -753,6 +876,9 @@ export default function WarrantyDetail() {
 
       // Fetch lại dữ liệu để đảm bảo có data mới nhất
       await fetchRmaDetail();
+
+      // Đánh dấu detail này đã được lưu
+      setSavedDetails(prev => new Set([...prev, detailId]));
 
       toast({
         title: "Thành công",
@@ -1197,6 +1323,10 @@ export default function WarrantyDetail() {
                             const partItemWarrantyStart = formatDateOnly(partItem?.warantyStartDate);
                             const partItemWarrantyEnd = formatDateOnly(partItem?.warantyEndDate);
                             const partItemStatus = partItem?.status || "—";
+                            // Get part info for partItem - ưu tiên lấy từ partItem.part (có sẵn trong response)
+                            const partItemPart = partItem?.part || (partItem?.partId ? partInfoMap[partItem.partId] : null);
+                            const partItemName = partItemPart?.name || "—";
+                            const partItemImage = partItemPart?.image || "";
                             
                             // ReplacePart info
                             const replacePartSerial = replacePart?.serialNumber || "—";
@@ -1204,6 +1334,10 @@ export default function WarrantyDetail() {
                             const replacePartWarrantyStart = formatDateOnly(replacePart?.warantyStartDate);
                             const replacePartWarrantyEnd = formatDateOnly(replacePart?.warantyEndDate);
                             const replacePartStatus = replacePart?.status || "—";
+                            // Get part info for replacePart - ưu tiên lấy từ replacePart.part (có sẵn trong response)
+                            const replacePartPart = replacePart?.part || (replacePart?.partId ? partInfoMap[replacePart.partId] : null);
+                            const replacePartName = replacePartPart?.name || "—";
+                            const replacePartImage = replacePartPart?.image || "";
 
                             const getStatusBadgeForDetail = (status) => {
                               const statusUpper = (status || "").toUpperCase();
@@ -1225,6 +1359,7 @@ export default function WarrantyDetail() {
 
                             const detailId = detail.id || `detail-${index}`;
                             const isExpanded = expandedDetails.has(detailId);
+                            const isSaved = savedDetails.has(detailId);
                             const toggleExpand = () => {
                               const newExpanded = new Set(expandedDetails);
                               if (isExpanded) {
@@ -1399,6 +1534,7 @@ export default function WarrantyDetail() {
                                                 value={detailForms[detailId]?.rmaNumber || detail.rmaNumber || ""}
                                                 onChange={(e) => handleFormChange(detailId, "rmaNumber", e.target.value)}
                                                 placeholder="Nhập số RMA"
+                                                disabled={isSaved}
                                               />
                                             </div>
                                             <div className="space-y-1.5">
@@ -1413,6 +1549,7 @@ export default function WarrantyDetail() {
                                                 value={detailForms[detailId]?.inspector || detail.inspector || ""}
                                                 onChange={(e) => handleFormChange(detailId, "inspector", e.target.value)}
                                                 placeholder="Nhập tên người kiểm tra"
+                                                disabled={isSaved}
                                               />
                                             </div>
                                             <div className="space-y-1.5">
@@ -1430,6 +1567,7 @@ export default function WarrantyDetail() {
                                                       "w-full justify-start text-left font-normal",
                                                       !(detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA) && "text-muted-foreground"
                                                     )}
+                                                    disabled={isSaved}
                                                   >
                                                     <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
                                                     {detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA ? (
@@ -1505,6 +1643,7 @@ export default function WarrantyDetail() {
                                                       "w-full justify-start text-left font-normal",
                                                       !(detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA) && "text-muted-foreground"
                                                     )}
+                                                    disabled={isSaved}
                                                   >
                                                     <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
                                                     {detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA ? (
@@ -1581,6 +1720,7 @@ export default function WarrantyDetail() {
                                               placeholder="Nhập kết quả kiểm tra từ hãng"
                                               rows={3}
                                               className="resize-none"
+                                              disabled={isSaved}
                                             />
                                           </div>
 
@@ -1602,10 +1742,10 @@ export default function WarrantyDetail() {
                                               placeholder="Nhập giải pháp từ hãng (thay thế, sửa chữa, v.v.)"
                                               rows={3}
                                               className="resize-none"
+                                              disabled={isSaved}
                                             />
                                           </div>
 
-                                          {/* Form nhập thông tin phụ tùng thay thế */}
                                           <div className="rounded-xl border border-red-200/80 bg-red-50/70 shadow-sm overflow-hidden mt-4">
                                             <div className="bg-red-600/5 border-b border-red-200/80 px-5 py-3">
                                               <div className="flex items-center gap-2">
@@ -1616,6 +1756,48 @@ export default function WarrantyDetail() {
                                               </div>
                                             </div>
                                             <div className="p-5 space-y-5">
+                                              {(() => {
+                                                const selectedPartId = detailForms[detailId]?.replacePartId || detail.replacePart?.partId;
+                                                const selectedPart = parts.find(part => part.id === selectedPartId);
+                                                const replacePartPart = detail.replacePart?.part || selectedPart || partItem?.part || (selectedPartId ? partInfoMap[selectedPartId] : null);
+                                                
+                                                const shouldShow = selectedPartId || (partItem?.part && !selectedPartId);
+                                                const displayPart = selectedPartId ? replacePartPart : partItem?.part;
+                                                const displayName = displayPart?.name || "";
+                                                const displayImage = displayPart?.image || "";
+                                                
+                                                if (shouldShow && (displayName || displayImage)) {
+                                                  return (
+                                                    <div className="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-red-500/10 via-red-500/5 to-transparent border border-red-200/60 shadow-sm">
+                                                      {displayImage && (
+                                                        <div className="flex-shrink-0">
+                                                          <img
+                                                            src={displayImage}
+                                                            alt={displayName}
+                                                            className="h-20 w-20 rounded-lg object-cover border-2 border-red-300/40 shadow-md"
+                                                            onError={(e) => {
+                                                              e.target.style.display = "none";
+                                                            }}
+                                                          />
+                                                        </div>
+                                                      )}
+                                                      {displayName && (
+                                                        <div className="flex-1 min-w-0 pt-1">
+                                                          <p className="text-xs font-bold uppercase tracking-wider text-red-700/70 mb-2">
+                                                            {selectedPartId ? "PHỤ TÙNG ĐÃ CHỌN" : "PHỤ TÙNG GỐC"}
+                                                          </p>
+                                                          <p className="text-base font-bold text-foreground break-words leading-tight">{displayName}</p>
+                                                          {displayPart?.code && (
+                                                            <p className="text-sm text-muted-foreground mt-1">Mã: {displayPart.code}</p>
+                                                          )}
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                  );
+                                                }
+                                                return null;
+                                              })()}
+                                              
                                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                                 <div className="space-y-1.5">
                                                   <Label
@@ -1624,67 +1806,23 @@ export default function WarrantyDetail() {
                                                   >
                                                     Phụ tùng
                                                   </Label>
-                                                  <Popover
-                                                    open={openPartPopovers[detailId] || false}
-                                                    onOpenChange={(open) => {
-                                                      setOpenPartPopovers(prev => ({
-                                                        ...prev,
-                                                        [detailId]: open
-                                                      }));
-                                                    }}
-                                                  >
-                                                    <PopoverTrigger asChild>
-                                                      <Button
-                                                        variant="outline"
-                                                        role="combobox"
-                                                        aria-expanded={openPartPopovers[detailId]}
-                                                        className="w-full justify-between"
-                                                        disabled={loadingParts}
-                                                      >
-                                                        {(() => {
-                                                          const selectedPartId = detailForms[detailId]?.replacePartId || detail.replacePart?.partId;
-                                                          const selectedPart = parts.find(part => part.id === selectedPartId);
-                                                          return selectedPart ? selectedPart.name : (loadingParts ? "Đang tải..." : "Chọn phụ tùng (tùy chọn)");
-                                                        })()}
-                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                      </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-[min(400px,90vw)] p-0">
-                                                      <Command>
-                                                        <CommandInput placeholder="Tìm phụ tùng..." />
-                                                        <CommandList>
-                                                          <CommandEmpty>Không tìm thấy phụ tùng.</CommandEmpty>
-                                                          <CommandGroup>
-                                                            {parts.map((part) => {
-                                                              const selectedPartId = detailForms[detailId]?.replacePartId || detail.replacePart?.partId;
-                                                              const isSelected = part.id === selectedPartId;
-                                                              return (
-                                                                <CommandItem
-                                                                  key={part.id}
-                                                                  value={`${part.name} ${part.code || ""}`}
-                                                                  onSelect={() => {
-                                                                    handleFormChange(detailId, "replacePartId", part.id);
-                                                                    setOpenPartPopovers(prev => ({
-                                                                      ...prev,
-                                                                      [detailId]: false
-                                                                    }));
-                                                                  }}
-                                                                >
-                                                                  <Check
-                                                                    className={cn(
-                                                                      "mr-2 h-4 w-4",
-                                                                      isSelected ? "opacity-100" : "opacity-0"
-                                                                    )}
-                                                                  />
-                                                                  {part.name}
-                                                                </CommandItem>
-                                                              );
-                                                            })}
-                                                          </CommandGroup>
-                                                        </CommandList>
-                                                      </Command>
-                                                    </PopoverContent>
-                                                  </Popover>
+                                                  {(() => {
+                                                    const autoPartId = partItem?.part?.id || partItem?.partId;
+                                                    const selectedPartId = detailForms[detailId]?.replacePartId || detail.replacePart?.partId || autoPartId;
+                                                    const selectedPart = parts.find(part => part.id === selectedPartId) || partItem?.part;
+                                                    const partName = selectedPart?.name || partItemPart?.name || "—";
+                                                    
+                                                    return (
+                                                      <Input
+                                                        id={`replacePartId-${detailId}`}
+                                                        value={partName}
+                                                        readOnly
+                                                        className="bg-muted cursor-not-allowed"
+                                                        placeholder="Tự động từ phụ tùng gốc"
+                                                        disabled={isSaved}
+                                                      />
+                                                    );
+                                                  })()}
                                                 </div>
                                                 <div className="space-y-1.5">
                                                   <Label
@@ -1698,6 +1836,7 @@ export default function WarrantyDetail() {
                                                     value={detailForms[detailId]?.replacePartSerial || detail.replacePart?.serialNumber || ""}
                                                     onChange={(e) => handleFormChange(detailId, "replacePartSerial", e.target.value)}
                                                     placeholder="Nhập số serial (VD: PIN-2025-L01-000123)"
+                                                    disabled={isSaved}
                                                   />
                                                 </div>
                                                 <div className="space-y-1.5">
@@ -1714,6 +1853,7 @@ export default function WarrantyDetail() {
                                                     value={detailForms[detailId]?.replacePartWarrantyPeriod || detail.replacePart?.warrantyPeriod || ""}
                                                     onChange={(e) => handleFormChange(detailId, "replacePartWarrantyPeriod", e.target.value ? parseInt(e.target.value) : 0)}
                                                     placeholder="Nhập số tháng (VD: 12)"
+                                                    disabled={isSaved}
                                                   />
                                                 </div>
                                                 <div className="space-y-1.5">
@@ -1731,6 +1871,7 @@ export default function WarrantyDetail() {
                                                           "w-full justify-start text-left font-normal",
                                                           !(detailForms[detailId]?.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA) && "text-muted-foreground"
                                                         )}
+                                                        disabled={isSaved}
                                                       >
                                                         <Calendar className="mr-2 h-4 w-4" />
                                                         {detailForms[detailId]?.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA ? (
@@ -1796,7 +1937,7 @@ export default function WarrantyDetail() {
                                                   </Popover>
                                                 </div>
                                                 <div className="space-y-2">
-                                                  <Label htmlFor={`replacePartWarrantyEnd-${detailId}`}>Ngày kết thúc BH (Tự động)</Label>
+                                                  <Label htmlFor={`replacePartWarrantyEnd-${detailId}`} className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Ngày kết thúc bảo hành</Label>
                                                   <Input
                                                     id={`replacePartWarrantyEnd-${detailId}`}
                                                     readOnly
@@ -1807,6 +1948,7 @@ export default function WarrantyDetail() {
                                                     }
                                                     placeholder="Tự động tính từ ngày bắt đầu + số tháng"
                                                     className="bg-muted"
+                                                    disabled={isSaved}
                                                   />
                                                 </div>
                                               </div>
@@ -1823,19 +1965,26 @@ export default function WarrantyDetail() {
                                                   return newForms;
                                                 });
                                               }}
-                                              disabled={isProcessing && updatingDetailId === detailId}
+                                              disabled={(isProcessing && updatingDetailId === detailId) || isSaved}
                                             >
                                               Hủy
                                             </Button>
                                             <Button
                                               onClick={() => handleSubmitHangInfo(detailId, detail)}
-                                              disabled={isProcessing && updatingDetailId === detailId}
-                                              className="bg-green-600 hover:bg-green-700"
+                                              disabled={isProcessing && updatingDetailId === detailId || savedDetails.has(detailId)}
+                                              className={savedDetails.has(detailId) 
+                                                ? "bg-gray-400 hover:bg-gray-400 cursor-not-allowed" 
+                                                : "bg-green-600 hover:bg-green-700"}
                                             >
                                               {isProcessing && updatingDetailId === detailId ? (
                                                 <>
                                                   <Clock className="h-4 w-4 mr-2 animate-spin" />
                                                   Đang lưu...
+                                                </>
+                                              ) : savedDetails.has(detailId) ? (
+                                                <>
+                                                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                                                  Đã lưu thông tin
                                                 </>
                                               ) : (
                                                 <>
@@ -1900,57 +2049,86 @@ export default function WarrantyDetail() {
 
                                     {/* PartItem */}
                                     {partItem && (
-                                      <div className="rounded-lg border border-border/60 bg-card shadow-sm overflow-hidden">
-                                        <div className="bg-muted/30 border-b border-border/60 px-5 py-3">
+                                      <div className="rounded-xl border-2 border-border/60 bg-gradient-to-br from-card to-muted/20 shadow-lg overflow-hidden">
+                                        <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-border/60 px-6 py-4">
                                           <div className="flex items-center gap-2">
-                                            <h3 className="text-base font-semibold text-foreground">Phụ tùng cần bảo hành</h3>
+                                            <Package className="h-5 w-5 text-primary" />
+                                            <h3 className="text-lg font-bold text-foreground">Phụ tùng cần bảo hành</h3>
                                           </div>
                                         </div>
-                                        <div className="px-5 py-4 space-y-4">
-                                          {(partItemSerial && partItemSerial !== "—") && (
-                                            <div className="space-y-2">
-                                              <div className="flex items-center gap-2">
-                                                <Hash className="h-4 w-4 text-muted-foreground" />
-                                                <p className="text-sm text-muted-foreground">Số serial</p>
-                                              </div>
-                                              <p className="text-base font-semibold text-foreground break-all">{partItemSerial}</p>
+                                        <div className="px-6 py-5 space-y-5">
+                                          {/* Part Image and Name - Highlighted Section */}
+                                          {(partItemImage || partItemName !== "—") && (
+                                            <div className="flex items-start gap-5 p-4 rounded-xl bg-gradient-to-br from-primary/5 via-primary/3 to-transparent border border-primary/20 shadow-sm">
+                                              {partItemImage && (
+                                                <div className="flex-shrink-0">
+                                                  <div className="relative">
+                                                    <img
+                                                      src={partItemImage}
+                                                      alt={partItemName}
+                                                      className="h-24 w-24 rounded-xl object-cover border-2 border-primary/30 shadow-md ring-2 ring-primary/10"
+                                                      onError={(e) => {
+                                                        e.target.style.display = "none";
+                                                      }}
+                                                    />
+                                                    <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-black/5 to-transparent pointer-events-none" />
+                                                  </div>
+                                                </div>
+                                              )}
+                                              {partItemName !== "—" && (
+                                                <div className="flex-1 min-w-0 pt-1">
+                                                  <p className="text-xs font-bold uppercase tracking-wider text-primary/70 mb-2">TÊN PHỤ TÙNG</p>
+                                                  <p className="text-lg font-bold text-foreground break-words leading-tight">{partItemName}</p>
+                                                </div>
+                                              )}
                                             </div>
                                           )}
+                                          
+                                          {/* Details Grid */}
                                           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-                                            {(partItemPrice && partItemPrice !== "—") && (
-                                              <div className="space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                  <Hash className="h-4 w-4 text-muted-foreground" />
-                                                  <p className="text-sm text-muted-foreground">Giá</p>
+                                            {(partItemSerial && partItemSerial !== "—") && (
+                                              <div className="rounded-lg border border-border/60 bg-card/50 p-4 shadow-sm hover:shadow-md transition-shadow">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                  <Hash className="h-4 w-4 text-primary" />
+                                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"># Số serial</p>
                                                 </div>
-                                                <p className="text-base font-semibold text-foreground">{partItemPrice}</p>
+                                                <p className="text-base font-bold text-foreground break-all font-mono">{partItemSerial}</p>
                                               </div>
                                             )}
-                                            {(partItemStatus && partItemStatus !== "—") && (
-                                              <div className="space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                                                  <p className="text-sm text-muted-foreground">Trạng thái</p>
+                                            {(partItemPrice && partItemPrice !== "—") && (
+                                              <div className="rounded-lg border border-border/60 bg-card/50 p-4 shadow-sm hover:shadow-md transition-shadow">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                  <Hash className="h-4 w-4 text-primary" />
+                                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"># Giá</p>
                                                 </div>
-                                                <p className="text-base font-semibold text-foreground">{translateStatus(partItemStatus)}</p>
+                                                <p className="text-base font-bold text-foreground">{partItemPrice}</p>
                                               </div>
                                             )}
                                             {(partItemWarrantyStart && partItemWarrantyStart !== "—") && (
-                                              <div className="space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                                                  <p className="text-sm text-muted-foreground">BH từ</p>
+                                              <div className="rounded-lg border border-border/60 bg-card/50 p-4 shadow-sm hover:shadow-md transition-shadow">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                  <Calendar className="h-4 w-4 text-primary" />
+                                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">BH từ</p>
                                                 </div>
-                                                <p className="text-base font-semibold text-foreground">{partItemWarrantyStart}</p>
+                                                <p className="text-base font-bold text-foreground">{partItemWarrantyStart}</p>
                                               </div>
                                             )}
                                             {(partItemWarrantyEnd && partItemWarrantyEnd !== "—") && (
-                                              <div className="space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                                                  <p className="text-sm text-muted-foreground">BH đến</p>
+                                              <div className="rounded-lg border border-border/60 bg-card/50 p-4 shadow-sm hover:shadow-md transition-shadow">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                  <Calendar className="h-4 w-4 text-primary" />
+                                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">BH đến</p>
                                                 </div>
-                                                <p className="text-base font-semibold text-foreground">{partItemWarrantyEnd}</p>
+                                                <p className="text-base font-bold text-foreground">{partItemWarrantyEnd}</p>
+                                              </div>
+                                            )}
+                                            {(partItemStatus && partItemStatus !== "—") && (
+                                              <div className="rounded-lg border border-border/60 bg-card/50 p-4 shadow-sm hover:shadow-md transition-shadow sm:col-span-2">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                  <CheckCircle2 className="h-4 w-4 text-primary" />
+                                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Trạng thái</p>
+                                                </div>
+                                                <p className="text-base font-bold text-foreground">{translateStatus(partItemStatus)}</p>
                                               </div>
                                             )}
                                           </div>
@@ -1960,57 +2138,86 @@ export default function WarrantyDetail() {
 
                                     {/* ReplacePart */}
                                     {replacePart && (
-                                      <div className="rounded-lg border border-border/60 bg-card shadow-sm overflow-hidden">
-                                        <div className="bg-muted/30 border-b border-border/60 px-5 py-3">
+                                      <div className="rounded-xl border-2 border-border/60 bg-gradient-to-br from-card to-muted/20 shadow-lg overflow-hidden">
+                                        <div className="bg-gradient-to-r from-green-500/10 via-green-500/5 to-transparent border-b border-border/60 px-6 py-4">
                                           <div className="flex items-center gap-2">
-                                            <h3 className="text-base font-semibold text-foreground">Phụ tùng thay thế</h3>
+                                            <Package className="h-5 w-5 text-green-600" />
+                                            <h3 className="text-lg font-bold text-foreground">Phụ tùng thay thế</h3>
                                           </div>
                                         </div>
-                                        <div className="px-5 py-4 space-y-4">
-                                          {(replacePartSerial && replacePartSerial !== "—") && (
-                                            <div className="space-y-2">
-                                              <div className="flex items-center gap-2">
-                                                <Hash className="h-4 w-4 text-muted-foreground" />
-                                                <p className="text-sm text-muted-foreground">Số serial</p>
-                                              </div>
-                                              <p className="text-base font-semibold text-foreground break-all">{replacePartSerial}</p>
+                                        <div className="px-6 py-5 space-y-5">
+                                          {/* Part Image and Name - Highlighted Section */}
+                                          {(replacePartImage || replacePartName !== "—") && (
+                                            <div className="flex items-start gap-5 p-4 rounded-xl bg-gradient-to-br from-green-500/5 via-green-500/3 to-transparent border border-green-500/20 shadow-sm">
+                                              {replacePartImage && (
+                                                <div className="flex-shrink-0">
+                                                  <div className="relative">
+                                                    <img
+                                                      src={replacePartImage}
+                                                      alt={replacePartName}
+                                                      className="h-24 w-24 rounded-xl object-cover border-2 border-green-500/30 shadow-md ring-2 ring-green-500/10"
+                                                      onError={(e) => {
+                                                        e.target.style.display = "none";
+                                                      }}
+                                                    />
+                                                    <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-black/5 to-transparent pointer-events-none" />
+                                                  </div>
+                                                </div>
+                                              )}
+                                              {replacePartName !== "—" && (
+                                                <div className="flex-1 min-w-0 pt-1">
+                                                  <p className="text-xs font-bold uppercase tracking-wider text-green-600/70 mb-2">TÊN PHỤ TÙNG</p>
+                                                  <p className="text-lg font-bold text-foreground break-words leading-tight">{replacePartName}</p>
+                                                </div>
+                                              )}
                                             </div>
                                           )}
+                                          
+                                          {/* Details Grid */}
                                           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-                                            {(replacePartPrice && replacePartPrice !== "—") && (
-                                              <div className="space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                  <Hash className="h-4 w-4 text-muted-foreground" />
-                                                  <p className="text-sm text-muted-foreground">Giá</p>
+                                            {(replacePartSerial && replacePartSerial !== "—") && (
+                                              <div className="rounded-lg border border-border/60 bg-card/50 p-4 shadow-sm hover:shadow-md transition-shadow">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                  <Hash className="h-4 w-4 text-green-600" />
+                                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"># Số serial</p>
                                                 </div>
-                                                <p className="text-base font-semibold text-foreground">{replacePartPrice}</p>
+                                                <p className="text-base font-bold text-foreground break-all font-mono">{replacePartSerial}</p>
                                               </div>
                                             )}
-                                            {(replacePartStatus && replacePartStatus !== "—") && (
-                                              <div className="space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                                                  <p className="text-sm text-muted-foreground">Trạng thái</p>
+                                            {(replacePartPrice && replacePartPrice !== "—") && (
+                                              <div className="rounded-lg border border-border/60 bg-card/50 p-4 shadow-sm hover:shadow-md transition-shadow">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                  <Hash className="h-4 w-4 text-green-600" />
+                                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"># Giá</p>
                                                 </div>
-                                                <p className="text-base font-semibold text-foreground">{translateStatus(replacePartStatus)}</p>
+                                                <p className="text-base font-bold text-foreground">{replacePartPrice}</p>
                                               </div>
                                             )}
                                             {(replacePartWarrantyStart && replacePartWarrantyStart !== "—") && (
-                                              <div className="space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                                                  <p className="text-sm text-muted-foreground">BH từ</p>
+                                              <div className="rounded-lg border border-border/60 bg-card/50 p-4 shadow-sm hover:shadow-md transition-shadow">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                  <Calendar className="h-4 w-4 text-green-600" />
+                                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">BH từ</p>
                                                 </div>
-                                                <p className="text-base font-semibold text-foreground">{replacePartWarrantyStart}</p>
+                                                <p className="text-base font-bold text-foreground">{replacePartWarrantyStart}</p>
                                               </div>
                                             )}
                                             {(replacePartWarrantyEnd && replacePartWarrantyEnd !== "—") && (
-                                              <div className="space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                                                  <p className="text-sm text-muted-foreground">BH đến</p>
+                                              <div className="rounded-lg border border-border/60 bg-card/50 p-4 shadow-sm hover:shadow-md transition-shadow">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                  <Calendar className="h-4 w-4 text-green-600" />
+                                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">BH đến</p>
                                                 </div>
-                                                <p className="text-base font-semibold text-foreground">{replacePartWarrantyEnd}</p>
+                                                <p className="text-base font-bold text-foreground">{replacePartWarrantyEnd}</p>
+                                              </div>
+                                            )}
+                                            {(replacePartStatus && replacePartStatus !== "—") && (
+                                              <div className="rounded-lg border border-border/60 bg-card/50 p-4 shadow-sm hover:shadow-md transition-shadow sm:col-span-2">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Trạng thái</p>
+                                                </div>
+                                                <p className="text-base font-bold text-foreground">{translateStatus(replacePartStatus)}</p>
                                               </div>
                                             )}
                                           </div>
