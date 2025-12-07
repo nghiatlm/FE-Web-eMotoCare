@@ -255,8 +255,7 @@ export default function CreateUserPage() {
       }
     } catch (error) {
       console.error("Error creating user:", error);
-      const errorMessage = error.response?.data?.message || error.message || "Không thể tạo người dùng. Vui lòng thử lại.";
-      toast.error(`Tạo người dùng thất bại: ${errorMessage}`, {
+      toast.error(`Tạo người dùng thất bại: ${error.message || "Không thể tạo người dùng. Vui lòng thử lại."}`, {
         position: "top-right",
         autoClose: 5000,
       });

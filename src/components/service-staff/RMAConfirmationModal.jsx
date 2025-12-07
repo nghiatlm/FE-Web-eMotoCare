@@ -1,6 +1,6 @@
 // src/components/service-staff/RMAConfirmationModal.jsx
 import { Modal, Button, List, Typography, Card, Space, Tag, Divider } from "antd";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "react-toastify";
 import { useState } from "react";
 import { AlertTriangle, Package, CheckCircle, XCircle } from "lucide-react";
 
@@ -91,7 +91,7 @@ export default function RMAConfirmationModal({
     } catch (err) {
       toast.dismiss(loadingToast);
       console.error("❌ Lỗi tạo RMA:", err);
-      toast.error(err?.message || "Không thể tạo RMA.");
+      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tạo RMA."));
     } finally {
       setIsSubmitting(false);
     }

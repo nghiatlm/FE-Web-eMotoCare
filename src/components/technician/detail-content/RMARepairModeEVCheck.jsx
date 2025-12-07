@@ -3,7 +3,7 @@
 // Khác với RepairModeEVCheck: đã có sẵn replacePart từ RMA, không cần chọn lại
 import { useState, useEffect, useCallback } from "react";
 import { Table, Input, Select, Button, Spin, Tag, Tooltip } from "antd";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "react-toastify";
 import {
   fetchEVCheckDetailsServiceRe as getRepairDetailsList,
   updateEVCheckDetailService,
@@ -136,7 +136,7 @@ export default function RMARepairModeEVCheck({
         setVehiclePartOptions(options);
       } catch (err) {
         console.error("Không load được phụ tùng xe:", err);
-        toast.error("Không tải được phụ tùng gắn trên xe!");
+        toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không tải được phụ tùng gắn trên xe!"));
         setVehiclePartOptions([]);
       } finally {
         setVehiclePartLoading(false);
@@ -294,7 +294,7 @@ export default function RMARepairModeEVCheck({
       setStatusChanges({});
     } catch (err) {
       console.error("❌ Lỗi khi tải chi tiết EV Check:", err);
-      toast.error("Không thể tải dữ liệu chi tiết!");
+      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tải dữ liệu chi tiết!"));
       setDetails([]);
     } finally {
       setLoading(false);
@@ -472,7 +472,7 @@ export default function RMARepairModeEVCheck({
     } catch (err) {
       console.error("❌ Cập nhật trạng thái thất bại:", err);
       toast.dismiss(loadingToast);
-      toast.error("Không thể cập nhật trạng thái hạng mục!");
+      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể cập nhật trạng thái hạng mục!"));
     } finally {
       setLoading(false);
     }
@@ -483,9 +483,9 @@ export default function RMARepairModeEVCheck({
     { title: "STT", render: (_, __, i) => i + 1, width: 35 },
     {
       title: "Bộ phận",
-      width: 120,
+      width: 180,
       ellipsis: {
-        showTitle: false,
+        showTitle: true,
       },
       render: (_, r, i) => {
         const displayName = r.displayName || "";
@@ -512,6 +512,7 @@ export default function RMARepairModeEVCheck({
               showSearch
               placeholder='Chọn bộ phận'
               value={partItemId || undefined}
+              style={{ width: "100%", minWidth: "160px" }}
               onChange={(v) => {
                 const sel = allOptions.find((p) => p.partItemId === v);
                 const partItem = sel?.partItem;
@@ -527,7 +528,6 @@ export default function RMARepairModeEVCheck({
               options={allOptions}
               loading={vehiclePartLoading}
               disabled={readOnly || !canEditFields}
-              style={{ width: "100%", maxWidth: "100%" }}
               filterOption={(input, opt) =>
                 opt.label.toLowerCase().includes(input.toLowerCase())
               }
@@ -701,14 +701,14 @@ export default function RMARepairModeEVCheck({
         />
       ),
     },
-    { title: "ĐV", width: 35, render: (_, r) => r.unit || "-" },
+    { title: "ĐV", width: 35, render: (_, r) => r.unit || "" },
     {
       title: "Trạng thái phụ tùng",
       width: 100,
       render: (_, r) => {
         // ✅ Hiển thị exportNoteStatus nếu có (không chỉ khi COMPLETED)
         const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
-        if (!status) return <span style={{ color: "#999" }}>—</span>;
+        if (!status) return <span style={{ color: "#999" }}></span>;
         
         // ✅ Format status với Tag và màu sắc
         const getStatusColor = (s) => {

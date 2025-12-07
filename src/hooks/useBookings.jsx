@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import {
   fetchAppointments,
   createAppointmentService,
-  fetchAppointmentsByTechnician,
 } from "../services/appointmentService";
 import { fetchServiceStaff, fetchTechnicianByAccountId } from "../services/staffsService";
 import useAppointmentHub from "./useAppointmentHub"; // ✅ Import hook SignalR cho Appointment
@@ -55,15 +54,19 @@ export const useBookings = () => {
       let list = [];
 
       if (roleName === "ROLE_TECHNICIAN" && accountId) {
-        // ✅ Nếu là technician, lấy staffId từ accountId
+        // ✅ Nếu là technician, lấy technician id (staffId) từ accountId
         const technician = await fetchTechnicianByAccountId(accountId);
-        const staffId = technician?.id;
+        const staffId = technician?.id; // staffId chính là id của technician staff
         
         if (staffId) {
-          // Gọi API lấy booking theo technician ID (staffId)
-          const res = await fetchAppointmentsByTechnician(staffId);
+          // ✅ Gọi API get all với query param technicianId (staffId là id của technician)
+          const res = await fetchAppointments({ 
+            page: 1, 
+            pageSize: 1000,
+            technicianId: staffId // technicianId = staffId (id của technician)
+          });
           list = res?.data?.rowDatas || res?.data || res || [];
-          console.log("Fetched technician bookings:", list.length, "staffId:", staffId);
+          console.log("Fetched technician bookings:", list.length, "technicianId:", staffId);
         } else {
           console.warn("Không tìm thấy staffId cho technician với accountId:", accountId);
         }

@@ -36,8 +36,15 @@ export default function Login() {
       } else {
         localStorage.removeItem("rememberedEmail");
       }
-    } catch {
-      setError("Sai số điện thoại hoặc mật khẩu");
+    } catch (error) {
+      console.error("Login error:", error);
+      // Bắt lỗi từ backend: error có thể là { message, data: { message } } hoặc error.response.data
+      const errorMessage = 
+        error?.response?.data?.message || 
+        error?.data?.message || 
+        error?.message || 
+        "Sai email hoặc mật khẩu";
+      setError(errorMessage);
     }
   };
 

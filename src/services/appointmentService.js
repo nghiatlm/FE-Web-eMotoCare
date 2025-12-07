@@ -11,20 +11,21 @@ import { fetchServiceStaff } from "./staffsService";
 import * as QRCode from "qrcode";
 import { uploadDataUrl } from "../utils/firebaseUpload";
 
-// LIST (for Staff/Admin)
-export const fetchAppointments = async ({ page = 1, pageSize = 20, serviceCenterId } = {}) => {
+// LIST (for Staff/Admin/Technician)
+export const fetchAppointments = async ({ page = 1, pageSize = 20, serviceCenterId, technicianId } = {}) => {
   try {
-    return await getAppointments({ page, pageSize, serviceCenterId });
+    return await getAppointments({ page, pageSize, serviceCenterId, technicianId });
   } catch (error) {
     console.error("Lỗi lấy danh sách lịch hẹn:", error);
     throw error;
   }
 };
 
-// LIST by Technician (staffId)
+// LIST by Technician (staffId) - DEPRECATED: Sử dụng fetchAppointments với technicianId thay thế
 export const fetchAppointmentsByTechnician = async (technicianId) => {
   try {
-    return await getAppointmentsByTechnician(technicianId);
+    // ✅ Chuyển sang dùng API get all với query param technicianId
+    return await getAppointments({ page: 1, pageSize: 1000, technicianId });
   } catch (error) {
     console.error("Lỗi lấy danh sách lịch hẹn của kỹ thuật viên:", error);
     throw error;

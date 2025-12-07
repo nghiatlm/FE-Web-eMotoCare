@@ -3,7 +3,7 @@
 // Khác biệt: Load program details từ campaignId và so sánh recallPartId với partId để hiển thị tên từ campaign trong cột "Bộ phận"
 import { useState, useEffect, useCallback } from "react";
 import { Table, Input, Select, Button, Spin, Tag, Checkbox, Tooltip } from "antd";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "react-toastify";
 import {
   fetchEVCheckDetailsServiceRe as getRepairDetailsList,
   updateEVCheckDetailService,
@@ -237,7 +237,7 @@ export default function CampaignModeEVCheck({
         setVehiclePartOptions(options);
       } catch (err) {
         console.error("Không load được phụ tùng xe:", err);
-        toast.error("Không tải được phụ tùng gắn trên xe!");
+        toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không tải được phụ tùng gắn trên xe!"));
         setVehiclePartOptions([]);
       } finally {
         setVehiclePartLoading(false);
@@ -294,7 +294,7 @@ export default function CampaignModeEVCheck({
       // Chỉ log để debug, không làm gián đoạn UX
       // Axios interceptor đã unwrap error.response.data, nên check e?.statusCode
       if (e?.statusCode !== 500 && e?.response?.status !== 500) {
-        toast.error("Không tải được danh sách phụ tùng đề xuất");
+        toast.error((e?.response?.data?.message || e?.data?.message || e?.message || "Không tải được danh sách phụ tùng đề xuất"));
       } else {
         console.warn("⚠️ Backend API lỗi 500, bỏ qua để không làm gián đoạn UX");
       }
@@ -356,7 +356,7 @@ export default function CampaignModeEVCheck({
         setReplacePartOptions(options);
       } catch (err) {
         console.error("Không load được phụ tùng kho:", err);
-        toast.error("Không tải được phụ tùng trong kho!");
+        toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không tải được phụ tùng trong kho!"));
         setReplacePartOptions([]);
       } finally {
         setReplacePartLoading(false);
@@ -579,7 +579,24 @@ export default function CampaignModeEVCheck({
           
           if (matchingPart) {
             // ✅ Kiểm tra xem đã có detail với bộ phận này chưa
-            const existingDetail = mapped.find(d => d.partItemId === matchingPart.partItemId);
+            // Kiểm tra theo nhiều tiêu chí để tránh duplicate:
+            // 1. Theo partItemId (nếu khớp)
+            // 2. Theo partId (recallPartId) trong proposedReplacePartId
+            // 3. Theo partId trong partItem.part.id
+            const existingDetail = mapped.find(d => {
+              // Kiểm tra theo partItemId
+              if (d.partItemId === matchingPart.partItemId) return true;
+              
+              // Kiểm tra theo proposedReplacePartId (recallPartId)
+              if (d.proposedReplacePartId === recallPartId) return true;
+              
+              // Kiểm tra theo partId trong partItem
+              const detailPartId = d.partItem?.part?.id || 
+                                   vehiclePartOptions.find(vp => vp.partItemId === d.partItemId)?.partId || null;
+              if (detailPartId === recallPartId) return true;
+              
+              return false;
+            });
             
             if (!existingDetail) {
               // ✅ Nếu chưa có, tự động tạo row mới với bộ phận này
@@ -612,8 +629,29 @@ export default function CampaignModeEVCheck({
       }
 
       if (mapped.length > 0) {
-        setDetails(mapped);
-        toast.success(`Đã tải ${mapped.length} hạng mục từ DB.`);
+        // ✅ Filter duplicate để tránh hiển thị trùng lặp
+        // Dùng Map để giữ lại detail đầu tiên theo key: `${partItemId}_${proposedReplacePartId}`
+        const uniqueDetailsMap = new Map();
+        mapped.forEach((detail) => {
+          const partItemId = detail.partItemId || "";
+          const proposedReplacePartId = detail.proposedReplacePartId || "";
+          const key = `${partItemId}_${proposedReplacePartId}`;
+          
+          // ✅ Ưu tiên detail có id (đã lưu vào DB) hơn detail mới (isNew)
+          if (!uniqueDetailsMap.has(key)) {
+            uniqueDetailsMap.set(key, detail);
+          } else {
+            const existing = uniqueDetailsMap.get(key);
+            // Nếu detail hiện tại có id (đã lưu) và detail trong map chưa có id, thay thế
+            if (detail.id && !existing.id) {
+              uniqueDetailsMap.set(key, detail);
+            }
+          }
+        });
+        
+        const uniqueDetails = Array.from(uniqueDetailsMap.values());
+        console.log(`✅ Campaign: Filter duplicate - ${mapped.length} -> ${uniqueDetails.length} details`);
+        setDetails(uniqueDetails);
       } else {
         // ✅ Nếu không có detail và có recallPartIds, tự động tạo rows
         if (!readOnly && recallPartIdsList && recallPartIdsList.length > 0 && vehiclePartOptions.length > 0) {
@@ -660,7 +698,7 @@ export default function CampaignModeEVCheck({
       setStatusChanges({});
     } catch (err) {
       console.error("❌ Lỗi khi tải chi tiết EV Check:", err);
-      toast.error("Không thể tải dữ liệu chi tiết!");
+      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tải dữ liệu chi tiết!"));
       setDetails(readOnly ? [] : [createEmptyRow()]);
     } finally {
       setLoading(false);
@@ -719,14 +757,35 @@ export default function CampaignModeEVCheck({
     evCheckStatus !== "REPAIR_IN_PROGRESS" &&
     evCheckStatus !== "REPAIR_COMPLETED" &&
     evCheckStatus !== "COMPLETED";
+  
+  // ✅ Cho phép edit status khi REPAIR_IN_PROGRESS (khác với canEditFields)
+  const canEditStatus = !readOnly && evCheckStatus === "REPAIR_IN_PROGRESS";
 
   // ✅ Campaign: Không tự động lưu khi chọn biện pháp, chỉ lưu khi gửi báo giá
   // Để tránh reload trang và mất dữ liệu phụ tùng thay thế
 
+  // ✅ Kiểm tra item có vấn đề về kho (hết hàng hoặc chờ xuất kho)
+  const hasStockIssue = (row) => {
+    const exportStatus = row?.exportNoteStatus || exportNoteStatusMap[row?.id];
+    const exportStatusUpper = (exportStatus || "").toUpperCase();
+    return exportStatusUpper === "STOCK_NOT_FOUND" || exportStatusUpper === "STOCK_FOUND";
+  };
+
   const handleChange = (index, field, value) => {
     if (evCheckStatus === "INSPECTION_COMPLETED" && field !== "status") return;
     if (evCheckStatus === "QUOTE_APPROVED" && field !== "status") return;
+    // ✅ Cho phép edit status khi REPAIR_IN_PROGRESS (khác với canEditFields)
+    if (field === "status" && !canEditStatus) return;
     if (!canEditFields && field !== "status") return;
+
+    // ✅ Kiểm tra trạng thái xuất kho: Nếu hết hàng hoặc chờ xuất kho thì không cho tick hoàn thành
+    if (field === "status" && value === "COMPLETED") {
+      const currentRow = details[index];
+      if (hasStockIssue(currentRow)) {
+        toast.error("Không thể đánh dấu hoàn thành khi phụ tùng hết hàng hoặc đang chờ xuất kho.");
+        return;
+      }
+    }
 
     updateRow(index, { [field]: value });
 
@@ -822,7 +881,7 @@ export default function CampaignModeEVCheck({
       }
     } catch (err) {
       console.error("Lỗi khi lưu hạng mục:", err);
-      if (!silent) toast.error("Không thể lưu hạng mục!");
+      if (!silent) toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể lưu hạng mục!"));
       return null;
     }
   };
@@ -910,7 +969,7 @@ export default function CampaignModeEVCheck({
     } catch (err) {
       console.error("Lỗi khi lưu EV Check Detail:", err);
       toast.dismiss(loadingToast);
-      toast.error("Không thể lưu hạng mục sửa chữa!");
+      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể lưu hạng mục sửa chữa!"));
     } finally {
       setLoading(false);
     }
@@ -984,7 +1043,7 @@ export default function CampaignModeEVCheck({
       console.error("❌ Cập nhật trạng thái thất bại:", err);
       console.error("❌ Error details:", err.response?.data || err.message);
       toast.dismiss(loadingToast);
-      toast.error("Không thể cập nhật trạng thái hạng mục!");
+      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể cập nhật trạng thái hạng mục!"));
     } finally {
       setLoading(false);
     }
@@ -992,23 +1051,56 @@ export default function CampaignModeEVCheck({
 
   // ========= CỘT TABLE =========
   const baseColumns = [
-    { title: "STT", render: (_, __, i) => i + 1, width: 35 },
+    { title: "STT", render: (_, __, i) => i + 1, width: 37 },
     {
       title: "Bộ phận",
-      width: 120,
+      width: 170,
       ellipsis: {
-        showTitle: false,
+        showTitle: true,
       },
       render: (_, r, i) => {
-        const displayName = r.displayName || "";
+        // ✅ Campaign: Lấy displayName từ recallPartNameMap nếu có partId khớp với recallPartId
+        let displayName = r.displayName || "";
+        const partItemId = r.partItemId || "";
+        const partId = r.partItem?.part?.id || 
+                       vehiclePartOptions.find(vp => vp.partItemId === r.partItemId)?.partId || null;
+        
+        // ✅ Tìm lại displayName từ recallPartNameMap hoặc vehiclePartOptions
+        if (!displayName || displayName === partItemId) {
+          if (partId && recallPartIds.includes(partId)) {
+            displayName = recallPartNameMap[partId] || "";
+          }
+          if (!displayName || displayName === partItemId) {
+            const sel = vehiclePartOptions.find((p) => p.partItemId === partItemId);
+            displayName = sel?.label || displayName || partItemId || "";
+          }
+        }
+        
+        // ✅ Tìm option tương ứng với partItemId
+        const selectedOption = vehiclePartOptions.find((p) => p.partItemId === partItemId);
+        
+        // ✅ Nếu không tìm thấy trong options nhưng có displayName, thêm vào options tạm thời
+        const allOptions = [...vehiclePartOptions];
+        if (partItemId && displayName && !selectedOption) {
+          allOptions.push({
+            partItemId,
+            value: partItemId,
+            label: displayName,
+            price: r.pricePart || 0,
+            partItem: r.partItem || null,
+            partId: partId || null,
+          });
+        }
+        
         return (
-          <Tooltip title={displayName} placement="topLeft">
+          <Tooltip title={displayName || partItemId} placement="topLeft">
         <Select
           showSearch
           placeholder='Chọn bộ phận'
-          value={r.partItemId || undefined}
+          value={partItemId || undefined}
+          style={{ width: "100%", minWidth: "160px" }}
           onChange={(v) => {
-            const sel = vehiclePartOptions.find((p) => p.partItemId === v);
+            const sel = allOptions.find((p) => p.partItemId === v);
             const partItem = sel?.partItem;
             const partId = sel?.partId || partItem?.part?.id || null;
 
@@ -1017,25 +1109,26 @@ export default function CampaignModeEVCheck({
             // ✅ Campaign: Tự động gán recallPartId vào proposedReplacePartId nếu partId khớp
             let proposedReplacePartId = "";
             let replacePartName = "";
+            let finalDisplayName = sel?.label || "";
             
             if (partId && recallPartIds.includes(partId)) {
               proposedReplacePartId = partId; // recallPartId = partId
               replacePartName = recallPartNameMap[partId] || "";
+              finalDisplayName = recallPartNameMap[partId] || sel?.label || "";
               console.log(`✅ Campaign: Tự động gán recallPartId ${partId} vào phụ tùng đề xuất`);
             }
 
             updateRow(i, {
-              displayName: sel?.label || "",
+              displayName: finalDisplayName,
               pricePart: sel?.price || 0,
               partItem,
               proposedReplacePartId: proposedReplacePartId || r.proposedReplacePartId || "",
               replacePartName: replacePartName || r.replacePartName || "",
             });
           }}
-          options={vehiclePartOptions}
+          options={allOptions}
           loading={vehiclePartLoading}
           disabled={readOnly || !canEditFields}
-              style={{ width: "100%", maxWidth: "100%" }}
           filterOption={(input, opt) =>
             opt.label.toLowerCase().includes(input.toLowerCase())
           }
@@ -1088,7 +1181,7 @@ export default function CampaignModeEVCheck({
     },
     {
       title: "Kết quả",
-      width: 120,
+      width: 110,
       render: (_, r, i) => {
         // ✅ Kiểm tra nếu bộ phận là PIN (kiểm tra nhiều trường hợp)
         const partName = r.partItem?.part?.name || r.displayName || "";
@@ -1166,7 +1259,10 @@ export default function CampaignModeEVCheck({
     },
     {
       title: "Biện pháp",
-      width: 90,
+      width: 130,
+      ellipsis: {
+        showTitle: true,
+      },
       render: (_, r, i) => {
         const remediesLabel = r.remedies === "REPLACE" ? "Thay thế" : r.remedies === "REPAIR" ? "Sửa chữa" : "Chọn";
         return (
@@ -1174,7 +1270,7 @@ export default function CampaignModeEVCheck({
             <Select
               placeholder='Chọn'
               value={r.remedies}
-              style={{ width: 100 }}
+              style={{ width: "100%", minWidth: 120 }}
               onChange={(v) => handleChange(i, "remedies", v)}
               disabled={readOnly || !canEditFields}>
               <Option value='REPLACE'>Thay thế</Option>
@@ -1197,9 +1293,9 @@ export default function CampaignModeEVCheck({
     },
     {
       title: "Phụ tùng thay thế",
-      width: 130,
+      width: 200,
       ellipsis: {
-        showTitle: false,
+        showTitle: true,
       },
       render: (_, r, i) => {
         const replacePartName = r.replacePartName || "";
@@ -1208,7 +1304,7 @@ export default function CampaignModeEVCheck({
         if (replacePartName) {
           return (
             <Tooltip title={replacePartName} placement="topLeft">
-              <span style={{ color: "#1890ff", fontWeight: 500 }}>
+              <span style={{ color: "#1890ff", fontWeight: 500, whiteSpace: "nowrap", overflow: "visible" }}>
                 {replacePartName}
               </span>
             </Tooltip>
@@ -1222,7 +1318,7 @@ export default function CampaignModeEVCheck({
     },
     {
       title: "SL",
-      width: 50,
+      width: 60,
       render: (_, r, i) => (
         <Input
           type='number'
@@ -1233,13 +1329,13 @@ export default function CampaignModeEVCheck({
         />
       ),
     },
-    { title: "ĐV", width: 35, render: (_, r) => r.unit || "-" },
+    { title: "ĐV", width: 35, render: (_, r) => r.unit || "" },
     {
       title: "Giá PT",
       width: 60,
       render: (_, r) =>
         r.remedies !== "REPLACE"
-          ? "—"
+          ? ""
           : Number(r.pricePart || 0).toLocaleString(),
     },
     {
@@ -1251,7 +1347,7 @@ export default function CampaignModeEVCheck({
       title: "Tổng",
       width: 70,
       render: (_, r) =>
-        r.totalAmount ? `${Number(r.totalAmount).toLocaleString()}đ` : "-",
+        r.totalAmount ? `${Number(r.totalAmount).toLocaleString()}đ` : "",
     },
     {
       title: "Trạng thái phụ tùng",
@@ -1259,7 +1355,7 @@ export default function CampaignModeEVCheck({
       render: (_, r) => {
         // ✅ Hiển thị exportNoteStatus nếu có (không chỉ khi COMPLETED)
         const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
-        if (!status) return <span style={{ color: "#999" }}>—</span>;
+        if (!status) return <span style={{ color: "#999" }}></span>;
         
         // ✅ Format status với Tag và màu sắc
         const getStatusColor = (s) => {
@@ -1299,30 +1395,37 @@ export default function CampaignModeEVCheck({
   const statusColumn = {
     title: (
       <div className='flex items-center gap-2'>
-        {details.filter((d) => d.id).length > 0 && (
+        {details.filter((d) => d.id && !hasStockIssue(d)).length > 0 && (
           <Checkbox
-            checked={details.every((d) => d.status === "COMPLETED")}
+            checked={details.filter(d => !hasStockIssue(d)).every((d) => d.status === "COMPLETED")}
             indeterminate={
-              details.some((d) => d.status === "COMPLETED") &&
-              details.some((d) => d.status !== "COMPLETED")
+              details.filter(d => !hasStockIssue(d)).some((d) => d.status === "COMPLETED") &&
+              details.filter(d => !hasStockIssue(d)).some((d) => d.status !== "COMPLETED")
             }
             onChange={(e) => {
               const checked = e.target.checked;
-              const updated = details.map((item) => ({
-                ...item,
-                status: checked ? "COMPLETED" : "PENDING",
-              }));
+              const updated = details.map((item) => {
+                // ✅ Chỉ cập nhật status cho item không có vấn đề kho
+                if (hasStockIssue(item)) {
+                  return item; // Giữ nguyên item có vấn đề kho
+                }
+                return {
+                  ...item,
+                  status: checked ? "COMPLETED" : "PENDING",
+                };
+              });
               setDetails(updated);
 
               const changes = {};
               updated.forEach((item) => {
-                if (item.id && checked) {
+                // ✅ Chỉ thêm vào statusChanges nếu không có vấn đề kho
+                if (item.id && checked && !hasStockIssue(item)) {
                   changes[item.id] = "COMPLETED";
                 }
               });
               setStatusChanges((prev) => ({ ...prev, ...changes }));
             }}
-            disabled={readOnly || !canEditFields}></Checkbox>
+            disabled={!canEditStatus}></Checkbox>
         )}
         <span>Trạng thái</span>
       </div>
@@ -1330,6 +1433,12 @@ export default function CampaignModeEVCheck({
     width: 220,
     render: (_, r, i) => {
       const stat = REPAIR_STATUS[r.status] || REPAIR_STATUS.PENDING;
+      
+      // ✅ Kiểm tra trạng thái xuất kho: Nếu hết hàng hoặc chờ xuất kho thì không cho tick hoàn thành
+      const isStockIssue = hasStockIssue(r);
+      // ✅ Cho phép tick status khi REPAIR_IN_PROGRESS (bất kể canEditFields)
+      const canEditStatus = !readOnly && evCheckStatus === "REPAIR_IN_PROGRESS";
+      const isDisabled = !canEditStatus || isStockIssue;
 
       return (
         <div className='flex items-center gap-2'>
@@ -1342,18 +1451,19 @@ export default function CampaignModeEVCheck({
                 e.target.checked ? "COMPLETED" : "PENDING"
               );
             }}
-            disabled={readOnly || !canEditFields}
+            disabled={isDisabled}
           />
           <Tag
             color={stat.color}
               style={{
-              cursor: r.status !== "COMPLETED" ? "pointer" : "default",
+              cursor: !isDisabled && r.status !== "COMPLETED" ? "pointer" : "default",
                 fontWeight: 500,
                 borderRadius: 8,
                 padding: "2px 8px",
+                opacity: isDisabled ? 0.6 : 1,
             }}
             onClick={() => {
-              if (r.status !== "COMPLETED" && !readOnly) {
+              if (r.status !== "COMPLETED" && !isDisabled) {
                 handleChange(i, "status", "COMPLETED");
               }
               }}>

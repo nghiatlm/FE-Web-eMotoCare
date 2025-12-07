@@ -6,8 +6,7 @@ import {
   Upload
 } from "lucide-react";
 import BatteryImportModal from "./BatteryImportModal";
-import { toast } from "@/components/ui/sonner";
-
+import { toast } from "react-toastify";
 export default function BatteryDataDisplay({ evCheckDetailId, canImport = true }) {
   const navigate = useNavigate();
   const [batteryData, setBatteryData] = useState(null);
@@ -64,16 +63,26 @@ export default function BatteryDataDisplay({ evCheckDetailId, canImport = true }
   // ✅ Nếu chưa có dữ liệu, hiển thị nút Import
   if (!batteryData) {
     return (
-      <div className="flex items-center gap-2">
+      <div style={{ width: "100%" }}>
         {canImport && (
           <Button
             type="primary"
             size="small"
             icon={<Upload className="h-4 w-4" />}
             onClick={() => setImportModalOpen(true)}
-            style={{ backgroundColor: "#ff4d4f", borderColor: "#ff4d4f" }}
+            style={{ 
+              backgroundColor: "#ff4d4f", 
+              borderColor: "#ff4d4f",
+              width: "100%",
+              height: "32px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "4px",
+              fontSize: "12px"
+            }}
           >
-            Import dữ liệu
+            Nhập dữ liệu
           </Button>
         )}
         <BatteryImportModal
@@ -90,14 +99,24 @@ export default function BatteryDataDisplay({ evCheckDetailId, canImport = true }
   return (
     <>
       {/* ✅ Chỉ hiển thị nút bên ngoài */}
-      <div className="flex items-center gap-2">
+      <div style={{ width: "100%" }}>
       
         <Button
           size="small"
           type="primary"
           icon={<FileText className="h-4 w-4" />}
           onClick={() => navigate(`/technician/battery/${evCheckDetailId}`)}
-          style={{ backgroundColor: "#ff4d4f", borderColor: "#ff4d4f" }}
+          style={{ 
+            backgroundColor: "#ff4d4f", 
+            borderColor: "#ff4d4f",
+            fontSize: "12px",
+            width: "100%",
+            height: "32px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "4px"
+          }}
         >
          Chi tiết Pin
         </Button>

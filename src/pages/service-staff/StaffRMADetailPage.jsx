@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Spin, Button } from "antd";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "react-toastify";
 import { ArrowLeft } from "lucide-react";
 import { getRMAService, getCustomerByRMAService } from "../../services/rmaService";
 import { getRmaById } from "../../api/rmasApi";
@@ -54,7 +54,7 @@ export default function StaffRMADetailPage() {
       setRmaDetails(Array.isArray(detailsList) ? detailsList : []);
     } catch (err) {
       console.error("❌ Lỗi khi tải dữ liệu RMA:", err);
-      toast.error("Không thể tải dữ liệu RMA");
+      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tải dữ liệu RMA"));
     } finally {
       setLoading(false);
     }

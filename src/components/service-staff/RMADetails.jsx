@@ -1,7 +1,7 @@
 // src/components/staff/RMADetails.jsx
 import React, { useState, useMemo } from "react";
 import { Table, Spin, Button, Modal, Card, Tag, Image, Space, Divider, Typography, Tooltip } from "antd";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "react-toastify";
 import { Calendar, User, FileText, Package, Clock, CheckCircle, Tag as TagIcon } from "lucide-react";
 
 const { Text } = Typography;
@@ -239,6 +239,7 @@ function RMADetails({ rma, details = [], loading }) {
       chassisNumber: rma?.vehicle?.chassisNumber,
       serviceCenterId: rma?.staff?.serviceCenterId,
       estimatedCost: 0,
+      type: "REPAIR_TYPE", // ✅ Set sẵn type là "Sửa chữa" khi tạo lịch từ RMA
       // ✅ Truyền đầy đủ thông tin customer và vehicle để hiển thị
       customer: rma?.customer,
       vehicle: rma?.vehicle,
@@ -295,7 +296,7 @@ function RMADetails({ rma, details = [], loading }) {
       setBookingOpen(false);
     } catch (err) {
       console.error("Lỗi tạo lịch hẹn từ RMA:", err);
-      toast.error(err?.response?.data?.message || err?.message || "Không thể tạo lịch hẹn. Vui lòng thử lại.");
+      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tạo lịch hẹn. Vui lòng thử lại."));
     } finally {
       setBookingLoading(false);
     }
@@ -696,7 +697,7 @@ function RMADetails({ rma, details = [], loading }) {
                       preview
                     />
                   ) : (
-                    <span style={{ color: "#bfbfbf" }}>—</span>
+                    <span style={{ color: "#bfbfbf" }}></span>
                   );
                 },
             },
@@ -721,7 +722,7 @@ function RMADetails({ rma, details = [], loading }) {
                 },
                 render: (reason) => (
                   <Tooltip title={reason} placement="topLeft">
-                    <span style={{ fontSize: 12 }}>{reason || "—"}</span>
+                    <span style={{ fontSize: 12 }}>{reason || ""}</span>
                   </Tooltip>
                 ),
               },
@@ -740,7 +741,7 @@ function RMADetails({ rma, details = [], loading }) {
                       </span>
                     </Tooltip>
                   ) : (
-                    <span style={{ color: "#bfbfbf" }}>—</span>
+                    <span style={{ color: "#bfbfbf" }}></span>
                   )
                 ),
             },
@@ -753,7 +754,7 @@ function RMADetails({ rma, details = [], loading }) {
                   showTitle: true,
                 },
                 render: (solution) => {
-                  if (!solution) return <span style={{ color: "#bfbfbf" }}>—</span>;
+                  if (!solution) return <span style={{ color: "#bfbfbf" }}></span>;
                   
                   const solutionMap = {
                     "REPLACE": "Thay thế",
