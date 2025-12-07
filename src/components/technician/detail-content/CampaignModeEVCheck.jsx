@@ -613,7 +613,6 @@ export default function CampaignModeEVCheck({
 
       if (mapped.length > 0) {
         setDetails(mapped);
-        toast.success(`Đã tải ${mapped.length} hạng mục từ DB.`);
       } else {
         // ✅ Nếu không có detail và có recallPartIds, tự động tạo rows
         if (!readOnly && recallPartIdsList && recallPartIdsList.length > 0 && vehiclePartOptions.length > 0) {
@@ -1008,10 +1007,10 @@ export default function CampaignModeEVCheck({
 
   // ========= CỘT TABLE =========
   const baseColumns = [
-    { title: "STT", render: (_, __, i) => i + 1, width: 35 },
+    { title: "STT", render: (_, __, i) => i + 1, width: 37 },
     {
       title: "Bộ phận",
-      width: 180,
+      width: 170,
       ellipsis: {
         showTitle: true,
       },
@@ -1104,7 +1103,7 @@ export default function CampaignModeEVCheck({
     },
     {
       title: "Kết quả",
-      width: 120,
+      width: 110,
       render: (_, r, i) => {
         // ✅ Kiểm tra nếu bộ phận là PIN (kiểm tra nhiều trường hợp)
         const partName = r.partItem?.part?.name || r.displayName || "";
@@ -1182,7 +1181,10 @@ export default function CampaignModeEVCheck({
     },
     {
       title: "Biện pháp",
-      width: 90,
+      width: 130,
+      ellipsis: {
+        showTitle: true,
+      },
       render: (_, r, i) => {
         const remediesLabel = r.remedies === "REPLACE" ? "Thay thế" : r.remedies === "REPAIR" ? "Sửa chữa" : "Chọn";
         return (
@@ -1190,7 +1192,7 @@ export default function CampaignModeEVCheck({
             <Select
               placeholder='Chọn'
               value={r.remedies}
-              style={{ width: 100 }}
+              style={{ width: "100%", minWidth: 120 }}
               onChange={(v) => handleChange(i, "remedies", v)}
               disabled={readOnly || !canEditFields}>
               <Option value='REPLACE'>Thay thế</Option>
@@ -1238,7 +1240,7 @@ export default function CampaignModeEVCheck({
     },
     {
       title: "SL",
-      width: 50,
+      width: 60,
       render: (_, r, i) => (
         <Input
           type='number'
@@ -1249,13 +1251,13 @@ export default function CampaignModeEVCheck({
         />
       ),
     },
-    { title: "ĐV", width: 35, render: (_, r) => r.unit || "-" },
+    { title: "ĐV", width: 35, render: (_, r) => r.unit || "" },
     {
       title: "Giá PT",
       width: 60,
       render: (_, r) =>
         r.remedies !== "REPLACE"
-          ? "—"
+          ? ""
           : Number(r.pricePart || 0).toLocaleString(),
     },
     {
@@ -1267,7 +1269,7 @@ export default function CampaignModeEVCheck({
       title: "Tổng",
       width: 70,
       render: (_, r) =>
-        r.totalAmount ? `${Number(r.totalAmount).toLocaleString()}đ` : "-",
+        r.totalAmount ? `${Number(r.totalAmount).toLocaleString()}đ` : "",
     },
     {
       title: "Trạng thái phụ tùng",
@@ -1275,7 +1277,7 @@ export default function CampaignModeEVCheck({
       render: (_, r) => {
         // ✅ Hiển thị exportNoteStatus nếu có (không chỉ khi COMPLETED)
         const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
-        if (!status) return <span style={{ color: "#999" }}>—</span>;
+        if (!status) return <span style={{ color: "#999" }}></span>;
         
         // ✅ Format status với Tag và màu sắc
         const getStatusColor = (s) => {

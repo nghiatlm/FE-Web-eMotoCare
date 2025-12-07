@@ -83,8 +83,14 @@ export default function VerifyOTP() {
       toast.success("Xác thực OTP thành công!");
     } catch (error) {
       console.error("Verify OTP failed:", error);
-      setError(error?.message || "Mã OTP không đúng. Vui lòng thử lại.");
-      toast.error("Mã OTP không đúng. Vui lòng thử lại.");
+      // Bắt lỗi từ backend
+      const errorMessage = 
+        error?.response?.data?.message || 
+        error?.data?.message || 
+        error?.message || 
+        "Mã OTP không đúng. Vui lòng thử lại.";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -99,7 +105,12 @@ export default function VerifyOTP() {
       setCountdown(60);
       toast.info("Đã gửi lại mã OTP. Vui lòng kiểm tra email.");
     } catch (error) {
-      toast.error("Không thể gửi lại mã OTP. Vui lòng thử lại.");
+      const errorMessage = 
+        error?.response?.data?.message || 
+        error?.data?.message || 
+        error?.message || 
+        "Không thể gửi lại mã OTP. Vui lòng thử lại.";
+      toast.error(errorMessage);
     }
   };
 

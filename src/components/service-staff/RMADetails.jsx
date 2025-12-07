@@ -697,7 +697,7 @@ function RMADetails({ rma, details = [], loading }) {
                       preview
                     />
                   ) : (
-                    <span style={{ color: "#bfbfbf" }}>—</span>
+                    <span style={{ color: "#bfbfbf" }}></span>
                   );
                 },
             },
@@ -722,7 +722,7 @@ function RMADetails({ rma, details = [], loading }) {
                 },
                 render: (reason) => (
                   <Tooltip title={reason} placement="topLeft">
-                    <span style={{ fontSize: 12 }}>{reason || "—"}</span>
+                    <span style={{ fontSize: 12 }}>{reason || ""}</span>
                   </Tooltip>
                 ),
               },
@@ -741,7 +741,7 @@ function RMADetails({ rma, details = [], loading }) {
                       </span>
                     </Tooltip>
                   ) : (
-                    <span style={{ color: "#bfbfbf" }}>—</span>
+                    <span style={{ color: "#bfbfbf" }}></span>
                   )
                 ),
             },
@@ -754,7 +754,7 @@ function RMADetails({ rma, details = [], loading }) {
                   showTitle: true,
                 },
                 render: (solution) => {
-                  if (!solution) return <span style={{ color: "#bfbfbf" }}>—</span>;
+                  if (!solution) return <span style={{ color: "#bfbfbf" }}></span>;
                   
                   const solutionMap = {
                     "REPLACE": "Thay thế",

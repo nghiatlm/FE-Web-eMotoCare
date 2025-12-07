@@ -675,7 +675,7 @@ export default function MaintenanceModeEVCheck({
         showTitle: true,
       },
       render: (_, r) => {
-        const partName = r.maintenanceStageDetail?.part?.name || r.partName || "—";
+        const partName = r.maintenanceStageDetail?.part?.name || r.partName || "";
         return (
           <Tooltip title={partName} placement="topLeft">
             <span style={{ 
@@ -726,7 +726,7 @@ export default function MaintenanceModeEVCheck({
           if (type === "LUBRICATION") return "BT";
           return type;
         });
-        return labels.length > 0 ? labels.join("/") : "—";
+        return labels.length > 0 ? labels.join("/") : "";
       },
     },
     {
@@ -1053,13 +1053,13 @@ export default function MaintenanceModeEVCheck({
         />
       ),
     },
-    { title: "ĐV", width: 35, render: (_, r) => r.unit || "-" },
+    { title: "ĐV", width: 35, render: (_, r) => r.unit || "" },
     {
       title: "Giá PT",
       width: 60,
       render: (_, r, i) => {
         if (r.remedies !== "REPLACE")
-          return <span className='text-gray-400'>—</span>;
+          return <span className='text-gray-400'></span>;
         return Number(r.pricePart || 0).toLocaleString();
       },
     },
@@ -1072,7 +1072,7 @@ export default function MaintenanceModeEVCheck({
       title: "Tổng",
       width: 70,
       render: (_, r) =>
-        r.totalAmount ? `${Number(r.totalAmount).toLocaleString()}đ` : "-",
+        r.totalAmount ? `${Number(r.totalAmount).toLocaleString()}đ` : "",
     },
     {
       title: "Trạng thái phụ tùng",
@@ -1080,7 +1080,7 @@ export default function MaintenanceModeEVCheck({
       render: (_, r) => {
         // ✅ Hiển thị exportNoteStatus nếu có (không chỉ khi COMPLETED)
         const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
-        if (!status) return <span style={{ color: "#999" }}>—</span>;
+        if (!status) return <span style={{ color: "#999" }}></span>;
         
         // ✅ Format status với Tag và màu sắc
         const getStatusColor = (s) => {

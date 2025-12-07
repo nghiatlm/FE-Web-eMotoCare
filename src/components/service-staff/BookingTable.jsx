@@ -30,7 +30,7 @@ export default function BookingTable({
       width: 120,
       ellipsis: true,
       render: (code) => (
-        <span style={{ fontWeight: 600, color: "#262626" }} title={code}>{code || "—"}</span>
+        <span style={{ fontWeight: 600, color: "#262626" }} title={code}>{code || ""}</span>
       ),
     },
     {
@@ -40,11 +40,11 @@ export default function BookingTable({
       width: 140,
       ellipsis: true,
       render: (customer) => {
-        if (!customer) return <span style={{ color: "#bfbfbf" }}>—</span>;
+        if (!customer) return <span style={{ color: "#bfbfbf" }}></span>;
         const name = [customer.firstName, customer.lastName]
           .filter(Boolean)
           .join(" ");
-        return <div style={{ fontWeight: 500, color: "#262626" }} title={name}>{name || "—"}</div>;
+        return <div style={{ fontWeight: 500, color: "#262626" }} title={name}>{name || ""}</div>;
       },
     },
     {
@@ -54,7 +54,7 @@ export default function BookingTable({
       width: 120,
       align: "center",
       render: (status) => {
-        if (!status) return <Tag>—</Tag>;
+        if (!status) return <Tag></Tag>;
         const key = String(status).toUpperCase();
         return (
           <Tag color={STATUS_COLORS[key] || "default"}>
@@ -70,7 +70,7 @@ export default function BookingTable({
       width: 110,
       align: "center",
       render: (service) => {
-        if (!service) return <Tag>—</Tag>;
+        if (!service) return <Tag></Tag>;
         let key = String(service).replace(/[\s-]/g, "_").toUpperCase();
         if (key === "MAINTENACE_TYPE") key = "MAINTENANCE_TYPE";
         return (
@@ -86,7 +86,7 @@ export default function BookingTable({
       key: "appointmentDate",
       width: 100,
       render: (date) => {
-        if (!date) return <span style={{ color: "#bfbfbf" }}>—</span>;
+        if (!date) return <span style={{ color: "#bfbfbf" }}></span>;
         const d = new Date(date);
         return (
           <span style={{ color: "#595959" }}>

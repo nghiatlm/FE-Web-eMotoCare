@@ -685,7 +685,6 @@ export default function RepairModeEVCheck({
 
       if (mapped.length > 0) {
         setDetails(mapped);
-        toast.success(`Đã tải ${mapped.length} hạng mục từ DB.`);
         
         // ✅ Tự động gọi giá dịch vụ cho các items có remedies là NONE, CHECK, REPAIR hoặc REPLACE
         mapped.forEach((row, index) => {
@@ -1632,13 +1631,13 @@ export default function RepairModeEVCheck({
         />
       ),
     },
-    { title: "ĐV", width: 35, align: "center", render: (_, r) => r.unit || "-" },
+    { title: "ĐV", width: 35, align: "center", render: (_, r) => r.unit || "" },
     {
       title: "Giá PT",
       width: 60,
       render: (_, r) =>
         r.remedies !== "REPLACE"
-          ? "—"
+          ? ""
           : Number(r.pricePart || 0).toLocaleString(),
     },
     {

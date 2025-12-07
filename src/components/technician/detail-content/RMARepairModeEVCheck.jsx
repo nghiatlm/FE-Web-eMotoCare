@@ -701,14 +701,14 @@ export default function RMARepairModeEVCheck({
         />
       ),
     },
-    { title: "ĐV", width: 35, render: (_, r) => r.unit || "-" },
+    { title: "ĐV", width: 35, render: (_, r) => r.unit || "" },
     {
       title: "Trạng thái phụ tùng",
       width: 100,
       render: (_, r) => {
         // ✅ Hiển thị exportNoteStatus nếu có (không chỉ khi COMPLETED)
         const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
-        if (!status) return <span style={{ color: "#999" }}>—</span>;
+        if (!status) return <span style={{ color: "#999" }}></span>;
         
         // ✅ Format status với Tag và màu sắc
         const getStatusColor = (s) => {

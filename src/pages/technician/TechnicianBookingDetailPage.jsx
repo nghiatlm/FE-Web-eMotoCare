@@ -246,11 +246,13 @@ export default function TechnicianBookingDetailPage({
             })() : "—"}
           </div>
           <div>
-            <strong>Trung tâm dịch vụ:</strong> {booking.serviceCenter?.name || "—"}
+            <strong>Trung tâm dịch vụ:</strong> {booking.serviceCenter?.name || ""}
           </div>
-          <div>
-            <strong>Giai đoạn bảo dưỡng:</strong> {booking.maintenanceStage?.name || "—"}
-          </div>
+          {(booking?.type || "").toUpperCase() === "MAINTENANCE_TYPE" && (
+            <div>
+              <strong>Giai đoạn bảo dưỡng:</strong> {booking.maintenanceStage?.name || ""}
+            </div>
+          )}
           <div>
             <strong>Loại dịch vụ:</strong>{" "}
             <span

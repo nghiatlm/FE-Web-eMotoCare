@@ -59,6 +59,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
   // ✅ State để track xem đã load thông tin từ số khung chưa
   const [isChassisNumberLoaded, setIsChassisNumberLoaded] = useState(skipChassisNumber);
   const [vehicleInfo, setVehicleInfo] = useState(null);
+  const [isSearchingChassis, setIsSearchingChassis] = useState(false);
 
   // ====== RESET FORM KHI resetKey THAY ĐỔI ======
   useEffect(() => {
@@ -112,12 +113,24 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
   }, [initialValues, skipChassisNumber, form]);
 
   // ✅ Hàm gọi API để lấy thông tin từ số khung
-  const handleChassisNumberLookup = async (chassisNumber) => {
+  const handleChassisNumberLookup = async (chassisNumber, e) => {
+    // Ngăn form submit nếu có event
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    // Ngăn gọi nhiều lần cùng lúc
+    if (isSearchingChassis) {
+      return;
+    }
+
     if (!chassisNumber || chassisNumber.trim() === "") {
       toast.warning("Vui lòng nhập số khung để tìm kiếm!");
       return;
     }
 
+    setIsSearchingChassis(true);
     try {
       const response = await getVehicleInfoFromChassisService(chassisNumber.trim());
       
@@ -162,7 +175,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
         setIsChassisNumberLoaded(true);
         console.log("✅ isChassisNumberLoaded set to true");
         
-        // ✅ Toast thành công
+        // ✅ Toast thành công - chỉ hiển thị 1 lần
         toast.success("Tìm thấy thông tin xe và khách hàng!");
     } catch (error) {
       console.error("❌ Lỗi lấy thông tin từ số khung:", error);
@@ -172,6 +185,8 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
       // ✅ Toast lỗi
       const errorMessage = error?.response?.data?.message || error?.message || "Không tìm thấy thông tin từ số khung. Vui lòng kiểm tra lại!";
       toast.error(errorMessage);
+    } finally {
+      setIsSearchingChassis(false);
     }
   };
 
@@ -590,7 +605,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                         size="large"
                         onPressEnter={(e) => {
                           const chassisNumber = e.target.value;
-                          handleChassisNumberLookup(chassisNumber);
+                          handleChassisNumberLookup(chassisNumber, e);
                         }}
                       />
                     </Col>
@@ -600,10 +615,13 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                         icon={<Search size={16} />}
                         size="large"
                         danger
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           const chassisNumber = form.getFieldValue("chassisNumber");
                           handleChassisNumberLookup(chassisNumber);
                         }}
+                        htmlType="button"
                         style={{
                           height: "40px",
                           display: "flex",

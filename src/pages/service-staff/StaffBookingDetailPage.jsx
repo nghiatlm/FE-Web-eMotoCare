@@ -470,11 +470,13 @@ export default function StaffBookingDetailPage() {
                 })() : "—"}
               </p>
               <p style={{ margin: 0 }}>
-                <strong>Trung tâm dịch vụ:</strong> {booking.serviceCenter?.name || "—"}
+                <strong>Trung tâm dịch vụ:</strong> {booking.serviceCenter?.name || ""}
               </p>
-              <div>
-            <strong>Giai đoạn bảo dưỡng:</strong> {booking.maintenanceStage?.name || "—"}
-          </div>
+              {(booking?.type || "").toUpperCase() === "MAINTENANCE_TYPE" && (
+                <div>
+                  <strong>Giai đoạn bảo dưỡng:</strong> {booking.maintenanceStage?.name || ""}
+                </div>
+              )}
               {booking.note && (
                 <p style={{ margin: 0, gridColumn: "1 / -1" }}>
                   <strong>Ghi chú:</strong> {booking.note}
