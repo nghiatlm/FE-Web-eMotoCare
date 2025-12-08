@@ -52,3 +52,13 @@ export const SERVICE_TYPE_COLORS = {
   RMA_TYPE: "gold",
   CAMPAIGN_TYPE: "purple",
 };
+
+// --- UI COLORS ---
+export const UI_COLORS = {
+  PRIMARY_RED: "#ff4d4f",          // Màu đỏ chính cho icon, button
+  PRIMARY_RED_DARK: "#d4380d",     // Màu đỏ đậm cho title, heading
+  TEXT_PRIMARY: "#262626",          // Màu text chính
+  TEXT_SECONDARY: "#8c8c8c",        // Màu text phụ
+  BORDER_LIGHT: "#f0f0f0",          // Màu border nhẹ
+  TAG_RED: "red",                   // Màu tag đỏ (Ant Design)
+};

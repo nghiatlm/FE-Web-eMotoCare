@@ -8,11 +8,36 @@ import CampaignModeEVCheck from "../../components/technician/detail-content/Camp
 import {
   SERVICE_TYPE_MAP,
   SERVICE_TYPE_COLORS,
+  UI_COLORS,
 } from "../../utils/constants.js";
 
-import { Card, Divider, Button, Input, Spin } from "antd";
+import { Card, Divider, Button, Input, Spin, Space, Tag, Typography } from "antd";
 import { toast } from "react-toastify";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Car, Hash, Palette, Calendar, Wrench } from "lucide-react";
+const { Text } = Typography;
+
+// ✅ Hàm dịch màu sắc từ tiếng Anh sang tiếng Việt
+const translateColor = (color) => {
+  if (!color) return "";
+  const colorUpper = String(color).trim().toUpperCase();
+  const colorMap = {
+    "BLUE": "Xanh dương",
+    "RED": "Đỏ",
+    "GREEN": "Xanh lá",
+    "YELLOW": "Vàng",
+    "BLACK": "Đen",
+    "WHITE": "Trắng",
+    "GRAY": "Xám",
+    "GREY": "Xám",
+    "SILVER": "Bạc",
+    "GOLD": "Vàng",
+    "ORANGE": "Cam",
+    "PURPLE": "Tím",
+    "PINK": "Hồng",
+    "BROWN": "Nâu",
+  };
+  return colorMap[colorUpper] || color;
+};
 
 import {
   fetchEVCheckByAppointmentService,
@@ -210,7 +235,7 @@ export default function TechnicianBookingDetailPage({
               navigate("/technician/vehicles");
             }
           }}
-          style={{ color: "#ff4d4f" }}
+          style={{ color: UI_COLORS.PRIMARY_RED }}
         >
           Quay lại
         </Button>
@@ -223,7 +248,7 @@ export default function TechnicianBookingDetailPage({
       <Card
         style={{ marginBottom: 24, borderRadius: 8 }}
         bodyStyle={{ padding: "24px" }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: "#d4380d", borderBottom: "1px solid #f0f0f0", paddingBottom: 12 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: UI_COLORS.PRIMARY_RED_DARK, borderBottom: `1px solid ${UI_COLORS.BORDER_LIGHT}`, paddingBottom: 12 }}>
           Thông tin chung
         </h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px" }}>
@@ -288,16 +313,116 @@ export default function TechnicianBookingDetailPage({
               <strong>Ghi chú:</strong> {booking.note}
             </div>
           )}
-          {isRepair && chassisNumber && (
-            <div style={{ gridColumn: "1 / -1" }}>
-              <strong>Số khung (VIN):</strong>{" "}
-              <code style={{ backgroundColor: "#f5f5f5", padding: "4px 8px", borderRadius: 4, fontSize: 12 }}>
-                {chassisNumber}
-              </code>
-            </div>
-          )}
         </div>
       </Card>
+
+      {/* THÔNG TIN PHƯƠNG TIỆN */}
+      {booking.vehicle && (
+        <Card
+          style={{ 
+            marginBottom: 24, 
+            borderRadius: 12,
+            border: "1px solid #e8e8e8",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+          }}
+          headStyle={{ 
+            borderBottom: "1px solid #f0f0f0", 
+            padding: "20px 24px",
+            background: "#fafafa",
+            borderRadius: "12px 12px 0 0",
+          }}
+          bodyStyle={{ padding: "24px" }}
+          title={
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Car size={18} style={{ color: UI_COLORS.PRIMARY_RED }} />
+              <span style={{ fontSize: 16, fontWeight: 600, color: UI_COLORS.PRIMARY_RED_DARK }}>
+                Thông tin phương tiện
+              </span>
+            </div>
+          }>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "24px 32px" }}>
+            {/* Cột trái - 2 trường */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {(booking.vehicle.modelName || booking.vehicle.model?.name) && (
+                <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                  <Space size={8}>
+                    <Car size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                    <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                      Mẫu xe:
+                    </Text>
+                  </Space>
+                  <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                    {booking.vehicle.modelName || booking.vehicle.model?.name}
+                  </Text>
+                </div>
+              )}
+              
+              {booking.vehicle.engineNumber && (
+                <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                  <Space size={8}>
+                    <Wrench size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                    <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                      Số máy:
+                    </Text>
+                  </Space>
+                  <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                    {booking.vehicle.engineNumber}
+                  </Text>
+                </div>
+              )}
+            </div>
+            
+            {/* Cột phải - 2 trường */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {chassisNumber && (
+                <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                  <Space size={8}>
+                    <Hash size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                    <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                      Số khung (VIN):
+                    </Text>
+                  </Space>
+                  <Tag 
+                    color={UI_COLORS.TAG_RED} 
+                    style={{ 
+                      borderRadius: 6, 
+                      padding: "4px 12px",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      border: "none",
+                    }}
+                  >
+                    {chassisNumber}
+                  </Tag>
+                </div>
+              )}
+              
+              {translateColor(booking.vehicle.color) && (
+                <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                  <Space size={8}>
+                    <Palette size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                    <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                      Màu sắc:
+                    </Text>
+                  </Space>
+                  <Tag 
+                    color={UI_COLORS.TAG_RED} 
+                    style={{ 
+                      borderRadius: 6, 
+                      padding: "4px 12px",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      border: "none",
+                    }}
+                  >
+                    {translateColor(booking.vehicle.color)}
+                  </Tag>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* ==== NHẬP KM – CHỈ KỸ THUẬT VIÊN THẤY (readOnly = false) ==== */}
       {isMaintenance && 
@@ -312,7 +437,7 @@ export default function TechnicianBookingDetailPage({
         <Card
           style={{ marginBottom: 24, borderRadius: 8 }}
           bodyStyle={{ padding: "24px" }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: "#d4380d", borderBottom: "1px solid #f0f0f0", paddingBottom: 12 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: UI_COLORS.PRIMARY_RED_DARK, borderBottom: `1px solid ${UI_COLORS.BORDER_LIGHT}`, paddingBottom: 12 }}>
             Cập nhật số km xe đã đi
           </h3>
           <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
@@ -356,7 +481,7 @@ export default function TechnicianBookingDetailPage({
         <Card
           style={{ marginBottom: 24, borderRadius: 8 }}
           bodyStyle={{ padding: "24px", maxHeight: "600px", overflow: "auto" }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: "#d4380d", borderBottom: "1px solid #f0f0f0", paddingBottom: 12 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: UI_COLORS.PRIMARY_RED_DARK, borderBottom: `1px solid ${UI_COLORS.BORDER_LIGHT}`, paddingBottom: 12 }}>
             Phiếu sửa chữa
           </h3>
           {/* ✅ Kiểm tra note: nếu có "lịch thay" và "rma" thì dùng RMARepairModeEVCheck */}
@@ -388,7 +513,7 @@ export default function TechnicianBookingDetailPage({
         <Card
           style={{ marginBottom: 24, borderRadius: 8 }}
           bodyStyle={{ padding: "24px", maxHeight: "600px", overflow: "auto" }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: "#d4380d", borderBottom: "1px solid #f0f0f0", paddingBottom: 12 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: UI_COLORS.PRIMARY_RED_DARK, borderBottom: `1px solid ${UI_COLORS.BORDER_LIGHT}`, paddingBottom: 12 }}>
             Phiếu kiểm tra chiến dịch
           </h3>
           <CampaignModeEVCheck
@@ -404,7 +529,7 @@ export default function TechnicianBookingDetailPage({
         <Card
           style={{ marginBottom: 24, borderRadius: 8 }}
           bodyStyle={{ padding: "24px" }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: "#d4380d", borderBottom: "1px solid #f0f0f0", paddingBottom: 12 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: UI_COLORS.PRIMARY_RED_DARK, borderBottom: `1px solid ${UI_COLORS.BORDER_LIGHT}`, paddingBottom: 12 }}>
             {evCheckStatus === "REPAIR_IN_PROGRESS"
               ? "Tiến hành sửa chữa"
               : "Kết quả kiểm tra EVCheck"}
