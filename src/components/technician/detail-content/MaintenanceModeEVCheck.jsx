@@ -629,20 +629,25 @@ export default function MaintenanceModeEVCheck({
           result: (item.result || "").trim() || "Tốt", // ✅ Nếu rỗng thì mặc định "Tốt"
           remedies: item.remedies ?? "NONE", // ✅ Mặc định "NONE" (Bôi trơn)
           warranty: item.warranty,
-          quantity: Number(item.quantity),
           unit: item.unit,
-          pricePart: Number(item.pricePart) || null,
           priceService: Number(item.priceService) || null,
           totalAmount: Number(item.totalAmount) || 0,
           status: normalizedStatus,
         };
 
-        // ✅ Chỉ gửi proposedReplacePartId nếu remedies là REPLACE và có giá trị
+        // ✅ Chỉ gửi proposedReplacePartId, pricePart và quantity nếu remedies là REPLACE và có giá trị
         if (item.remedies === "REPLACE" && proposedReplacePartIdValue) {
           payload.proposedReplacePartId = proposedReplacePartIdValue;
+          payload.quantity = Number(item.quantity || 1);
+          payload.pricePart = Number(item.pricePart || 0);
           console.log(`✅ [MaintenanceMode] Gửi proposedReplacePartId cho item ${item.id}:`, proposedReplacePartIdValue);
-        } else if (item.remedies === "REPLACE" && !proposedReplacePartIdValue) {
-          console.warn(`⚠️ [MaintenanceMode] Item ${item.id} có remedies=REPLACE nhưng không có proposedReplacePartId`);
+        } else {
+          // ✅ Không có phụ tùng thay thế thì không gửi quantity và pricePart
+          payload.quantity = null;
+          payload.pricePart = null;
+          if (item.remedies === "REPLACE" && !proposedReplacePartIdValue) {
+            console.warn(`⚠️ [MaintenanceMode] Item ${item.id} có remedies=REPLACE nhưng không có proposedReplacePartId`);
+          }
         }
 
         await updateEVCheckDetailService(item.id, payload);

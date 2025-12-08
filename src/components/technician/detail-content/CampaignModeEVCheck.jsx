@@ -855,18 +855,22 @@ export default function CampaignModeEVCheck({
         partItemId: item.partItemId,
         result: (item.result || "").trim() || "Tốt",
         remedies: item.remedies ?? "REPLACE",
-        quantity: Number(item.quantity || 1),
         unit: item.unit || "cái",
-        pricePart: Number(item.pricePart || 0),
         priceService: Number(item.priceService || 0),
         totalAmount: Number(item.totalAmount || 0),
         status: item.status || "PENDING",
       };
 
-      // ✅ Campaign: Luôn gửi proposedReplacePartId nếu có (bất kể biện pháp)
+      // ✅ Campaign: Chỉ gửi proposedReplacePartId, pricePart và quantity khi có phụ tùng thay thế
       // Vì phụ tùng thay thế được gán cứng từ recallPartId
       if (item.proposedReplacePartId) {
         payload.proposedReplacePartId = item.proposedReplacePartId;
+        payload.quantity = Number(item.quantity || 1);
+        payload.pricePart = Number(item.pricePart || 0);
+      } else {
+        // ✅ Không có phụ tùng thay thế thì không gửi quantity và pricePart
+        payload.quantity = null;
+        payload.pricePart = null;
       }
 
       if (item.isNew) {
@@ -928,18 +932,22 @@ export default function CampaignModeEVCheck({
           partItemId: item.partItemId,
           result: (item.result || "").trim() || "Tốt", // ✅ Nếu rỗng thì mặc định "Tốt"
           remedies: item.remedies ?? "REPLACE",
-          quantity: Number(item.quantity || 1),
           unit: item.unit || "cái",
-          pricePart: Number(item.pricePart || 0),
           priceService: Number(item.priceService || 0),
           totalAmount: Number(item.totalAmount || 0),
           status: item.status || "PENDING",
         };
 
-        // ✅ Campaign: Luôn gửi proposedReplacePartId nếu có (bất kể biện pháp)
+        // ✅ Campaign: Chỉ gửi proposedReplacePartId, pricePart và quantity khi có phụ tùng thay thế
         // Vì phụ tùng thay thế được gán cứng từ recallPartId
         if (item.proposedReplacePartId) {
           payload.proposedReplacePartId = item.proposedReplacePartId;
+          payload.quantity = Number(item.quantity || 1);
+          payload.pricePart = Number(item.pricePart || 0);
+        } else {
+          // ✅ Không có phụ tùng thay thế thì không gửi quantity và pricePart
+          payload.quantity = null;
+          payload.pricePart = null;
         }
 
         if (item.isNew) {

@@ -970,16 +970,21 @@ export default function RepairModeEVCheck({
         partItemId: item.partItemId,
         result: (item.result || "").trim() || "Tốt",
         remedies: item.remedies ?? "NONE",
-        quantity: Number(item.quantity || 1),
         unit: item.unit || "cái",
-        pricePart: Number(item.pricePart || 0),
         priceService: Number(item.priceService || 0),
         totalAmount: Number(item.totalAmount || 0),
         status: item.status || "PENDING",
       };
 
+      // ✅ Chỉ gửi pricePart và quantity khi có proposedReplacePartId
       if (item.remedies === "REPLACE" && item.proposedReplacePartId) {
         payload.proposedReplacePartId = item.proposedReplacePartId;
+        payload.quantity = Number(item.quantity || 1);
+        payload.pricePart = Number(item.pricePart || 0);
+      } else {
+        // ✅ Không có phụ tùng thay thế thì không gửi quantity và pricePart
+        payload.quantity = null;
+        payload.pricePart = null;
       }
 
       if (item.isNew) {
@@ -1047,16 +1052,21 @@ export default function RepairModeEVCheck({
           partItemId: item.partItemId,
           result: (item.result || "").trim() || "Tốt", // ✅ Nếu rỗng thì mặc định "Tốt"
           remedies: item.remedies ?? "NONE",
-          quantity: Number(item.quantity || 1),
           unit: item.unit || "cái",
-          pricePart: Number(item.pricePart || 0),
           priceService: Number(item.priceService || 0),
           totalAmount: Number(item.totalAmount || 0),
           status: item.status || "PENDING",
         };
 
+        // ✅ Chỉ gửi pricePart và quantity khi có proposedReplacePartId
         if (item.remedies === "REPLACE" && item.proposedReplacePartId) {
           payload.proposedReplacePartId = item.proposedReplacePartId;
+          payload.quantity = Number(item.quantity || 1);
+          payload.pricePart = Number(item.pricePart || 0);
+        } else {
+          // ✅ Không có phụ tùng thay thế thì không gửi quantity và pricePart
+          payload.quantity = null;
+          payload.pricePart = null;
         }
 
         if (item.isNew) {
@@ -1925,14 +1935,6 @@ export default function RepairModeEVCheck({
             </>
             )}
 
-          {/* ✅ Hiện thông báo khi đã gửi báo giá */}
-          {/* {evCheckStatus === "INSPECTION_COMPLETED" && (
-            <div className='mt-4 p-4 bg-blue-50 border border-blue-300 rounded text-center'>
-              <p className='text-blue-700 font-medium'>
-                Đã gửi báo giá thành công
-              </p>
-            </div>
-          )} */}
 
           {/* ✅ Hiện nút "Xác nhận sửa chữa" khi đang sửa chữa */}
           {evCheckStatus === "REPAIR_IN_PROGRESS" && (
