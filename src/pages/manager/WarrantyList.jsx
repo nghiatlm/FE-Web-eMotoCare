@@ -80,13 +80,13 @@ export default function WarrantyList() {
     switch (status?.toUpperCase()) {
       case "PENDING":
         return (
-          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 flex items-center gap-1">
+          <Badge className="inline-flex px-3 py-1 rounded-full text-xs font-medium justify-center bg-yellow-100 text-yellow-800 hover:bg-yellow-100 flex items-center gap-1">
             Chờ xác nhận
           </Badge>
         );
       case "PROCESSING":
         return (
-          <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100 flex items-center gap-1">
+          <Badge className="inline-flex px-3 py-1 rounded-full text-xs font-medium justify-center bg-blue-100 text-blue-800 hover:bg-blue-100 flex items-center gap-1">
             Đang xử lý
           </Badge>
         );
@@ -122,27 +122,6 @@ export default function WarrantyList() {
         );
       default:
         return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status?.toUpperCase()) {
-      case "PENDING":
-        return <Clock className="h-4 w-4 text-yellow-600" />;
-      case "PROCESSING":
-        return <Clock className="h-4 w-4 text-gray-600" />;
-      case "APPROVED":
-        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
-      case "REJECTED":
-        return <XCircle className="h-4 w-4 text-red-600" />;
-      case "CANCELED":
-        return <XCircle className="h-4 w-4 text-slate-600" />;
-      case "COMPLETED":
-        return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
-      case "APPOINTMENT_BOOKED":
-        return <Clock className="h-4 w-4 text-blue-600" />;
-      default:
-        return null;
     }
   };
 
@@ -188,18 +167,18 @@ export default function WarrantyList() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="bg-slate-50">
-      <div className="p-8 max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-slate-900">Quản lý bảo hành</h1>
-          <p className="mt-2 text-sm text-slate-600">
+    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-slate-50">
+      <div className="w-full max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+        <div className="mb-2">
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900">Quản lý bảo hành</h1>
+          <p className="text-base md:text-lg font-medium text-slate-700 mt-2">
             Quản lý các yêu cầu bảo hành tại trung tâm dịch vụ
           </p>
-          <div className="mt-4 h-[2px] w-16 bg-gradient-to-r from-red-500 via-red-400 to-orange-300 rounded-full" />
+          <div className="mt-3 h-1.5 w-28 rounded-full bg-red-500 shadow-[0_4px_16px_-6px_rgba(239,68,68,0.65)]" />
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="rounded-xl bg-white border border-slate-200 px-4 py-3 shadow-sm flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Tổng số</p>
@@ -231,9 +210,9 @@ export default function WarrantyList() {
         </div>
 
         {/* Filters – giống block filter admin */}
-        <div className="mb-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="mb-2 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="relative flex-1 min-w-[260px]">
+            <div className="relative flex-1 min-w-[260px] md:min-w-[320px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Tìm theo mã yêu cầu, nhân viên, ghi chú..."
@@ -258,7 +237,7 @@ export default function WarrantyList() {
                     setStatusFilter(value);
                   }}
                 >
-                  <SelectTrigger className="w-[180px] h-9 text-sm">
+                  <SelectTrigger className="w-[150px] md:w-[180px] h-9 text-sm bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
                     <SelectValue placeholder="Trạng thái" />
                   </SelectTrigger>
                   <SelectContent>
@@ -290,16 +269,14 @@ export default function WarrantyList() {
           </div>
         </div>
 
-        {/* Summary */}
         <p className="text-sm text-slate-500 mb-4">
           {search || statusFilter !== "all"
             ? `Hiển thị ${filteredClaims.length} / ${rmas.length} yêu cầu (đã lọc)`
             : `Hiển thị ${rmas.length} / ${total} yêu cầu`}
         </p>
 
-        {/* Warranty Claims Table – style giống admin */}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm overflow-x-auto">
+          <div className="min-w-[1100px]">
             <table className="w-full">
               <thead className="sticky top-0 z-10 bg-white">
                 <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
@@ -383,7 +360,6 @@ export default function WarrantyList() {
                       </td>
                       <td className="py-3 px-4 text-sm text-slate-900">
                         <div className="flex items-center gap-2">
-                          {getStatusIcon(claim.status)}
                           {getStatusBadge(claim.status)}
                         </div>
                       </td>

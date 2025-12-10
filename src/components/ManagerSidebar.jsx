@@ -9,6 +9,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -18,9 +19,14 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { authService } from "@/services/authService";
 import { cn } from "@/lib/utils";
+import { Layout, Avatar, Space } from "antd";
+import { useAuth } from "@/contexts/AuthContext";
+import { getStaffByAccountId } from "@/api/staffsApi";
+const { Header } = Layout;
 
 const sections = [
   {
@@ -149,6 +155,106 @@ export function ManagerSidebar() {
         </SidebarFooter>
       </Sidebar>
     </>
+  );
+}
+
+// Header (Ant Design) for manager layout
+export function ManagerTopHeader() {
+  const { user } = useAuth();
+  const [displayName, setDisplayName] = useState("Quản lý");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [initials, setInitials] = useState("QL");
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      const accountId = user?.accountResponse?.id;
+      const account = user?.accountResponse || user || {};
+      try {
+        if (accountId) {
+          const res = await getStaffByAccountId(accountId);
+          const staff = res?.data?.rowDatas?.[0];
+          if (staff) {
+            const name =
+              `${staff.firstName || ""} ${staff.lastName || ""}`.trim() ||
+              staff.account?.phone ||
+              "Quản lý";
+            const avatar = staff.avatarUrl || staff.account?.avatarUrl || "";
+            const init =
+              name
+                .split(" ")
+                .filter(Boolean)
+                .map((p) => p[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase() || "QL";
+            setDisplayName(name);
+            setAvatarUrl(avatar);
+            setInitials(init);
+            return;
+          }
+        }
+        const fallbackName =
+          `${account.firstName || ""} ${account.lastName || ""}`.trim() ||
+          account.phone ||
+          "Quản lý";
+        const fallbackInit =
+          fallbackName
+            .split(" ")
+            .filter(Boolean)
+            .map((p) => p[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase() || "QL";
+        setDisplayName(fallbackName);
+        setInitials(fallbackInit);
+        setAvatarUrl(account.avatarUrl || "");
+      } catch (error) {
+        const account = user?.accountResponse || user || {};
+        const fallbackName =
+          `${account.firstName || ""} ${account.lastName || ""}`.trim() ||
+          account.phone ||
+          "Quản lý";
+        const fallbackInit =
+          fallbackName
+            .split(" ")
+            .filter(Boolean)
+            .map((p) => p[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase() || "QL";
+        setDisplayName(fallbackName);
+        setInitials(fallbackInit);
+        setAvatarUrl(account.avatarUrl || "");
+      }
+    };
+    loadProfile();
+  }, [user]);
+
+  return (
+    <Header
+      className="flex items-center justify-between px-4"
+      style={{
+        background: "linear-gradient(90deg, #b71324 0%, #c81e32 50%, #b71324 100%)",
+        height: 56,
+        lineHeight: "56px",
+        paddingInline: 16,
+        borderBottom: "1px solid rgba(255,255,255,0.15)",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+      }}
+    >
+      <div className="flex items-center gap-3 text-white">
+        <SidebarTrigger className="text-white" />
+      </div>
+      <Space size="middle" className="text-white">
+        <div className="flex flex-col items-end leading-tight">
+          <span className="text-sm font-semibold">{displayName}</span>
+          <span className="text-[11px] text-red-50/90">Quản lý</span>
+        </div>
+        <Avatar src={avatarUrl} style={{ backgroundColor: "#fff", color: "#b71324" }}>
+          {initials}
+        </Avatar>
+      </Space>
+    </Header>
   );
 }
 
