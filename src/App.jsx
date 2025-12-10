@@ -17,7 +17,6 @@ import PaymentFailed from "./pages/PaymentFailed";
 import VerifySuccess from "./pages/VerifySuccess";
 
 // admin
-import WarrantyClaims from "./pages/WarrantyClaims";
 import UserManagement from "./pages/admin/UserManagement";
 import Index from "./pages/Index";
 import Branches from "./pages/admin/Branchesanches";
