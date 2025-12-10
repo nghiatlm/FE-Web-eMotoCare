@@ -35,6 +35,7 @@ export default function CreateCampaign() {
   const [parts, setParts] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
+  const [attachmentName, setAttachmentName] = useState("");
 
   const [form, setForm] = useState({
     type: "RECALL", // Theo API documentation
@@ -109,23 +110,14 @@ export default function CreateCampaign() {
     }
   };
 
-  // Handle image selection
+  // Handle file selection (image or other attachment)
   const handleImageSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error("Lỗi: Vui lòng chọn file ảnh", {
-        position: "top-right",
-        autoClose: 4000,
-      });
-      return;
-    }
-
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error("Lỗi: Kích thước ảnh không được vượt quá 5MB", {
+      toast.error("Lỗi: Kích thước file không được vượt quá 5MB", {
         position: "top-right",
         autoClose: 4000,
       });
@@ -133,19 +125,25 @@ export default function CreateCampaign() {
     }
 
     setSelectedImage(file);
+    setAttachmentName(file.name || "");
     
-    // Create preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result);
-    };
-    reader.readAsDataURL(file);
+    // Create preview if file is image
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setImagePreview("");
+    }
   };
 
   // Handle image remove
   const handleImageRemove = () => {
     setSelectedImage(null);
     setImagePreview("");
+    setAttachmentName("");
     handleChange("attachmentUrl", "");
   };
 
@@ -242,22 +240,21 @@ export default function CreateCampaign() {
         return;
       }
       
-      // Upload image to Firebase if selected
+      // Upload file to Firebase if selected
       let attachmentUrl = form.attachmentUrl;
       if (selectedImage) {
         try {
           setUploadingImage(true);
           const timestamp = Date.now();
-          const fileExtension = selectedImage.name.split('.').pop();
           const fileName = `campaigns/${timestamp}_${selectedImage.name}`;
           attachmentUrl = await uploadFile(fileName, selectedImage);
-          toast.success("Tải ảnh lên thành công", {
+          toast.success("Tải file lên thành công", {
             position: "top-right",
             autoClose: 4000,
           });
         } catch (error) {
           console.error("Error uploading image:", error);
-          toast.error("Lỗi: Không thể tải ảnh lên. Vui lòng thử lại.", {
+          toast.error("Lỗi: Không thể tải file lên. Vui lòng thử lại.", {
             position: "top-right",
             autoClose: 4000,
           });
@@ -267,22 +264,18 @@ export default function CreateCampaign() {
         }
       }
       
-      // Convert dates to ISO string, preserving the selected day/month/year regardless of timezone
       const formatDateToISO = (date) => {
         if (!date) return null;
         const dateObj = date instanceof Date ? date : new Date(date);
-        // Extract year, month, day from local date and create UTC date to preserve the selected date
         const year = dateObj.getFullYear();
         const month = dateObj.getMonth();
         const day = dateObj.getDate();
-        // Create UTC date at midnight to preserve the exact selected date
         return new Date(Date.UTC(year, month, day, 12, 0, 0, 0)).toISOString();
       };
       
       const startDateISO = formatDateToISO(form.startDate);
       const endDateISO = formatDateToISO(form.endDate);
 
-      // Build payload according to API structure
       const payload = {
         type: form.type,
         title: form.title.trim(),
@@ -308,25 +301,18 @@ export default function CreateCampaign() {
         ]
       };
       
-      console.log("📤 Creating campaign with payload:", payload);
-
       const response = await createCampaign(payload);
-      
-      console.log("📥 Create campaign response:", response);
-
-      // Handle response - API returns { statusCode, success, message, data }
-      if (response?.success || response?.statusCode === 200) {
-        toast.success(response?.message || "Tạo campaign thành công", {
+            if (response?.success || response?.statusCode === 200) {
+        toast.success(response?.message || "Tạo chiến dịch thành công", {
           position: "top-right",
           autoClose: 4000,
         });
         navigate("/admin/campaigns");
       } else {
-        throw new Error(response?.message || "Tạo thất bại");
+        throw new Error(response?.message || "Tạo chiến dịch thất bại");
       }
     } catch (error) {
-      console.error("❌ Error creating campaign:", error);
-      const errorMessage = error?.response?.data?.message || error?.message || error?.data?.message || "Không thể tạo campaign. Vui lòng thử lại.";
+      const errorMessage = error?.response?.data?.message || error?.message || error?.data?.message || "Không thể tạo chiến dịch. Vui lòng thử lại.";
       toast.error(`Lỗi: ${errorMessage}`, {
         position: "top-right",
         autoClose: 5000,
@@ -338,7 +324,7 @@ export default function CreateCampaign() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <div className="p-4 sm:p-6 max-w-5xl mx-auto">
+      <div className="w-full px-3 sm:px-6 lg:px-10 max-w-[1600px] mx-auto">
         {/* Header - Compact & Friendly */}
         <div className="mb-6">
           <Button 
@@ -357,11 +343,10 @@ export default function CreateCampaign() {
             </div>
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                Tạo campaign mới
-                <Sparkles className="h-4 w-4 text-primary/60" />
+                Tạo chiến dịch mới
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Điền thông tin để tạo campaign khuyến mãi mới
+                Điền thông tin để tạo chiến dịch khuyến mãi mới
               </p>
             </div>
           </div>
@@ -373,7 +358,7 @@ export default function CreateCampaign() {
             <CardHeader className="pb-4 border-b border-slate-200/60 dark:border-slate-800 bg-gradient-to-r from-primary/5 to-transparent">
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-primary/70" />
-                <CardTitle className="text-lg font-semibold">Thông tin campaign</CardTitle>
+                <CardTitle className="text-lg font-semibold">Thông tin chiến dịch</CardTitle>
               </div>
               <CardDescription className="text-xs mt-1.5">
                 Các trường có dấu <span className="text-red-500 font-medium">*</span> là bắt buộc
@@ -384,13 +369,13 @@ export default function CreateCampaign() {
               <div className="space-y-2">
                 <Label htmlFor="title" className="flex items-center gap-1.5 text-sm font-medium">
                   <Tag className="h-3.5 w-3.5 text-primary/70" />
-                  Tiêu đề campaign <span className="text-red-500">*</span>
+                  Tiêu đề chiến dịch <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="title"
                   value={form.title}
                   onChange={(e) => handleChange("title", e.target.value)}
-                  placeholder="Nhập tiêu đề campaign"
+                  placeholder="Nhập tiêu đề chiến dịch"
                   className={cn(
                     "h-10 text-sm transition-all",
                     errors.title 
@@ -423,7 +408,7 @@ export default function CreateCampaign() {
                   id="description"
                   value={form.description}
                   onChange={(e) => handleChange("description", e.target.value)}
-                  placeholder="Nhập mô tả chi tiết về campaign"
+                  placeholder="Nhập mô tả chi tiết về chiến dịch"
                   rows={3}
                   className={cn(
                     "text-sm transition-all resize-none",
@@ -441,7 +426,7 @@ export default function CreateCampaign() {
               </div>
 
               {/* Ngày bắt đầu và kết thúc */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="startDate" className="flex items-center gap-1.5 text-sm font-medium">
                     <CalendarIcon className="h-3.5 w-3.5 text-primary/70" />
@@ -544,10 +529,11 @@ export default function CreateCampaign() {
                     </p>
                   )}
                 </div>
+
+                <div className="hidden md:block" />
               </div>
 
-              {/* Model xe và Phụ tùng */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="vehicleModelId" className="flex items-center gap-1.5 text-sm font-medium">
                     <Car className="h-3.5 w-3.5 text-primary/70" />
@@ -615,25 +601,22 @@ export default function CreateCampaign() {
                     </p>
                   )}
                 </div>
-              </div>
-
-              {/* Type - RECALL hoặc CAMPAIGN */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              
                 <div className="space-y-2">
                   <Label htmlFor="type" className="flex items-center gap-1.5 text-sm font-medium">
                     <Tag className="h-3.5 w-3.5 text-primary/70" />
-                    Loại program <span className="text-red-500">*</span>
+                    Loại chiến dịch <span className="text-red-500">*</span>
                   </Label>
                   <Select
                     value={form.type}
                     onValueChange={(value) => handleChange("type", value)}
                   >
                     <SelectTrigger className="h-10 text-sm border-slate-200 dark:border-slate-700 hover:border-primary/40 focus:border-primary focus:ring-primary/20 transition-all">
-                      <SelectValue placeholder="Chọn loại program" />
+                      <SelectValue placeholder="Chọn loại chiến dịch" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="RECALL">RECALL (Triệu hồi)</SelectItem>
-                      <SelectItem value="CAMPAIGN">CAMPAIGN (Chiến dịch)</SelectItem>
+                      <SelectItem value="RECALL">Triệu hồi</SelectItem>
+                      <SelectItem value="CAMPAIGN">Chiến dịch</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -641,7 +624,7 @@ export default function CreateCampaign() {
                 <div className="space-y-2">
                   <Label htmlFor="serviceType" className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                     <Tag className="h-3.5 w-3.5 text-muted-foreground/70" />
-                    Loại chiến dịch
+                    Loại dịch vụ
                   </Label>
                   <Input
                     id="serviceType"
@@ -649,12 +632,11 @@ export default function CreateCampaign() {
                     disabled
                     className="h-10 text-sm bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
                   />
-                  <p className="text-xs text-muted-foreground">Loại dịch vụ được mặc định là Chiến dịch</p>
                 </div>
               </div>
 
               {/* Discount và Bonus */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="discountPercent" className="flex items-center gap-1.5 text-sm font-medium">
                     <Percent className="h-3.5 w-3.5 text-primary/70" />
@@ -691,24 +673,23 @@ export default function CreateCampaign() {
                     </span>
                   </div>
                 </div>
+
+                <div className="hidden md:block" />
               </div>
 
-              {/* Upload ảnh */}
+              {/* Upload tệp đính kèm */}
               <div className="space-y-2">
                 <Label htmlFor="attachment" className="flex items-center gap-1.5 text-sm font-medium">
                   <ImageIcon className="h-3.5 w-3.5 text-primary/70" />
-                  Hình ảnh đính kèm
+                  Tệp đính kèm
                 </Label>
                 <div className="space-y-2">
-                  {imagePreview || form.attachmentUrl ? (
+                  {imagePreview ? (
                     <div className="relative group">
                       <img
-                        src={imagePreview || form.attachmentUrl}
+                        src={imagePreview}
                         alt="Preview"
                         className="h-48 w-full object-cover rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm transition-transform group-hover:scale-[1.01]"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
                       />
                       <Button
                         type="button"
@@ -721,12 +702,37 @@ export default function CreateCampaign() {
                         <X className="h-3.5 w-3.5" />
                       </Button>
                     </div>
+                  ) : (attachmentName || form.attachmentUrl) ? (
+                    <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                          <Upload className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-foreground">
+                            {attachmentName || form.attachmentUrl?.split("/").pop() || "Tệp đính kèm"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {form.attachmentUrl ? "Đã tải lên" : "Đang chọn tệp"}
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-rose-600 hover:bg-rose-50"
+                        onClick={handleImageRemove}
+                        disabled={uploadingImage}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
                   ) : (
                     <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-6 hover:border-primary/60 hover:bg-primary/5 transition-all cursor-pointer">
                       <input
                         type="file"
                         id="attachment"
-                        accept="image/*"
                         onChange={handleImageSelect}
                         className="hidden"
                         disabled={uploadingImage}
@@ -739,10 +745,10 @@ export default function CreateCampaign() {
                           <Upload className="h-5 w-5 text-primary" />
                         </div>
                         <span className="text-sm font-medium text-foreground mb-0.5">
-                          Click để chọn ảnh hoặc kéo thả vào đây
+                          Click để chọn tệp hoặc kéo thả vào đây
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          JPG, PNG, GIF (Tối đa 5MB)
+                          Hỗ trợ mọi loại tệp, tối đa 5MB
                         </span>
                       </label>
                     </div>
@@ -756,17 +762,16 @@ export default function CreateCampaign() {
                 </div>
               </div>
 
-              {/* Hành động recall */}
               <div className="space-y-2">
                 <Label htmlFor="recallAction" className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                   <FileText className="h-3.5 w-3.5 text-muted-foreground/70" />
-                  Hành động recall
+                  Hành động
                 </Label>
                 <Textarea
                   id="recallAction"
                   value={form.recallAction}
                   onChange={(e) => handleChange("recallAction", e.target.value)}
-                  placeholder="Nhập mô tả hành động recall (nếu có)"
+                  placeholder="Nhập mô tả hành động"
                   rows={2}
                   className="text-sm border-slate-200 dark:border-slate-700 hover:border-primary/40 focus:border-primary focus:ring-primary/20 transition-all resize-none"
                 />
@@ -796,7 +801,7 @@ export default function CreateCampaign() {
                   ) : (
                     <>
                       <Megaphone className="mr-2 h-3.5 w-3.5" />
-                      Tạo campaign
+                      Tạo chiến dịch
                     </>
                   )}
                 </Button>

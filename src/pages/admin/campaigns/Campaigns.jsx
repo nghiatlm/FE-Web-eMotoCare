@@ -372,7 +372,11 @@ export default function Campaigns() {
               >
                 Xóa lọc
               </Button>
-              <Button className="gap-2 ml-auto bg-red-600 hover:bg-red-700 shadow-sm" size="sm">
+              <Button
+                className="gap-2 ml-auto bg-red-600 hover:bg-red-700 shadow-sm"
+                size="sm"
+                onClick={() => navigate("/admin/campaigns/new")}
+              >
                 <Plus className="h-4 w-4" />
                 Tạo chiến dịch mới
               </Button>

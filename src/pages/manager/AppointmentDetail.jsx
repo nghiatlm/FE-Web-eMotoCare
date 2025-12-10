@@ -1,19 +1,14 @@
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
-  User,
   Phone,
-  Mail,
   Calendar,
-  FileText,
   CheckCircle2,
   XCircle,
   Clock,
   AlertCircle,
   MapPin,
   Hash,
-  Building2,
-  Bike,
   Wrench,
   DollarSign,
   QrCode,
@@ -21,8 +16,8 @@ import {
   Package,
   Loader2,
   Tag,
-  Gauge, // New icon for Mileage/Duration
-  Clock3, // Different clock icon for estimated time
+  Gauge, 
+  Clock3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -124,7 +119,6 @@ export default function AppointmentDetail() {
   const [missingParts, setMissingParts] = useState([]);
   const [loadingMissingParts, setLoadingMissingParts] = useState(false);
 
-  // --- Formatting Functions (Giữ nguyên) ---
   const formatSlotTime = (slotTime) => {
     if (!slotTime) return "—";
     const match = slotTime.match(/H(\d+)_(\d+)/);
@@ -172,7 +166,6 @@ export default function AppointmentDetail() {
     return mileage;
   };
 
-  // Đổi tên màu từ tiếng Anh sang tiếng Việt (nếu map được)
   const formatColor = (color) => {
     if (!color) return "—";
     const normalized = String(color).trim().toLowerCase();
@@ -220,9 +213,7 @@ export default function AppointmentDetail() {
 
   const formatDateTime = (value) => safeFormat(value, "dd/MM/yyyy HH:mm");
   const formatDateOnly = (value) => safeFormat(value, "dd/MM/yyyy");
-  // --- End Formatting Functions ---
 
-  // --- Fetch Logic (Giữ nguyên) ---
   const fetchMissingParts = useCallback(async (appointmentId) => {
     if (!appointmentId) return;
     try {
@@ -277,7 +268,6 @@ export default function AppointmentDetail() {
     fetchAppointmentDetail();
   }, [fetchAppointmentDetail]);
 
-  // --- Loading/Error States (Giữ nguyên) ---
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-8 flex items-center justify-center">
@@ -306,22 +296,71 @@ export default function AppointmentDetail() {
     );
   }
 
-  // --- Data Extraction (Giữ nguyên) ---
   const currentStatus = (appointment.status || "PENDING").toUpperCase();
   const statusInfo = STATUS_META[currentStatus] || STATUS_META.DEFAULT;
   const StatusHeroIcon = statusInfo.icon || Clock;
+
+  const STATUS_FLOW = [
+    "PENDING",
+    "APPROVED",
+    "CHECKED_IN",
+    "QUOTE_APPROVED",
+    "REPAIR_COMPLETED",
+    "WAITING_FOR_PAYMENT",
+    "COMPLETED",
+  ];
+
+  const isCanceled =
+    currentStatus === "CANCELLED" || currentStatus === "CANCELED";
+  const isPaymentFailed = currentStatus === "PAYMENT_FAILED";
+  const currentIdx = STATUS_FLOW.indexOf(currentStatus);
+
+  let timelineSteps = STATUS_FLOW.map((status, idx) => {
+    const meta = STATUS_META[status] || {};
+    const completed =
+      !isCanceled && !isPaymentFailed && currentIdx > idx && currentIdx !== -1;
+    const active =
+      !isCanceled && !isPaymentFailed && currentIdx === idx && currentIdx !== -1;
+    return {
+      key: status,
+      label: meta.label || status,
+      description: meta.description || "",
+      completed,
+      active,
+    };
+  });
+
+  if (isPaymentFailed) {
+    timelineSteps.push({
+      key: "PAYMENT_FAILED",
+      label: STATUS_META.PAYMENT_FAILED.label,
+      description: STATUS_META.PAYMENT_FAILED.description,
+      completed: false,
+      active: true,
+    });
+  }
+
+  if (isCanceled) {
+    timelineSteps = timelineSteps.map((step) => ({
+      ...step,
+      completed: false,
+      active: false,
+    }));
+    timelineSteps.push({
+      key: "CANCELLED",
+      label: STATUS_META.CANCELLED.label,
+      description: STATUS_META.CANCELLED.description,
+      completed: false,
+      active: true,
+    });
+  }
 
   const customerName = `${appointment.customer?.firstName || ""} ${appointment.customer?.lastName || ""}`.trim() || "—";
   const customerPhone = appointment.customer?.account?.phone || "—";
   const customerAddress = appointment.customer?.address || "—";
   const customerCode = appointment.customer?.customerCode || "—";
   
-  const serviceCenterName = appointment.serviceCenter?.name || "—";
-  const serviceCenterCode = appointment.serviceCenter?.code || "—";
-  const serviceCenterAddress = appointment.serviceCenter?.address || "—";
-
   const appointmentDate = formatDateOnly(appointment.appointmentDate);
-  const appointmentDateTime = formatDateTime(appointment.appointmentDate);
   const slotTime = formatSlotTime(appointment.slotTime);
   const appointmentType = formatAppointmentType(appointment.type);
 
@@ -343,7 +382,6 @@ export default function AppointmentDetail() {
       description: appointment.maintenanceStage.description || null,
     } : null;
 
-  // --- Optimized DetailRow Component ---
   const DetailRow = ({ label, value, icon: Icon, className, valueClassName }) => {
     const display = value || value === 0 ? value : "—";
     return (
@@ -367,7 +405,6 @@ export default function AppointmentDetail() {
           Quay lại danh sách
         </Button>
 
-        {/* Header - Thông tin tổng quan */}
         <div className="mb-10 bg-white p-6 md:p-8 rounded-xl shadow-lg border border-slate-100">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
             <div className="space-y-2">
@@ -391,7 +428,6 @@ export default function AppointmentDetail() {
             </div>
           </div>
           
-          {/* Appointment Quick Details */}
           <div className="mt-6 pt-4 border-t border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-4">
             <DetailRow label="Mã lịch hẹn" value={appointment.code} icon={Hash} />
             <DetailRow label="Ngày hẹn" value={appointmentDate} icon={Calendar} />
@@ -400,12 +436,9 @@ export default function AppointmentDetail() {
           </div>
         </div>
 
-        {/* Main Content: 2 Columns Layout */}
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          {/* Column 1: Detail Cards */}
           <div className="space-y-8 lg:col-span-2">
             
-            {/* 1. Customer Info */}
             <Card className="shadow-md border-slate-200">
               <CardHeader className="pb-4">
                 <CardTitle className="text-xl font-semibold text-slate-800">Thông tin khách hàng</CardTitle>
@@ -439,37 +472,6 @@ export default function AppointmentDetail() {
               </CardContent>
             </Card>
 
-            {/* 2. Service Center Info */}
-            <Card className="shadow-md border-slate-200">
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-xl font-semibold text-slate-800">Trung tâm dịch vụ</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="grid gap-4 md:grid-cols-2 pt-0">
-                <DetailRow label="Tên trung tâm" value={serviceCenterName} />
-                <DetailRow label="Mã trung tâm" value={serviceCenterCode} icon={Hash} />
-                <DetailRow label="Địa chỉ" value={serviceCenterAddress} icon={MapPin} className="md:col-span-2" valueClassName="leading-relaxed" />
-              </CardContent>
-            </Card>
-
-            {/* 3. General & Cost Info */}
-            <Card className="shadow-md border-slate-200">
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-xl font-semibold text-slate-800">Thông tin chi phí & Chung</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="grid gap-4 md:grid-cols-3 pt-0">
-                  <DetailRow label="Chi phí ước tính" value={formatCurrency(appointment.estimatedCost)} icon={DollarSign} valueClassName="text-orange-600" />
-                  <DetailRow label="Chi phí thực tế" value={formatCurrency(appointment.actualCost)} icon={DollarSign} valueClassName="text-green-600" />
-                  <DetailRow label="Loại dịch vụ" value={appointmentType} icon={Wrench} />
-              </CardContent>
-            </Card>
-            
-            {/* 4. Vehicle Info */}
             {vehicleInfo && (
               <Card className="shadow-md border-slate-200">
                 <CardHeader className="pb-4">
@@ -489,7 +491,6 @@ export default function AppointmentDetail() {
               </Card>
             )}
 
-            {/* 5. Maintenance Stage Info */}
             {maintenanceStage && (
               <Card className="shadow-md border-slate-200">
                 <CardHeader className="pb-4">
@@ -584,6 +585,56 @@ export default function AppointmentDetail() {
                 </div>
                 <DetailRow label="Ngày tạo" value={formatDateTime(appointment.createdAt)} icon={Calendar} className="border-b border-dashed pb-4" />
                 <DetailRow label="Cập nhật lần cuối" value={formatDateTime(appointment.updatedAt)} icon={Clock} />
+
+                <div className="pt-2">
+                  <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-3">Dòng trạng thái</p>
+                  <div className="space-y-4">
+                    {timelineSteps.map((step, idx) => (
+                      <div key={step.key} className="flex gap-3">
+                        <div className="flex flex-col items-center">
+                          <span
+                            className={cn(
+                              "h-3 w-3 rounded-full border",
+                              step.completed
+                                ? "bg-emerald-500 border-emerald-500"
+                                : step.active
+                                  ? "bg-blue-500 border-blue-500"
+                                  : "bg-white border-slate-300"
+                            )}
+                          />
+                          {idx < timelineSteps.length - 1 && (
+                            <span
+                              className={cn(
+                                "w-0.5 flex-1",
+                                step.completed ? "bg-emerald-400" : "bg-slate-200"
+                              )}
+                              style={{ minHeight: 24 }}
+                            />
+                          )}
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <p
+                            className={cn(
+                              "text-sm font-semibold",
+                              step.active
+                                ? "text-blue-600"
+                                : step.completed
+                                  ? "text-emerald-700"
+                                  : "text-slate-700"
+                            )}
+                          >
+                            {step.label}
+                          </p>
+                          {step.description && (
+                            <p className="text-xs text-slate-500 leading-snug">
+                              {step.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>

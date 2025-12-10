@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Building2, MapPin, Phone, Mail, Clock, Users, Wrench, Calendar, ChevronRight, Plus } from "lucide-react";
+import { Building2, MapPin, Phone, Mail, Clock, Users, Wrench, Calendar, ChevronRight, Plus, ChevronLeft, ChevronRight as ChevronRightIcon, CalendarRange } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Edit } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStaffByAccountId } from "@/api/staffsApi";
 import { getServiceCenterById, createServiceCenterSlot } from "@/api/serviceCentersApi";
-import { format } from "date-fns";
+import { format, startOfWeek, addDays } from "date-fns";
 import { vi } from "date-fns/locale";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ export default function InformationDetail() {
   const [staff, setStaff] = useState(null);
   const [isCreateSlotOpen, setIsCreateSlotOpen] = useState(false);
   const [isCreatingSlot, setIsCreatingSlot] = useState(false);
+  const [weekAnchor, setWeekAnchor] = useState(new Date());
   const [slotForm, setSlotForm] = useState({
     date: "",
     slotTime: "",
@@ -157,6 +158,12 @@ export default function InformationDetail() {
 
   const groupedSlots = groupSlotsByDate(serviceCenter.serviceCenterSlots || []);
   const sortedDates = Object.keys(groupedSlots).sort();
+  const weekStart = startOfWeek(weekAnchor, { weekStartsOn: 1 });
+  const weekEnd = addDays(weekStart, 6);
+  const sortedDatesInWeek = sortedDates.filter((date) => {
+    const d = new Date(date);
+    return d >= weekStart && d <= weekEnd;
+  });
 
   // Tìm manager từ danh sách staffs
   const manager = serviceCenter.staffs?.find(s => s.position === "MANAGER_BRANCH");
@@ -241,10 +248,6 @@ export default function InformationDetail() {
           <h1 className="text-3xl font-bold text-foreground mb-2">Thông tin Chi tiết Trung tâm</h1>
           <p className="text-muted-foreground">Thông tin chi tiết về trung tâm dịch vụ</p>
         </div>
-        <Button>
-          <Edit className="h-4 w-4 mr-2" />
-          Chỉnh sửa
-        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -343,29 +346,76 @@ export default function InformationDetail() {
                 </CardTitle>
                 <CardDescription>Quản lý các khung giờ làm việc tại trung tâm của bạn.</CardDescription>
               </div>
-              <Button onClick={() => setIsCreateSlotOpen(true)} size="sm" className="gap-1">
-                <Plus className="h-4 w-4" />
-                Tạo slot
-              </Button>
+              <div className="flex flex-col items-end gap-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setWeekAnchor(addDays(weekStart, -7))}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-8 gap-2">
+                        <CalendarRange className="h-4 w-4" />
+                        {`${format(weekStart, "dd/MM")} - ${format(weekEnd, "dd/MM/yyyy")}`}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="p-0 w-auto" align="end">
+                      <CalendarComponent
+                        mode="single"
+                        selected={weekAnchor}
+                        onSelect={(date) => date && setWeekAnchor(date)}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setWeekAnchor(addDays(weekStart, 7))}
+                  >
+                    <ChevronRightIcon className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-8" onClick={() => setWeekAnchor(new Date())}>
+                    Tuần này
+                  </Button>
+                </div>
+                <Button onClick={() => setIsCreateSlotOpen(true)} size="sm" className="gap-1">
+                  <Plus className="h-4 w-4" />
+                  Tạo slot
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              {sortedDates.length > 0 ? (
+              {sortedDatesInWeek.length > 0 ? (
                 <div className="space-y-4">
-                  {sortedDates.map((date) => {
+                  {sortedDatesInWeek.map((date) => {
                     const slots = groupedSlots[date];
                     const firstSlot = slots[0];
                     const vietnameseDay = getVietnameseDay(firstSlot.dayOfWeek);
 
                     return (
-                      <div key={date} className="border border-border rounded-lg p-4 space-y-3">
+                      <div
+                        key={date}
+                        className="rounded-xl border border-slate-200 bg-white shadow-sm p-4 space-y-3"
+                      >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-primary" />
-                            <h4 className="font-semibold text-foreground">
-                              {vietnameseDay}, {format(new Date(date), "dd/MM/yyyy", { locale: vi })}
-                            </h4>
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                              <Calendar className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-foreground">
+                                {vietnameseDay}, {format(new Date(date), "dd/MM/yyyy", { locale: vi })}
+                              </h4>
+                              <p className="text-xs text-muted-foreground">Ngày làm việc</p>
+                            </div>
                           </div>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs bg-slate-50 border-slate-200">
                             {slots.length} khung giờ
                           </Badge>
                         </div>
@@ -373,10 +423,10 @@ export default function InformationDetail() {
                           {slots.map((slot) => (
                             <div
                               key={slot.id}
-                              className={`p-3 rounded-md border transition-colors ${
+                              className={`p-4 rounded-lg border transition-all shadow-[0_4px_12px_-8px_rgba(0,0,0,0.15)] ${
                                 slot.isActive
-                                  ? 'bg-green-50 border-green-200 dark:bg-green-900/10 dark:border-green-800'
-                                  : 'bg-gray-50 border-gray-200 dark:bg-gray-900/10 dark:border-gray-800'
+                                  ? 'bg-emerald-50 border-emerald-200'
+                                  : 'bg-slate-50 border-slate-200'
                               }`}
                             >
                               <div className="flex items-center justify-between mb-2">
@@ -385,7 +435,11 @@ export default function InformationDetail() {
                                 </span>
                                 <Badge
                                   variant={slot.isActive ? "default" : "secondary"}
-                                  className="text-xs"
+                                  className={`text-xs px-2 ${
+                                    slot.isActive
+                                      ? "bg-emerald-600 hover:bg-emerald-700"
+                                      : "bg-slate-300 text-slate-700 hover:bg-slate-400"
+                                  }`}
                                 >
                                   {slot.isActive ? "Hoạt động" : "Tạm dừng"}
                                 </Badge>
@@ -408,7 +462,7 @@ export default function InformationDetail() {
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p className="text-sm">Chưa có lịch làm việc nào được thiết lập</p>
+                  <p className="text-sm">Không có slot trong tuần này</p>
                 </div>
               )}
             </CardContent>
