@@ -13,6 +13,8 @@ import {
   Building2,
   Upload,
   X,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -55,7 +57,16 @@ export default function CreateUserPage() {
     avatarUrl: "",
     position: "",
     serviceCenterId: "",
+    // Customer (optional)
+    customerFirstName: "",
+    customerLastName: "",
+    customerAddress: "",
+    customerCitizenId: "",
+    customerDateOfBirth: null,
+    customerGender: "",
   });
+  const hasLetter = (value) => /[A-Za-zÀ-ỹ]/i.test((value || "").trim());
+  const isDigitsOnly = (value) => /^\d+$/.test((value || "").trim());
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [serviceCenters, setServiceCenters] = useState([]);
@@ -63,6 +74,7 @@ export default function CreateUserPage() {
   const [selectedAvatar, setSelectedAvatar] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState("");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const fetchServiceCenters = async () => {
@@ -83,67 +95,115 @@ export default function CreateUserPage() {
     fetchServiceCenters();
   }, []);
 
+  const getFieldError = (field, nextForm) => {
+    const role = nextForm.roleName;
+    const isCustomer = role === "ROLE_CUSTOMER";
+
+    switch (field) {
+      case "phone": {
+        const phone = (nextForm.phone || "").trim();
+        const vnPhoneRegex = /^(0\d{9}|\+84\d{9,10})$/;
+        if (!phone) return "Số điện thoại là bắt buộc";
+        if (!vnPhoneRegex.test(phone)) return "Số điện thoại không hợp lệ";
+        return "";
+      }
+      case "email": {
+        const email = (nextForm.email || "").trim();
+        if (!email) return "Email là bắt buộc";
+        if (!/\S+@\S+\.\S+/.test(email)) return "Email không hợp lệ";
+        return "";
+      }
+      case "password": {
+        const pwd = (nextForm.password || "").trim();
+        if (!pwd) return "Mật khẩu là bắt buộc";
+        if (pwd.length < 6) return "Mật khẩu phải có ít nhất 6 ký tự";
+        return "";
+      }
+      case "roleName": {
+        return nextForm.roleName ? "" : "Vai trò là bắt buộc";
+      }
+      // Staff fields (only when not customer)
+      case "staffCode":
+        if (!isCustomer && !nextForm.staffCode.trim()) return "Mã nhân viên là bắt buộc";
+        return "";
+      case "firstName":
+        if (isCustomer) return "";
+        if (!nextForm.firstName.trim()) return "Tên là bắt buộc";
+        if (!hasLetter(nextForm.firstName)) return "Tên phải chứa chữ cái";
+        return "";
+      case "lastName":
+        if (isCustomer) return "";
+        if (!nextForm.lastName.trim()) return "Họ là bắt buộc";
+        if (!hasLetter(nextForm.lastName)) return "Họ phải chứa chữ cái";
+        return "";
+      case "address":
+        if (isCustomer) return "";
+        if (!nextForm.address.trim()) return "Địa chỉ là bắt buộc";
+        return "";
+      case "citizenId":
+        if (isCustomer) return "";
+        if (!nextForm.citizenId.trim()) return "CMND/CCCD là bắt buộc";
+        if (!isDigitsOnly(nextForm.citizenId)) return "CMND/CCCD chỉ được chứa số";
+        return "";
+      case "dateOfBirth":
+        if (isCustomer) return "";
+        if (!nextForm.dateOfBirth) return "Ngày sinh là bắt buộc";
+        return "";
+      case "gender":
+        if (isCustomer) return "";
+        if (!nextForm.gender) return "Giới tính là bắt buộc";
+        return "";
+      case "position":
+        if (isCustomer) return "";
+        if (!nextForm.position) return "Chức vụ là bắt buộc";
+        return "";
+      case "serviceCenterId":
+        if (isCustomer) return "";
+        if (role !== "ROLE_ADMIN" && !nextForm.serviceCenterId) return "Chi nhánh là bắt buộc";
+        return "";
+      // Customer fields (only when customer)
+      case "customerFirstName":
+        if (!isCustomer) return "";
+        if (!nextForm.customerFirstName.trim()) return "Tên khách hàng là bắt buộc";
+        if (!hasLetter(nextForm.customerFirstName)) return "Tên phải chứa chữ cái";
+        return "";
+      case "customerLastName":
+        if (!isCustomer) return "";
+        if (!nextForm.customerLastName.trim()) return "Họ khách hàng là bắt buộc";
+        if (!hasLetter(nextForm.customerLastName)) return "Họ phải chứa chữ cái";
+        return "";
+      case "customerAddress":
+        if (!isCustomer) return "";
+        if (!nextForm.customerAddress.trim()) return "Địa chỉ là bắt buộc";
+        return "";
+      case "customerCitizenId":
+        if (!isCustomer) return "";
+        if (!nextForm.customerCitizenId.trim()) return "CMND/CCCD là bắt buộc";
+        if (!isDigitsOnly(nextForm.customerCitizenId)) return "CMND/CCCD chỉ được chứa số";
+        return "";
+      case "customerDateOfBirth":
+        if (!isCustomer) return "";
+        if (!nextForm.customerDateOfBirth) return "Ngày sinh là bắt buộc";
+        return "";
+      case "customerGender":
+        if (!isCustomer) return "";
+        if (!nextForm.customerGender) return "Giới tính là bắt buộc";
+        return "";
+      default:
+        return "";
+    }
+  };
+
   const validateForm = () => {
     const newErrors = {};
 
-    const phone = formData.phone.trim();
-    const vnPhoneRegex = /^(0\d{9}|\+84\d{9,10})$/;
-    if (!phone) {
-      newErrors.phone = "Số điện thoại là bắt buộc";
-    } else if (!vnPhoneRegex.test(phone)) {
-      newErrors.phone = "Số điện thoại không hợp lệ";
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = "Email là bắt buộc";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email không hợp lệ";
-    }
-
-    if (!formData.password.trim()) {
-      newErrors.password = "Mật khẩu là bắt buộc";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự";
-    }
-
-    if (!formData.roleName) {
-      newErrors.roleName = "Vai trò là bắt buộc";
-    }
-
-    // Staff validation
-    if (!formData.staffCode.trim()) {
-      newErrors.staffCode = "Mã nhân viên là bắt buộc";
-    }
-
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = "Tên là bắt buộc";
-    }
-
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = "Họ là bắt buộc";
-    }
-
-    if (!formData.address.trim()) {
-      newErrors.address = "Địa chỉ là bắt buộc";
-    }
-
-    if (!formData.citizenId.trim()) {
-      newErrors.citizenId = "CMND/CCCD là bắt buộc";
-    }
-
-    if (!formData.dateOfBirth) {
-      newErrors.dateOfBirth = "Ngày sinh là bắt buộc";
-    }
-
-    if (!formData.gender) {
-      newErrors.gender = "Giới tính là bắt buộc";
-    }
-
-    if (!formData.position) {
-      newErrors.position = "Chức vụ là bắt buộc";
-    }
-
-    if (formData.roleName !== "ROLE_ADMIN" && !formData.serviceCenterId) {
+    Object.entries(formData).forEach(([key, val]) => {
+      const err = getFieldError(key, formData);
+      if (err) newErrors[key] = err;
+    });
+    // Also validate serviceCenterId based on role (for admin skip)
+    const role = formData.roleName;
+    if (role && role !== "ROLE_ADMIN" && role !== "ROLE_CUSTOMER" && !formData.serviceCenterId) {
       newErrors.serviceCenterId = "Chi nhánh là bắt buộc";
     }
 
@@ -203,14 +263,19 @@ export default function CreateUserPage() {
         }
       }
 
-      // Format payload with nested staff object
+      // Format payload with nested staff & optional customer object
+      const isCustomer = formData.roleName === "ROLE_CUSTOMER";
+
       const payload = {
         phone: formData.phone.trim(),
         email: formData.email.trim(),
         password: formData.password,
         roleName: formData.roleName,
         status: formData.status,
-        staff: {
+      };
+
+      if (!isCustomer) {
+        payload.staff = {
           staffCode: formData.staffCode.trim(),
           firstName: formData.firstName.trim(),
           lastName: formData.lastName.trim(),
@@ -226,12 +291,32 @@ export default function CreateUserPage() {
           gender: formData.gender,
           position: formData.position,
           serviceCenterId: formData.serviceCenterId || undefined,
-        },
+        };
+
+        if (avatarUrl) {
+          payload.staff.avatarUrl = avatarUrl;
+        }
+      }
+
+      // Optional customer block
+      const customer = {
+        firstName: formData.customerFirstName.trim(),
+        lastName: formData.customerLastName.trim(),
+        address: formData.customerAddress.trim(),
+        citizenId: formData.customerCitizenId.trim(),
+        dateOfBirth: formData.customerDateOfBirth
+          ? (() => {
+              const date = new Date(formData.customerDateOfBirth);
+              date.setHours(0, 0, 0, 0);
+              return date.toISOString();
+            })()
+          : undefined,
+        gender: formData.customerGender || undefined,
       };
 
-      // Only include avatarUrl if provided
-      if (avatarUrl) {
-        payload.staff.avatarUrl = avatarUrl;
+      const hasCustomer = Object.values(customer).some((v) => v && String(v).trim() !== "");
+      if (isCustomer && hasCustomer) {
+        payload.customer = customer;
       }
 
       // Call API to create user
@@ -265,10 +350,50 @@ export default function CreateUserPage() {
   };
 
   const handleInputChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: "" }));
-    }
+    setFormData((prev) => {
+      const next = { ...prev, [field]: value };
+      const err = getFieldError(field, next);
+
+      setErrors((prevErr) => {
+        // If value changes role, clear dependent sections errors
+        if (field === "roleName") {
+          if (value === "ROLE_CUSTOMER") {
+            return {
+              ...prevErr,
+              staffCode: "",
+              firstName: "",
+              lastName: "",
+              address: "",
+              citizenId: "",
+              dateOfBirth: "",
+              gender: "",
+              position: "",
+              serviceCenterId: "",
+              [field]: err,
+            };
+          }
+          if (value !== "ROLE_CUSTOMER") {
+            return {
+              ...prevErr,
+              customerFirstName: "",
+              customerLastName: "",
+              customerAddress: "",
+              customerCitizenId: "",
+              customerDateOfBirth: "",
+              customerGender: "",
+              [field]: err,
+            };
+          }
+        }
+
+        return {
+          ...prevErr,
+          [field]: err,
+        };
+      });
+
+      return next;
+    });
   };
 
   const handleAvatarFileChange = (e) => {
@@ -307,12 +432,11 @@ export default function CreateUserPage() {
   };
 
   const roleOptions = [
-    { value: "ROLE_ADMIN", label: "Admin" },
-    { value: "ROLE_MANAGER", label: "Manager" },
-    { value: "ROLE_STAFF", label: "Staff" },
-    { value: "ROLE_TECHNICIAN", label: "Technician" },
-    { value: "ROLE_CUSTOMER", label: "Customer" },
-    { value: "ROLE_STOREKEEPER", label: "Storekeeper" },
+    { value: "ROLE_MANAGER", label: "Quản lý" },
+    { value: "ROLE_STAFF", label: "Nhân viên" },
+    { value: "ROLE_TECHNICIAN", label: "Kỹ thuật viên" },
+    { value: "ROLE_CUSTOMER", label: "Khách hàng" },
+    { value: "ROLE_STOREKEEPER", label: "Thủ kho" },
   ];
 
   const positionOptions = [
@@ -324,8 +448,8 @@ export default function CreateUserPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="p-8 max-w-5xl mx-auto">
-        <div className="mb-6 flex items-center justify-between">
+      <div className="px-3 sm:px-4 md:px-6 lg:px-8 py-4 max-w-[1500px] w-full mx-auto">
+        <div className="mb-4 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Tạo người dùng mới</h1>
             <p className="text-sm text-muted-foreground mt-1">
@@ -341,15 +465,15 @@ export default function CreateUserPage() {
           </Button>
         </div>
 
-        <div className="bg-card rounded-xl border border-border shadow-md p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="bg-card rounded-xl border border-border shadow-md p-4 sm:p-5">
+          <form onSubmit={handleSubmit} className="space-y-2">
             {/* Thông tin tài khoản */}
-            <div className="space-y-4 pb-4 border-b">
+            <div className="space-y-2.5 pb-3 border-b">
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 <Shield className="h-5 w-5" />
                 Thông tin tài khoản
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="phone" className="flex items-center gap-2">
                     <Phone className="h-4 w-4" />
@@ -394,16 +518,26 @@ export default function CreateUserPage() {
                     <Shield className="h-4 w-4" />
                     Mật khẩu <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Tối thiểu 6 ký tự"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange("password", e.target.value)}
-                    className={errors.password ? "border-destructive" : ""}
-                    autoComplete="new-password"
-                    minLength={6}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Tối thiểu 6 ký tự"
+                      value={formData.password}
+                      onChange={(e) => handleInputChange("password", e.target.value)}
+                      className={errors.password ? "border-destructive pr-10" : "pr-10"}
+                      autoComplete="new-password"
+                      minLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute inset-y-0 right-2 flex items-center text-slate-500 hover:text-slate-700"
+                      aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                   {errors.password && (
                     <p className="text-sm text-destructive">{errors.password}</p>
                   )}
@@ -436,13 +570,146 @@ export default function CreateUserPage() {
               </div>
             </div>
 
+            {/* Thông tin khách hàng (tùy chọn) */}
+            {formData.roleName === "ROLE_CUSTOMER" && (
+            <div className="space-y-2.5">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <UserCircle className="h-5 w-5" />
+                Thông tin khách hàng (tùy chọn)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Tên khách hàng
+                  </Label>
+                  <Input
+                    placeholder="VD: Nguyễn"
+                    value={formData.customerFirstName}
+                    onChange={(e) => handleInputChange("customerFirstName", e.target.value)}
+                    className={errors.customerFirstName ? "border-destructive" : ""}
+                  />
+                  {errors.customerFirstName && (
+                    <p className="text-sm text-destructive">{errors.customerFirstName}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Họ khách hàng
+                  </Label>
+                  <Input
+                    placeholder="VD: Văn A"
+                    value={formData.customerLastName}
+                    onChange={(e) => handleInputChange("customerLastName", e.target.value)}
+                    className={errors.customerLastName ? "border-destructive" : ""}
+                  />
+                  {errors.customerLastName && (
+                    <p className="text-sm text-destructive">{errors.customerLastName}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Địa chỉ
+                  </Label>
+                  <Input
+                    placeholder="VD: 123 Lý Thường Kiệt, Q.10"
+                    value={formData.customerAddress}
+                    onChange={(e) => handleInputChange("customerAddress", e.target.value)}
+                    className={errors.customerAddress ? "border-destructive" : ""}
+                  />
+                  {errors.customerAddress && (
+                    <p className="text-sm text-destructive">{errors.customerAddress}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <IdCard className="h-4 w-4" />
+                    CCCD/CMND
+                  </Label>
+                  <Input
+                    placeholder="VD: 012345678901"
+                    value={formData.customerCitizenId}
+                    onChange={(e) => handleInputChange("customerCitizenId", e.target.value)}
+                    className={errors.customerCitizenId ? "border-destructive" : ""}
+                  />
+                  {errors.customerCitizenId && (
+                    <p className="text-sm text-destructive">{errors.customerCitizenId}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Ngày sinh
+                  </Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !formData.customerDateOfBirth && "text-muted-foreground"
+                          ,
+                          errors.customerDateOfBirth && "border-destructive"
+                        )}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {formData.customerDateOfBirth ? (
+                          format(formData.customerDateOfBirth, "dd/MM/yyyy", { locale: vi })
+                        ) : (
+                          <span>Chọn ngày sinh</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={formData.customerDateOfBirth}
+                        onSelect={(date) => handleInputChange("customerDateOfBirth", date)}
+                        initialFocus
+                        locale={vi}
+                        maxDate={new Date()}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                    {errors.customerDateOfBirth && (
+                      <p className="text-sm text-destructive">{errors.customerDateOfBirth}</p>
+                    )}
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <UserCircle className="h-4 w-4" />
+                    Giới tính
+                  </Label>
+                  <Select
+                    value={formData.customerGender}
+                    onValueChange={(value) => handleInputChange("customerGender", value)}
+                  >
+                    <SelectTrigger className={errors.customerGender ? "border-destructive" : ""}>
+                      <SelectValue placeholder="Chọn giới tính" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MALE">Nam</SelectItem>
+                      <SelectItem value="FEMALE">Nữ</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.customerGender && (
+                    <p className="text-sm text-destructive">{errors.customerGender}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+            )}
+
             {/* Thông tin nhân viên */}
-            <div className="space-y-4">
+            {formData.roleName && formData.roleName !== "ROLE_CUSTOMER" && (
+            <div className="space-y-2.5">
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 <UserCircle className="h-5 w-5" />
                 Thông tin nhân viên
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="staffCode" className="flex items-center gap-2">
                     <IdCard className="h-4 w-4" />
@@ -597,7 +864,7 @@ export default function CreateUserPage() {
                   )}
                 </div>
 
-                <div className="space-y-2 md:col-span-2">
+              <div className="space-y-2 md:col-span-2 xl:col-span-2">
                   <Label htmlFor="address" className="flex items-center gap-2">
                     <MapPin className="h-4 w-4" />
                     Địa chỉ <span className="text-red-500">*</span>
@@ -615,7 +882,7 @@ export default function CreateUserPage() {
                 </div>
 
                 {formData.roleName !== "ROLE_ADMIN" && (
-                  <div className="space-y-2">
+                <div className="space-y-2">
                     <Label htmlFor="serviceCenterId" className="flex items-center gap-2">
                       <Building2 className="h-4 w-4" />
                       Chi nhánh <span className="text-red-500">*</span>
@@ -642,7 +909,7 @@ export default function CreateUserPage() {
                   </div>
                 )}
 
-                <div className="space-y-3 md:col-span-2">
+                <div className="space-y-3 md:col-span-2 xl:col-span-3">
                   <Label className="flex items-center gap-2">
                     <ImageIcon className="h-4 w-4" />
                     Ảnh đại diện (tùy chọn)
@@ -655,7 +922,7 @@ export default function CreateUserPage() {
                           <img
                             src={avatarPreview || formData.avatarUrl}
                             alt="Avatar preview"
-                            className="h-20 w-20 rounded-full object-cover border border-border shadow-sm"
+                            className="h-16 w-16 rounded-full object-cover border border-border shadow-sm"
                           />
                           <Button
                             type="button"
@@ -689,7 +956,7 @@ export default function CreateUserPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="border-2 border-dashed border-muted-foreground/40 rounded-lg p-4 flex items-center gap-3">
+                      <div className="border-2 border-dashed border-muted-foreground/40 rounded-lg p-3 flex items-center gap-3">
                         <input
                           type="file"
                           id="avatarFile"
@@ -726,6 +993,7 @@ export default function CreateUserPage() {
                 </div>
               </div>
             </div>
+            )}
 
             <div className="flex justify-end gap-3 pt-2">
               <Button

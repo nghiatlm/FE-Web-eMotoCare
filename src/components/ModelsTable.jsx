@@ -12,10 +12,8 @@ const statusBadge = (status) => {
   switch (status?.toUpperCase()) {
     case "ACTIVE":
       return `${base} bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400`;
-    case "INACTIVE":
+    case "IN_ACTIVE":
       return `${base} bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400`;
-    case "PENDING":
-      return `${base} bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400`;
     default:
       return `${base} bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400`;
   }
@@ -24,8 +22,7 @@ const statusBadge = (status) => {
 const getStatusLabel = (status) => {
   const statusMap = {
     ACTIVE: "Hoạt động",
-    INACTIVE: "Ngưng hoạt động",
-    PENDING: "Chờ duyệt",
+    IN_ACTIVE: "Ngưng hoạt động",
   };
   return statusMap[status?.toUpperCase()] || status || "—";
 };
@@ -49,7 +46,7 @@ export function ModelsTable({ search = "", status = "" }) {
           pageSize,
         });
 
-        const payload = res; // axios interceptor returns response.data
+        const payload = res;
         const list =
           payload?.rowDatas ||
           payload?.data?.rowDatas ||
@@ -80,12 +77,10 @@ export function ModelsTable({ search = "", status = "" }) {
   const filtered = useMemo(() => {
     let result = rows;
 
-    // status filter (ignore empty or "all")
     if (status && status !== "all") {
       result = result.filter((r) => r.status?.toUpperCase() === status.toUpperCase());
     }
 
-    // text search across selected fields
     const q = search.trim().toLowerCase();
     if (q) {
       result = result.filter((r) =>
@@ -202,15 +197,6 @@ export function ModelsTable({ search = "", status = "" }) {
                   </td>
                   <td className="py-4 px-6">
                     <div className="flex items-center justify-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-primary hover:bg-primary/10 hover:text-primary transition-colors"
-                        onClick={() => navigate(`/admin/models/${m.id}/edit`)}
-                        title="Sửa"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
