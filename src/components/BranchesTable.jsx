@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Pencil, Eye, Pause, Play, Building2 } from "lucide-react";
-import { getServiceCenters } from "@/api/serviceCentersApi";
+import { getServiceCenters, deleteServiceCenter } from "@/api/serviceCentersApi";
 import { formatPhoneNumber } from "@/utils/formatters";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { toast } from "react-toastify";
 
 const initialBranches = [];
 
@@ -13,22 +15,23 @@ const statusBadge = (status) => {
   switch (status) {
     case "active":
       return `${base} bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400`;
-    case "inactive":
+    case "in_active":
       return `${base} bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400`;
-    case "suspended":
-      return `${base} bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400`;
     default:
       return `${base} bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400`;
   }
 };
 
-export function BranchesTable({ search = "", status = "", manager = "" }) {
+export function BranchesTable({ search = "", status = "" }) {
   const navigate = useNavigate();
   const [rows, setRows] = useState(initialBranches);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [branchToDelete, setBranchToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -114,13 +117,9 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
       result = result.filter((r) => r.status === status);
     }
 
-    if (manager && manager !== "all") {
-      result = result.filter((r) => r.manager === manager);
-    }
-
     if (q) {
       result = result.filter((r) =>
-        [r.id, r.name, r.location, r.phone, r.manager, r.hours]
+        [r.id, r.code, r.name, r.location, r.phone]
           .join(" ")
           .toLowerCase()
           .includes(q)
@@ -128,20 +127,44 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
     }
 
     return result;
-  }, [rows, search, status, manager]);
+  }, [rows, search, status]);
 
-  const toggleStatus = (row) => {
-    setRows((prev) =>
-      prev.map((r) =>
-        r.id === row.id
-          ? {
-              ...r,
-              status:
-                r.status === "active" ? "suspended" : r.status === "suspended" ? "inactive" : "active",
-            }
-          : r
-      )
-    );
+  const handleDeleteClick = (branch) => {
+    setBranchToDelete(branch);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!branchToDelete?.id) return;
+
+    try {
+      setDeleting(true);
+      await deleteServiceCenter(branchToDelete.id);
+      
+      toast.success(`Đã ngừng hoạt động chi nhánh: ${branchToDelete.name}`, {
+        position: "top-right",
+        autoClose: 4000,
+      });
+
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === branchToDelete.id
+            ? { ...r, status: "in_active" }
+            : r
+        )
+      );
+    } catch (error) {
+      console.error("Error deleting service center:", error);
+      const errorMessage = error?.response?.data?.message || error?.message || "Không thể ngừng hoạt động chi nhánh. Vui lòng thử lại.";
+      toast.error(`Lỗi: ${errorMessage}`, {
+        position: "top-right",
+        autoClose: 5000,
+      });
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setBranchToDelete(null);
+    }
   };
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -232,7 +255,7 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
                   <td className="py-4 px-6 text-center align-top whitespace-nowrap">
                     <div className="flex items-center justify-center">
                       <span className={`${statusBadge(b.status)} whitespace-nowrap`}>
-                        {b.status === "active" ? "Hoạt động" : b.status === "inactive" ? "Ngưng hoạt động" : b.status === "suspended" ? "Tạm dừng" : b.status}
+                        {b.status === "active" ? "Hoạt động" : b.status === "in_active" ? "Ngưng hoạt động" : b.status}
                       </span>
                     </div>
                   </td>
@@ -263,19 +286,17 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={`h-8 w-8 transition-colors ${
-                          b.status === "active" 
-                            ? "text-amber-600 hover:text-amber-700 hover:bg-amber-50" 
-                            : "text-green-600 hover:text-green-700 hover:bg-green-50"
-                        }`}
-                        onClick={() => toggleStatus(b)}
-                        title={b.status === "active" ? "Tạm dừng" : "Kích hoạt"}
-                      >
-                        {b.status === "active" ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                      </Button>
+                      {b.status === "active" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50 transition-colors"
+                          onClick={() => handleDeleteClick(b)}
+                          title="Ngừng hoạt động"
+                        >
+                          <Pause className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -286,13 +307,13 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
       </div>
 
       {total > 0 && (
-        <div className="flex items-center justify-center px-6 py-4 border-t border-slate-200/80 bg-slate-50/60">
+        <div className="flex justify-center px-4 py-3 border-t border-slate-200/80 bg-slate-50/60">
           <Pagination>
-            <PaginationContent>
+            <PaginationContent className="gap-1">
               <PaginationItem>
                 <PaginationPrevious 
                   onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                  className={`cursor-pointer rounded-full px-3 ${
+                  className={`h-8 px-2.5 text-xs cursor-pointer rounded-full ${
                     page === 1 ? "pointer-events-none opacity-40" : "hover:bg-slate-100"
                   }`}
                 />
@@ -303,9 +324,9 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
                   <PaginationLink
                     onClick={() => setPage(pageNum)}
                     isActive={page === pageNum}
-                    className={`cursor-pointer rounded-full px-3 py-1 text-sm ${
+                    className={`h-8 min-w-[32px] cursor-pointer rounded-full px-2.5 text-xs ${
                       page === pageNum
-                        ? "bg-red-100 text-red-700 font-medium"
+                        ? "bg-red-100 text-red-700 font-semibold"
                         : "hover:bg-slate-100"
                     }`}
                   >
@@ -317,7 +338,7 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
               <PaginationItem>
                 <PaginationNext 
                   onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                  className={`cursor-pointer rounded-full px-3 ${
+                  className={`h-8 px-2.5 text-xs cursor-pointer rounded-full ${
                     page >= totalPages ? "pointer-events-none opacity-40" : "hover:bg-slate-100"
                   }`}
                 />
@@ -326,6 +347,28 @@ export function BranchesTable({ search = "", status = "", manager = "" }) {
           </Pagination>
         </div>
       )}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận ngừng hoạt động</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn ngừng hoạt động chi nhánh <strong>{branchToDelete?.name}</strong>? 
+              Hành động này sẽ vô hiệu hóa chi nhánh trong hệ thống.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? "Đang xử lý..." : "Xác nhận"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

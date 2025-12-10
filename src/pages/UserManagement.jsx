@@ -23,18 +23,19 @@ export default function UserManagement() {
         };
     }, []);
 
-    return (<div className="min-h-screen bg-slate-50">
-      <div className="p-8 max-w-[95%] mx-auto">
+    return (
+    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-slate-50">
+      <div className="px-4 md:px-6 lg:px-8 py-6 max-w-[1400px] w-full mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-slate-900">Quản lý tài khoản</h1>
-          <p className="mt-1 text-sm text-slate-500">Theo dõi và quản lý tài khoản người dùng trong hệ thống</p>
-          <div className="mt-3 h-[2px] w-24 rounded-full bg-red-500/70"/>
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900">Quản lý tài khoản</h1>
+          <p className="mt-2 text-base md:text-lg font-medium text-slate-700">Theo dõi và quản lý tài khoản người dùng trong hệ thống</p>
+          <div className="mt-3 h-1.5 w-28 rounded-full bg-red-500 shadow-[0_4px_16px_-6px_rgba(239,68,68,0.65)]"/>
         </div>
 
         <div className="mb-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="relative w-[340px]">
+            <div className="relative flex-1 min-w-[240px] md:min-w-[320px] md:max-w-[420px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400"/>
               <Input 
                 placeholder="Tìm kiếm người dùng" 
@@ -45,7 +46,7 @@ export default function UserManagement() {
             </div>
             
             <Select value={nameFilter} onValueChange={setNameFilter}>
-              <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
+              <SelectTrigger className="w-[150px] md:w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
                 <SelectValue placeholder="Tên"/>
               </SelectTrigger>
               <SelectContent>
@@ -56,7 +57,7 @@ export default function UserManagement() {
             </Select>
 
             <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
+              <SelectTrigger className="w-[150px] md:w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
                 <SelectValue placeholder="Vai trò"/>
               </SelectTrigger>
               <SelectContent>
@@ -69,13 +70,20 @@ export default function UserManagement() {
               </SelectContent>
             </Select>
 
-            {(nameFilter || roleFilter || searchQuery) && (<Button variant="outline" size="sm" onClick={() => {
+            {(nameFilter || roleFilter || searchQuery) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
                   setNameFilter("");
                   setRoleFilter("");
                   setSearchQuery("");
-              }} className="border-transparent text-slate-600 hover:text-red-600 hover:bg-red-50">
+                }}
+                className="border-transparent text-slate-600 hover:text-red-600 hover:bg-red-50"
+              >
                 Xóa bộ lọc
-              </Button>)}
+              </Button>
+            )}
 
             <div className="flex items-center gap-3 ml-auto">
               <Button 

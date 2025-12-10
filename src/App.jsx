@@ -26,8 +26,8 @@ import BranchReport from "./pages/admin/BranchReport";
 import ServicePackages from "./pages/ServicePackages";
 import CreateServicePackage from "./pages/admin/CreateServicePackage";
 import PartTypeDetail from "./pages/admin/PartTypeDetail";
-import Campaigns from "./pages/Campaigns";
-import CampaignDetail from "./pages/CampaignDetail";
+import Campaigns from "./pages/admin/campaigns/Campaigns";
+import CampaignDetail from "./pages/admin/campaigns/CampaignDetail";
 import CreateCampaign from "./pages/admin/CreateCampaign";
 import CreateUserPage from "./pages/admin/CreateUserPage";
 import UserDetail from "./pages/admin/UserDetail";
@@ -106,20 +106,16 @@ const App = () => (
         progressClassName="!bg-green-500"
       />
         <Routes>
-        {/* Mở web vào thẳng màn login */}
         <Route path="/" element={<Navigate to="/login" replace />} />
 
-        {/* Auth routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/verify-otp" element={<VerifyOTP />} />
         
-        {/* Public routes */}
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/payment-failed" element={<PaymentFailed />} />
         <Route path="/verify-success" element={<VerifySuccess />} />
 
-        {/* Admin routes */}
           <Route
           path="/admin/*"
             element={
@@ -192,7 +188,6 @@ const App = () => (
           }
         />
 
-        {/* Staff routes */}
         <Route
           path="/staff/*"
           element={
@@ -240,7 +235,6 @@ const App = () => (
           }
         />
 
-        {/* Technician routes */}
         <Route
           path="/technician/*"
           element={
@@ -281,7 +275,6 @@ const App = () => (
           }
         />
 
-        {/* Storekeeper routes */}
         <Route
           path="/storekeeper/*"
           element={
@@ -393,7 +386,6 @@ const App = () => (
             }
           />
 
-        {/* Not found */}
         <Route path="*" element={<NotFound />} />
         </Routes>
     </TooltipProvider>

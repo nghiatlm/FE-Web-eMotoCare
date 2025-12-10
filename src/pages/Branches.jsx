@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Search, Plus, Download, Filter, Building2, MapPin, Mail, Phone, Hash, Info, Clock, Calendar, Users, CheckCircle, XCircle } from "lucide-react";
+import { Search, Plus, Download, Filter, Building2, MapPin, Mail, Phone, Hash, Info, Clock, Calendar, Users, CheckCircle, XCircle, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,6 @@ import { createServiceCenter, updateServiceCenter, getServiceCenterById } from "
 export default function Branches() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
-  const [manager, setManager] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
@@ -23,7 +22,10 @@ export default function Branches() {
   const [selected, setSelected] = useState(null);
   const [branchDetail, setBranchDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [geocodeLoading, setGeocodeLoading] = useState(false);
+  const DEFAULT_COORDS = { lat: 10.762622, lng: 106.660172 }; // TP.HCM center fallback
   const formRef = useRef(null);
+  const geoTimeoutRef = useRef(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -43,7 +45,6 @@ export default function Branches() {
     setForm({ name: "", description: "", email: "", location: "", phone: "", manager: "", hours: "", status: "active", latitude: "", longitude: "" });
   };
 
-  // Fetch branch detail when viewing
   useEffect(() => {
     const fetchBranchDetail = async () => {
       if (selected?.id && isViewOpen) {
@@ -53,12 +54,10 @@ export default function Branches() {
           if (response.success && response.data) {
             setBranchDetail(response.data);
           } else {
-            // Fallback to selected data if API fails
             setBranchDetail(selected);
           }
         } catch (error) {
           console.error("Error fetching branch detail:", error);
-          // Fallback to selected data
           setBranchDetail(selected);
         } finally {
           setLoadingDetail(false);
@@ -72,7 +71,6 @@ export default function Branches() {
   }, [selected, isViewOpen]);
 
   useEffect(() => {
-    // Handlers called from table action buttons
     window.openEditBranch = (row) => {
       setSelected(row);
       setForm({
@@ -100,13 +98,80 @@ export default function Branches() {
     };
   }, []);
 
+  useEffect(() => {
+    if (isAddOpen && !selected) {
+      resetForm();
+    }
+  }, [isAddOpen]);
+
+  // Geocode địa chỉ để tự động lấy lat/lng cho form add & edit
+  const geocodeAddress = async (address) => {
+    if (!address || address.trim().length < 3) {
+      return { lat: null, lng: null };
+    }
+
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        address
+      )}&countrycodes=vn&limit=1&addressdetails=1`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+          return {
+            lat: parseFloat(data[0].lat),
+            lng: parseFloat(data[0].lon),
+          };
+        }
+      }
+    } catch (error) {
+      console.error("Error geocoding address:", error);
+    }
+
+    return { lat: null, lng: null };
+  };
+
+  // Tự động geocode khi địa chỉ thay đổi (add hoặc edit)
+  useEffect(() => {
+    if (!(isAddOpen || isEditOpen)) return;
+
+    if (geoTimeoutRef.current) {
+      clearTimeout(geoTimeoutRef.current);
+    }
+
+    const shouldGeocode = form.location && form.location.trim().length >= 3 && (!form.latitude || !form.longitude);
+    if (!shouldGeocode) {
+      return;
+    }
+
+    geoTimeoutRef.current = setTimeout(async () => {
+      setGeocodeLoading(true);
+      const coords = await geocodeAddress(form.location);
+      if (coords.lat && coords.lng) {
+        setForm((f) => ({
+          ...f,
+          latitude: coords.lat.toString(),
+          longitude: coords.lng.toString(),
+        }));
+      }
+      setGeocodeLoading(false);
+    }, 400);
+
+    return () => {
+      if (geoTimeoutRef.current) clearTimeout(geoTimeoutRef.current);
+    };
+  }, [form.location, isAddOpen, isEditOpen]);
+
   const handleAddSubmit = async (e) => {
     e.preventDefault();
     const tmpId = `BR-${Date.now()}`;
-
-    // Build API body per backend contract
-    // Status is automatically set to ACTIVE when creating a branch
-    // Code is not sent - backend will generate it
     const body = {
       name: form.name,
       description: form.description || "",
@@ -120,10 +185,10 @@ export default function Branches() {
 
     try {
       const res = await createServiceCenter(body);
-      const created = res?.data || res;
+      const created = res?.data?.data || res?.data || res;
       const mapped = {
         id: created?.id || created?.code || tmpId,
-        code: created?.code || "",
+        code: created?.code || created?.id || "",
         name: created?.name || form.name,
         location: created?.address || form.location,
         phone: created?.phone || form.phone,
@@ -142,7 +207,6 @@ export default function Branches() {
     } finally {
       setIsAddOpen(false);
       resetForm();
-      // Scroll back to top after successful submission
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -182,7 +246,6 @@ export default function Branches() {
       };
       window?.applyEditBranch?.(selected.id, mapped);
     } catch (err) {
-      // Fallback to local update if API fails
       window?.applyEditBranch?.(selected.id, { ...form });
     } finally {
       setIsEditOpen(false);
@@ -191,17 +254,17 @@ export default function Branches() {
   };
 
   return (
-  <div className="min-h-screen bg-slate-50">
-      <div className="p-8 max-w-7xl mx-auto">
+  <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-slate-50">
+      <div className="px-4 md:px-6 lg:px-8 py-6 max-w-[1400px] w-full mx-auto">
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-slate-900">Quản lý chi nhánh</h1>
-          <p className="mt-1 text-sm text-slate-500">Theo dõi và quản lý hệ thống chi nhánh</p>
-          <div className="mt-3 h-[2px] w-24 rounded-full bg-red-500/70"/>
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900">Quản lý chi nhánh</h1>
+          <p className="mt-2 text-base md:text-lg font-medium text-slate-700">Theo dõi và quản lý hệ thống chi nhánh</p>
+          <div className="mt-3 h-1.5 w-28 rounded-full bg-red-500 shadow-[0_4px_16px_-6px_rgba(239,68,68,0.65)]"/>
         </div>
 
         <div className="mb-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="relative w-[350px]">
+            <div className="relative flex-1 min-w-[240px] md:min-w-[320px] md:max-w-[420px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Tìm kiếm chi nhánh"
@@ -213,41 +276,22 @@ export default function Branches() {
 
 
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
+              <SelectTrigger className="w-[150px] md:w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả</SelectItem>
                 <SelectItem value="active">Hoạt động</SelectItem>
-                <SelectItem value="inactive">Ngưng hoạt động</SelectItem>
-                <SelectItem value="suspended">Tạm dừng</SelectItem>
+                <SelectItem value="in_active">Ngưng hoạt động</SelectItem>
               </SelectContent>
             </Select>
 
-            <Select value={manager} onValueChange={setManager}>
-              <SelectTrigger className="w-[200px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
-                <SelectValue placeholder="Quản lý" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="Dung">Dung</SelectItem>
-                <SelectItem value="Thuận">Thuận</SelectItem>
-                <SelectItem value="Alex">Alex</SelectItem>
-                <SelectItem value="Linh">Linh</SelectItem>
-                <SelectItem value="Việt">Việt</SelectItem>
-                <SelectItem value="Tâm">Tâm</SelectItem>
-                <SelectItem value="Hoàng">Hoàng</SelectItem>
-                <SelectItem value="Vương">Vương</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {(status || manager || search) && (
+            {(status || search) && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
                   setStatus("");
-                  setManager("");
                   setSearch("");
                 }}
                 className="border-transparent text-slate-600 hover:text-red-600 hover:bg-red-50"
@@ -258,8 +302,9 @@ export default function Branches() {
 
             <div className="flex items-center gap-3 ml-auto">
               <Button className="gap-2 bg-red-600 hover:bg-red-700 shadow-sm" onClick={() => {
+                resetForm();
+                setSelected(null);
                 setIsAddOpen(true);
-                // Scroll to form after a short delay to ensure it's rendered
                 setTimeout(() => {
                   formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }, 100);
@@ -271,135 +316,124 @@ export default function Branches() {
           </div>
         </div>
 
-        <BranchesTable search={search} status={status} manager={manager} />
+        <BranchesTable search={search} status={status} />
 
-        {/* Inline form for adding new branch */}
-        {isAddOpen && (
-          <div ref={formRef} className="mt-6">
-            <Card className="border-2 border-red-200 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50 border-b">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl flex items-center gap-2">
-                    <Plus className="h-5 w-5 text-red-600" />
-                    Thêm chi nhánh mới
-                  </CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setIsAddOpen(false);
-                      resetForm();
-                    }}
-                    className="text-slate-500 hover:text-slate-700"
-                  >
-                    ✕
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <form onSubmit={handleAddSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Tên chi nhánh</Label>
-                    <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="VD: GreenWheel" required/>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Email</Label>
-                      <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="VD: alo@example.com" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Số điện thoại</Label>
-                      <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="VD: 098xxxxxxx" required/>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Mô tả</Label>
-                    <Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Mô tả ngắn về chi nhánh" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Địa chỉ</Label>
-                    <Input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} placeholder="VD: 123 Đường Lê Lợi" required/>
-                  </div>
-                  <div className="flex items-center gap-3 pt-4 border-t">
-                    <Button type="submit" className="bg-red-600 hover:bg-red-700">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Thêm chi nhánh
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setIsAddOpen(false);
-                        resetForm();
-                      }}
-                    >
-                      Hủy
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        <Dialog open={isEditOpen} onOpenChange={(o) => { setIsEditOpen(o); if (!o) setSelected(null); }}>
-          <DialogContent>
+        <Dialog open={isAddOpen} onOpenChange={(o) => { setIsAddOpen(o); if (!o) { resetForm(); setSelected(null); } }}>
+          <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Chỉnh sửa chi nhánh</DialogTitle>
+              <DialogTitle className="text-xl flex items-center gap-2">
+                <Plus className="h-5 w-5 text-red-600" />
+                Thêm chi nhánh mới
+              </DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleEditSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Tên chi nhánh</Label>
-                  <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required/>
-                </div>
-                <div className="space-y-2">
-                  <Label>Địa chỉ</Label>
-                  <Input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} required/>
-                </div>
+            <form onSubmit={handleAddSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Tên chi nhánh</Label>
+                <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="VD: GreenWheel" required/>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Mã chi nhánh (code)</Label>
-                  <Input value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} />
+                  <Label>Email</Label>
+                  <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="VD: alo@example.com" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+                  <Label>Số điện thoại</Label>
+                  <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="VD: 098xxxxxxx" required/>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Mô tả</Label>
-                <Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+                <Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Mô tả ngắn về chi nhánh" />
               </div>
+              <div className="space-y-2">
+                <Label>Địa chỉ</Label>
+                <Input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} placeholder="VD: 123 Đường Lê Lợi" required/>
+                <div className="mt-2 rounded-md border border-slate-200 bg-white overflow-hidden">
+                  <div className="p-2 text-xs text-muted-foreground">
+                    Bản đồ xem trước (tự lấy tọa độ khi nhập địa chỉ)
+                  </div>
+                  <iframe
+                    title="branch-map-add"
+                    src={`https://www.google.com/maps?q=${form.latitude || DEFAULT_COORDS.lat},${form.longitude || DEFAULT_COORDS.lng}&z=16&output=embed`}
+                    style={{ width: "100%", height: 240, border: 0 }}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+              <DialogFooter className="pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsAddOpen(false);
+                    resetForm();
+                    setSelected(null);
+                  }}
+                >
+                  Hủy
+                </Button>
+                <Button type="submit" className="bg-red-600 hover:bg-red-700">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Thêm chi nhánh
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isEditOpen} onOpenChange={(o) => { setIsEditOpen(o); if (!o) setSelected(null); }}>
+          <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-xl flex items-center gap-2">
+                <Pencil className="h-5 w-5 text-red-600" />
+                Chỉnh sửa chi nhánh
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Tên chi nhánh</Label>
+                <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required/>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+                </div>
                 <div className="space-y-2">
                   <Label>Số điện thoại</Label>
                   <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} required/>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Giờ hoạt động</Label>
-                  <Input value={form.hours} onChange={(e) => setForm((f) => ({ ...f, hours: e.target.value }))} required/>
-                </div>
-                <div className="space-y-2">
-                  <Label>Trạng thái</Label>
-                  <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn trạng thái" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="suspended">Suspended</SelectItem>
-                    </SelectContent>
-                  </Select>
+
+              <div className="space-y-2">
+                <Label>Mô tả</Label>
+                <Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Địa chỉ</Label>
+                <Input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} required/>
+                <div className="mt-2 rounded-md border border-slate-200 bg-white overflow-hidden">
+                  <div className="p-2 text-xs text-muted-foreground">
+                    Bản đồ xem trước (tự lấy tọa độ khi nhập địa chỉ)
+                  </div>
+                  <iframe
+                    title="branch-map-edit"
+                    src={`https://www.google.com/maps?q=${form.latitude || DEFAULT_COORDS.lat},${form.longitude || DEFAULT_COORDS.lng}&z=16&output=embed`}
+                    style={{ width: "100%", height: 220, border: 0 }}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    allowFullScreen
+                  />
                 </div>
               </div>
-              <DialogFooter>
+
+              <DialogFooter className="pt-2">
                 <Button type="button" variant="outline" onClick={() => { setIsEditOpen(false); setSelected(null); }}>Hủy</Button>
-                <Button type="submit">Lưu</Button>
+                <Button type="submit" className="bg-red-600 hover:bg-red-700">Lưu</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -442,7 +476,6 @@ export default function Branches() {
               </div>
             ) : (
               <div className="space-y-6">
-                {/* Thông tin cơ bản */}
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -483,7 +516,6 @@ export default function Branches() {
                   </CardContent>
                 </Card>
 
-                {/* Thông tin liên hệ */}
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -524,7 +556,6 @@ export default function Branches() {
                   </CardContent>
                 </Card>
 
-                {/* Bản đồ */}
                 {(branchDetail?.latitude || branchDetail?.longitude || selected?.latitude || selected?.longitude || branchDetail?.address || selected?.location || selected?.address) && (
                   <Card>
                     <CardHeader className="pb-3">
@@ -561,7 +592,6 @@ export default function Branches() {
                   </Card>
                 )}
 
-                {/* Lịch làm việc */}
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -578,7 +608,6 @@ export default function Branches() {
                     {branchDetail?.serviceCenterSlots && branchDetail.serviceCenterSlots.length > 0 ? (
                       <div className="space-y-4">
                         {(() => {
-                          // Group slots by date
                           const groupedByDate = branchDetail.serviceCenterSlots.reduce((acc, slot) => {
                             const date = slot.date;
                             if (!acc[date]) {
@@ -588,7 +617,6 @@ export default function Branches() {
                             return acc;
                           }, {});
 
-                          // Sort dates
                           const sortedDates = Object.keys(groupedByDate).sort();
 
                           return sortedDates.map((date) => {
