@@ -276,7 +276,7 @@ export default function BookingDetailDrawer({
                   value={selectedTechnician?.id}
                   options={technicians.map((t) => ({
                     value: t.id,
-                    label: `${t.firstName} ${t.lastName}${t.staffCode ? ` (${t.staffCode})` : ''}`,
+                    label: `${t.firstName} ${t.lastName}${t.staffCode ? ` - ${t.staffCode}` : ''}`,
                   }))}
                   onChange={(value) =>
                     setSelectedTechnician(technicians.find((t) => t.id === value))
@@ -293,7 +293,7 @@ export default function BookingDetailDrawer({
                 }}>
                   <p style={{ margin: 0, fontSize: 14, color: "#595959" }}>
                     Đã chọn: <strong>{selectedTechnician.firstName} {selectedTechnician.lastName}</strong>
-                    {selectedTechnician.staffCode && ` (${selectedTechnician.staffCode})`}
+                    {selectedTechnician.staffCode && ` - ${selectedTechnician.staffCode}`}
                   </p>
                 </div>
               )}
@@ -334,7 +334,7 @@ export default function BookingDetailDrawer({
                 <strong>{booking.technician.firstName} {booking.technician.lastName}</strong>
                 {booking.technician.staffCode && (
                   <span style={{ color: "#8c8c8c", marginLeft: 8 }}>
-                    ({booking.technician.staffCode})
+                    - {booking.technician.staffCode}
                   </span>
                 )}
               </p>
@@ -343,7 +343,7 @@ export default function BookingDetailDrawer({
 
           <section className='bg-white rounded-2xl shadow-md p-5 mb-6 border'>
             <h3 className='font-semibold mb-3 border-b pb-2 text-[#d4380d]'>
-              Kết quả kiểm tra EVCheck
+              Kết quả kiểm tra phiếu sửa chữa
             </h3>
             {!booking.technician ? (
               <div className='text-center text-gray-500 italic py-4'>

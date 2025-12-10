@@ -25,7 +25,8 @@ const PaymentHistory = ({ booking }) => {
         else if (evCheck?.data?.rowDatas) details = evCheck.data.rowDatas;
 
         if (details.length > 0) {
-          const items = details.map((item, idx) => {
+          // ✅ Fetch partItem nếu chưa có đầy đủ thông tin
+          const items = await Promise.all(details.map(async (item, idx) => {
             const remedies = String(
               item.remedies || item.solution || "NONE"
             ).toUpperCase();
@@ -37,12 +38,52 @@ const PaymentHistory = ({ booking }) => {
             const pricePart = remedies === "REPLACE" ? pricePartRaw : 0;
             const lineTotal = (pricePart + priceService) * quantity;
 
-            const partName =
-              item.maintenanceStageDetail?.part?.name ||
-              item.partItem?.part?.name ||
-              item.partName ||
-              item.maintenanceStageDetail?.actionType ||
-              "Hạng mục";
+            // ✅ Lấy tên phụ tùng từ nhiều nguồn, ưu tiên theo thứ tự
+            let partName = "";
+            
+            // 1. Từ replacePart (phụ tùng thay thế)
+            if (item.replacePart?.name) {
+              partName = item.replacePart.name;
+            }
+            // 2. Từ proposedReplacePart (phụ tùng đề xuất)
+            else if (item.proposedReplacePart?.name) {
+              partName = item.proposedReplacePart.name;
+            }
+            // 3. Từ partItem.part.name (phụ tùng của xe)
+            else if (item.partItem?.part?.name) {
+              partName = item.partItem.part.name;
+            }
+            // 4. Từ maintenanceStageDetail.part.name (bảo dưỡng)
+            else if (item.maintenanceStageDetail?.part?.name) {
+              partName = item.maintenanceStageDetail.part.name;
+            }
+            // 5. Từ displayName (tên hiển thị)
+            else if (item.displayName) {
+              partName = item.displayName;
+            }
+            // 6. Từ partName
+            else if (item.partName) {
+              partName = item.partName;
+            }
+            // 7. Thử fetch từ API nếu có partItemId nhưng chưa có part.name
+            else {
+              const partItemId = item.partItemId || item.partItem?.id;
+              if (partItemId && (!item.partItem?.part?.name)) {
+                try {
+                  const { getPartItemByIdService } = await import("../../services/partitemsService");
+                  const partItemDetail = await getPartItemByIdService(partItemId);
+                  if (partItemDetail?.part?.name) {
+                    partName = partItemDetail.part.name;
+                  }
+                } catch (error) {
+                  console.error(`❌ Lỗi lấy thông tin partItem ${partItemId}:`, error);
+                }
+              }
+              // 8. Fallback
+              if (!partName) {
+                partName = "Hạng mục";
+              }
+            }
 
             // Thông tin phụ tùng/serial để hiển thị
             const serial =
@@ -61,7 +102,7 @@ const PaymentHistory = ({ booking }) => {
               serial,
               totalAmount: lineTotal,
             };
-          });
+          }));
 
           const filteredItems = items.filter((item) => item.totalAmount > 0);
           setQuoteItems(filteredItems);
@@ -143,7 +184,7 @@ const PaymentHistory = ({ booking }) => {
         row.remedies === "REPLACE" ? (
           <span>{Number(v).toLocaleString("vi-VN")}</span>
         ) : (
-          <span className='text-gray-400'>—</span>
+          <span>0</span>
         ),
     },
     {

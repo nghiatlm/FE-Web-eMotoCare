@@ -1,5 +1,5 @@
 // src/components/technician/detail-content/RepairModeEVCheck.jsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Table, Input, Select, Button, Spin, Tag, Checkbox, Tooltip } from "antd";
 import { toast } from "react-toastify";
 import {
@@ -418,7 +418,7 @@ export default function RepairModeEVCheck({
     proposedReplacePartId: "",
     replacePartName: "",
     result: "Tốt", // ✅ Mặc định "Tốt"
-    remedies: "NONE",
+    remedies: "NONE", // ✅ NONE = Không làm gì (mặc định)
     pricePart: 0,
     priceService: 0,
     totalAmount: 0,
@@ -429,8 +429,13 @@ export default function RepairModeEVCheck({
 
   // ========= UPDATE GIÁ CÔNG =========
   const updatePriceService = async (index, remedies, rowData = null) => {
-    // ✅ Cập nhật: Lấy giá dịch vụ cho NONE, CHECK, REPAIR, REPLACE
-    if (!["NONE", "CHECK", "REPAIR", "REPLACE"].includes(remedies)) {
+    // ✅ NONE = Không làm gì → không có giá dịch vụ
+    if (remedies === "NONE") {
+      updateRow(index, { priceService: 0 });
+      return;
+    }
+    // ✅ Cập nhật: Lấy giá dịch vụ cho LUBRICATE, CHECK, REPAIR, REPLACE
+    if (!["LUBRICATE", "CHECK", "REPAIR", "REPLACE"].includes(remedies)) {
       updateRow(index, { priceService: 0 });
       return;
     }
@@ -686,11 +691,11 @@ export default function RepairModeEVCheck({
       if (mapped.length > 0) {
         setDetails(mapped);
         
-        // ✅ Tự động gọi giá dịch vụ cho các items có remedies là NONE, CHECK, REPAIR hoặc REPLACE
+        // ✅ Tự động gọi giá dịch vụ cho các items có remedies là LUBRICATE, CHECK, REPAIR hoặc REPLACE (NONE không có giá)
         mapped.forEach((row, index) => {
           if (
             (!row.priceService || Number(row.priceService) === 0) &&
-            ["NONE", "CHECK", "REPAIR", "REPLACE"].includes(row.remedies) &&
+            ["LUBRICATE", "CHECK", "REPAIR", "REPLACE"].includes(row.remedies) &&
             row.partItem
           ) {
             // ✅ Truyền row data vào để có thể lấy partTypeId
@@ -879,7 +884,7 @@ export default function RepairModeEVCheck({
       const currentRow = details[index];
       if (checkWarrantyStatus(currentRow?.partItem)) {
         toast.error(
-          "Bộ phận đang trong thời gian bảo hành. Chỉ cho phép 'Kiểm tra' hoặc 'Bôi trơn'."
+          "Bộ phận đang trong thời gian bảo hành. Chỉ cho phép 'Không làm gì', 'Bôi trơn' hoặc 'Kiểm tra'."
         );
         return; // Không cho thay đổi
       }
@@ -1169,18 +1174,26 @@ export default function RepairModeEVCheck({
 
       rawDetails = rawDetails.filter((item) => item != null);
 
-      // ✅ Kiểm tra xem tất cả detail đã COMPLETED chưa
-      const allCompleted = rawDetails.length > 0 && rawDetails.every(
+      // ✅ Chỉ kiểm tra các detail có remedies là REPAIR, REPLACE, hoặc LUBRICATE (những cái hiển thị trong bảng)
+      const relevantDetails = rawDetails.filter((d) => {
+        const remedies = (d.remedies || "").toUpperCase();
+        return remedies === "REPAIR" || remedies === "REPLACE" || remedies === "LUBRICATE";
+      });
+
+      // ✅ Kiểm tra xem tất cả detail liên quan đã COMPLETED chưa
+      const allCompleted = relevantDetails.length > 0 && relevantDetails.every(
         (d) => d.status === "COMPLETED"
       );
 
-      console.log(`🔍 Kiểm tra hoàn thành: ${rawDetails.length} details, allCompleted: ${allCompleted}`);
-      console.log(`🔍 Status của từng detail:`, rawDetails.map(d => ({ id: d.id, status: d.status })));
+      console.log(`🔍 Kiểm tra hoàn thành: ${relevantDetails.length} relevant details, allCompleted: ${allCompleted}`);
+      console.log(`🔍 Status của từng detail:`, relevantDetails.map(d => ({ id: d.id, status: d.status, remedies: d.remedies })));
 
       if (allCompleted) {
         console.log(`📤 Cập nhật EVCheck ${evCheckId} thành REPAIR_COMPLETED`);
         await updateEVCheckService(evCheckId, { status: "REPAIR_COMPLETED" });
         setEvCheckStatus("REPAIR_COMPLETED");
+        // ✅ Reload lại để cập nhật UI
+        await loadRepairDetails();
         toast.success("Đã hoàn thành tất cả hạng mục sửa chữa!");
       }
 
@@ -1266,9 +1279,9 @@ export default function RepairModeEVCheck({
             
             updateRow(i, updatedRow);
             
-            // ✅ Tự động gọi giá dịch vụ nếu remedies đã là NONE, CHECK, REPAIR hoặc REPLACE
+            // ✅ Tự động gọi giá dịch vụ nếu remedies là LUBRICATE, CHECK, REPAIR hoặc REPLACE (NONE không có giá)
             const currentRemedies = details[i]?.remedies || "NONE";
-            if (["NONE", "CHECK", "REPAIR", "REPLACE"].includes(currentRemedies)) {
+            if (["LUBRICATE", "CHECK", "REPAIR", "REPLACE"].includes(currentRemedies)) {
               // ✅ Tạo row data mới với partItem vừa chọn, đảm bảo có partTypeId
               const rowDataWithNewPartItem = { 
                 ...details[i], 
@@ -1369,7 +1382,6 @@ export default function RepairModeEVCheck({
         return (
           <div className="space-y-2" style={{ width: "100%" }}>
         <Input.TextArea
-              placeholder='Nhập kết quả kiểm tra (mặc định: Tốt, có thể xóa để nhập lại)...'
               value={r.result ?? ""}
           onChange={(e) => handleChange(i, "result", e.target.value)}
               onBlur={(e) => {
@@ -1415,15 +1427,41 @@ export default function RepairModeEVCheck({
       width: 90,
       render: (_, r, i) => {
         const isWarranty = checkWarrantyStatus(r.partItem);
+        // ✅ Sau khi gửi báo giá, không hiển thị NONE và CHECK (vì là mặc định, không tính tiền)
+        const afterQuoteStatuses = [
+          "INSPECTION_COMPLETED",
+          "QUOTE_APPROVED", 
+          "REPAIR_IN_PROGRESS",
+          "REPAIR_COMPLETED",
+          "COMPLETED"
+        ];
+        const isAfterQuote = afterQuoteStatuses.includes(evCheckStatus);
+
+        // ✅ Map remedies sang label, NONE hiển thị "Biện pháp"
+        const getRemediesLabel = (remedies) => {
+          const map = {
+            REPLACE: "Thay thế",
+            REPAIR: "Sửa chữa",
+            CHECK: "Kiểm tra",
+            LUBRICATE: "Bôi trơn",
+            NONE: "Biện pháp",
+          };
+          const normalized = (remedies || "").toString().toUpperCase().trim();
+          return map[normalized] || "Biện pháp";
+        };
+
+        const remediesValue = r.remedies || "NONE";
+        const remediesLabel = getRemediesLabel(remediesValue);
 
         return (
           <Select
-            placeholder='Chọn'
-            value={r.remedies}
+            placeholder='Biện pháp'
+            value={remediesValue === "NONE" ? undefined : remediesValue}
             style={{ width: 100 }}
             onChange={(v) => handleChange(i, "remedies", v)}
             disabled={readOnly || !canEditFields}>
-            <Option value='NONE'>Bôi trơn</Option>
+            <Option value='LUBRICATE'>Bôi trơn</Option>
+            {!isAfterQuote && <Option value='CHECK'>Kiểm tra</Option>}
             {/* Nếu đang bảo hành thì không cho chọn "Thay thế" và "Sửa chữa" */}
             <Option value='REPLACE' disabled={isWarranty}>
               Thay thế
@@ -1431,7 +1469,6 @@ export default function RepairModeEVCheck({
             <Option value='REPAIR' disabled={isWarranty}>
               Sửa chữa
             </Option>
-            <Option value='CHECK'>Kiểm tra</Option>
           </Select>
         );
       },
@@ -1629,22 +1666,38 @@ export default function RepairModeEVCheck({
     },
     {
       title: "SL",
-      width: 50,
+      width: 60,
       align: "center",
-      render: (_, r, i) => (
-        <Input
-          type='number'
-          value={r.quantity}
-          onChange={(e) => handleChange(i, "quantity", e.target.value)}
-          disabled={readOnly || !canEditFields}
-          style={{ width: "100%", maxWidth: "100%" }}
-        />
-      ),
+      render: (_, r, i) => {
+        const isReplace = (r.remedies || "").toUpperCase() === "REPLACE";
+        
+        // ✅ Nếu không phải "Thay thế" → hiển thị "0"
+        if (!isReplace) {
+          return "0";
+        }
+        
+        // ✅ Nếu là "Thay thế":
+        // - Khi đang làm (canEditFields = true) → hiển thị input field
+        // - Sau khi gửi báo giá (canEditFields = false) → hiển thị text
+        if (canEditFields && !readOnly) {
+          return (
+            <Input
+              type='number'
+              value={r.quantity}
+              onChange={(e) => handleChange(i, "quantity", e.target.value)}
+              style={{ width: "100%", maxWidth: "100%" }}
+            />
+          );
+        }
+        
+        // ✅ Sau khi gửi báo giá → chỉ hiển thị text
+        return <span style={{ fontSize: "14px" }}>{r.quantity || 0}</span>;
+      },
     },
-    { title: "ĐV", width: 35, align: "center", render: (_, r) => r.unit || "" },
     {
       title: "Giá PT",
-      width: 60,
+      width: 70,
+      align: "right",
       render: (_, r) =>
         r.remedies !== "REPLACE"
           ? ""
@@ -1652,7 +1705,8 @@ export default function RepairModeEVCheck({
     },
     {
       title: "Giá DV",
-      width: 60,
+      width: 70,
+      align: "right",
       render: (_, r) => Number(r.priceService || 0).toLocaleString(),
     },
     // {
@@ -1841,6 +1895,79 @@ export default function RepairModeEVCheck({
     preserveSelectedRowKeys: false, // ✅ Không preserve, để tự động clear khi items có RMA
   } : undefined;
 
+  // ✅ Helper function để kiểm tra item có phải là pin không
+  const isBatteryItem = (detail) => {
+    if (!detail) return false;
+    const partName = detail.partItem?.part?.name || detail.displayName || "";
+    const partCode = detail.partItem?.part?.code || "";
+    const partNameLower = partName.toLowerCase();
+    const partCodeLower = partCode.toLowerCase();
+    return (
+      partNameLower.includes("pin") || 
+      partNameLower.includes("lfp") ||
+      partNameLower.includes("lithium") ||
+      partNameLower.includes("battery") ||
+      partNameLower.includes("ắc quy") ||
+      partCodeLower.includes("pin") ||
+      partCodeLower.includes("lfp")
+    );
+  };
+
+  // ✅ Helper function để kiểm tra item có dữ liệu pin không (đã import)
+  const hasBatteryData = (detail) => {
+    if (!detail?.id || detail.id.startsWith("temp_")) return false;
+    // ✅ Kiểm tra localStorage
+    const storageKey = `battery_data_${detail.id}`;
+    const savedData = localStorage.getItem(storageKey);
+    if (savedData) return true;
+    
+    // ✅ Nếu là pin và đã có ID thật (đã lưu) → có thể đã import hoặc sẽ import
+    // Hiển thị để người dùng có thể import hoặc xem dữ liệu
+    if (isBatteryItem(detail) && detail.id && !detail.id.startsWith("temp_")) {
+      return true;
+    }
+    
+    return false;
+  };
+
+  // ✅ Filter details: Sau khi gửi báo giá, chỉ hiển thị những detail có remedies là REPAIR, REPLACE, hoặc LUBRICATE
+  // Bỏ NONE và CHECK vì chúng là mặc định, không tính tiền nên không hiện
+  // Áp dụng cho tất cả các status sau INSPECTION_COMPLETED
+  // ✅ NHƯNG: Nếu là staff (readOnly=true), LUÔN áp dụng filter này
+  // ✅ EXCEPTION: Vẫn hiển thị các item có dữ liệu pin (battery) dù remedies = "CHECK"
+  const filteredDetails = useMemo(() => {
+    // ✅ Các status sau khi gửi báo giá
+    const afterQuoteStatuses = [
+      "INSPECTION_COMPLETED",
+      "QUOTE_APPROVED", 
+      "REPAIR_IN_PROGRESS",
+      "REPAIR_COMPLETED",
+      "COMPLETED"
+    ];
+    
+    // ✅ Nếu là staff (readOnly) HOẶC đã gửi báo giá, áp dụng filter
+    const shouldFilter = readOnly || afterQuoteStatuses.includes(evCheckStatus);
+    
+    if (shouldFilter) {
+      return details.filter((detail) => {
+        const remedies = (detail.remedies || "").toUpperCase();
+        
+        // ✅ Luôn hiển thị REPAIR, REPLACE, LUBRICATE
+        if (remedies === "REPAIR" || remedies === "REPLACE" || remedies === "LUBRICATE") {
+          return true;
+        }
+        
+        // ✅ Nếu là pin và có dữ liệu pin → vẫn hiển thị dù remedies = "CHECK"
+        if (isBatteryItem(detail) && hasBatteryData(detail)) {
+          return true;
+        }
+        
+        return false;
+      });
+    }
+    return details;
+  }, [details, evCheckStatus, readOnly]);
+
   let columns = baseColumns;
   // ✅ Hiển thị cột Trạng thái chỉ khi đã được duyệt báo giá hoặc đang sửa chữa
   // Ẩn cột khi mới gửi báo giá (INSPECTION_COMPLETED) - chờ duyệt
@@ -1893,7 +2020,7 @@ export default function RepairModeEVCheck({
           <Table
             key={`rma-table-${selectedRMAItems.size}`} // ✅ Force re-render khi selection thay đổi
             columns={columns}
-            dataSource={details}
+            dataSource={filteredDetails}
             rowKey='id'
             rowSelection={rowSelection} // ✅ Dùng rowSelection thay vì cột RMA
             scroll={{ x: false }}

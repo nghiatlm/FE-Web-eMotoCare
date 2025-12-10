@@ -3,12 +3,14 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import AuthLayout from "../../components/authlayout/AuthLayout";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function Login() {
   const { login, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -54,23 +56,36 @@ export default function Login() {
         <div>
           <label className='font-medium block mb-1'>Email</label>
           <input
-            type='tel'
+            type='email'
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className='w-full mt-2 px-3 py-2 text-gray-700 bg-transparent outline-none border rounded-lg shadow-sm focus:border-red-600 border-gray-200'
-            placeholder='Nhập số điện thoại của bạn'
+            placeholder='Nhập email'
           />
         </div>
 
         <div>
           <label className='font-medium block mb-1'>Mật khẩu</label>
-          <input
-            type='password'
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className='w-full mt-2 px-3 py-2 text-gray-700 bg-transparent outline-none border rounded-lg shadow-sm focus:border-red-600 border-gray-200'
-            placeholder='Nhập mật khẩu'
-          />
+          <div className='relative'>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className='w-full mt-2 px-3 py-2 pr-10 text-gray-700 bg-transparent outline-none border rounded-lg shadow-sm focus:border-red-600 border-gray-200'
+              placeholder='Nhập mật khẩu'
+            />
+            <button
+              type='button'
+              onClick={() => setShowPassword(!showPassword)}
+              className='absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none mt-1'
+              tabIndex={-1}>
+              {showPassword ? (
+                <EyeOff size={20} />
+              ) : (
+                <Eye size={20} />
+              )}
+            </button>
+          </div>
         </div>
 
         {error && <p className='text-red-600 text-sm'>{error}</p>}

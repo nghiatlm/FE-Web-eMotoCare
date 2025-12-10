@@ -302,7 +302,7 @@ export default function StaffWarrantyPage() {
           pageSize: 10,
           showSizeChanger: true,
           showTotal: (total) => `Tổng ${total} bản ghi`,
-          showQuickJumper: true,
+          showQuickJumper: false,
           style: { padding: "16px" }
         }}
         scroll={{ x: false }}

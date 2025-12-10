@@ -1224,7 +1224,6 @@ export default function CampaignModeEVCheck({
         return (
           <div className="space-y-2">
         <Input.TextArea
-              placeholder='Nhập kết quả kiểm tra (mặc định: Tốt, có thể xóa để nhập lại)...'
               value={r.result ?? ""}
           onChange={(e) => handleChange(i, "result", e.target.value)}
               onBlur={(e) => {
@@ -1281,6 +1280,8 @@ export default function CampaignModeEVCheck({
               style={{ width: "100%", minWidth: 120 }}
               onChange={(v) => handleChange(i, "remedies", v)}
               disabled={readOnly || !canEditFields}>
+              <Option value='LUBRICATE'>Bôi trơn</Option>
+              <Option value='CHECK'>Kiểm tra</Option>
               <Option value='REPLACE'>Thay thế</Option>
               <Option value='REPAIR'>Sửa chữa</Option>
             </Select>
@@ -1327,20 +1328,37 @@ export default function CampaignModeEVCheck({
     {
       title: "SL",
       width: 60,
-      render: (_, r, i) => (
-        <Input
-          type='number'
-          value={r.quantity}
-          onChange={(e) => handleChange(i, "quantity", e.target.value)}
-          disabled={readOnly || !canEditFields}
-          style={{ width: 60 }}
-        />
-      ),
+      align: "center",
+      render: (_, r, i) => {
+        const isReplace = (r.remedies || "").toUpperCase() === "REPLACE";
+        
+        // ✅ Nếu không phải "Thay thế" → hiển thị "0"
+        if (!isReplace) {
+          return "0";
+        }
+        
+        // ✅ Nếu là "Thay thế":
+        // - Khi đang làm (canEditFields = true) → hiển thị input field
+        // - Sau khi gửi báo giá (canEditFields = false) → hiển thị text
+        if (canEditFields && !readOnly) {
+          return (
+            <Input
+              type='number'
+              value={r.quantity}
+              onChange={(e) => handleChange(i, "quantity", e.target.value)}
+              style={{ width: 60 }}
+            />
+          );
+        }
+        
+        // ✅ Sau khi gửi báo giá → chỉ hiển thị text
+        return <span style={{ fontSize: "14px" }}>{r.quantity || 0}</span>;
+      },
     },
-    { title: "ĐV", width: 35, render: (_, r) => r.unit || "" },
     {
       title: "Giá PT",
-      width: 60,
+      width: 70,
+      align: "right",
       render: (_, r) =>
         r.remedies !== "REPLACE"
           ? ""
@@ -1348,12 +1366,14 @@ export default function CampaignModeEVCheck({
     },
     {
       title: "Giá DV",
-      width: 60,
+      width: 70,
+      align: "right",
       render: (_, r) => Number(r.priceService || 0).toLocaleString(),
     },
     {
       title: "Tổng",
-      width: 70,
+      width: 100,
+      align: "right",
       render: (_, r) =>
         r.totalAmount ? `${Number(r.totalAmount).toLocaleString()}đ` : "",
     },

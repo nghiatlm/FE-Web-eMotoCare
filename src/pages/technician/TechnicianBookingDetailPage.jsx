@@ -13,7 +13,7 @@ import {
 
 import { Card, Divider, Button, Input, Spin, Space, Tag, Typography } from "antd";
 import { toast } from "react-toastify";
-import { ArrowLeft, Car, Hash, Palette, Calendar, Wrench } from "lucide-react";
+import { ArrowLeft, Car, Hash, Palette, Calendar, Wrench, Clock, Building, User } from "lucide-react";
 const { Text } = Typography;
 
 // ✅ Hàm dịch màu sắc từ tiếng Anh sang tiếng Việt
@@ -246,73 +246,159 @@ export default function TechnicianBookingDetailPage({
 
       {/* THÔNG TIN CHUNG */}
       <Card
-        style={{ marginBottom: 24, borderRadius: 8 }}
+        style={{ 
+          marginBottom: 24, 
+          borderRadius: 12,
+          border: "1px solid #e8e8e8",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+        }}
         bodyStyle={{ padding: "24px" }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: UI_COLORS.PRIMARY_RED_DARK, borderBottom: `1px solid ${UI_COLORS.BORDER_LIGHT}`, paddingBottom: 12 }}>
+        <h3 style={{ 
+          fontSize: 16, 
+          fontWeight: 600, 
+          marginBottom: 16, 
+          color: "#d4380d", 
+          borderBottom: "1px solid #f0f0f0", 
+          paddingBottom: 12,
+          display: "flex",
+          alignItems: "center",
+          gap: 8
+        }}>
+          <Hash size={16} color="#d4380d" />
           Thông tin chung
         </h3>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px" }}>
-          <div>
-            <strong>Mã lịch hẹn:</strong> {booking.code || "—"}
-          </div>
-          <div>
-            <strong>Khách hàng:</strong> {booking.customer?.firstName}{" "}
-            {booking.customer?.lastName}
-          </div>
-          <div>
-            <strong>Ngày hẹn:</strong>{" "}
-            {new Date(booking.appointmentDate).toLocaleDateString("vi-VN")}
-          </div>
-          <div>
-            <strong>Thời gian:</strong>{" "}
-            {booking.slotTime ? (() => {
-              const [start, end] = booking.slotTime.replace("H", "").split("_");
-              return `${start}:00-${end}:00`;
-            })() : "—"}
-          </div>
-          <div>
-            <strong>Trung tâm dịch vụ:</strong> {booking.serviceCenter?.name || ""}
-          </div>
-          {(booking?.type || "").toUpperCase() === "MAINTENANCE_TYPE" && (
-            <div>
-              <strong>Giai đoạn bảo dưỡng:</strong> {booking.maintenanceStage?.name || ""}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "24px 32px" }}>
+          {/* Cột trái */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+              <Space size={8}>
+                <Hash size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                  Mã lịch hẹn:
+                </Text>
+              </Space>
+              <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                {booking.code || "—"}
+              </Text>
             </div>
-          )}
-          <div>
-            <strong>Loại dịch vụ:</strong>{" "}
-            <span
-              style={{
-                display: "inline-block",
-                padding: "4px 12px",
-                fontSize: 12,
-                fontWeight: 600,
-                borderRadius: 12,
-                ...(isMaintenance
-                  ? { backgroundColor: "#e6f7ff", color: "#0050b3", border: "1px solid #91d5ff" }
+            
+            <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+              <Space size={8}>
+                <Calendar size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                  Ngày hẹn:
+                </Text>
+              </Space>
+              <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                {new Date(booking.appointmentDate).toLocaleDateString("vi-VN")}
+              </Text>
+            </div>
+            
+            <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+              <Space size={8}>
+                <Clock size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                  Thời gian:
+                </Text>
+              </Space>
+              <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                {booking.slotTime ? (() => {
+                  const [start, end] = booking.slotTime.replace("H", "").split("_");
+                  return `${start}:00-${end}:00`;
+                })() : "—"}
+              </Text>
+            </div>
+          </div>
+          
+          {/* Cột phải */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+              <Space size={8}>
+                <User size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                  Khách hàng:
+                </Text>
+              </Space>
+              <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                {`${booking.customer?.firstName || ""} ${booking.customer?.lastName || ""}`.trim() || "—"}
+              </Text>
+            </div>
+            
+            <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+              <Space size={8}>
+                <Building size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                  Trung tâm dịch vụ:
+                </Text>
+              </Space>
+              <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                {booking.serviceCenter?.name || "—"}
+              </Text>
+            </div>
+            
+            {(booking?.type || "").toUpperCase() === "MAINTENANCE_TYPE" && booking.maintenanceStage?.name && (
+              <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                <Space size={8}>
+                  <Wrench size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                  <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                    Giai đoạn bảo dưỡng:
+                  </Text>
+                </Space>
+                <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                  {booking.maintenanceStage?.name || "—"}
+                </Text>
+              </div>
+            )}
+            
+            <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+              <Space size={8}>
+                <Wrench size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                  Loại dịch vụ:
+                </Text>
+              </Space>
+              <Tag
+                style={{
+                  padding: "4px 12px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  borderRadius: 12,
+                  ...(isMaintenance
+                    ? { backgroundColor: "#e6f7ff", color: "#0050b3", border: "1px solid #91d5ff" }
+                    : isRepair
+                    ? { backgroundColor: "#f9f0ff", color: "#531dab", border: "1px solid #d3adf7" }
+                    : isWarranty
+                    ? { backgroundColor: "#f6ffed", color: "#389e0d", border: "1px solid #b7eb8f" }
+                    : isCampaign
+                    ? { backgroundColor: "#fff7e6", color: "#d46b08", border: "1px solid #ffd591" }
+                    : { backgroundColor: "#fafafa", color: "#595959", border: "1px solid #d9d9d9" }),
+                }}>
+                {isMaintenance
+                  ? "Bảo dưỡng"
                   : isRepair
-                  ? { backgroundColor: "#f9f0ff", color: "#531dab", border: "1px solid #d3adf7" }
+                  ? "Sửa chữa"
                   : isWarranty
-                  ? { backgroundColor: "#f6ffed", color: "#389e0d", border: "1px solid #b7eb8f" }
+                  ? "Bảo hành"
                   : isCampaign
-                  ? { backgroundColor: "#fff7e6", color: "#d46b08", border: "1px solid #ffd591" }
-                  : { backgroundColor: "#fafafa", color: "#595959", border: "1px solid #d9d9d9" }),
-              }}>
-              {isMaintenance
-                ? "Bảo dưỡng"
-                : isRepair
-                ? "Sửa chữa"
-                : isWarranty
-                ? "Bảo hành"
-                : isCampaign
-                ? "Chiến dịch"
-                : "—"}
-            </span>
-          </div>
-          {booking.note && (
-            <div style={{ gridColumn: "1 / -1" }}>
-              <strong>Ghi chú:</strong> {booking.note}
+                  ? "Chiến dịch"
+                  : "—"}
+              </Tag>
             </div>
-          )}
+            
+            {booking.note && (
+              <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                <Space size={8}>
+                  <Hash size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                  <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                    Ghi chú:
+                  </Text>
+                </Space>
+                <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                  {booking.note}
+                </Text>
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 

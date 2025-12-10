@@ -1,10 +1,35 @@
-import { STATUS_COLORS, STATUS_MAP } from "../../utils/constants";
-import { Button, Tag, Divider, Select, Card, Spin, Modal } from "antd";
+import { STATUS_COLORS, STATUS_MAP, UI_COLORS } from "../../utils/constants";
+import { Button, Tag, Divider, Select, Card, Spin, Modal, Space, Typography } from "antd";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, UserPlus, UserCheck } from "lucide-react";
+import { ArrowLeft, UserPlus, UserCheck, Car, Hash, Palette, Wrench, User, Phone, Mail, Calendar, Clock, Building } from "lucide-react";
+
+const { Text } = Typography;
+
+// ✅ Hàm dịch màu sắc từ tiếng Anh sang tiếng Việt
+const translateColor = (color) => {
+  if (!color) return "";
+  const colorUpper = String(color).trim().toUpperCase();
+  const colorMap = {
+    "BLUE": "Xanh dương",
+    "RED": "Đỏ",
+    "GREEN": "Xanh lá",
+    "YELLOW": "Vàng",
+    "BLACK": "Đen",
+    "WHITE": "Trắng",
+    "GRAY": "Xám",
+    "GREY": "Xám",
+    "SILVER": "Bạc",
+    "GOLD": "Vàng",
+    "ORANGE": "Cam",
+    "PURPLE": "Tím",
+    "PINK": "Hồng",
+    "BROWN": "Nâu",
+  };
+  return colorMap[colorUpper] || color;
+};
 
 import { fetchTechnicians } from "../../services/staffsService";
 import TechnicianBookingDetailDrawer from "../../components/technician/TechnicanBookingDetailDrawer";
@@ -20,7 +45,6 @@ import {
   fetchEVCheckDetailsServiceRe,
 } from "../../services/evcheckService";
 import { getLaborCostByRemediesService } from "../../services/priceserviceService";
-import { getPartItemByIdService } from "../../services/partitemsService";
 
 import Payment from "../../components/service-staff/Payment";
 import PaymentInfo from "../../components/service-staff/PaymentInfo";
@@ -245,49 +269,65 @@ export default function StaffBookingDetailPage() {
       }
 
       // ✅ Tính tổng laborCost từ các hạng mục
-      // Lấy partTypeId từ partItem.part.partType.id (theo cấu trúc API)
+      // ✅ CHỈ tính phí cho các detail "có làm" (status COMPLETED hoặc IN_PROGRESS) 
+      // ✅ VÀ có remedies là REPAIR, REPLACE, hoặc LUBRICATE
       console.log("🔍 [calculateCancellationFee] Details:", details);
       
+      // ✅ Filter chỉ lấy các detail "có làm" và có remedies hợp lệ
+      const feeEligibleDetails = details.filter((detail) => {
+        const status = (detail.status || "").toUpperCase();
+        const remedies = (detail.remedies || "").toUpperCase();
+        
+        // ✅ Chỉ tính phí cho các detail đã làm (COMPLETED hoặc IN_PROGRESS)
+        const isWorkDone = status === "COMPLETED" || status === "IN_PROGRESS";
+        
+        // ✅ VÀ có remedies là REPAIR, REPLACE, hoặc LUBRICATE
+        const isValidRemedy = remedies === "REPAIR" || remedies === "REPLACE" || remedies === "LUBRICATE";
+        
+        return isWorkDone && isValidRemedy;
+      });
+      
+      console.log(`🔍 [calculateCancellationFee] Tổng số details: ${details.length}, Chi tiết tính phí (có làm): ${feeEligibleDetails.length}`);
+      
+      if (feeEligibleDetails.length === 0) {
+        return 0; // Không có hạng mục nào cần tính phí
+      }
+      
       let totalLaborCost = 0;
-      const laborCostPromises = details.map(async (detail, index) => {
-        // ✅ Lấy partItemId từ detail
-        const partItemId = detail.partItemId || detail.partItem?.id || null;
+      const laborCostPromises = feeEligibleDetails.map(async (detail, index) => {
+        // ✅ Lấy partTypeId từ nhiều nguồn, ưu tiên theo thứ tự
+        let partTypeId = 
+          detail._partTypeId ||
+          detail?.partItem?.part?.partType?.id || 
+          detail?.maintenanceStageDetail?.part?.partType?.id ||
+          null;
         
-        if (!partItemId) {
-          console.warn(`⚠️ [calculateCancellationFee] Detail ${index} - Không có partItemId`);
-          return 0;
-        }
-        
-        // ✅ Gọi API để lấy thông tin đầy đủ của partItem (vehicle part item)
-        let partTypeId = null;
-        try {
-          const partItemDetail = await getPartItemByIdService(partItemId);
-          console.log(`🔍 [calculateCancellationFee] Detail ${index} - partItemDetail từ API:`, partItemDetail);
-          
-          // ✅ Lấy partTypeId từ partItem.part.partType.id (cấu trúc vehicle part item)
-          partTypeId = 
-            partItemDetail?.part?.partType?.id || 
-            partItemDetail?.partTypeId ||
-            null;
-          
-          console.log(`🔍 [calculateCancellationFee] Detail ${index} - partTypeId từ API: ${partTypeId}`);
-        } catch (error) {
-          console.error(`❌ [calculateCancellationFee] Lỗi lấy partItem ${partItemId}:`, error);
-          // ✅ Fallback: thử lấy từ detail.partItem nếu có
-          partTypeId = detail.partItem?.part?.partType?.id || null;
+        // ✅ Nếu chưa có partTypeId, thử fetch từ API qua partItemId
+        if (!partTypeId) {
+          const partItemId = detail.partItemId || detail.partItem?.id || null;
+          if (partItemId) {
+            try {
+              const { getPartItemByIdService } = await import("../../services/partitemsService");
+              const partItemDetail = await getPartItemByIdService(partItemId);
+              partTypeId = partItemDetail?.part?.partType?.id || null;
+              console.log(`🔍 [calculateCancellationFee] Detail ${index} - Fetched partTypeId from API: ${partTypeId}`);
+            } catch (error) {
+              console.error(`❌ [calculateCancellationFee] Lỗi lấy partItem ${partItemId}:`, error);
+            }
+          }
         }
         
         // ✅ Lấy remedies (biện pháp) từ detail
         const remedies = detail.remedies || "NONE";
         
-        console.log(`🔍 [calculateCancellationFee] Detail ${index} - partTypeId: ${partTypeId}, remedies: ${remedies}`);
+        console.log(`🔍 [calculateCancellationFee] Detail ${index} - partTypeId: ${partTypeId}, remedies: ${remedies}, status: ${detail.status}`);
         
         // ✅ Chỉ tính phí khi có partTypeId và remedies
         if (!partTypeId || !remedies) {
           console.warn(`⚠️ [calculateCancellationFee] Detail ${index} - Thiếu partTypeId hoặc remedies:`, { 
             partTypeId, 
             remedies,
-            partItemId
+            detail
           });
           return 0;
         }
@@ -379,6 +419,11 @@ export default function StaffBookingDetailPage() {
       // Trạng thái đã là CANCELED → Tính tiền → Thanh toán → CHỈ cập nhật payment status, KHÔNG cập nhật appointment status
       toast.success("Đã thanh toán phí hủy thành công!");
       await loadBookingDetail(); // ✅ Reload để cập nhật thông tin booking (payment status)
+    } else {
+      // ✅ TRƯỜNG HỢP 3: Thanh toán bình thường (không phải hủy)
+      // Reload booking để cập nhật payment status và ẩn nút thanh toán
+      toast.success("Thanh toán thành công!");
+      await loadBookingDetail(); // ✅ Reload để cập nhật thông tin booking (payment status)
     }
   };
 
@@ -443,47 +488,316 @@ export default function StaffBookingDetailPage() {
         </div>
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          {/* GENERAL INFO */}
+          {/* Thông tin chung (gộp với thông tin khách hàng) */}
           <Card
-            style={{ marginBottom: 24, borderRadius: 8 }}
+            style={{ borderRadius: 12, border: "1px solid #e8e8e8", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", marginBottom: 24 }}
             bodyStyle={{ padding: "24px" }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: "#d4380d", borderBottom: "1px solid #f0f0f0", paddingBottom: 12 }}>
+            <h3 style={{ 
+              fontSize: 16, 
+              fontWeight: 600, 
+              marginBottom: 16, 
+              color: "#d4380d", 
+              borderBottom: "1px solid #f0f0f0", 
+              paddingBottom: 12,
+              display: "flex",
+              alignItems: "center",
+              gap: 8
+            }}>
+              <Hash size={16} color="#d4380d" />
               Thông tin chung
             </h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px" }}>
-              <p style={{ margin: 0 }}>
-                <strong>Mã lịch hẹn:</strong> {booking.code}
-              </p>
-              <p style={{ margin: 0 }}>
-                <strong>Người đặt:</strong> {booking.customer?.firstName}{" "}
-                {booking.customer?.lastName}
-              </p>
-              <p style={{ margin: 0 }}>
-                <strong>Ngày hẹn:</strong>{" "}
-                {new Date(booking.appointmentDate).toLocaleDateString("vi-VN")}
-              </p>
-              <p style={{ margin: 0 }}>
-                <strong>Thời gian:</strong>{" "}
-                {booking.slotTime ? (() => {
-                  const [start, end] = booking.slotTime.replace("H", "").split("_");
-                  return `${start}:00-${end}:00`;
-                })() : "—"}
-              </p>
-              <p style={{ margin: 0 }}>
-                <strong>Trung tâm dịch vụ:</strong> {booking.serviceCenter?.name || ""}
-              </p>
-              {(booking?.type || "").toUpperCase() === "MAINTENANCE_TYPE" && (
-                <div>
-                  <strong>Giai đoạn bảo dưỡng:</strong> {booking.maintenanceStage?.name || ""}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px 32px" }}>
+              {/* Cột 1 */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                  <Space size={8}>
+                    <Hash size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                    <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                      Mã lịch hẹn:
+                    </Text>
+                  </Space>
+                  <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                    {booking.code}
+                  </Text>
                 </div>
-              )}
-              {booking.note && (
-                <p style={{ margin: 0, gridColumn: "1 / -1" }}>
-                  <strong>Ghi chú:</strong> {booking.note}
-                </p>
+                
+                <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                  <Space size={8}>
+                    <Calendar size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                    <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                      Ngày hẹn:
+                    </Text>
+                  </Space>
+                  <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                {new Date(booking.appointmentDate).toLocaleDateString("vi-VN")}
+                  </Text>
+                </div>
+                
+                <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                  <Space size={8}>
+                    <Clock size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                    <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                      Thời gian:
+                    </Text>
+                  </Space>
+                  <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                    {booking.slotTime ? (() => {
+                      const [start, end] = booking.slotTime.replace("H", "").split("_");
+                      return `${start}:00-${end}:00`;
+                    })() : "—"}
+                  </Text>
+                </div>
+              </div>
+              
+              {/* Cột 2 */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                  <Space size={8}>
+                    <Building size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                    <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                      Trung tâm dịch vụ:
+                    </Text>
+                  </Space>
+                  <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                    {booking.serviceCenter?.name || "—"}
+                  </Text>
+                </div>
+                
+                {(booking?.type || "").toUpperCase() === "MAINTENANCE_TYPE" && booking.maintenanceStage?.name && (
+                  <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                    <Space size={8}>
+                      <Wrench size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                      <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                        Giai đoạn bảo dưỡng:
+                      </Text>
+                    </Space>
+                    <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                      {booking.maintenanceStage?.name || "—"}
+                    </Text>
+                  </div>
+                )}
+                
+                {booking.note && (
+                  <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                    <Space size={8}>
+                      <Hash size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                      <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                        Ghi chú:
+                      </Text>
+                    </Space>
+                    <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                      {booking.note}
+                    </Text>
+                  </div>
+                )}
+              </div>
+
+              {/* Cột 3 - Thông tin khách hàng */}
+              {booking.customer && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  {(booking.customer.firstName || booking.customer.lastName) && (
+                    <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                      <Space size={8}>
+                        <User size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                        <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                          Họ tên:
+                        </Text>
+                      </Space>
+                      <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                        {`${booking.customer.firstName || ""} ${booking.customer.lastName || ""}`.trim() || "—"}
+                      </Text>
+                    </div>
+                  )}
+                  
+                  <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                    <Space size={8}>
+                      <Phone size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                      <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                        SĐT:
+                      </Text>
+                    </Space>
+                    <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                      {booking.customer.account?.phone || booking.customer.phoneNumber || booking.customer.phone || "—"}
+                    </Text>
+                  </div>
+                  
+                  <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                    <Space size={8}>
+                      <Mail size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                      <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                        Email:
+                      </Text>
+                    </Space>
+                    <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                      {booking.customer.account?.email || booking.customer.email || "—"}
+                    </Text>
+                  </div>
+                </div>
               )}
             </div>
           </Card>
+
+          {/* Kỹ thuật viên và Thông tin phương tiện - Grid 2 cột */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 24, marginBottom: 24 }}>
+            {/* Kỹ thuật viên phụ trách */}
+            {currentTechnician && (
+              <Card 
+                style={{ 
+                  borderRadius: 12,
+                  border: "1px solid #e8e8e8",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
+                }}
+                bodyStyle={{ padding: "24px" }}>
+                <h3 style={{ 
+                  fontSize: 16, 
+                  fontWeight: 600,
+                  marginBottom: 16,
+                  color: "#d4380d", 
+                  borderBottom: "1px solid #f0f0f0", 
+                  paddingBottom: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8
+                }}>
+                  <UserCheck size={16} color="#d4380d" />
+                  Kỹ thuật viên phụ trách
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                    <Space size={8}>
+                      <UserCheck size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                      <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                        Tên:
+                      </Text>
+                    </Space>
+                    <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                      {currentTechnician.firstName} {currentTechnician.lastName}
+                    </Text>
+                  </div>
+                  {currentTechnician.staffCode && (
+                    <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                      <Space size={8}>
+                        <Hash size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                        <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                          Mã NV:
+                        </Text>
+                      </Space>
+                      <Tag color="red" style={{ borderRadius: 6, fontSize: 12 }}>
+                        {currentTechnician.staffCode}
+                      </Tag>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+
+            {/* THÔNG TIN PHƯƠNG TIỆN */}
+            {booking?.vehicle && (
+              <Card
+                style={{ 
+                  borderRadius: 12,
+                  border: "1px solid #e8e8e8",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                }}
+                bodyStyle={{ padding: "24px" }}>
+                <h3 style={{ 
+                  fontSize: 16, 
+                  fontWeight: 600, 
+                  marginBottom: 16, 
+                  color: "#d4380d", 
+                  borderBottom: "1px solid #f0f0f0", 
+                  paddingBottom: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8
+                }}>
+                  <Car size={16} color="#d4380d" />
+                  Thông tin phương tiện
+                </h3>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "24px 32px" }}>
+                {/* Cột trái - 2 trường */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  {(booking.vehicle.modelName || booking.vehicle.model?.name) && (
+                    <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                      <Space size={8}>
+                        <Car size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                        <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                          Mẫu xe:
+                        </Text>
+                      </Space>
+                      <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                        {booking.vehicle.modelName || booking.vehicle.model?.name}
+                      </Text>
+                    </div>
+                  )}
+                  
+                  {booking.vehicle.engineNumber && (
+                    <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                      <Space size={8}>
+                        <Wrench size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                        <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                          Số máy:
+                        </Text>
+                      </Space>
+                      <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                        {booking.vehicle.engineNumber}
+                      </Text>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Cột phải - 2 trường */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  {booking?.vehicle?.chassisNumber && (
+                    <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                      <Space size={8}>
+                        <Hash size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                        <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                          Số khung (VIN):
+                        </Text>
+                      </Space>
+                      <Tag 
+                        color={UI_COLORS.TAG_RED} 
+                        style={{ 
+                          borderRadius: 6, 
+                          padding: "4px 12px",
+                          fontSize: 13,
+                          fontWeight: 500,
+                          border: "none",
+                        }}
+                      >
+                        {booking.vehicle.chassisNumber}
+                      </Tag>
+                    </div>
+                  )}
+                  
+                  {translateColor(booking.vehicle.color) && (
+                    <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                      <Space size={8}>
+                        <Palette size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                        <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "100px" }}>
+                          Màu sắc:
+                        </Text>
+                      </Space>
+                      <Tag 
+                        color={UI_COLORS.TAG_RED} 
+                        style={{ 
+                          borderRadius: 6, 
+                          padding: "4px 12px",
+                          fontSize: 13,
+                          fontWeight: 500,
+                          border: "none",
+                        }}
+                      >
+                        {translateColor(booking.vehicle.color)}
+                      </Tag>
+                    </div>
+                  )}
+                </div>
+              </div>
+              </Card>
+            )}
+          </div>
 
           {/* QR CODE DISPLAY */}
           {status === "APPROVED" && booking.checkinQRCode && (
@@ -546,7 +860,7 @@ export default function StaffBookingDetailPage() {
                   value={selectedTechnician?.id}
                   options={technicians.map((t) => ({
                     value: t.id,
-                    label: `${t.firstName} ${t.lastName}${t.staffCode ? ` (${t.staffCode})` : ''}`,
+                    label: `${t.firstName} ${t.lastName}${t.staffCode ? ` - ${t.staffCode}` : ''}`,
                   }))}
                   onChange={(value) =>
                     setSelectedTechnician(technicians.find((t) => t.id === value))
@@ -556,6 +870,7 @@ export default function StaffBookingDetailPage() {
               <Button
                 type='primary'
                 block
+                danger
                 disabled={!selectedTechnician || loadingTechs}
                 loading={loadingTechs}
                 onClick={handleAssignTechnician}>
@@ -564,65 +879,13 @@ export default function StaffBookingDetailPage() {
             </Card>
           )}
 
-          {currentTechnician && (
-            <Card 
-              style={{ 
-                marginBottom: 24,
-                borderRadius: 8,
-                border: "1px solid #f0f0f0"
-              }}
-              bodyStyle={{ padding: "20px" }}>
-              <h3 style={{ 
-                marginBottom: 12, 
-                fontSize: 16, 
-                fontWeight: 600,
-                color: "#262626",
-                paddingBottom: 12,
-                borderBottom: "1px solid #f0f0f0",
-                display: "flex",
-                alignItems: "center",
-                gap: 8
-              }}>
-                <UserCheck size={16} color="#595959" />
-                Kỹ thuật viên phụ trách
-              </h3>
-              <p style={{ margin: 0, fontSize: 15, color: "#262626" }}>
-                <strong>{currentTechnician.firstName} {currentTechnician.lastName}</strong>
-                {currentTechnician.staffCode && (
-                  <span style={{ color: "#8c8c8c", marginLeft: 8 }}>
-                    ({currentTechnician.staffCode})
-                  </span>
-                )}
-              </p>
-            </Card>
-          )}
 
-          <Card
-            style={{ marginBottom: 24, borderRadius: 8 }}
-            bodyStyle={{ padding: "24px" }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: "#d4380d", borderBottom: "1px solid #f0f0f0", paddingBottom: 12 }}>
-              Kết quả kiểm tra EVCheck
-            </h3>
-            {!currentTechnician ? (
-              <div style={{ textAlign: "center", color: "#999", padding: "20px 0" }}>
-                Kỹ thuật viên chưa thực hiện kiểm tra.
-              </div>
-            ) : (
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <Button
-                  type='primary'
-                  onClick={() => setShowTechnicianDrawer(true)}>
-                  Xem chi tiết EVCheck
-                </Button>
-              </div>
-            )}
-          </Card>
 
           {/* ✅ Thông báo khi lịch hẹn bị hủy */}
           {status === "CANCELED" && (
-            <Card
+            <Card 
               style={{ 
-                marginBottom: 24, 
+                marginBottom: 24,
                 borderRadius: 8,
                 border: "2px solid #ff4d4f",
                 backgroundColor: "#fff1f0"
@@ -634,8 +897,8 @@ export default function StaffBookingDetailPage() {
                   height: 40, 
                   borderRadius: "50%", 
                   backgroundColor: "#ff4d4f", 
-                  display: "flex", 
-                  alignItems: "center", 
+                display: "flex",
+                alignItems: "center",
                   justifyContent: "center",
                   color: "white",
                   fontSize: 20,
@@ -646,7 +909,7 @@ export default function StaffBookingDetailPage() {
                 <div style={{ flex: 1 }}>
                   <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#c41e0e" }}>
                     Lịch hẹn đã bị hủy
-                  </h3>
+              </h3>
                   <p style={{ margin: "4px 0 0 0", fontSize: 14, color: "#666" }}>
                     {/* ✅ Phân biệt ai đã hủy */}
                     {booking.cancelledBy === "CUSTOMER" || booking.cancelledBy === "MOBILE" ? (
@@ -655,8 +918,8 @@ export default function StaffBookingDetailPage() {
                       "Nhân viên đã hủy lịch hẹn này từ hệ thống web."
                     ) : (
                       "Lịch hẹn đã bị hủy."
-                    )}
-                  </p>
+                )}
+              </p>
                 </div>
               </div>
               
@@ -691,8 +954,8 @@ export default function StaffBookingDetailPage() {
                       Thanh toán phí hủy
                     </Button>
                   </div>
-                </div>
-              ) : (
+              </div>
+            ) : (
                 // ✅ Nếu chưa có phí hủy, hiển thị nút để tính phí hủy
                 <div style={{ 
                   marginTop: 16, 
@@ -710,7 +973,7 @@ export default function StaffBookingDetailPage() {
                         Vui lòng tính phí hủy dựa trên các hạng mục đã kiểm tra
                       </p>
                     </div>
-                    <Button
+                <Button
                       type="primary"
                       danger
                       size="large"
@@ -736,11 +999,11 @@ export default function StaffBookingDetailPage() {
                         }
                       }}>
                        Thanh toán phí hủy
-                    </Button>
+                </Button>
                   </div>
-                </div>
-              )}
-            </Card>
+              </div>
+            )}
+          </Card>
           )}
 
           {/* Thông tin thanh toán / Lịch sử thanh toán */}
@@ -751,10 +1014,10 @@ export default function StaffBookingDetailPage() {
                 <PaymentHistory booking={booking} />
               ) : (status === "REPAIR_COMPLETED" || status === "QUOTE_APPROVED") ? (
                 // ✅ Chưa hoàn thành: Hiển thị thông tin thanh toán (có nút "Xử lý thanh toán")
-                <PaymentInfo
-                  booking={booking}
-                  onOpenPayment={() => setIsPaymentModalOpen(true)}
-                />
+              <PaymentInfo
+                booking={booking}
+                onOpenPayment={() => setIsPaymentModalOpen(true)}
+              />
               ) : null}
             </div>
           )}

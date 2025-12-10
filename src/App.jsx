@@ -46,6 +46,8 @@ import CreateBooking from "./pages/service-staff/CreateBooking";
 import StaffWarrantyPage from "./pages/service-staff/StaffWarrantyPage";
 import StaffRMADetailPage from "./pages/service-staff/StaffRMADetailPage";
 import StaffBookingDetailPage from "./pages/service-staff/StaffBookingDetailPage";
+import StaffVehicleHistoryPage from "./pages/service-staff/StaffVehicleHistoryPage";
+import StaffVehicleRepairHistoryPage from "./pages/service-staff/StaffVehicleRepairHistoryPage";
 
 // technician
 import { TechnicianSidebar } from "./components/technician/TechnicanSidebar";
@@ -228,6 +230,14 @@ const App = () => (
                         <Route
                           path="warranty/:rmaId"
                           element={<StaffRMADetailPage />}
+                        />
+                        <Route
+                          path="vehicles"
+                          element={<StaffVehicleHistoryPage />}
+                        />
+                        <Route
+                          path="vehicles/:vehicleId/history"
+                          element={<StaffVehicleRepairHistoryPage />}
                         />
 
                         <Route path="*" element={<NotFound />} />

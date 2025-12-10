@@ -164,7 +164,7 @@ export default function BookingTable({
           showSizeChanger: true,
           showTotal: (total) => `Tổng ${total} bản ghi`,
           style: { padding: "16px" },
-          showQuickJumper: true,
+          showQuickJumper: false,
         }}
         bordered
         size="middle"

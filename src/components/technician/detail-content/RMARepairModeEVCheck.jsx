@@ -582,7 +582,6 @@ export default function RMARepairModeEVCheck({
       width: 120,
       render: (_, r, i) => (
         <Input.TextArea
-          placeholder='Nhập kết quả kiểm tra...'
           value={r.result ?? ""}
           onChange={(e) => handleChange(i, "result", e.target.value)}
           onBlur={(e) => {
@@ -691,17 +690,19 @@ export default function RMARepairModeEVCheck({
     {
       title: "SL",
       width: 50,
-      render: (_, r, i) => (
-        <Input
-          type='number'
-          value={r.quantity}
-          onChange={(e) => handleChange(i, "quantity", e.target.value)}
-          disabled={readOnly || !canEditFields}
-          style={{ width: 60 }}
-        />
-      ),
+      align: "center",
+      render: (_, r, i) => {
+        const isReplace = (r.remedies || "").toUpperCase() === "REPLACE";
+        
+        // ✅ Nếu không phải "Thay thế" → hiển thị "0"
+        if (!isReplace) {
+          return "0";
+        }
+        
+        // ✅ RMARepairMode luôn chỉ hiển thị text (canEditFields = false)
+        return <span style={{ fontSize: "14px" }}>{r.quantity || 0}</span>;
+      },
     },
-    { title: "ĐV", width: 35, render: (_, r) => r.unit || "" },
     {
       title: "Trạng thái phụ tùng",
       width: 100,
