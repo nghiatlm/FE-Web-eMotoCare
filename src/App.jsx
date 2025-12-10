@@ -19,7 +19,7 @@ import VerifySuccess from "./pages/VerifySuccess";
 // admin
 import UserManagement from "./pages/admin/UserManagement";
 import Index from "./pages/Index";
-import Branches from "./pages/admin/Branchesanches";
+import Branches from "./pages/admin/Branches";
 import BranchDetail from "./pages/admin/BranchDetail";
 import BranchReport from "./pages/admin/BranchReport";
 import ServicePackages from "./pages/ServicePackages";
@@ -137,10 +137,6 @@ const App = () => (
                         <Route
                           path="branches/:id/report"
                           element={<BranchReport />}
-                        />
-                        <Route
-                          path="warranty-claims"
-                          element={<WarrantyClaims />}
                         />
                         <Route path="models" element={<Models />} />
                         <Route path="models/:id" element={<ModelDetail />} />
