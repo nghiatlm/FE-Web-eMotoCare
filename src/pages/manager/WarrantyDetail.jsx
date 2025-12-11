@@ -1736,7 +1736,7 @@ export default function WarrantyDetail() {
                                               value={
                                                 detailForms[detailId]?.solution !== undefined 
                                                   ? detailForms[detailId].solution 
-                                                  : (detail.solution && detail.solution !== "CHECK" ? detail.solution : "")
+                                                  : (detail.solution && detail.solution !== "CLEAN" ? detail.solution : "")
                                               }
                                               onChange={(e) => handleFormChange(detailId, "solution", e.target.value)}
                                               placeholder="Nhập giải pháp từ hãng (thay thế, sửa chữa, v.v.)"

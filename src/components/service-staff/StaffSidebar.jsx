@@ -1,4 +1,4 @@
-import { CalendarCheck, LogOut, Plus, List, LayoutDashboard, BookOpen } from "lucide-react";
+import { CalendarCheck, LogOut, Plus, List, LayoutDashboard, BookOpen, Car } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -34,6 +34,7 @@ const sections = [
         ],
       },
       { title: "Bảo hành", icon: BookOpen, url: "/staff/warranty" },
+      { title: "Xe đã sửa chữa", icon: Car, url: "/staff/vehicles" },
     ],
   },
 ];
@@ -108,6 +109,7 @@ export function StaffSidebar() {
                     return (
                       <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton
+                          asChild
                           tooltip={item.title}
                           isActive={isActive}
                           className={cn(
@@ -120,13 +122,15 @@ export function StaffSidebar() {
                                 : "bg-white text-[#b71324] border-l-4 border-white shadow-none"
                               : "text-red-100 hover:bg-red-900/40 hover:text-white"
                           )}>
-                          <item.icon
-                            className={cn(
-                              "h-5 w-5 flex-shrink-0",
-                              isActive ? "text-[#b71324]" : "text-red-200"
-                            )}
-                          />
-                          {!isCollapsed && <span>{item.title}</span>}
+                          <NavLink to={item.subItems?.find(sub => sub.title === "Danh sách")?.url || item.subItems?.[1]?.url || item.url}>
+                            <item.icon
+                              className={cn(
+                                "h-5 w-5 flex-shrink-0",
+                                isActive ? "text-[#b71324]" : "text-red-200"
+                              )}
+                            />
+                            {!isCollapsed && <span>{item.title}</span>}
+                          </NavLink>
                         </SidebarMenuButton>
                         {!isCollapsed && (
                           <SidebarMenuSub>

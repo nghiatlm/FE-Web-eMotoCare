@@ -428,7 +428,7 @@ export default function RMARepairModeEVCheck({
 
   // ========= UPDATE GIÁ CÔNG =========
   const updatePriceService = async (index, remedies) => {
-    if (!["REPAIR", "REPLACE"].includes(remedies)) {
+    if (!["REPAIR", "REPLACE", "TUNE", "CLEAN"].includes(remedies)) {
       updateRow(index, { priceService: 0 });
       return;
     }
@@ -494,16 +494,21 @@ export default function RMARepairModeEVCheck({
         // ✅ Tìm option tương ứng với partItemId
         const selectedOption = vehiclePartOptions.find((p) => p.partItemId === partItemId);
         
-        // ✅ Nếu không tìm thấy trong options nhưng có displayName, thêm vào options tạm thời
+        // ✅ Nếu không tìm thấy trong options nhưng có displayName hoặc part name, thêm vào options tạm thời
         const allOptions = [...vehiclePartOptions];
-        if (partItemId && displayName && !selectedOption) {
-          allOptions.push({
-            partItemId,
-            value: partItemId,
-            label: displayName,
-            price: 0,
-            partItem: r.partItem || null,
-          });
+        if (partItemId && !selectedOption) {
+          // Ưu tiên lấy tên từ displayName, sau đó từ partItem.part.name
+          const partName = displayName || r.partItem?.part?.name || "";
+          if (partName) {
+            allOptions.push({
+              partItemId,
+              value: partItemId,
+              label: partName,
+              price: r.pricePart || 0,
+              partItem: r.partItem || null,
+              partId: r.partItem?.part?.id || null,
+            });
+          }
         }
         
         return (
@@ -582,7 +587,6 @@ export default function RMARepairModeEVCheck({
       width: 120,
       render: (_, r, i) => (
         <Input.TextArea
-          placeholder='Nhập kết quả kiểm tra...'
           value={r.result ?? ""}
           onChange={(e) => handleChange(i, "result", e.target.value)}
           onBlur={(e) => {
@@ -605,8 +609,10 @@ export default function RMARepairModeEVCheck({
           const map = {
             REPLACE: "Thay thế",
             REPAIR: "Sửa chữa",
-            CHECK: "Kiểm tra",
-            LUBRICATE: "Bôi trơn",
+            CLEAN: "Vệ sinh",
+            TUNE: "Điều chỉnh",
+            WARRANTY: "Bảo hành",
+            NONE: "Biện pháp",
           };
           // ✅ Normalize: chuyển về uppercase và remove spaces
           const normalized = (remedies || "").toString().toUpperCase().trim();
@@ -691,17 +697,19 @@ export default function RMARepairModeEVCheck({
     {
       title: "SL",
       width: 50,
-      render: (_, r, i) => (
-        <Input
-          type='number'
-          value={r.quantity}
-          onChange={(e) => handleChange(i, "quantity", e.target.value)}
-          disabled={readOnly || !canEditFields}
-          style={{ width: 60 }}
-        />
-      ),
+      align: "center",
+      render: (_, r, i) => {
+        const isReplace = (r.remedies || "").toUpperCase() === "REPLACE";
+        
+        // ✅ Nếu không phải "Thay thế" → hiển thị "0"
+        if (!isReplace) {
+          return "0";
+        }
+        
+        // ✅ RMARepairMode luôn chỉ hiển thị text (canEditFields = false)
+        return <span style={{ fontSize: "14px" }}>{r.quantity || 0}</span>;
+      },
     },
-    { title: "ĐV", width: 35, render: (_, r) => r.unit || "" },
     {
       title: "Trạng thái phụ tùng",
       width: 100,

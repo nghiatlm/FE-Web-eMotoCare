@@ -3,13 +3,13 @@ import { Modal } from "antd";
 import AuthLayout from "../../components/authlayout/AuthLayout";
 
 function ForgotPassword() {
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
   const handleSendOtp = () => {
-    if (!phone) return alert("Vui lòng nhập số điện thoại!");
+    if (!email) return alert("Vui lòng nhập email!");
     setIsModalOpen(true);
   };
 
@@ -24,15 +24,15 @@ function ForgotPassword() {
 
   return (
     <AuthLayout title='Quên mật khẩu'>
-      {/* Nhập số điện thoại */}
+      {/* Nhập email */}
       <div className='space-y-5'>
         <div>
-          <label className='font-medium block mb-1'>Số điện thoại</label>
+          <label className='font-medium block mb-1'>Email</label>
           <input
-            type='tel'
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder='Nhập số điện thoại của bạn'
+            type='email'
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder='Nhập email của bạn'
             className='w-full mt-2 px-3 py-2 text-gray-700 bg-transparent outline-none border rounded-lg shadow-sm focus:border-red-600 border-gray-200'
           />
         </div>
@@ -60,7 +60,7 @@ function ForgotPassword() {
         centered>
         <div className='space-y-4'>
           <p className='text-sm text-gray-500'>
-            Mã OTP đã được gửi đến số điện thoại của bạn.
+            Mã OTP đã được gửi đến email của bạn.
           </p>
 
           {/* OTP */}

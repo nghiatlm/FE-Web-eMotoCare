@@ -160,26 +160,42 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
       console.log("📦 API Response:", response);
       
       // ✅ Response structure có thể là:
-      // 1. { statusCode, success, message, data: { customer, vehicle, vehicleStage } }
-      // 2. { customer, vehicle, vehicleStage } (trực tiếp)
-      let customer, vehicle, vehicleStage;
+      // 1. { statusCode, success, message, data: { customer, vehicle, vehicleStages: [...] } }
+      // 2. { customer, vehicle, vehicleStages: [...] } (trực tiếp)
+      let customer, vehicle, vehicleStages;
       
       if (response && response.success && response.data) {
         // Case 1: Có wrapper { success, data }
-        ({ customer, vehicle, vehicleStage } = response.data);
-      } else if (response && (response.customer || response.vehicle || response.vehicleStage)) {
-        // Case 2: Trực tiếp { customer, vehicle, vehicleStage }
-        ({ customer, vehicle, vehicleStage } = response);
+        ({ customer, vehicle, vehicleStages } = response.data);
+        // ✅ Nếu có vehicleStage (cũ) thì convert sang vehicleStages
+        if (!vehicleStages && response.data.vehicleStage) {
+          vehicleStages = [response.data.vehicleStage];
+        }
+      } else if (response && (response.customer || response.vehicle || response.vehicleStages || response.vehicleStage)) {
+        // Case 2: Trực tiếp { customer, vehicle, vehicleStages }
+        ({ customer, vehicle, vehicleStages } = response);
+        // ✅ Nếu có vehicleStage (cũ) thì convert sang vehicleStages
+        if (!vehicleStages && response.vehicleStage) {
+          vehicleStages = [response.vehicleStage];
+        }
       } else {
         throw new Error("Không tìm thấy thông tin từ số khung. Response structure không đúng.");
       }
       
+      // ✅ Đảm bảo vehicleStages là mảng
+      if (!Array.isArray(vehicleStages)) {
+        vehicleStages = vehicleStages ? [vehicleStages] : [];
+      }
+      
       console.log("✅ Customer:", customer);
       console.log("✅ Vehicle:", vehicle);
-      console.log("✅ VehicleStage:", vehicleStage);
+      console.log("✅ VehicleStages:", vehicleStages);
       
-        // ✅ Lưu thông tin để hiển thị
-        setVehicleInfo({ customer, vehicle, vehicleStage });
+      // ✅ Lấy mốc bảo dưỡng đầu tiên (UPCOMING) hoặc mốc đầu tiên trong mảng
+      const vehicleStage = vehicleStages.find(s => s.status === "UPCOMING") || vehicleStages[0] || null;
+      
+        // ✅ Lưu thông tin để hiển thị (bao gồm toàn bộ vehicleStages)
+        setVehicleInfo({ customer, vehicle, vehicleStage, vehicleStages });
         
         // ✅ Set giá trị vào form (giữ lại chassisNumber để submit)
         form.setFieldsValue({ 
@@ -187,11 +203,30 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
           ...(customer?.id && { customerId: customer.id }),
           ...(vehicle?.id && { vehicleId: vehicle.id }),
           ...(vehicleStage?.id && { vehicleStageId: vehicleStage.id }),
+          // ✅ Nếu có maintenanceStageId từ vehicleStage, set vào form
+          ...(vehicleStage?.maintenanceStageId && { maintenanceStageId: vehicleStage.maintenanceStageId }),
         });
         
-        // ✅ Load vehicle stages nếu có vehicleId
+        // ✅ Load vehicle stages nếu có vehicleId (để hiển thị dropdown)
+        // ✅ Chỉ load vehicle stages nếu user đã chọn type = MAINTENANCE_TYPE
         if (vehicle?.id) {
-          loadVehicleStages(vehicle.id);
+          const currentType = form.getFieldValue("type");
+          // ✅ Chỉ load khi user đã chọn type = MAINTENANCE_TYPE (không tự động load)
+          if (currentType === "MAINTENANCE_TYPE") {
+            loadVehicleStages(vehicle.id, "MAINTENANCE_TYPE");
+          }
+        }
+        
+        // ✅ Nếu có vehicleStage từ API, chỉ load stages nếu user đã chọn type = MAINTENANCE_TYPE
+        if (vehicleStage?.id) {
+          const currentType = form.getFieldValue("type");
+          // ✅ Chỉ load stages nếu user đã chọn type = MAINTENANCE_TYPE (không tự động set)
+          if (currentType === "MAINTENANCE_TYPE" && vehicle?.id) {
+            loadVehicleStages(vehicle.id, "MAINTENANCE_TYPE");
+          }
+          // ✅ Log để debug
+          console.log("✅ Đã set vehicleStageId:", vehicleStage.id);
+          console.log("✅ Đã set maintenanceStageId:", vehicleStage.maintenanceStageId);
         }
         
         // ✅ Enable các form items khác
@@ -251,29 +286,24 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
   useEffect(() => {
     const fetchInit = async () => {
       try {
-        // ✅ Lấy serviceCenterId từ staff hiện tại
-        let staffServiceCenterId = null;
-        try {
-          const staffInfo = await fetchServiceStaff();
-          const staffData = staffInfo?.data?.data || staffInfo?.data || staffInfo;
-          staffServiceCenterId = staffData?.serviceCenterId || null;
-          
-          // Fallback: lấy từ localStorage nếu API fail
-          if (!staffServiceCenterId) {
+        // ✅ Ưu tiên lấy serviceCenterId từ user trong localStorage
             const user = JSON.parse(localStorage.getItem("user") || "{}");
-            staffServiceCenterId = 
+        let staffServiceCenterId = 
               user?.accountResponse?.serviceCenterId || 
               user?.serviceCenterId || 
+          user?.staff?.serviceCenterId ||
+          user?.accountResponse?.staff?.serviceCenterId ||
               null;
-          }
+        
+        // ✅ Nếu không có, mới gọi API (có filter theo serviceCenterId nếu đã có)
+        if (!staffServiceCenterId) {
+          try {
+            const staffInfo = await fetchServiceStaff(null); // Gọi không có filter
+            const staffData = staffInfo?.data?.data || staffInfo?.data || staffInfo;
+            staffServiceCenterId = staffData?.serviceCenterId || null;
         } catch (err) {
           console.error("Lỗi lấy serviceCenterId từ staff:", err);
-          // Fallback: lấy từ localStorage
-          const user = JSON.parse(localStorage.getItem("user") || "{}");
-          staffServiceCenterId = 
-            user?.accountResponse?.serviceCenterId || 
-            user?.serviceCenterId || 
-            null;
+          }
         }
 
         setCurrentServiceCenterId(staffServiceCenterId);
@@ -418,12 +448,30 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
         pageSize: 100,
       });
 
-      // ✅ Filter chỉ lấy status = "UPCOMING"
-      const upcomingStages = (stages || []).filter(
-        (stage) => stage.status === "UPCOMING"
+      console.log("🔍 All vehicle stages from API:", stages);
+      
+      // ✅ Filter lấy các stage có thể chọn: UPCOMING hoặc NO_START
+      // NO_START = chưa bắt đầu, UPCOMING = sắp tới
+      const availableStages = (stages || []).filter(
+        (stage) => {
+          const status = stage.status?.toUpperCase();
+          const isAvailable = status === "UPCOMING" || status === "NO_START";
+          console.log(`🔍 Stage ${stage.id}: status=${status}, isAvailable=${isAvailable}`);
+          return isAvailable;
+        }
       );
 
-      setVehicleStages(upcomingStages);
+      console.log("🔍 Available stages after filter:", availableStages);
+      console.log("🔍 Total available stages:", availableStages.length);
+
+      setVehicleStages(availableStages);
+      
+      // ✅ Tự động chọn mốc bảo dưỡng UPCOMING nếu có và chưa có giá trị
+      const upcomingStage = availableStages.find(s => (s.status || "").toUpperCase() === "UPCOMING");
+      if (upcomingStage?.id && !form.getFieldValue("vehicleStageId")) {
+        form.setFieldsValue({ vehicleStageId: upcomingStage.id });
+        console.log("✅ Đã tự động chọn mốc bảo dưỡng UPCOMING:", upcomingStage.id);
+      }
     } catch (err) {
       console.error("Lỗi load mốc bảo dưỡng:", err);
       setVehicleStages([]);
@@ -529,7 +577,12 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
     const serviceCenterId = values.serviceCenterId || currentServiceCenterId;
 
     // ✅ Xác định type và programId (dùng programId cho cả campaign và recall)
-    let appointmentType = values.type || DEFAULT_TYPE;
+    // ✅ Không set default type, bắt buộc user phải chọn
+    if (!values.type) {
+      toast.error("Vui lòng chọn loại dịch vụ!");
+      return;
+    }
+    let appointmentType = values.type;
     let programId = null;
     
     // ✅ Nếu có programId, đảm bảo type = CAMPAIGN_TYPE
@@ -598,16 +651,16 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
         
         {/* ✅ CARD 1: TÌM KIẾM SỐ KHUNG */}
         {!isChassisNumberLoaded && (
-          <Card
+        <Card
             style={{ 
               marginBottom: 24, 
               borderRadius: 12,
               border: "1px solid #e8e8e8",
               boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
             }}
-            bodyStyle={{ padding: "24px" }}>
-            <Form.Item
-              label={
+          bodyStyle={{ padding: "24px" }}>
+      <Form.Item
+                  label={
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
                   <div
                     style={{
@@ -625,68 +678,68 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                   </div>
                   <span style={{ fontSize: 15, fontWeight: 600, color: "#262626" }}>Nhập số khung để tìm thông tin</span>
                 </div>
-              }
-              name='chassisNumber'
+                  }
+                  name='chassisNumber'
               rules={[{ required: true, message: "Nhập số khung!" }]}
               style={{ marginBottom: 0 }}>
               <Row gutter={[12, 0]}>
-                <Col flex="auto">
-                  <Input
+                    <Col flex="auto">
+                      <Input
                     placeholder='Nhập số khung (VIN)'
-                    allowClear
-                    size="large"
+                        allowClear
+                        size="large"
                     style={{
                       borderRadius: 8,
                       fontSize: 14,
                     }}
-                    onPressEnter={(e) => {
-                      const chassisNumber = e.target.value;
+                        onPressEnter={(e) => {
+                          const chassisNumber = e.target.value;
                       handleChassisNumberLookup(chassisNumber, e);
-                    }}
-                  />
-                </Col>
-                <Col>
-                  <Button
-                    type="primary"
-                    icon={<Search size={16} />}
-                    size="large"
-                    danger
+                        }}
+                      />
+                    </Col>
+                    <Col>
+                      <Button
+                        type="primary"
+                        icon={<Search size={16} />}
+                        size="large"
+                        danger
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      const chassisNumber = form.getFieldValue("chassisNumber");
-                      handleChassisNumberLookup(chassisNumber);
-                    }}
+                          const chassisNumber = form.getFieldValue("chassisNumber");
+                          handleChassisNumberLookup(chassisNumber);
+                        }}
                     htmlType="button"
-                    style={{
-                      height: "40px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      whiteSpace: "nowrap",
+                        style={{
+                          height: "40px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          whiteSpace: "nowrap",
                       background: "linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%)",
                       border: "none",
                       borderRadius: 8,
                       boxShadow: "0 2px 8px rgba(255, 77, 79, 0.3)",
-                    }}>
-                    Tìm kiếm
-                  </Button>
-                </Col>
-              </Row>
-            </Form.Item>
+                        }}>
+                        Tìm kiếm
+                      </Button>
+                    </Col>
+                  </Row>
+      </Form.Item>
           </Card>
-        )}
-
+              )}
+              
         {/* ✅ CARD 2: THÔNG TIN KHÁCH HÀNG VÀ XE - CHỈ HIỂN THỊ SAU KHI TÌM THẤY */}
         {isChassisNumberLoaded && vehicleInfo && (
           <>
-            {/* ✅ Hidden field để giữ chassisNumber khi đã load thông tin */}
-            <Form.Item name='chassisNumber' hidden>
-              <Input type='hidden' />
-            </Form.Item>
+              {/* ✅ Hidden field để giữ chassisNumber khi đã load thông tin */}
+                <Form.Item name='chassisNumber' hidden>
+                  <Input type='hidden' />
+      </Form.Item>
 
-            <Card
-              title={
+                        <Card 
+                          title={
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div
                     style={{
@@ -701,7 +754,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                     }}
                   >
                     <Car size={18} color="#fff" />
-                  </div>
+                              </div>
                   <span style={{ fontSize: 16, fontWeight: 600, color: "#262626" }}>
                     Thông tin khách hàng và xe
                   </span>
@@ -719,7 +772,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                 background: "#fafafa",
                 borderRadius: "12px 12px 0 0",
               }}
-              bodyStyle={{ padding: "24px" }}>
+                          bodyStyle={{ padding: "24px" }}>
               <Row gutter={[16, 0]}>
                 <Col xs={24}>
               {/* ✅ Hiển thị thông tin sau khi nhập số khung */}
@@ -728,7 +781,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                   <Row gutter={[20, 20]}>
                     {/* Card khách hàng */}
                     {vehicleInfo.customer && (
-                      <Col xs={24} lg={12}>
+                      <Col xs={24} lg={8}>
                         <Card
                           bodyStyle={{ padding: "20px 24px" }}
                           style={{
@@ -778,7 +831,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                               <Space size={8}>
                                 <Hash size={16} style={{ color: "#ff4d4f" }} />
                                 <Text type="secondary" style={{ fontSize: 14, fontWeight: 600 }}>Mã KH</Text>
-                              </Space>
+                                </Space>
                               <Tag 
                                 color="red" 
                                 style={{ 
@@ -797,9 +850,9 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                               <Space size={8}>
                                 <Phone size={16} style={{ color: "#ff4d4f" }} />
                                 <Text type="secondary" style={{ fontSize: 14, fontWeight: 600 }}>SĐT</Text>
-                              </Space>
+                                </Space>
                               <Text strong style={{ fontSize: 14, color: "#262626" }}>
-                                {vehicleInfo.customer.account?.phone || "N/A"}
+                              {vehicleInfo.customer.account?.phone || "N/A"}
                               </Text>
                             </div>
 
@@ -807,20 +860,20 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                               <Space size={8}>
                                 <Mail size={16} style={{ color: "#ff4d4f" }} />
                                 <Text type="secondary" style={{ fontSize: 14, fontWeight: 600 }}>Email</Text>
-                              </Space>
+                                </Space>
                               <Text strong style={{ fontSize: 14, color: "#262626" }}>
-                                {vehicleInfo.customer.account?.email || "N/A"}
+                              {vehicleInfo.customer.account?.email || "N/A"}
                               </Text>
                             </div>
                           </Space>
                         </Card>
                       </Col>
                     )}
-
+                    
                     {/* Card xe */}
                     {vehicleInfo.vehicle && (
-                      <Col xs={24} lg={12}>
-                        <Card
+                      <Col xs={24} lg={8}>
+                        <Card 
                           bodyStyle={{ padding: "20px 24px" }}
                           style={{
                             borderRadius: 12,
@@ -845,7 +898,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                               }}
                             >
                               <CarFront size={20} color="#fff" />
-                            </div>
+                              </div>
                             <Text strong style={{ fontSize: 16, color: "#262626" }}>
                               Thông tin xe
                             </Text>
@@ -869,7 +922,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                               <Space size={8}>
                                 <Hash size={16} style={{ color: "#ff4d4f" }} />
                                 <Text type="secondary" style={{ fontSize: 14, fontWeight: 600 }}>Số khung</Text>
-                              </Space>
+                            </Space>
                               <Tag 
                                 color="red" 
                                 style={{ 
@@ -887,7 +940,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                               <Text type="secondary" style={{ fontSize: 14, fontWeight: 600 }}>Số máy</Text>
                               <Text strong style={{ fontSize: 14, color: "#262626" }}>
-                                {vehicleInfo.vehicle.engineNumber || "N/A"}
+                              {vehicleInfo.vehicle.engineNumber || "N/A"}
                               </Text>
                             </div>
 
@@ -895,7 +948,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                               <Space size={8}>
                                 <Palette size={16} style={{ color: "#ff4d4f" }} />
                                 <Text type="secondary" style={{ fontSize: 14, fontWeight: 600 }}>Màu sắc</Text>
-                              </Space>
+                                </Space>
                               <Tag 
                                 color="red" 
                                 style={{ 
@@ -913,12 +966,102 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                         </Card>
                       </Col>
                     )}
+                    
+                    {/* Card Giai đoạn bảo dưỡng */}
+                    {vehicleInfo.vehicleStages && vehicleInfo.vehicleStages.some(stage => stage.status === "UPCOMING") && (
+                      <Col xs={24} lg={8}>
+                        <Card
+                          bodyStyle={{ padding: "20px 24px", display: "flex", flexDirection: "column", height: "100%" }}
+                          style={{
+                            borderRadius: 12,
+                            border: "1px solid #e8e8e8",
+                            background: "#fff",
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                            height: "100%",
+                            minHeight: "280px",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
+                            <div
+                              style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: "10px",
+                                background: "linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                marginRight: 12,
+                                boxShadow: "0 2px 8px rgba(255, 77, 79, 0.3)",
+                              }}
+                            >
+                              <Wrench size={20} color="#fff" />
+                            </div>
+                            <Text strong style={{ fontSize: 16, color: "#262626" }}>
+                              Thông tin bảo dưỡng
+                            </Text>
+                          </div>
+                          
+                          <div style={{ 
+                            height: 1, 
+                            background: "linear-gradient(90deg, #e8e8e8 0%, transparent 100%)",
+                            marginBottom: 20 
+                          }} />
+                          
+                          <Space direction="vertical" size={16} style={{ width: "100%", flex: 1, display: "flex" }}>
+                            {vehicleInfo.vehicleStages
+                              .filter(stage => stage.status === "UPCOMING")
+                              .map((stage, index) => (
+                              <div key={stage.id || index} style={{ 
+                                padding: "12px",
+                                background: "#fff7f3",
+                                borderRadius: 8,
+                                border: "1px solid #ffccc7",
+                                marginBottom: index < vehicleInfo.vehicleStages.filter(s => s.status === "UPCOMING").length - 1 ? 12 : 0,
+                                minHeight: "200px",
+                                display: "flex",
+                                flexDirection: "column"
+                              }}>
+                                {/* Tag "Sắp tới" ở hàng riêng trên cùng, căn phải */}
+                                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+                                  <Tag color="orange" style={{ fontSize: 11, padding: "2px 8px" }}>
+                                    Sắp tới
+                                  </Tag>
+                                </div>
+                                
+                                {/* Nội dung 4 field chiếm full card */}
+                                <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                                  {/* Tên mốc bảo dưỡng - cùng một hàng như các field khác */}
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <Text type="secondary" style={{ fontSize: 13, fontWeight: 600 }}>Tên mốc bảo dưỡng</Text>
+                                    <Text strong style={{ fontSize: 13, color: "#262626" }}>
+                                      {stage.maintenanceStageName || `Mốc bảo dưỡng ${index + 1}`}
+                                    </Text>
+                                  </div>
+                                  
+                                  <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-around" }}>
+                                    {stage.expectedImplementationDate && (
+                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                        <Text type="secondary" style={{ fontSize: 13, fontWeight: 600 }}>Ngày dự kiến</Text>
+                                        <Text style={{ fontSize: 13, color: "#262626" }}>
+                                          {dayjs(stage.expectedImplementationDate).format("DD/MM/YYYY")}
+                                        </Text>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </Space>
+                        </Card>
+                      </Col>
+                    )}
                   </Row>
                 </div>
               ) : null}
-                </Col>
-              </Row>
-            </Card>
+            </Col>
+          </Row>
+        </Card>
           </>
         )}
 
@@ -930,96 +1073,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
         {/* ✅ Ẩn tất cả form items khi chưa nhập số khung */}
         {isChassisNumberLoaded && (
           <>
-        {/* ✅ CARD 3: THỜI GIAN HẸN */}
-        <Card
-          title={
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "10px",
-                  background: "linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 2px 8px rgba(255, 77, 79, 0.3)",
-                }}
-              >
-                <Calendar size={18} color="#fff" />
-              </div>
-              <span style={{ fontSize: 16, fontWeight: 600, color: "#262626" }}>
-                Thời gian hẹn
-              </span>
-            </div>
-          }
-          style={{ 
-            marginBottom: 24, 
-            borderRadius: 12,
-            border: "1px solid #e8e8e8",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-          }}
-          headStyle={{ 
-            borderBottom: "1px solid #f0f0f0", 
-            padding: "20px 24px",
-            background: "#fafafa",
-            borderRadius: "12px 12px 0 0",
-          }}
-          bodyStyle={{ padding: "24px" }}>
-          <Row gutter={[16, 0]}>
-            <Col xs={24} md={12}>
-      <Form.Item
-                label={
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Calendar size={16} style={{ color: "#ff4d4f" }} />
-                    <span style={{ fontSize: 14, fontWeight: 500, color: "#262626" }}>Ngày hẹn</span>
-                  </div>
-                }
-        name='appointmentDate'
-        rules={[{ required: true, message: "Chọn ngày hẹn!" }]}>
-                <DatePicker
-                  style={{ 
-                    width: "100%",
-                    borderRadius: 8,
-                  }}
-                  onChange={handleDateChange}
-                  format="DD/MM/YYYY"
-                  placeholder="Chọn ngày hẹn"
-                  disabledDate={disabledDate}
-                  disabled={!isChassisNumberLoaded}
-                />
-      </Form.Item>
-            </Col>
-
-            <Col xs={24} md={12}>
-      <Form.Item
-                label={
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Clock size={16} style={{ color: "#ff4d4f" }} />
-                    <span style={{ fontSize: 14, fontWeight: 500, color: "#262626" }}>Khung giờ</span>
-                  </div>
-                }
-        name='slotTime'
-        rules={[{ required: true, message: "Chọn khung giờ!" }]}>
-        <Select
-                  placeholder="Chọn khung giờ"
-                  disabled={!isChassisNumberLoaded || !availableSlots.length}
-                  style={{ 
-                    width: "100%",
-                    borderRadius: 8,
-                  }}>
-          {availableSlots.map((slot) => (
-            <Option key={slot.id} value={slot.slotTime}>
-                      {SLOT_LABEL_MAP[slot.slotTime] || slot.slotTime}
-            </Option>
-          ))}
-        </Select>
-      </Form.Item>
-            </Col>
-          </Row>
-        </Card>
-
-        {/* ✅ CARD 4: LOẠI DỊCH VỤ VÀ THÔNG TIN BỔ SUNG */}
+        {/* ✅ CARD 3: LOẠI DỊCH VỤ VÀ THÔNG TIN BỔ SUNG */}
         <Card
           title={
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1181,49 +1235,163 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                       width: "100%",
                       borderRadius: 8,
                     }}>
-                    {vehicleStages.map((stage) => (
+                    {vehicleStages
+                      .sort((a, b) => {
+                        // ✅ Sắp xếp: UPCOMING trước, NO_START sau
+                        const statusA = (a.status || "").toUpperCase();
+                        const statusB = (b.status || "").toUpperCase();
+                        if (statusA === "UPCOMING" && statusB !== "UPCOMING") return -1;
+                        if (statusA !== "UPCOMING" && statusB === "UPCOMING") return 1;
+                        return 0;
+                      })
+                      .map((stage) => {
+                        const status = (stage.status || "").toUpperCase();
+                        const statusLabel = status === "UPCOMING" ? "Sắp tới" : status === "NO_START" ? "Chưa bắt đầu" : "";
+                        const isUpcoming = status === "UPCOMING";
+                        
+                        return (
                       <Option key={stage.id} value={stage.id}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span>
                         {stage.maintenanceStage?.name || "Mốc bảo dưỡng"} -{" "}
                         {stage.maintenanceStage?.mileage || ""}
-                        {stage.dateOfImplementation
-                          ? ` (${new Date(stage.dateOfImplementation).toLocaleDateString("vi-VN")})`
-                          : ""}
+                              </span>
+                              {statusLabel && (
+                                <Tag color={isUpcoming ? "red" : "default"} style={{ margin: 0 }}>
+                                  {statusLabel}
+                                </Tag>
+                              )}
+                            </div>
                       </Option>
-                    ))}
+                        );
+                      })}
         </Select>
       </Form.Item>
               </Col>
             )}
           </Row>
 
-          <div style={{ 
-            height: 1, 
-            background: "linear-gradient(90deg, transparent 0%, #e8e8e8 20%, #e8e8e8 80%, transparent 100%)",
-            margin: "24px 0" 
-          }} />
+          {/* ✅ GHI CHÚ - Chỉ hiện khi type = REPAIR_TYPE */}
+          {form.getFieldValue("type") === "REPAIR_TYPE" && (
+            <>
+              <div style={{ 
+                height: 1, 
+                background: "linear-gradient(90deg, transparent 0%, #e8e8e8 20%, #e8e8e8 80%, transparent 100%)",
+                margin: "24px 0" 
+              }} />
 
           <Form.Item
             label={
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <FileText size={16} style={{ color: "#ff4d4f" }} />
-                <span style={{ fontSize: 14, fontWeight: 500, color: "#262626" }}>
-                  {form.getFieldValue("type") === "REPAIR_TYPE" ? "Tình trạng xe" : "Ghi chú"}
-                </span>
-              </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <FileText size={16} style={{ color: "#ff4d4f" }} />
+                    <span style={{ fontSize: 14, fontWeight: 500, color: "#262626" }}>
+Nội dung sửa chữa                    </span>
+                  </div>
             }
             name='note'>
             <Input.TextArea
               rows={4}
-              placeholder={form.getFieldValue("type") === "REPAIR_TYPE" ? "Nhập tình trạng xe" : "Nhập ghi chú thêm (nếu có)"}
+                  placeholder="Nhập tình trạng xe"
               showCount
               maxLength={500}
               disabled={!isChassisNumberLoaded}
-              style={{
-                borderRadius: 8,
-                fontSize: 14,
-              }}
+                  style={{
+                    borderRadius: 8,
+                    fontSize: 14,
+                  }}
             />
           </Form.Item>
+            </>
+          )}
+        </Card>
+
+        {/* ✅ CARD 4: THỜI GIAN HẸN */}
+        <Card
+          title={
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "10px",
+                  background: "linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 2px 8px rgba(255, 77, 79, 0.3)",
+                }}
+              >
+                <Calendar size={18} color="#fff" />
+              </div>
+              <span style={{ fontSize: 16, fontWeight: 600, color: "#262626" }}>
+                Thời gian hẹn
+              </span>
+            </div>
+          }
+          style={{ 
+            marginBottom: 24, 
+            borderRadius: 12,
+            border: "1px solid #e8e8e8",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+          }}
+          headStyle={{ 
+            borderBottom: "1px solid #f0f0f0", 
+            padding: "20px 24px",
+            background: "#fafafa",
+            borderRadius: "12px 12px 0 0",
+          }}
+          bodyStyle={{ padding: "24px" }}>
+          <Row gutter={[16, 0]}>
+            <Col xs={24} md={12}>
+      <Form.Item
+                label={
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Calendar size={16} style={{ color: "#ff4d4f" }} />
+                    <span style={{ fontSize: 14, fontWeight: 500, color: "#262626" }}>Ngày hẹn</span>
+                  </div>
+                }
+        name='appointmentDate'
+        rules={[{ required: true, message: "Chọn ngày hẹn!" }]}>
+                <DatePicker
+                  style={{ 
+                    width: "100%",
+                    borderRadius: 8,
+                  }}
+                  onChange={handleDateChange}
+                  format="DD/MM/YYYY"
+                  placeholder="Chọn ngày hẹn"
+                  disabledDate={disabledDate}
+                  disabled={!isChassisNumberLoaded}
+                />
+      </Form.Item>
+            </Col>
+
+            <Col xs={24} md={12}>
+      <Form.Item
+                label={
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Clock size={16} style={{ color: "#ff4d4f" }} />
+                    <span style={{ fontSize: 14, fontWeight: 500, color: "#262626" }}>Khung giờ</span>
+                  </div>
+                }
+        name='slotTime'
+        rules={[{ required: true, message: "Chọn khung giờ!" }]}>
+        <Select
+                  placeholder="Chọn khung giờ"
+                  disabled={!isChassisNumberLoaded || !availableSlots.length}
+                  style={{ 
+                    width: "100%",
+                    borderRadius: 8,
+                  }}>
+          {availableSlots.map((slot) => (
+            <Option key={slot.id} value={slot.slotTime}>
+                      {SLOT_LABEL_MAP[slot.slotTime] || slot.slotTime}
+            </Option>
+          ))}
+        </Select>
+      </Form.Item>
+            </Col>
+          </Row>
         </Card>
 
         {/* ✅ BUTTON SUBMIT */}

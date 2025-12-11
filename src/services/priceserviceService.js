@@ -31,28 +31,29 @@ export const fetchPriceServices = async (params = {}) => {
 };
 
 /**
- * 🔹 Lấy giá dịch vụ (price) theo partTypeId và remedies
+ * 🔹 Lấy giá dịch vụ hoặc phí gia công theo partTypeId và remedies
  * - Dùng cache để tối ưu
  * - Lọc phần tử mới nhất theo effectiveDate nếu có nhiều bản ghi
- * - Lấy trường "price" (giá dịch vụ) thay vì "laborCost" (phí gia công)
+ * - Có thể lấy "price" (giá dịch vụ) hoặc "laborCost" (phí gia công)
  * @param {string} partTypeId - ID của loại phụ tùng
- * @param {('NONE'|'CHECK'|'REPAIR'|'REPLACE')} remedies - Biện pháp sửa chữa
- * @returns {Promise<number>} price (giá dịch vụ) hoặc 0 nếu không có
+ * @param {('NONE'|'CLEAN'|'TUNE'|'REPAIR'|'REPLACE'|'WARRANTY')} remedies - Biện pháp sửa chữa
+ * @param {string} field - Field cần lấy: "laborCost" (mặc định) hoặc "price"
+ * @returns {Promise<number>} laborCost hoặc price hoặc 0 nếu không có
  */
-export const getLaborCostByRemediesService = async (partTypeId, remedies) => {
+export const getLaborCostByRemediesService = async (partTypeId, remedies, field = "laborCost") => {
   if (!remedies) return 0;
   if (!partTypeId) {
     console.warn("⚠️ getLaborCostByRemediesService: thiếu partTypeId, trả về 0");
     return 0;
   }
 
-  // ✅ Tạo cache key từ partTypeId và remedies
-  const cacheKey = `${partTypeId}_${remedies}`;
+  // ✅ Tạo cache key từ partTypeId, remedies và field
+  const cacheKey = `${partTypeId}_${remedies}_${field}`;
   if (laborCostCache.has(cacheKey)) return laborCostCache.get(cacheKey);
 
   try {
     // ✅ Gọi API với partTypeId và remedies
-    console.log(`📞 [getLaborCostByRemediesService] Gọi API với partTypeId: ${partTypeId}, remedies: ${remedies}`);
+    console.log(`📞 [getLaborCostByRemediesService] Gọi API với partTypeId: ${partTypeId}, remedies: ${remedies}, field: ${field}`);
     const res = await getPriceServices({ 
       page: 1, 
       pageSize: 50, 
@@ -84,9 +85,9 @@ export const getLaborCostByRemediesService = async (partTypeId, remedies) => {
         new Date(a.effectiveDate || 0).getTime()
     )[0];
 
-    // ✅ Lấy price (giá dịch vụ) thay vì laborCost (phí gia công)
-    const cost = Number(latest?.price || 0);
-    console.log(`✅ [getLaborCostByRemediesService] Đã lấy được price (giá dịch vụ): ${cost} từ price service:`, latest);
+    // ✅ Lấy giá trị theo field được chỉ định (mặc định là laborCost)
+    const cost = Number(latest?.[field] || latest?.laborCost || latest?.price || 0);
+    console.log(`✅ [getLaborCostByRemediesService] Đã lấy được ${field}: ${cost} từ price service:`, latest);
     laborCostCache.set(cacheKey, cost);
     return cost;
   } catch (err) {

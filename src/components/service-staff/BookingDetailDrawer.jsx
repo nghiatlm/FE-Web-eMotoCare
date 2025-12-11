@@ -1,5 +1,5 @@
 import { STATUS_COLORS, STATUS_MAP } from "../../utils/constants";
-import { Drawer, Button, Tag, Divider, Select } from "antd";
+import { Drawer, Button, Tag, Divider, Select, Input } from "antd";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
@@ -62,6 +62,7 @@ export default function BookingDetailDrawer({
   const [currentEVCheckId, setCurrentEVCheckId] = useState(null);
   const [showTechnicianDrawer, setShowTechnicianDrawer] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [checkinCodeInput, setCheckinCodeInput] = useState(""); // ✅ Mã appointment nhập vào để check-in
 
   const status = booking?.status?.toUpperCase();
 
@@ -156,6 +157,18 @@ export default function BookingDetailDrawer({
       return;
     }
 
+    // ✅ Validate mã appointment nhập vào
+    if (!checkinCodeInput || checkinCodeInput.trim() === "") {
+      toast.error("Vui lòng nhập mã lịch hẹn để check-in!");
+      return;
+    }
+
+    // ✅ Kiểm tra mã có khớp với mã booking không
+    if (checkinCodeInput.trim().toUpperCase() !== booking.code?.toUpperCase()) {
+      toast.error("Mã lịch hẹn không khớp! Vui lòng kiểm tra lại.");
+      return;
+    }
+
     try {
       await changeAppointmentStatusService(booking.id, "CHECKED_IN", {
         code: booking.code,
@@ -166,6 +179,7 @@ export default function BookingDetailDrawer({
 
       toast.success("Check-in thành công!");
       onUpdateStatus?.(booking.id, "CHECKED_IN");
+      setCheckinCodeInput(""); // ✅ Reset input sau khi check-in thành công
       onClose();
     } catch (error) {
       console.error("Lỗi check-in:", error);
@@ -232,14 +246,26 @@ export default function BookingDetailDrawer({
               </p>
 
               {/* MANUAL CHECK-IN BUTTON */}
-              <div className='mt-6 text-center'>
+              <div className='mt-6 flex flex-col gap-4 items-center'>
+                <div className='w-full max-w-md'>
+                  <Input
+                    placeholder="Nhập mã lịch hẹn để check-in"
+                    value={checkinCodeInput}
+                    onChange={(e) => setCheckinCodeInput(e.target.value)}
+                    onPressEnter={handleManualCheckIn}
+                    size="large"
+                    className="text-center uppercase"
+                    allowClear
+                  />
+                </div>
                 <Button
                   type='primary'
                   size='large'
                   danger
                   onClick={handleManualCheckIn}
+                  disabled={!checkinCodeInput || checkinCodeInput.trim() === ""}
                   style={{ minWidth: 200 }}>
-                  Check-in ngay
+                  Check-in
                 </Button>
               </div>
             </section>
@@ -276,7 +302,7 @@ export default function BookingDetailDrawer({
                   value={selectedTechnician?.id}
                   options={technicians.map((t) => ({
                     value: t.id,
-                    label: `${t.firstName} ${t.lastName}${t.staffCode ? ` (${t.staffCode})` : ''}`,
+                    label: `${t.firstName} ${t.lastName}${t.staffCode ? ` - ${t.staffCode}` : ''}`,
                   }))}
                   onChange={(value) =>
                     setSelectedTechnician(technicians.find((t) => t.id === value))
@@ -293,7 +319,7 @@ export default function BookingDetailDrawer({
                 }}>
                   <p style={{ margin: 0, fontSize: 14, color: "#595959" }}>
                     Đã chọn: <strong>{selectedTechnician.firstName} {selectedTechnician.lastName}</strong>
-                    {selectedTechnician.staffCode && ` (${selectedTechnician.staffCode})`}
+                    {selectedTechnician.staffCode && ` - ${selectedTechnician.staffCode}`}
                   </p>
                 </div>
               )}
@@ -334,7 +360,7 @@ export default function BookingDetailDrawer({
                 <strong>{booking.technician.firstName} {booking.technician.lastName}</strong>
                 {booking.technician.staffCode && (
                   <span style={{ color: "#8c8c8c", marginLeft: 8 }}>
-                    ({booking.technician.staffCode})
+                    - {booking.technician.staffCode}
                   </span>
                 )}
               </p>
@@ -343,7 +369,7 @@ export default function BookingDetailDrawer({
 
           <section className='bg-white rounded-2xl shadow-md p-5 mb-6 border'>
             <h3 className='font-semibold mb-3 border-b pb-2 text-[#d4380d]'>
-              Kết quả kiểm tra EVCheck
+              Kết quả kiểm tra phiếu sửa chữa
             </h3>
             {!booking.technician ? (
               <div className='text-center text-gray-500 italic py-4'>

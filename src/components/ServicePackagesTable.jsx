@@ -68,7 +68,7 @@ export default function ServicePackagesTable({ search = "", category = "", statu
     if (remedies === "REPAIR" || remedies === "REPLACE") {
       return "Repair";
     }
-    if (remedies === "CHECK") {
+    if (remedies === "CLEAN" || remedies === "TUNE") {
       return "Maintenance";
     }
     if (remedies === "NONE") {
