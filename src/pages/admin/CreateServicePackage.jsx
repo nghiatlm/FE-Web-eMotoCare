@@ -23,7 +23,6 @@ export default function CreateServicePackage() {
   const [loadingPartTypes, setLoadingPartTypes] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // Get partTypeId from navigation state
   const { partTypeId: preSelectedPartTypeId, partTypeName: preSelectedPartTypeName } = location.state || {};
 
   const [form, setForm] = useState({

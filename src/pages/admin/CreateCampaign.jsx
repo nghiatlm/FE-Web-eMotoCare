@@ -14,7 +14,7 @@ import { vi } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { createCampaign } from "@/api/campaignsApi";
 import { getModels } from "@/api/modelsApi";
-import { getParts } from "@/api/partsApi";
+import { getParts, getModelParts } from "@/api/partsApi";
 import { SERVICE_TYPE_MAP } from "@/utils/constants";
 import { toast } from "react-toastify";
 import { authService } from "@/services/authService";
@@ -36,6 +36,9 @@ export default function CreateCampaign() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
   const [attachmentName, setAttachmentName] = useState("");
+  const [programItems, setProgramItems] = useState([
+    { modelId: "", partIds: [], parts: [], loading: false, error: "" },
+  ]);
 
   const [form, setForm] = useState({
     type: "RECALL", // Theo API documentation
@@ -44,8 +47,6 @@ export default function CreateCampaign() {
     startDate: null,
     endDate: null,
     attachmentUrl: "",
-    vehicleModelId: "",
-    recallPartId: "",
     discountPercent: 0,
     bonusAmount: 0,
     recallAction: "",
@@ -96,13 +97,12 @@ export default function CreateCampaign() {
   }, []);
 
   const handleChange = (field, value) => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
-    // Clear error when user types
     if (errors[field]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[field];
         return newErrors;
@@ -200,14 +200,13 @@ export default function CreateCampaign() {
       newErrors.endDate = "Ngày kết thúc phải sau ngày bắt đầu";
       }
     }
-    
-    if (!form.vehicleModelId) {
-      newErrors.vehicleModelId = "Vui lòng chọn model xe";
-    }
-    
-    if (!form.recallPartId) {
-      newErrors.recallPartId = "Vui lòng chọn phụ tùng";
-    }
+
+    programItems.forEach((item, idx) => {
+      if (!item.modelId) newErrors[`program_model_${idx}`] = "Vui lòng chọn model";
+      if (form.type === "RECALL" && (!item.partIds || item.partIds.length === 0)) {
+        newErrors[`program_part_${idx}`] = "Vui lòng chọn ít nhất 1 phụ tùng cho model này";
+      }
+    });
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -285,20 +284,21 @@ export default function CreateCampaign() {
         attachmentUrl: attachmentUrl || undefined,
         createdBy: userId,
         updatedBy: userId,
-        vehicleModels: [
-          {
-            vehicleModelId: form.vehicleModelId
-          }
-        ],
-        programDetails: [
-          {
-            recallPartId: form.recallPartId,
-            serviceType: "CAMPAIGN_TYPE",
-            discountPercent: form.discountPercent || 0,
-            bonusAmount: form.bonusAmount || 0,
-            recallAction: form.recallAction || ""
-          }
-        ]
+        vehicleModels: Array.from(
+          new Set(programItems.map((item) => item.modelId).filter(Boolean))
+        ).map((id) => ({ vehicleModelId: id })),
+        programDetails: programItems.reduce((arr, item) => {
+          (item.partIds || []).forEach((pid) => {
+            arr.push({
+              recallPartId: pid,
+              serviceType: "CAMPAIGN_TYPE",
+              discountPercent: Number(form.discountPercent) || 0,
+              bonusAmount: Number(form.bonusAmount) || 0,
+              recallAction: form.recallAction || (form.type === "RECALL" ? "Thu hồi" : ""),
+            });
+          });
+          return arr;
+        }, []),
       };
       
       const response = await createCampaign(payload);
@@ -365,6 +365,26 @@ export default function CreateCampaign() {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-5 space-y-4">
+              {/* Loại chiến dịch */}
+              <div className="space-y-2">
+                <Label htmlFor="type" className="flex items-center gap-1.5 text-sm font-medium">
+                  <Tag className="h-3.5 w-3.5 text-primary/70" />
+                  Loại chiến dịch <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={form.type}
+                  onValueChange={(value) => handleChange("type", value)}
+                >
+                  <SelectTrigger className="h-10 text-sm border-slate-200 dark:border-slate-700 hover:border-primary/40 focus:border-primary focus:ring-primary/20 transition-all">
+                    <SelectValue placeholder="Chọn loại chiến dịch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="RECALL">Thu hồi</SelectItem>
+                    <SelectItem value="CAMPAIGN">Chiến dịch</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Tiêu đề */}
               <div className="space-y-2">
                 <Label htmlFor="title" className="flex items-center gap-1.5 text-sm font-medium">
@@ -534,93 +554,151 @@ export default function CreateCampaign() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="vehicleModelId" className="flex items-center gap-1.5 text-sm font-medium">
-                    <Car className="h-3.5 w-3.5 text-primary/70" />
-                    Model xe <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={form.vehicleModelId}
-                    onValueChange={(value) => handleChange("vehicleModelId", value)}
-                    disabled={loadingModels}
-                  >
-                    <SelectTrigger className={cn(
-                      "h-10 text-sm transition-all",
-                      errors.vehicleModelId 
-                        ? "border-red-300 focus:border-red-500 focus:ring-red-500/20" 
-                        : "border-slate-200 dark:border-slate-700 hover:border-primary/40 focus:border-primary focus:ring-primary/20"
-                    )}>
-                      <SelectValue placeholder={loadingModels ? "Đang tải..." : "Chọn model xe"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {models.map((model) => (
-                        <SelectItem key={model.id} value={model.id}>
-                          {model.name || model.code || model.id}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.vehicleModelId && (
-                    <p className="text-xs text-red-500 flex items-center gap-1">
-                      <span>•</span>
-                      {errors.vehicleModelId}
-                    </p>
-                  )}
-                </div>
+                <div className="space-y-2 md:col-span-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Car className="h-4 w-4 text-primary/70" />
+                      <p className="text-sm font-semibold">Model & phụ tùng</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                    setProgramItems((prev) => [...prev, { modelId: "", partIds: [], parts: [], loading: false, error: "" }])
+                      }
+                    >
+                      Thêm model/phụ tùng
+                    </Button>
+                  </div>
 
-              <div className="space-y-2">
-                  <Label htmlFor="recallPartId" className="flex items-center gap-1.5 text-sm font-medium">
-                    <Package className="h-3.5 w-3.5 text-primary/70" />
-                    Phụ tùng <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={form.recallPartId}
-                    onValueChange={(value) => handleChange("recallPartId", value)}
-                    disabled={loadingParts}
-                  >
-                    <SelectTrigger className={cn(
-                      "h-10 text-sm transition-all",
-                      errors.recallPartId 
-                        ? "border-red-300 focus:border-red-500 focus:ring-red-500/20" 
-                        : "border-slate-200 dark:border-slate-700 hover:border-primary/40 focus:border-primary focus:ring-primary/20"
-                    )}>
-                      <SelectValue placeholder={loadingParts ? "Đang tải..." : "Chọn phụ tùng"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {parts.map((part) => (
-                        <SelectItem key={part.id} value={part.id}>
-                          {part.name || part.code || part.id}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.recallPartId && (
-                    <p className="text-xs text-red-500 flex items-center gap-1">
-                      <span>•</span>
-                      {errors.recallPartId}
-                    </p>
-                  )}
+                  <div className="space-y-3">
+                    {programItems.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/50 p-3 space-y-3"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="text-xs text-slate-500">Cặp #{idx + 1}</div>
+                          {programItems.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                setProgramItems((prev) => prev.filter((_, i) => i !== idx))
+                              }
+                              className="text-red-500 hover:text-red-600"
+                            >
+                              Xóa
+                            </Button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Model</Label>
+                            <Select
+                              value={item.modelId}
+                              onValueChange={async (val) => {
+                                setProgramItems((prev) =>
+                                  prev.map((p, i) =>
+                                    i === idx ? { ...p, modelId: val, partIds: [], parts: [], loading: true } : p
+                                  )
+                                );
+                                try {
+                                  const res = await getModelParts({ modelId: val, page: 1, pageSize: 100 });
+                                  const list = res?.data?.rowDatas || res?.data || [];
+                                  setProgramItems((prev) =>
+                                    prev.map((p, i) =>
+                                      i === idx ? { ...p, parts: list, loading: false } : p
+                                    )
+                                  );
+                                } catch (err) {
+                                  setProgramItems((prev) =>
+                                    prev.map((p, i) =>
+                                      i === idx ? { ...p, loading: false, error: "Không tải được phụ tùng" } : p
+                                    )
+                                  );
+                                  toast.error("Lỗi: Không tải được phụ tùng theo model");
+                                }
+                              }}
+                              disabled={loadingModels}
+                            >
+                              <SelectTrigger className="h-10 text-sm">
+                                <SelectValue placeholder={loadingModels ? "Đang tải..." : "Chọn model"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {models.map((model) => (
+                                  <SelectItem key={model.id} value={model.id}>
+                                    {model.name || model.code || model.id}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {errors[`program_model_${idx}`] && (
+                              <p className="text-xs text-red-500 flex items-center gap-1">
+                                <span>•</span>
+                                {errors[`program_model_${idx}`]}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Phụ tùng (nhiều)</Label>
+                            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-900/40 p-3 space-y-2 max-h-56 overflow-auto">
+                              {item.loading ? (
+                                <p className="text-xs text-muted-foreground">Đang tải...</p>
+                              ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pr-1">
+                                  {(item.parts || []).map((part) => (
+                                    <label
+                                      key={part.partId || part.id}
+                                      className={cn(
+                                        "flex items-center gap-2 text-sm rounded-lg border px-3 py-2 transition-all cursor-pointer",
+                                        item.partIds?.includes(part.partId || part.id)
+                                          ? "bg-primary/5 border-primary/40 text-primary font-semibold"
+                                          : "bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-700 hover:border-primary/50 text-slate-700 dark:text-slate-200"
+                                      )}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/30"
+                                        checked={item.partIds?.includes(part.partId || part.id)}
+                                        onChange={() =>
+                                          setProgramItems((prev) =>
+                                            prev.map((p, i) =>
+                                              i === idx
+                                                ? {
+                                                    ...p,
+                                                    partIds: p.partIds?.includes(part.partId || part.id)
+                                                      ? p.partIds.filter((x) => x !== (part.partId || part.id))
+                                                      : [...(p.partIds || []), part.partId || part.id],
+                                                  }
+                                                : p
+                                            )
+                                          )
+                                        }
+                                      />
+                                      <span>{part.partName || part.name || part.partId || part.id}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            {errors[`program_part_${idx}`] && (
+                              <p className="text-xs text-red-500 flex items-center gap-1">
+                                <span>•</span>
+                                {errors[`program_part_${idx}`]}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               
-                <div className="space-y-2">
-                  <Label htmlFor="type" className="flex items-center gap-1.5 text-sm font-medium">
-                    <Tag className="h-3.5 w-3.5 text-primary/70" />
-                    Loại chiến dịch <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={form.type}
-                    onValueChange={(value) => handleChange("type", value)}
-                  >
-                    <SelectTrigger className="h-10 text-sm border-slate-200 dark:border-slate-700 hover:border-primary/40 focus:border-primary focus:ring-primary/20 transition-all">
-                      <SelectValue placeholder="Chọn loại chiến dịch" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="RECALL">Triệu hồi</SelectItem>
-                      <SelectItem value="CAMPAIGN">Chiến dịch</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="serviceType" className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                     <Tag className="h-3.5 w-3.5 text-muted-foreground/70" />

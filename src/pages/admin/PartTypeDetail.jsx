@@ -31,7 +31,6 @@ export default function PartTypeDetail() {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   
-  // Edit dialog state
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingPriceService, setEditingPriceService] = useState(null);
   const [loadingEdit, setLoadingEdit] = useState(false);
@@ -47,7 +46,6 @@ export default function PartTypeDetail() {
   });
   const [editErrors, setEditErrors] = useState({});
 
-  // Form state - partTypeId tự động từ URL params
   const [form, setForm] = useState({
     partTypeId: id || "",
     code: "",
@@ -94,14 +92,12 @@ export default function PartTypeDetail() {
     }
   }, [id, navigate, toast]);
 
-  // Update form.partTypeId when id changes
   useEffect(() => {
     if (id) {
       setForm(prev => ({ ...prev, partTypeId: id }));
     }
   }, [id]);
 
-  // Fetch service packages for this part type
   const fetchServicePackages = useCallback(async () => {
     if (!id) return;
     
@@ -111,7 +107,6 @@ export default function PartTypeDetail() {
       
       const packages = response?.data?.rowDatas || response?.rowDatas || [];
       
-      // Filter packages by partTypeId
       const filtered = packages.filter(pkg => pkg.partTypeId === id);
       setServicePackages(filtered);
     } catch (error) {
@@ -130,7 +125,6 @@ export default function PartTypeDetail() {
     fetchServicePackages();
   }, [fetchServicePackages]);
 
-  // Format price
   const formatPrice = (price) => {
     return new Intl.NumberFormat('vi-VN').format(price || 0);
   };
@@ -142,12 +136,11 @@ export default function PartTypeDetail() {
       "CLEAN": "Vệ sinh",
       "TUNE": "Điều chỉnh",
       "WARRANTY": "Bảo hành",
-      "NONE": "Không có"
+      "NONE": "Bôi trơn"
     };
     return map[remedies] || remedies;
   };
 
-  // Format date
   const formatDate = (dateString) => {
     if (!dateString) return "—";
     try {
@@ -157,7 +150,6 @@ export default function PartTypeDetail() {
     }
   };
 
-  // Validation functions
   const validateField = (name, value) => {
     const newErrors = { ...errors };
     
@@ -321,7 +313,6 @@ export default function PartTypeDetail() {
           autoClose: 4000,
         });
         
-        // Reset form
         setForm({
           partTypeId: id,
           code: "",
@@ -336,7 +327,6 @@ export default function PartTypeDetail() {
         setErrors({});
         setShowForm(false);
         
-        // Refresh service packages list
         await fetchServicePackages();
       } else {
         throw new Error(response?.message || "Tạo thất bại");
@@ -369,24 +359,21 @@ export default function PartTypeDetail() {
     setShowForm(false);
   };
 
-  // Handle open edit dialog
   const handleOpenEditDialog = async (priceService) => {
     try {
       setLoadingEdit(true);
       setIsEditDialogOpen(true);
       setEditingPriceService(priceService);
       
-      // Fetch full price service data
       const response = await getPriceServiceById(priceService.id || priceService.rawData?.id);
       const data = response?.data || response || priceService.rawData || priceService;
       
-      // Parse effective date and time
       let effectiveDate = null;
       let effectiveTime = "";
       if (data.effectiveDate) {
         const dateObj = new Date(data.effectiveDate);
         effectiveDate = dateObj;
-        effectiveTime = dateObj.toTimeString().slice(0, 5); // HH:mm
+        effectiveTime = dateObj.toTimeString().slice(0, 5);
       }
       
       setEditForm({
@@ -412,13 +399,11 @@ export default function PartTypeDetail() {
     }
   };
 
-  // Handle edit submit
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     
     if (!editingPriceService) return;
     
-    // Validate
     const newErrors = {};
     if (!editForm.name || !editForm.name.trim()) {
       newErrors.name = "Vui lòng nhập tên dịch vụ";
@@ -469,7 +454,6 @@ export default function PartTypeDetail() {
         setIsEditDialogOpen(false);
         setEditingPriceService(null);
         
-        // Refresh service packages list
         await fetchServicePackages();
       } else {
         throw new Error(response?.message || "Cập nhật thất bại");
@@ -504,7 +488,6 @@ export default function PartTypeDetail() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-slate-50">
       <div className="px-4 md:px-6 lg:px-8 py-6 max-w-[1400px] w-full mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <Button
             variant="ghost"
@@ -523,7 +506,6 @@ export default function PartTypeDetail() {
           <div className="mt-3 h-[2px] w-24 rounded-full bg-red-500/70" />
         </div>
 
-        {/* Part Type Information */}
         <Card className="mb-6 rounded-xl border border-slate-200 shadow-sm bg-white">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -596,7 +578,6 @@ export default function PartTypeDetail() {
           {showForm && (
             <CardContent data-form-card>
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Loại phụ tùng - Disabled vì tự động */}
                 <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Package className="h-4 w-4 text-primary" />
@@ -683,7 +664,6 @@ export default function PartTypeDetail() {
                   </div>
                 </div>
 
-                {/* Loại dịch vụ và Ngày hiệu lực */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Loại dịch vụ <span className="text-red-500">*</span></Label>
@@ -697,7 +677,7 @@ export default function PartTypeDetail() {
                         <SelectItem value="CLEAN">Vệ sinh</SelectItem>
                         <SelectItem value="TUNE">Điều chỉnh</SelectItem>
                         <SelectItem value="WARRANTY">Bảo hành</SelectItem>
-                        <SelectItem value="NONE">Không có</SelectItem>
+                        <SelectItem value="NONE">Bôi trơn</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -874,7 +854,6 @@ export default function PartTypeDetail() {
           </CardContent>
         </Card>
 
-        {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -890,7 +869,6 @@ export default function PartTypeDetail() {
               </div>
             ) : (
               <form onSubmit={handleEditSubmit} className="space-y-4">
-                {/* Name */}
                 <div className="space-y-2">
                   <Label htmlFor="edit-name">
                     Tên dịch vụ <span className="text-red-500">*</span>
@@ -912,7 +890,6 @@ export default function PartTypeDetail() {
                   )}
                 </div>
 
-                {/* Remedies */}
                 <div className="space-y-2">
                   <Label htmlFor="edit-remedies">Loại dịch vụ</Label>
                   <Select
@@ -925,7 +902,9 @@ export default function PartTypeDetail() {
                     <SelectContent>
                       <SelectItem value="REPAIR">Sửa chữa</SelectItem>
                       <SelectItem value="REPLACE">Thay thế</SelectItem>
-                      <SelectItem value="CHECK">Kiểm tra</SelectItem>
+                      <SelectItem value="CLEAN">Vệ sinh</SelectItem>
+                      <SelectItem value="TUNE">Điều chỉnh</SelectItem>
+                      <SelectItem value="WARRANTY">Bảo hành</SelectItem>
                       <SelectItem value="NONE">Bôi trơn</SelectItem>
                     </SelectContent>
                   </Select>
@@ -954,7 +933,6 @@ export default function PartTypeDetail() {
                   )}
                 </div>
 
-                {/* Labor Cost */}
                 <div className="space-y-2">
                   <Label htmlFor="edit-laborCost">Chi phí lao động (VNĐ)</Label>
                   <Input
@@ -967,7 +945,6 @@ export default function PartTypeDetail() {
                   />
                 </div>
 
-                {/* Effective Date & Time */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Ngày hiệu lực</Label>
@@ -1001,7 +978,6 @@ export default function PartTypeDetail() {
                   </div>
                 </div>
 
-                {/* Description */}
                 <div className="space-y-2">
                   <Label htmlFor="edit-description">Mô tả</Label>
                   <Textarea

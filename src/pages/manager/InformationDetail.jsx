@@ -121,6 +121,18 @@ export default function InformationDetail() {
     return days[dayOfWeek] || dayOfWeek;
   };
 
+  const InfoItem = ({ icon: Icon, label, value }) => (
+    <div className="flex gap-3 p-3 rounded-lg border border-rose-50 bg-rose-50/50 hover:border-rose-100 transition-colors">
+      <div className="h-10 w-10 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center flex-shrink-0">
+        <Icon className="h-5 w-5" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
+        <p className="text-sm font-semibold text-slate-900 break-words">{value || "—"}</p>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-8 flex items-center justify-center">
@@ -242,55 +254,41 @@ export default function InformationDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-8">
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-rose-50/60 p-6 lg:p-8">
       <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Thông tin Chi tiết Trung tâm</h1>
-          <p className="text-muted-foreground">Thông tin chi tiết về trung tâm dịch vụ</p>
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-3 px-3 py-1.5 rounded-full bg-rose-100 text-rose-700 text-sm font-semibold shadow-sm">
+            <Building2 className="h-4 w-4" />
+            Thông tin trung tâm
+          </div>
+          <div>
+            <h1 className="text-3xl lg:text-4xl font-bold text-slate-900">Thông tin Chi tiết Trung tâm</h1>
+            <p className="text-muted-foreground text-base">Thông tin chi tiết về trung tâm dịch vụ</p>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Information */}
         <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
+          <Card className="border border-rose-100 shadow-md bg-white/95">
+            <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-primary" />
                 Thông tin cơ bản
               </CardTitle>
+              <CardDescription>Thông tin tổng quan trung tâm dịch vụ</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Tên trung tâm</label>
-                <p className="text-lg font-semibold text-foreground mt-1">{serviceCenter.name}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <InfoItem icon={Building2} label="Tên trung tâm" value={serviceCenter.name} />
+                <InfoItem icon={Phone} label="Số điện thoại" value={serviceCenter.phone || "—"} />
+                <InfoItem icon={Mail} label="Email" value={serviceCenter.email || "—"} />
+                <InfoItem icon={MapPin} label="Địa chỉ" value={serviceCenter.address || "—"} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    Địa chỉ
-                  </label>
-                  <p className="text-foreground mt-1">{serviceCenter.address || "—"}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                    <Phone className="h-4 w-4" />
-                    Số điện thoại
-                  </label>
-                  <p className="text-foreground mt-1">{serviceCenter.phone || "—"}</p>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                  <Mail className="h-4 w-4" />
-                  Email
-                </label>
-                <p className="text-foreground mt-1">{serviceCenter.email || "—"}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Mô tả</label>
-                <p className="text-foreground mt-1">{serviceCenter.description || "Không có mô tả"}</p>
+              <div className="p-4 rounded-xl border border-rose-100 bg-rose-50/60 text-slate-800">
+                <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Mô tả</p>
+                <p className="text-sm leading-relaxed">{serviceCenter.description || "Không có mô tả"}</p>
               </div>
             </CardContent>
           </Card>
@@ -581,7 +579,7 @@ export default function InformationDetail() {
           </Dialog>
         </div>
 
-        <div className="space-y-6 sticky top-9 self-start">
+        <div className="space-y-6 lg:col-span-1 lg:sticky lg:top-20 self-start">
           <Card>
             <CardHeader>
               <CardTitle>Trạng thái</CardTitle>

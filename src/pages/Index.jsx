@@ -7,10 +7,6 @@ import {
     TrendingDown,
     Calendar,
     FileText,
-    Clock,
-    CheckCircle2,
-    XCircle,
-    AlertCircle,
     DollarSign
 } from "lucide-react";
 import { 
@@ -29,13 +25,10 @@ import {
     Pie
 } from 'recharts';
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-import { vi } from "date-fns/locale";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getUsers } from "@/api/usersApi";
 import { getServiceCenters } from "@/api/serviceCentersApi";
-import { getCampaigns } from "@/api/campaignsApi";
-import { getRmas } from "@/api/rmasApi";
+import { getDashboardOverview } from "@/api/dashboardApi";
 import { Store, MapPin, Phone, Mail, Megaphone, ShieldCheck } from "lucide-react";
 
 const Index = () => {
@@ -49,27 +42,22 @@ const Index = () => {
         totalBranchesChange: 0,
         totalWarranty: 0,
         totalWarrantyChange: 0,
+        totalAppointments: 0,
+        totalRecall: 0,
+        totalEVCheckInProgress: 0,
     });
 
     const [loading, setLoading] = useState(true);
     const [serviceCenters, setServiceCenters] = useState([]);
-    // Khởi tạo với mock data để biểu đồ luôn hiển thị
     const [appointmentStatusData, setAppointmentStatusData] = useState([
         { name: 'Chờ xử lý', value: 25, color: '#f59e0b' },
         { name: 'Đã duyệt', value: 30, color: '#3b82f6' },
         { name: 'Đã hoàn thành', value: 35, color: '#10b981' },
         { name: 'Đã hủy', value: 10, color: '#ef4444' },
     ]);
+    const [monthlySalesData, setMonthlySalesData] = useState([]);
 
-    // Mock data for charts - có thể thay bằng API sau
-    const monthlySalesData = [
-        { month: 'Tháng 1', sales: 2400, services: 1800 },
-        { month: 'Tháng 2', sales: 1390, services: 2100 },
-        { month: 'Tháng 3', sales: 9800, services: 3200 },
-        { month: 'Tháng 4', sales: 3900, services: 2800 },
-        { month: 'Tháng 5', sales: 4800, services: 3500 },
-        { month: 'Tháng 6', sales: 3800, services: 2900 },
-    ];
+    const displayedCenters = serviceCenters.slice(0, 4);
 
     const subscriptionsData = [
         { period: 'Tuần 1', value: 450, color: '#f97316' },
@@ -85,45 +73,63 @@ const Index = () => {
             try {
                 setLoading(true);
                 
+                const dashboardResponse = await getDashboardOverview();
+                const dashboardData = dashboardResponse?.data || dashboardResponse || {};
+                
+                const {
+                    totalRevenue = 0,
+                    totalCampaign = 0,
+                    totalRMA = 0,
+                    totalAppointment = 0,
+                    totalEVCheckInProgress = 0,
+                    totalRecall = 0,
+                    appointmentTypeStats = []
+                } = dashboardData;
+
                 const serviceCentersResponse = await getServiceCenters({ page: 1, pageSize: 100 });
                 const serviceCentersData = serviceCentersResponse?.data || serviceCentersResponse || {};
                 const centers = serviceCentersData?.rowDatas || serviceCentersData?.data?.rowDatas || [];
                 setServiceCenters(centers);
-                const totalBranches = serviceCentersData?.total || centers.length;
                 
-                const campaignsResponse = await getCampaigns({ page: 1, pageSize: 1000, status: 'ACTIVE' });
-                const campaignsData = campaignsResponse?.data || campaignsResponse || {};
-                const campaigns = campaignsData?.rowDatas || campaignsData?.data?.rowDatas || [];
-                const activeCampaigns = campaigns.filter(c => {
-                    const status = c.status?.toUpperCase();
-                    if (status === 'ACTIVE') return true;
-                    if (c.startDate && c.endDate) {
-                        const now = new Date();
-                        const start = new Date(c.startDate);
-                        const end = new Date(c.endDate);
-                        return now >= start && now <= end;
-                    }
-                    return false;
-                }).length;
-                
-                const rmasResponse = await getRmas({ page: 1, pageSize: 1000 });
-                const rmasData = rmasResponse?.data || rmasResponse || {};
-                const totalWarranty = rmasData?.total || rmasData?.rowDatas?.length || 0;
+                const branchesCount = totalBranches > 0 ? totalBranches : (serviceCentersData?.total || centers.length);
 
-                const totalRevenue = 157000; 
+                if (Array.isArray(appointmentTypeStats) && appointmentTypeStats.length > 0) {
+                    const mapped = appointmentTypeStats.map((item) => ({
+                        month: `Tháng ${item.month}`,
+                        sales: item.repair || 0,
+                        services: item.maintenance || 0,
+                    }));
+                    setMonthlySalesData(mapped);
+                } else {
+                    setMonthlySalesData([]);
+                }
 
                 setStats({
-                    totalRevenue,
-                    totalRevenueChange: 12.5,
-                    activeCampaigns,
-                    activeCampaignsChange: 8.5,
-                    totalBranches,
-                    totalBranchesChange: 0,
-                    totalWarranty,
-                    totalWarrantyChange: 12.3,
+                    totalRevenue: totalRevenue || 0,
+                    totalRevenueChange: 0, 
+                    activeCampaigns: totalCampaign || 0,
+                    activeCampaignsChange: 0, 
+                    totalBranches: branchesCount, 
+                    totalBranchesChange: 0, 
+                    totalWarranty: totalRMA || 0,
+                    totalWarrantyChange: 0,
+                    totalAppointments: totalAppointment || 0,
+                    totalRecall: totalRecall || 0,
+                    totalEVCheckInProgress: totalEVCheckInProgress || 0,
                 });
             } catch (error) {
-                console.error("Error fetching stats:", error);
+                console.error("Error fetching dashboard stats:", error);
+                setStats({
+                    totalRevenue: 0,
+                    totalRevenueChange: 0,
+                    activeCampaigns: 0,
+                    activeCampaignsChange: 0,
+                    totalWarranty: 0,
+                    totalWarrantyChange: 0,
+                    totalAppointments: 0,
+                    totalRecall: 0,
+                    totalEVCheckInProgress: 0,
+                });
             } finally {
                 setLoading(false);
             }
@@ -153,9 +159,7 @@ const Index = () => {
                     <div className="mt-3 h-[2px] w-24 rounded-full bg-red-500/70" />
                 </div>
 
-                {/* KPI Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {/* Tổng doanh thu */}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                     <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow">
                         <div className="h-1 w-full bg-gradient-to-r from-emerald-500 to-teal-500" />
                         <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-4">
@@ -187,13 +191,13 @@ const Index = () => {
                         </CardContent>
                     </Card>
 
-                    {/* Chiến dịch đang hoạt động */}
+                    {/* Chiến dịch */}
                     <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow">
                         <div className="h-1 w-full bg-gradient-to-r from-blue-500 to-cyan-500" />
                         <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-4">
                             <div className="flex-1">
-                                <CardTitle className="text-sm font-medium text-slate-600">Chiến dịch đang hoạt động</CardTitle>
-                                <p className="mt-1 text-xs text-slate-400">Tổng số chiến dịch</p>
+                                <CardTitle className="text-sm font-medium text-slate-600">Tổng chiến dịch</CardTitle>
+                                <p className="mt-1 text-xs text-slate-400">Tất cả chiến dịch</p>
                             </div>
                             <div className="p-2 rounded-full bg-blue-50 text-blue-600">
                                 <Megaphone className="h-4 w-4" />
@@ -214,38 +218,6 @@ const Index = () => {
                                 <span>
                                     {stats.activeCampaignsChange >= 0 ? '+' : ''}
                                     {stats.activeCampaignsChange.toFixed(2)}% so với kỳ trước
-                                </span>
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    {/* Tổng chi nhánh */}
-                    <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow">
-                        <div className="h-1 w-full bg-gradient-to-r from-purple-500 to-pink-500" />
-                        <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-4">
-                            <div className="flex-1">
-                                <CardTitle className="text-sm font-medium text-slate-600">Tổng chi nhánh</CardTitle>
-                                <p className="mt-1 text-xs text-slate-400">Tất cả chi nhánh</p>
-                            </div>
-                            <div className="p-2 rounded-full bg-purple-50 text-purple-600">
-                                <Store className="h-4 w-4" />
-                            </div>
-                        </CardHeader>
-                        <CardContent className="pt-1">
-                            <div className="text-2xl font-semibold text-slate-900">
-                                {loading ? '...' : stats.totalBranches.toLocaleString('vi-VN')}
-                            </div>
-                            <p className={`text-xs mt-2 flex items-center gap-1 ${
-                                stats.totalBranchesChange >= 0 ? 'text-emerald-600' : 'text-red-600'
-                            }`}>
-                                {stats.totalBranchesChange >= 0 ? (
-                                    <TrendingUp className="h-3 w-3" />
-                                ) : (
-                                    <TrendingDown className="h-3 w-3" />
-                                )}
-                                <span>
-                                    {stats.totalBranchesChange >= 0 ? '+' : ''}
-                                    {stats.totalBranchesChange.toFixed(2)}% so với kỳ trước
                                 </span>
                             </p>
                         </CardContent>
@@ -282,19 +254,47 @@ const Index = () => {
                             </p>
                         </CardContent>
                     </Card>
+
+                    {/* Tổng lịch hẹn */}
+                    <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow">
+                        <div className="h-1 w-full bg-gradient-to-r from-orange-500 to-amber-500" />
+                        <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-4">
+                            <div className="flex-1">
+                                <CardTitle className="text-sm font-medium text-slate-600">Tổng lịch hẹn</CardTitle>
+                                <p className="mt-1 text-xs text-slate-400">Tất cả lịch hẹn</p>
+                            </div>
+                            <div className="p-2 rounded-full bg-orange-50 text-orange-600">
+                                <Calendar className="h-4 w-4" />
+                            </div>
+                        </CardHeader>
+                        <CardContent className="pt-1">
+                            <div className="text-2xl font-semibold text-slate-900">
+                                {loading ? '...' : stats.totalAppointments.toLocaleString('vi-VN')}
+                            </div>
+                            <p className="text-xs mt-2 flex items-center gap-1 text-emerald-600">
+                                <TrendingUp className="h-3 w-3" />
+                                <span>+0.00% so với kỳ trước</span>
+                            </p>
+                        </CardContent>
+                    </Card>
                 </div>
 
-                {/* Charts Section */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Hoạt động bán hàng - Tháng */}
                     <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
                         <CardHeader>
-                            <CardTitle className="text-lg font-semibold text-slate-900">Hoạt động bán hàng - Tháng</CardTitle>
-                            <p className="text-sm text-slate-500 mt-1">Hiển thị tổng doanh số trong 6 tháng qua</p>
+                            <CardTitle className="text-lg font-semibold text-slate-900">Lịch hẹn sửa chữa và bảo dưỡng (6 tháng)</CardTitle>
+                            <p className="text-sm text-slate-500 mt-1">Lịch hẹn sửa chữa và bảo dưỡng trong 6 tháng gần nhất</p>
                         </CardHeader>
                         <CardContent>
                             <ResponsiveContainer width="100%" height={300}>
-                                <AreaChart data={monthlySalesData}>
+                                <AreaChart data={monthlySalesData.length ? monthlySalesData : [
+                                    { month: 'Tháng 1', sales: 0, services: 0 },
+                                    { month: 'Tháng 2', sales: 0, services: 0 },
+                                    { month: 'Tháng 3', sales: 0, services: 0 },
+                                    { month: 'Tháng 4', sales: 0, services: 0 },
+                                    { month: 'Tháng 5', sales: 0, services: 0 },
+                                    { month: 'Tháng 6', sales: 0, services: 0 },
+                                ]}>
                                     <defs>
                                         <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#f97316" stopOpacity={0.8}/>
@@ -492,32 +492,46 @@ const Index = () => {
                         </CardContent>
                     </Card>
 
-                    {/* Danh sách chi nhánh */}
                     <Card className="lg:col-span-2 bg-white border border-slate-200 shadow-sm rounded-xl">
-                        <CardHeader>
-                            <CardTitle className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                                <Store className="h-5 w-5 text-slate-600" />
-                                Danh sách chi nhánh
-                            </CardTitle>
-                            <p className="text-sm text-slate-500 mt-1">{serviceCenters.length} chi nhánh trong hệ thống</p>
+                        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                                <CardTitle className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                                    <Store className="h-5 w-5 text-slate-600" />
+                                    Danh sách chi nhánh
+                                </CardTitle>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate("/admin/branches")}
+                                className="shrink-0"
+                            >
+                                Xem thêm
+                            </Button>
                         </CardHeader>
                         <CardContent>
                             {serviceCenters.length > 0 ? (
-                                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-                                    {serviceCenters.map((center, index) => {
+                                <div className="space-y-3">
+                                    {displayedCenters.map((center, index) => {
                                         const getStatusBadge = (status) => {
                                             const statusUpper = status?.toUpperCase();
                                             if (statusUpper === 'ACTIVE') {
                                                 return (
                                                     <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
-                                                        <CheckCircle2 className="h-3 w-3 mr-1" />
                                                         Hoạt động
+                                                    </Badge>
+                                                );
+                                            }
+                                            if (statusUpper === 'IN_ACTIVE' || statusUpper === 'INACTIVE' || statusUpper === 'IN-ACTIVE') {
+                                                return (
+                                                    <Badge className="bg-slate-100 text-slate-800 hover:bg-slate-100">
+                                                        Ngưng hoạt động
                                                     </Badge>
                                                 );
                                             }
                                             return (
                                                 <Badge className="bg-slate-100 text-slate-800 hover:bg-slate-100">
-                                                    {status}
+                                                    {statusUpper || "Không rõ"}
                                                 </Badge>
                                             );
                                         };
