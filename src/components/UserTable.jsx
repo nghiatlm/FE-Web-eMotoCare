@@ -232,20 +232,19 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
             </colgroup>
             <thead>
               <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
-                <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">STT</th>
-                <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">Ảnh đại diện</th>
-                <th className="text-left py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Số điện thoại</th>
-                <th className="text-left py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Email</th>
-                <th className="text-left py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Họ tên</th>
-                <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Vai trò</th>
-                <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Trạng thái</th>
-                <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Thao tác</th>
+                <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">STT</th>
+                <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Ảnh đại diện</th>
+                <th className="text-left py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Số điện thoại</th>
+                <th className="text-left py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Email</th>
+                <th className="text-left py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Họ tên</th>
+                <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Vai trò</th>
+                <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Trạng thái</th>
+                <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Thao tác</th>
               </tr>
             </thead>
           </table>
         </div>
 
-        {/* Body table (scroll riêng, thanh scroll dừng dưới header) */}
         <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
           <table className="w-full table-fixed">
             <colgroup>

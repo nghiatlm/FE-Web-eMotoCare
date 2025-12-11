@@ -135,7 +135,6 @@ export default function PartTypeDetail() {
     return new Intl.NumberFormat('vi-VN').format(price || 0);
   };
 
-  // Get remedies label
   const getRemediesLabel = (remedies) => {
     const map = {
       "REPAIR": "Sửa chữa",
@@ -489,7 +488,7 @@ export default function PartTypeDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-slate-50 flex items-center justify-center px-4 md:px-6 lg:px-8">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-muted-foreground">Đang tải...</p>
@@ -503,8 +502,8 @@ export default function PartTypeDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="p-8 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-slate-50">
+      <div className="px-4 md:px-6 lg:px-8 py-6 max-w-[1400px] w-full mx-auto">
         {/* Header */}
         <div className="mb-8">
           <Button
@@ -561,7 +560,6 @@ export default function PartTypeDetail() {
           </CardContent>
         </Card>
 
-        {/* Create Service Package Form */}
         <Card className="mb-6">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -570,7 +568,6 @@ export default function PartTypeDetail() {
                 onClick={() => {
                   if (!showForm) {
                     setShowForm(true);
-                    // Scroll to form sau khi mở
                     setTimeout(() => {
                       document.querySelector('[data-form-card]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                     }, 100);
@@ -612,7 +609,6 @@ export default function PartTypeDetail() {
                   />
                 </div>
 
-                {/* Mã và Tên dịch vụ */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Tên dịch vụ <span className="text-red-500">*</span></Label>
@@ -647,7 +643,6 @@ export default function PartTypeDetail() {
                   </div>  
                 </div>
 
-                {/* Giá và Chi phí lao động */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Giá <span className="text-red-500">*</span></Label>
@@ -738,7 +733,6 @@ export default function PartTypeDetail() {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
                 <div className="flex items-center justify-end gap-4 pt-4 border-t">
                   <Button 
                     type="button" 
@@ -771,7 +765,6 @@ export default function PartTypeDetail() {
           )}
         </Card>
 
-        {/* Service Packages */}
         <Card className="rounded-xl border border-slate-200 shadow-sm bg-white">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -933,12 +926,11 @@ export default function PartTypeDetail() {
                       <SelectItem value="REPAIR">Sửa chữa</SelectItem>
                       <SelectItem value="REPLACE">Thay thế</SelectItem>
                       <SelectItem value="CHECK">Kiểm tra</SelectItem>
-                      <SelectItem value="NONE">Không có</SelectItem>
+                      <SelectItem value="NONE">Bôi trơn</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                {/* Price */}
                 <div className="space-y-2">
                   <Label htmlFor="edit-price">
                     Giá (VNĐ) <span className="text-red-500">*</span>
@@ -1006,15 +998,6 @@ export default function PartTypeDetail() {
                         />
                       </PopoverContent>
                     </Popover>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-time">Giờ</Label>
-                    <Input
-                      id="edit-time"
-                      type="time"
-                      value={editForm.effectiveTime}
-                      onChange={(e) => setEditForm({ ...editForm, effectiveTime: e.target.value })}
-                    />
                   </div>
                 </div>
 

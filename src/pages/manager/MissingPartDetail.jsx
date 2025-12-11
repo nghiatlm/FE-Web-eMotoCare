@@ -75,7 +75,7 @@ export default function MissingPartDetail() {
   const [availabilityData, setAvailabilityData] = useState({});
   const [availabilityLoading, setAvailabilityLoading] = useState({});
   const [expandedBranches, setExpandedBranches] = useState({});
-  const [updatingStatus, setUpdatingStatus] = useState({}); // Track updating status for each detail
+  const [updatingStatus, setUpdatingStatus] = useState({}); 
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -431,7 +431,7 @@ export default function MissingPartDetail() {
                         Mô tả
                       </th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">
-                        Số lượng
+                        Số lượng cần tìm
                       </th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">
                         Trạng thái

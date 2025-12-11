@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getExportNoteById, updateExportNote, updateExportNoteDetail } from "@/api/exportNotesApi";
+import { getServiceCenterById } from "@/api/serviceCentersApi";
 import { getPartItems } from "@/api/partitemsApi";
 import { useToast } from "@/hooks/use-toast";
 
@@ -20,6 +21,8 @@ export default function ExportNoteDetail() {
   const [partItemsByPartId, setPartItemsByPartId] = useState({}); // Lưu part items theo partId
   const [loadingPartItems, setLoadingPartItems] = useState({}); // Loading state cho từng part
   const [expandedPartIds, setExpandedPartIds] = useState(new Set()); // Track expanded parts
+  const [receiverName, setReceiverName] = useState("");
+  const [receiverLoading, setReceiverLoading] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -46,6 +49,43 @@ export default function ExportNoteDetail() {
       fetchData();
     }
   }, [id, toast]);
+
+  // Fetch tên chi nhánh nhận (exportTo) để hiển thị đẹp hơn
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchReceiver = async () => {
+      if (!exportNote?.exportTo) {
+        setReceiverName("—");
+        return;
+      }
+
+      try {
+        setReceiverLoading(true);
+        const res = await getServiceCenterById(exportNote.exportTo);
+        const center = res?.data || res;
+
+        if (isMounted) {
+          setReceiverName(center?.name || center?.code || exportNote.exportTo || "—");
+        }
+      } catch (error) {
+        console.error("Error fetching receiver info:", error);
+        if (isMounted) {
+          setReceiverName(exportNote.exportTo || "—");
+        }
+      } finally {
+        if (isMounted) {
+          setReceiverLoading(false);
+        }
+      }
+    };
+
+    fetchReceiver();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [exportNote?.exportTo]);
 
   // Fetch part items cho mỗi proposedReplacePart
   useEffect(() => {
@@ -525,7 +565,7 @@ export default function ExportNoteDetail() {
     {
       icon: User,
       label: "Người nhận",
-      value: exportNote.exportTo || "—",
+      value: receiverLoading ? "Đang tải..." : (receiverName || "—"),
     },
     {
       icon: Package,

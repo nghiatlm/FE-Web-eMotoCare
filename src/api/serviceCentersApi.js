@@ -29,6 +29,8 @@ export const createServiceCenter = (body) => {
 
 export const updateServiceCenter = (id, body) => api.put(`${BASE_URL}/${id}`, body, { headers: { Authorization: `Bearer ${token}` } });
 
+export const deleteServiceCenter = (id) => api.delete(`${BASE_URL}/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+
 export const changeServiceCenterStatus = (id, status) =>
   api.put(`${BASE_URL}/${id}/status`, { status }, { headers: { Authorization: `Bearer ${token}` } });
 
