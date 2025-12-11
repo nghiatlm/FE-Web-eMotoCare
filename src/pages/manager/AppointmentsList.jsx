@@ -145,19 +145,19 @@ export default function AppointmentsList() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-slate-50">
+      <div className="w-full max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         <div className="mb-2">
-          <h1 className="text-2xl font-semibold text-slate-900">Danh sách Lịch hẹn</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900">Danh sách Lịch hẹn</h1>
+          <p className="text-base md:text-lg font-medium text-slate-700 mt-2">
             Quản lý các lịch hẹn tại trung tâm dịch vụ
           </p>
-          <div className="mt-3 h-[2px] w-24 rounded-full bg-red-500/70" />
+          <div className="mt-3 h-1.5 w-28 rounded-full bg-red-500 shadow-[0_4px_16px_-6px_rgba(239,68,68,0.65)]" />
         </div>
 
         <div className="mb-2 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="relative flex-1 min-w-[300px]">
+            <div className="relative flex-1 min-w-[260px] md:min-w-[320px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Tìm theo mã lịch hẹn, tên, số điện thoại, dịch vụ..."
@@ -170,7 +170,7 @@ export default function AppointmentsList() {
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
+              <SelectTrigger className="w-[150px] md:w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
@@ -188,7 +188,7 @@ export default function AppointmentsList() {
               </SelectContent>
             </Select>
             <Select value={dateFilter} onValueChange={setDateFilter}>
-              <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
+              <SelectTrigger className="w-[150px] md:w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
                 <SelectValue placeholder="Ngày" />
               </SelectTrigger>
               <SelectContent>

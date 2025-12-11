@@ -17,17 +17,16 @@ import PaymentFailed from "./pages/PaymentFailed";
 import VerifySuccess from "./pages/VerifySuccess";
 
 // admin
-import WarrantyClaims from "./pages/WarrantyClaims";
-import UserManagement from "./pages/UserManagement";
+import UserManagement from "./pages/admin/UserManagement";
 import Index from "./pages/Index";
-import Branches from "./pages/Branches";
+import Branches from "./pages/admin/Branches";
 import BranchDetail from "./pages/admin/BranchDetail";
 import BranchReport from "./pages/admin/BranchReport";
 import ServicePackages from "./pages/ServicePackages";
 import CreateServicePackage from "./pages/admin/CreateServicePackage";
 import PartTypeDetail from "./pages/admin/PartTypeDetail";
-import Campaigns from "./pages/admin/campaigns/Campaigns";
-import CampaignDetail from "./pages/admin/campaigns/CampaignDetail";
+import Campaigns from "./pages/admin/Campaigns";
+import CampaignDetail from "./pages/admin/CampaignDetail";
 import CreateCampaign from "./pages/admin/CreateCampaign";
 import CreateUserPage from "./pages/admin/CreateUserPage";
 import UserDetail from "./pages/admin/UserDetail";
@@ -57,7 +56,7 @@ import TechnicianBookingDetailPage from "./pages/technician/TechnicianBookingDet
 import BatteryDetailPage from "./pages/technician/BatteryDetailPage";
 
 // manager
-import { ManagerSidebar } from "./components/ManagerSidebar";
+import { ManagerSidebar, ManagerTopHeader } from "./components/ManagerSidebar";
 import Dashboard from "./pages/manager/Dashboard";
 import InformationDetail from "./pages/manager/InformationDetail";
 import AppointmentsList from "./pages/manager/AppointmentsList";
@@ -140,10 +139,6 @@ const App = () => (
                         <Route
                           path="branches/:id/report"
                           element={<BranchReport />}
-                        />
-                        <Route
-                          path="warranty-claims"
-                          element={<WarrantyClaims />}
                         />
                         <Route path="models" element={<Models />} />
                         <Route path="models/:id" element={<ModelDetail />} />
@@ -345,9 +340,7 @@ const App = () => (
                 <div className="flex min-h-screen w-full">
                   <ManagerSidebar />
                   <div className="flex-1 flex flex-col">
-                    <header className="h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10">
-                      <SidebarTrigger className="text-foreground" />
-                    </header>
+                    <ManagerTopHeader />
                     <main className="flex-1">
                       <Routes>
                         <Route path="" element={<Dashboard />} />

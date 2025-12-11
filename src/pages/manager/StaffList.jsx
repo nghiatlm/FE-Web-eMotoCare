@@ -80,14 +80,14 @@ export default function StaffList() {
     switch (status) {
       case "active":
         return (
-          <Badge className="bg-green-100 text-green-800 hover:bg-green-100 flex items-center gap-1">
+          <Badge className="inline-flex px-3 py-1 rounded-full text-xs font-medium justify-center bg-green-100 text-green-800 hover:bg-green-100 flex items-center gap-1">
             <CheckCircle2 className="h-3 w-3" />
             Đang làm việc
           </Badge>
         );
       case "inactive":
         return (
-          <Badge className="bg-red-100 text-red-800 hover:bg-red-100 flex items-center gap-1">
+          <Badge className="inline-flex px-3 py-1 rounded-full text-xs font-medium justify-center bg-red-100 text-red-800 hover:bg-red-100 flex items-center gap-1">
             <XCircle className="h-3 w-3" />
             Nghỉ việc
           </Badge>
@@ -171,19 +171,19 @@ export default function StaffList() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="p-8 max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-slate-900">Danh sách nhân viên</h1>
-          <p className="mt-1 text-sm text-slate-500">
+    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-slate-50">
+      <div className="w-full max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+        <div className="mb-2">
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900">Danh sách nhân viên</h1>
+          <p className="text-base md:text-lg font-medium text-slate-700 mt-2">
             Quản lý nhân sự tại trung tâm dịch vụ của bạn
           </p>
-          <div className="mt-3 h-[2px] w-24 rounded-full bg-red-500/70" />
+          <div className="mt-3 h-1.5 w-28 rounded-full bg-red-500 shadow-[0_4px_16px_-6px_rgba(239,68,68,0.65)]" />
         </div>
 
-        <div className="mb-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="mb-2 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="relative w-[340px] flex-1 min-w-[260px]">
+            <div className="relative flex-1 min-w-[260px] md:min-w-[320px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Tìm theo tên, số điện thoại, email, mã nhân viên..."
@@ -194,7 +194,7 @@ export default function StaffList() {
             </div>
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
+              <SelectTrigger className="w-[150px] md:w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
@@ -205,7 +205,7 @@ export default function StaffList() {
             </Select>
 
             <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
+              <SelectTrigger className="w-[150px] md:w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
                 <SelectValue placeholder="Vai trò" />
               </SelectTrigger>
               <SelectContent>
@@ -240,39 +240,39 @@ export default function StaffList() {
           </div>
         </div>
 
-        <p className="text-sm text-slate-500 mb-4">
+        <p className="text-sm text-slate-600">
           {search || statusFilter !== "all" || roleFilter !== "all"
             ? `Hiển thị ${filteredStaff.length} / ${staffs.length} nhân viên (đã lọc)`
             : `Hiển thị ${staffs.length} / ${total} nhân viên`}
         </p>
 
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-          <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm overflow-x-auto">
+          <div className="min-w-[1100px]">
             <table className="w-full">
               <thead>
                 <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
                   <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-16">
                     STT
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
                     Mã nhân viên
                   </th>
                   <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
                     Ảnh đại diện
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
                     Họ tên
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
                     Số điện thoại
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
                     Email
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
                     Vai trò
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
                     Trạng thái
                   </th>
                   <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-32">
@@ -307,10 +307,10 @@ export default function StaffList() {
                       <td className="py-3 px-4 text-sm text-slate-600 text-center">
                         {(page - 1) * pageSize + index + 1}
                       </td>
-                      <td className="py-3 px-4 text-sm text-slate-900">
+                      <td className="py-3 px-4 text-sm text-slate-900 text-center">
                         {staff.staffCode}
                       </td>
-                      <td className="py-3 px-4 text-sm text-slate-900">
+                      <td className="py-3 px-4 text-sm text-slate-900 text-center">
                         <div className="flex items-center justify-center">
                           {staff.avatarUrl ? (
                             <img
@@ -323,22 +323,22 @@ export default function StaffList() {
                           )}
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-sm text-slate-900">
+                      <td className="py-3 px-4 text-sm text-slate-900 text-center">
                         {staff.name}
                       </td>
-                      <td className="py-3 px-4 text-sm text-slate-800">
+                      <td className="py-3 px-4 text-sm text-slate-800 text-center">
                         {staff.phone || "—"}
                       </td>
-                      <td className="py-3 px-4 text-sm text-slate-800">
+                      <td className="py-3 px-4 text-sm text-slate-800 text-center">
                         {staff.email || "—"}
                       </td>
-                      <td className="py-3 px-4 text-sm text-slate-800">
+                      <td className="py-3 px-4 text-sm text-slate-800 text-center">
                         {getRoleBadge(staff.role)}
                       </td>
-                      <td className="py-3 px-4 text-sm">
+                      <td className="py-3 px-4 text-sm text-center">
                         {getStatusBadge(staff.status)}
                       </td>
-                      <td className="py-3 px-4 text-sm">
+                      <td className="py-3 px-4 text-sm text-center">
                         <div className="flex justify-center gap-2">
                           <Button
                             variant="ghost"
