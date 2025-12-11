@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Search, Plus, Download, Filter, Building2, MapPin, Mail, Phone, Hash, Info, Clock, Calendar, Users, CheckCircle, XCircle, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,8 @@ import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import BranchesTable from "@/components/BranchesTable";
 import { createServiceCenter, updateServiceCenter, getServiceCenterById } from "@/api/serviceCentersApi";
+import { toast } from "react-toastify";
+import provincesApi from "vn-provinces";
 
 export default function Branches() {
   const [search, setSearch] = useState("");
@@ -38,11 +40,172 @@ export default function Branches() {
     status: "active",
     latitude: "",
     longitude: "",
+    // Address components
+    provinceCode: "",
+    provinceName: "",
+    districtCode: "",
+    districtName: "",
+    wardCode: "",
+    wardName: "",
+    streetAddress: "",
   });
 
+  const [errors, setErrors] = useState({});
+  const provinces = useMemo(() => provincesApi.getProvinces() || [], []);
+  const [districtOptions, setDistrictOptions] = useState([]);
+  const [wardOptions, setWardOptions] = useState([]);
 
   const resetForm = () => {
-    setForm({ name: "", description: "", email: "", location: "", phone: "", manager: "", hours: "", status: "active", latitude: "", longitude: "" });
+    setForm({ 
+      name: "", 
+      description: "", 
+      email: "", 
+      location: "", 
+      phone: "", 
+      manager: "", 
+      hours: "", 
+      status: "active", 
+      latitude: "", 
+      longitude: "",
+      provinceCode: "",
+      provinceName: "",
+      districtCode: "",
+      districtName: "",
+      wardCode: "",
+      wardName: "",
+      streetAddress: "",
+    });
+    setErrors({});
+    setDistrictOptions([]);
+    setWardOptions([]);
+  };
+
+  const validateField = (fieldName, value) => {
+    const newErrors = { ...errors };
+
+    switch (fieldName) {
+      case "name":
+        if (!value || value.trim() === "") {
+          newErrors.name = "Tên chi nhánh không được để trống";
+        } else if (value.trim().length < 3) {
+          newErrors.name = "Tên chi nhánh phải có ít nhất 3 ký tự";
+        } else {
+          delete newErrors.name;
+        }
+        break;
+
+      case "email":
+        if (value && value.trim() !== "") {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(value.trim())) {
+            newErrors.email = "Email không hợp lệ. Format: example@domain.com";
+          } else {
+            delete newErrors.email;
+          }
+        } else {
+          delete newErrors.email;
+        }
+        break;
+
+      case "phone":
+        if (!value || value.trim() === "") {
+          newErrors.phone = "Số điện thoại không được để trống";
+        } else {
+          const cleanedPhone = value.replace(/\s+/g, "").replace(/[-()]/g, "");
+          // Số điện thoại VN: bắt đầu bằng 0, số thứ 2 là 3,5,7,8,9, tổng 10 số
+          const phoneRegex = /^0[35789]\d{8}$/;
+          if (cleanedPhone.length !== 10) {
+            newErrors.phone = "Số điện thoại phải có đúng 10 số và bắt đầu bằng số 0";
+          } else if (!phoneRegex.test(cleanedPhone)) {
+            newErrors.phone = "Số điện thoại không hợp lệ. Format: 10 số, bắt đầu bằng 0, số thứ 2 là 3, 5, 7, 8 hoặc 9 (VD: 0987654321)";
+          } else {
+            delete newErrors.phone;
+          }
+        }
+        break;
+
+      case "location":
+        if (!value || value.trim() === "") {
+          newErrors.location = "Địa chỉ không được để trống";
+        } else if (value.trim().length < 5) {
+          newErrors.location = "Địa chỉ phải có ít nhất 5 ký tự";
+        } else {
+          delete newErrors.location;
+        }
+        break;
+
+      default:
+        break;
+    }
+
+    setErrors(newErrors);
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Validate tên chi nhánh
+    if (!form.name || form.name.trim() === "") {
+      newErrors.name = "Tên chi nhánh không được để trống";
+    } else if (form.name.trim().length < 3) {
+      newErrors.name = "Tên chi nhánh phải có ít nhất 3 ký tự";
+    }
+
+    // Validate email (nếu có)
+    if (form.email && form.email.trim() !== "") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(form.email.trim())) {
+        newErrors.email = "Email không hợp lệ. Format: example@domain.com";
+      }
+    }
+
+    // Validate số điện thoại
+    if (!form.phone || form.phone.trim() === "") {
+      newErrors.phone = "Số điện thoại không được để trống";
+    } else {
+      const cleanedPhone = form.phone.replace(/\s+/g, "").replace(/[-()]/g, "");
+      // Số điện thoại VN: bắt đầu bằng 0, số thứ 2 là 3,5,7,8,9, tổng 10 số
+      const phoneRegex = /^0[35789]\d{8}$/;
+      if (cleanedPhone.length !== 10) {
+        newErrors.phone = "Số điện thoại phải có đúng 10 số và bắt đầu bằng số 0";
+      } else if (!phoneRegex.test(cleanedPhone)) {
+        newErrors.phone = "Số điện thoại không hợp lệ. Format: 10 số, bắt đầu bằng 0, số thứ 2 là 3, 5, 7, 8 hoặc 9 (VD: 0987654321)";
+      }
+    }
+
+    // Validate địa chỉ
+    // Form edit: chỉ kiểm tra form.location
+    // Form add: kiểm tra dropdown hoặc location
+    if (isEditOpen) {
+      // Form edit chỉ cần form.location
+      if (!form.location || form.location.trim() === "") {
+        newErrors.location = "Vui lòng nhập địa chỉ";
+      } else if (form.location.trim().length < 5) {
+        newErrors.location = "Địa chỉ phải có ít nhất 5 ký tự";
+      }
+    } else {
+      // Form add: kiểm tra dropdown hoặc location
+      if (form.provinceName || form.provinceCode) {
+        // Nếu đang dùng dropdown, cần đủ các thành phần
+        if (!form.districtName && !form.districtCode) {
+          newErrors.location = "Vui lòng chọn Quận/Huyện";
+        } else if (!form.wardName && !form.wardCode) {
+          newErrors.location = "Vui lòng chọn Phường/Xã";
+        } else if (!form.streetAddress || form.streetAddress.trim() === "") {
+          newErrors.location = "Vui lòng nhập Số nhà, tên đường";
+        }
+      } else {
+        // Nếu không dùng dropdown, kiểm tra location cũ
+        if (!form.location || form.location.trim() === "") {
+          newErrors.location = "Vui lòng nhập địa chỉ hoặc chọn địa chỉ từ dropdown";
+        } else if (form.location.trim().length < 5) {
+          newErrors.location = "Địa chỉ phải có ít nhất 5 ký tự";
+        }
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   useEffect(() => {
@@ -85,7 +248,18 @@ export default function Branches() {
         status: row.status || "active",
         latitude: row.latitude || "",
         longitude: row.longitude || "",
+        // Reset các dropdown fields cho form edit
+        provinceCode: "",
+        provinceName: "",
+        districtCode: "",
+        districtName: "",
+        wardCode: "",
+        wardName: "",
+        streetAddress: "",
       });
+      setErrors({});
+      setDistrictOptions([]);
+      setWardOptions([]);
       setIsEditOpen(true);
     };
     window.openViewBranch = (row) => {
@@ -138,6 +312,112 @@ export default function Branches() {
     return { lat: null, lng: null };
   };
 
+  // Hàm xây dựng địa chỉ đầy đủ từ các component
+  const buildFullAddress = () => {
+    const parts = [];
+    if (form.streetAddress?.trim()) parts.push(form.streetAddress.trim());
+    if (form.wardName?.trim()) parts.push(form.wardName.trim());
+    if (form.districtName?.trim()) parts.push(form.districtName.trim());
+    if (form.provinceName?.trim()) parts.push(form.provinceName.trim());
+    
+    // Nếu có địa chỉ đầy đủ từ dropdown, dùng nó
+    if (parts.length > 0) {
+      return parts.join(", ");
+    }
+    
+    // Nếu không có, dùng location cũ (backward compatible)
+    return form.location || "";
+  };
+
+  // Hàm tìm tọa độ khi click nút
+  const handleFindCoordinates = async () => {
+    // Nếu đang ở form edit, dùng form.location; nếu ở form add, dùng buildFullAddress()
+    const addressToGeocode = isEditOpen ? form.location : buildFullAddress();
+    
+    if (!addressToGeocode || addressToGeocode.trim().length < 3) {
+      toast.error("Vui lòng nhập địa chỉ đầy đủ trước khi tìm tọa độ", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
+
+    setGeocodeLoading(true);
+    try {
+      const coords = await geocodeAddress(addressToGeocode);
+      if (coords.lat && coords.lng) {
+        setForm((f) => ({
+          ...f,
+          latitude: coords.lat.toString(),
+          longitude: coords.lng.toString(),
+        }));
+        toast.success("Đã tìm thấy tọa độ!", {
+          position: "top-right",
+          autoClose: 2000,
+        });
+      } else {
+        toast.warning("Không tìm thấy tọa độ cho địa chỉ này", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        // Xóa tọa độ cũ nếu không tìm thấy
+        setForm((f) => ({
+          ...f,
+          latitude: "",
+          longitude: "",
+        }));
+      }
+    } catch (error) {
+      toast.error("Lỗi khi tìm tọa độ. Vui lòng thử lại.", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } finally {
+      setGeocodeLoading(false);
+    }
+  };
+
+  // Xử lý khi chọn tỉnh/thành phố
+  const handleProvinceChange = (code) => {
+    const province = provinces.find((p) => p.code === code);
+    setForm((f) => ({
+      ...f,
+      provinceCode: code,
+      provinceName: province?.name || "",
+      districtCode: "",
+      districtName: "",
+      wardCode: "",
+      wardName: "",
+    }));
+    const districts = code ? provincesApi.getDistrictsByProvinceCode(code) || [] : [];
+    setDistrictOptions(districts);
+    setWardOptions([]);
+  };
+
+  // Xử lý khi chọn quận/huyện
+  const handleDistrictChange = (code) => {
+    const district = districtOptions.find((d) => d.code === code);
+    setForm((f) => ({
+      ...f,
+      districtCode: code,
+      districtName: district?.name || "",
+      wardCode: "",
+      wardName: "",
+    }));
+    const wards = code ? provincesApi.getWardsByDistrictCode(code) || [] : [];
+    setWardOptions(wards);
+  };
+
+  // Xử lý khi chọn phường/xã
+  const handleWardChange = (code) => {
+    const ward = wardOptions.find((w) => w.code === code);
+    setForm((f) => ({
+      ...f,
+      wardCode: code,
+      wardName: ward?.name || "",
+    }));
+  };
+
   // Tự động geocode khi địa chỉ thay đổi (add hoặc edit)
   useEffect(() => {
     if (!(isAddOpen || isEditOpen)) return;
@@ -146,14 +426,27 @@ export default function Branches() {
       clearTimeout(geoTimeoutRef.current);
     }
 
-    const shouldGeocode = form.location && form.location.trim().length >= 3 && (!form.latitude || !form.longitude);
+    // Form edit: chỉ geocode khi form.location thay đổi
+    // Form add: geocode khi dropdown hoặc location thay đổi
+    let addressToGeocode = "";
+    if (isEditOpen) {
+      // Form edit chỉ dùng form.location
+      addressToGeocode = form.location || "";
+    } else {
+      // Form add: dùng buildFullAddress() hoặc form.location
+      const fullAddress = buildFullAddress();
+      addressToGeocode = fullAddress || form.location || "";
+    }
+
+    // Chỉ tự động geocode nếu có địa chỉ đầy đủ và chưa có tọa độ
+    const shouldGeocode = addressToGeocode.trim().length >= 3 && (!form.latitude || !form.longitude);
     if (!shouldGeocode) {
       return;
     }
 
     geoTimeoutRef.current = setTimeout(async () => {
       setGeocodeLoading(true);
-      const coords = await geocodeAddress(form.location);
+      const coords = await geocodeAddress(addressToGeocode);
       if (coords.lat && coords.lng) {
         setForm((f) => ({
           ...f,
@@ -167,17 +460,36 @@ export default function Branches() {
     return () => {
       if (geoTimeoutRef.current) clearTimeout(geoTimeoutRef.current);
     };
-  }, [form.location, isAddOpen, isEditOpen]);
+  }, [form.streetAddress, form.provinceName, form.districtName, form.wardName, form.location, isAddOpen, isEditOpen]);
 
   const handleAddSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      // Hiển thị lỗi cụ thể từ errors object
+      const errorMessages = Object.values(errors).filter(Boolean);
+      if (errorMessages.length > 0) {
+        toast.error(errorMessages[0], {
+          position: "top-right",
+          autoClose: 4000,
+        });
+      } else {
+        toast.error("Vui lòng kiểm tra lại thông tin đã nhập", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      }
+      return;
+    }
+
     const tmpId = `BR-${Date.now()}`;
+    const fullAddress = buildFullAddress();
     const body = {
-      name: form.name,
-      description: form.description || "",
-      email: form.email || "",
-      phone: form.phone,
-      address: form.location,
+      name: form.name.trim(),
+      description: form.description?.trim() || "",
+      email: form.email?.trim() || "",
+      phone: form.phone.replace(/\s+/g, "").replace(/[-()]/g, ""),
+      address: fullAddress.trim() || form.location.trim(),
       latitude: form.latitude || "",
       longitude: form.longitude || "",
       status: "ACTIVE",
@@ -201,10 +513,26 @@ export default function Branches() {
         longitude: created?.longitude || form.longitude,
       };
       window?.applyAddBranch?.(mapped);
+      toast.success("Thêm chi nhánh thành công!", {
+        position: "top-right",
+        autoClose: 2000,
+      });
+      
+      // Đóng dialog và reset form
+      setIsAddOpen(false);
+      resetForm();
+      
+      // Reload trang sau 1.5 giây để cập nhật dữ liệu
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     } catch (err) {
+      toast.error(err?.response?.data?.message || "Không thể thêm chi nhánh. Vui lòng thử lại.", {
+        position: "top-right",
+        autoClose: 4000,
+      });
       const newBranch = { id: tmpId, code: "", ...form, status: "active" };
       window?.applyAddBranch?.(newBranch);
-    } finally {
       setIsAddOpen(false);
       resetForm();
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -215,14 +543,31 @@ export default function Branches() {
     e.preventDefault();
     if (!selected?.id) return;
 
+    if (!validateForm()) {
+      // Hiển thị lỗi cụ thể từ errors object
+      const errorMessages = Object.values(errors).filter(Boolean);
+      if (errorMessages.length > 0) {
+        toast.error(errorMessages[0], {
+          position: "top-right",
+          autoClose: 4000,
+        });
+      } else {
+        toast.error("Vui lòng kiểm tra lại thông tin đã nhập", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      }
+      return;
+    }
+
     const statusUpper = String(form.status || "active").toUpperCase();
     const body = {
       code: form.code,
-      name: form.name,
-      description: form.description || "",
-      email: form.email || "",
-      phone: form.phone,
-      address: form.location,
+      name: form.name.trim(),
+      description: form.description?.trim() || "",
+      email: form.email?.trim() || "",
+      phone: form.phone.replace(/\s+/g, "").replace(/[-()]/g, ""),
+      address: form.location.trim(),
       latitude: form.latitude || "",
       longitude: form.longitude || "",
       status: statusUpper,
@@ -245,11 +590,20 @@ export default function Branches() {
         longitude: updated?.longitude ?? form.longitude,
       };
       window?.applyEditBranch?.(selected.id, mapped);
+      toast.success("Cập nhật chi nhánh thành công!", {
+        position: "top-right",
+        autoClose: 3000,
+      });
     } catch (err) {
+      toast.error(err?.response?.data?.message || "Không thể cập nhật chi nhánh. Vui lòng thử lại.", {
+        position: "top-right",
+        autoClose: 4000,
+      });
       window?.applyEditBranch?.(selected.id, { ...form });
     } finally {
       setIsEditOpen(false);
       setSelected(null);
+      setErrors({});
     }
   };
 
@@ -318,7 +672,7 @@ export default function Branches() {
 
         <BranchesTable search={search} status={status} />
 
-        <Dialog open={isAddOpen} onOpenChange={(o) => { setIsAddOpen(o); if (!o) { resetForm(); setSelected(null); } }}>
+        <Dialog open={isAddOpen} onOpenChange={(o) => { setIsAddOpen(o); if (!o) { resetForm(); setSelected(null); setErrors({}); } }}>
           <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-xl flex items-center gap-2">
@@ -329,38 +683,161 @@ export default function Branches() {
             <form onSubmit={handleAddSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label>Tên chi nhánh</Label>
-                <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="VD: GreenWheel" required/>
+                <Input 
+                  value={form.name} 
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setForm((f) => ({ ...f, name: value }));
+                    validateField("name", value);
+                  }} 
+                  placeholder="VD: GreenWheel" 
+                  className={errors.name ? "border-red-500 focus-visible:ring-red-500" : ""}
+                  required
+                />
+                {errors.name && <p className="text-sm text-red-500 mt-1">{errors.name}</p>}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Email</Label>
-                  <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="VD: alo@example.com" />
+                  <Input 
+                    type="email" 
+                    value={form.email} 
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setForm((f) => ({ ...f, email: value }));
+                      validateField("email", value);
+                    }} 
+                    placeholder="VD: alo@example.com"
+                    className={errors.email ? "border-red-500 focus-visible:ring-red-500" : ""}
+                  />
+                  {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label>Số điện thoại</Label>
-                  <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="VD: 098xxxxxxx" required/>
+                  <Input 
+                    value={form.phone} 
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setForm((f) => ({ ...f, phone: value }));
+                      validateField("phone", value);
+                    }} 
+                    placeholder="VD: 0987654321"
+                    className={errors.phone ? "border-red-500 focus-visible:ring-red-500" : ""}
+                    required
+                  />
+                  {errors.phone && <p className="text-sm text-red-500 mt-1">{errors.phone}</p>}
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Mô tả</Label>
                 <Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Mô tả ngắn về chi nhánh" />
               </div>
-              <div className="space-y-2">
-                <Label>Địa chỉ</Label>
-                <Input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} placeholder="VD: 123 Đường Lê Lợi" required/>
-                <div className="mt-2 rounded-md border border-slate-200 bg-white overflow-hidden">
-                  <div className="p-2 text-xs text-muted-foreground">
-                    Bản đồ xem trước (tự lấy tọa độ khi nhập địa chỉ)
+              <div className="space-y-4">
+                <Label className="text-base font-semibold flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Địa chỉ
+                </Label>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Tỉnh/Thành phố</Label>
+                    <Select value={form.provinceCode} onValueChange={handleProvinceChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn tỉnh/thành phố" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {provinces.map((item) => (
+                          <SelectItem key={item.code} value={item.code}>
+                            {item.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <iframe
-                    title="branch-map-add"
-                    src={`https://www.google.com/maps?q=${form.latitude || DEFAULT_COORDS.lat},${form.longitude || DEFAULT_COORDS.lng}&z=16&output=embed`}
-                    style={{ width: "100%", height: 240, border: 0 }}
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    allowFullScreen
-                  />
+
+                  <div className="space-y-2">
+                    <Label>Quận/Huyện</Label>
+                    <Select 
+                      value={form.districtCode} 
+                      onValueChange={handleDistrictChange}
+                      disabled={!form.provinceCode}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn quận/huyện" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {districtOptions.map((item) => (
+                          <SelectItem key={item.code} value={item.code}>
+                            {item.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Phường/Xã</Label>
+                    <Select 
+                      value={form.wardCode} 
+                      onValueChange={handleWardChange}
+                      disabled={!form.districtCode}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn phường/xã" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {wardOptions.map((item) => (
+                          <SelectItem key={item.code} value={item.code}>
+                            {item.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+
+                <div className="space-y-2">
+                  <Label>Số nhà, tên đường</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={form.streetAddress} 
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setForm((f) => ({ ...f, streetAddress: value }));
+                      }} 
+                      placeholder="VD: 123 Đường Lê Lợi"
+                    />
+                    {(form.streetAddress || form.provinceName) && (
+                      <Button
+                        type="button"
+                        onClick={handleFindCoordinates}
+                        disabled={geocodeLoading}
+                        variant="outline"
+                        className="shrink-0"
+                      >
+                        <MapPin className="h-4 w-4 mr-2" />
+                        {geocodeLoading ? "Đang tìm..." : "Tìm tọa độ"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {(form.streetAddress || form.provinceName || form.location) && (
+                  <div className="mt-2 rounded-md border border-slate-200 bg-white overflow-hidden">
+                    <div className="p-2 text-xs text-muted-foreground">
+                      Bản đồ xem trước
+                    </div>
+                    <iframe
+                      key={`${form.latitude}-${form.longitude}-${buildFullAddress()}`}
+                      title="branch-map-add"
+                      src={`https://www.google.com/maps?q=${form.latitude && form.longitude ? `${form.latitude},${form.longitude}` : encodeURIComponent(buildFullAddress())}&z=16&output=embed`}
+                      style={{ width: "100%", height: 240, border: 0 }}
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      allowFullScreen
+                    />
+                  </div>
+                )}
               </div>
               <DialogFooter className="pt-2">
                 <Button
@@ -383,7 +860,7 @@ export default function Branches() {
           </DialogContent>
         </Dialog>
 
-        <Dialog open={isEditOpen} onOpenChange={(o) => { setIsEditOpen(o); if (!o) setSelected(null); }}>
+        <Dialog open={isEditOpen} onOpenChange={(o) => { setIsEditOpen(o); if (!o) { setSelected(null); setErrors({}); } }}>
           <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-xl flex items-center gap-2">
@@ -394,17 +871,47 @@ export default function Branches() {
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label>Tên chi nhánh</Label>
-                <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required/>
+                <Input 
+                  value={form.name} 
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setForm((f) => ({ ...f, name: value }));
+                    validateField("name", value);
+                  }} 
+                  className={errors.name ? "border-red-500 focus-visible:ring-red-500" : ""}
+                  required
+                />
+                {errors.name && <p className="text-sm text-red-500 mt-1">{errors.name}</p>}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Email</Label>
-                  <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+                  <Input 
+                    type="email" 
+                    value={form.email} 
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setForm((f) => ({ ...f, email: value }));
+                      validateField("email", value);
+                    }}
+                    className={errors.email ? "border-red-500 focus-visible:ring-red-500" : ""}
+                  />
+                  {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label>Số điện thoại</Label>
-                  <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} required/>
+                  <Input 
+                    value={form.phone} 
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setForm((f) => ({ ...f, phone: value }));
+                      validateField("phone", value);
+                    }}
+                    className={errors.phone ? "border-red-500 focus-visible:ring-red-500" : ""}
+                    required
+                  />
+                  {errors.phone && <p className="text-sm text-red-500 mt-1">{errors.phone}</p>}
                 </div>
               </div>
 
@@ -414,21 +921,53 @@ export default function Branches() {
               </div>
 
               <div className="space-y-2">
-                <Label>Địa chỉ</Label>
-                <Input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} required/>
-                <div className="mt-2 rounded-md border border-slate-200 bg-white overflow-hidden">
-                  <div className="p-2 text-xs text-muted-foreground">
-                    Bản đồ xem trước (tự lấy tọa độ khi nhập địa chỉ)
-                  </div>
-                  <iframe
-                    title="branch-map-edit"
-                    src={`https://www.google.com/maps?q=${form.latitude || DEFAULT_COORDS.lat},${form.longitude || DEFAULT_COORDS.lng}&z=16&output=embed`}
-                    style={{ width: "100%", height: 220, border: 0 }}
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    allowFullScreen
+                <Label className="text-base font-semibold flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Địa chỉ
+                </Label>
+                <div className="flex gap-2">
+                  <Input 
+                    value={form.location} 
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setForm((f) => ({ ...f, location: value }));
+                      validateField("location", value);
+                    }}
+                    className={errors.location ? "border-red-500 focus-visible:ring-red-500" : ""}
+                    placeholder="VD: 146/33 Nguyễn Thị Kiểu, Phường Hiệp Thành, Quận 12, TP.HCM"
+                    required
                   />
+                  {form.location && (
+                    <Button
+                      type="button"
+                      onClick={handleFindCoordinates}
+                      disabled={geocodeLoading}
+                      variant="outline"
+                      className="shrink-0"
+                    >
+                      <MapPin className="h-4 w-4 mr-2" />
+                      {geocodeLoading ? "Đang tìm..." : "Tìm tọa độ"}
+                    </Button>
+                  )}
                 </div>
+                {errors.location && <p className="text-sm text-red-500 mt-1">{errors.location}</p>}
+                
+                {form.location && (
+                  <div className="mt-2 rounded-md border border-slate-200 bg-white overflow-hidden">
+                    <div className="p-2 text-xs text-muted-foreground">
+                      Bản đồ xem trước
+                    </div>
+                    <iframe
+                      key={`${form.latitude}-${form.longitude}-${form.location}`}
+                      title="branch-map-edit"
+                      src={`https://www.google.com/maps?q=${form.latitude && form.longitude ? `${form.latitude},${form.longitude}` : encodeURIComponent(form.location)}&z=16&output=embed`}
+                      style={{ width: "100%", height: 240, border: 0 }}
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      allowFullScreen
+                    />
+                  </div>
+                )}
               </div>
 
               <DialogFooter className="pt-2">

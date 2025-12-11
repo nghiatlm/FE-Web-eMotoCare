@@ -120,15 +120,22 @@ export default function CreateUserPage() {
     switch (field) {
       case "phone": {
         const phone = (nextForm.phone || "").trim();
-        const vnPhoneRegex = /^(0\d{9}|\+84\d{9,10})$/;
-        if (!phone) return "Số điện thoại là bắt buộc";
-        if (!vnPhoneRegex.test(phone)) return "Số điện thoại không hợp lệ";
+        if (!phone) return "Số điện thoại không được để trống";
+        const cleanedPhone = phone.replace(/\s+/g, "").replace(/[-()]/g, "");
+        // Số điện thoại VN: bắt đầu bằng 0, số thứ 2 là 3,5,7,8,9, tổng 10 số
+        const phoneRegex = /^0[35789]\d{8}$/;
+        if (cleanedPhone.length !== 10) {
+          return "Số điện thoại phải có đúng 10 số và bắt đầu bằng số 0";
+        } else if (!phoneRegex.test(cleanedPhone)) {
+          return "Số điện thoại không hợp lệ. Format: 10 số, bắt đầu bằng 0, số thứ 2 là 3, 5, 7, 8 hoặc 9 (VD: 0987654321)";
+        }
         return "";
       }
       case "email": {
         const email = (nextForm.email || "").trim();
-        if (!email) return "Email là bắt buộc";
-        if (!/\S+@\S+\.\S+/.test(email)) return "Email không hợp lệ";
+        if (!email) return "Email không được để trống";
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) return "Email không hợp lệ. Format: example@domain.com";
         return "";
       }
       // case "password": {

@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
-import { getStaffByAccountId } from "@/api/staffsApi";
+import { getStaffByAccountId, updateStaff } from "@/api/staffsApi";
 import { authApi } from "@/api/authApi";
-import { Eye, EyeOff } from "lucide-react";
+import { uploadFile } from "@/utils/firebaseUpload";
+import { Eye, EyeOff, Camera, X } from "lucide-react";
 import { toast as toastify } from "react-toastify";
 
 const InfoRow = ({ label, value }) => (
@@ -22,6 +23,15 @@ export default function ManagerProfile() {
 
   const [staff, setStaff] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [updatingProfile, setUpdatingProfile] = useState(false);
+
+  // Profile edit states
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileEmail, setProfileEmail] = useState("");
+  const [profileAddress, setProfileAddress] = useState("");
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -39,6 +49,10 @@ export default function ManagerProfile() {
         const res = await getStaffByAccountId(accountId, { page: 1, pageSize: 10 });
         const staffData = res?.data?.rowDatas?.[0];
         setStaff(staffData || null);
+        // Set initial values for profile editing
+        setProfileEmail(staffData?.account?.email || account.email || "");
+        setProfileAddress(staffData?.address || "");
+        setAvatarPreview(staffData?.avatarUrl || null);
       } finally {
         setLoading(false);
       }
@@ -83,6 +97,154 @@ export default function ManagerProfile() {
     return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">{status || "Không rõ"}</span>;
   };
 
+  const handleAvatarFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toastify.error("Vui lòng chọn file ảnh hợp lệ", {
+        position: "top-right",
+        autoClose: 4000,
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toastify.error("Kích thước ảnh không được vượt quá 5MB", {
+        position: "top-right",
+        autoClose: 4000,
+      });
+      return;
+    }
+
+    setAvatarFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarFile(null);
+    setAvatarPreview(staff?.avatarUrl || null);
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!profileEmail.trim()) {
+      toastify.error("Email không được để trống", {
+        position: "top-right",
+        autoClose: 4000,
+      });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(profileEmail.trim())) {
+      toastify.error("Email không hợp lệ. Format: example@domain.com", {
+        position: "top-right",
+        autoClose: 4000,
+      });
+      return;
+    }
+
+    try {
+      setUpdatingProfile(true);
+      setUploadingAvatar(!!avatarFile);
+
+      let avatarUrl = null;
+      if (avatarFile) {
+        try {
+          const path = `users/${account.id || account.accountId}/avatar/${Date.now()}_${avatarFile.name}`;
+          avatarUrl = await uploadFile(path, avatarFile);
+        } catch (error) {
+          console.error("Error uploading avatar:", error);
+          toastify.error(error.message || "Không thể tải ảnh đại diện lên. Vui lòng thử lại.", {
+            position: "top-right",
+            autoClose: 4000,
+          });
+          setUpdatingProfile(false);
+          setUploadingAvatar(false);
+          return;
+        } finally {
+          setUploadingAvatar(false);
+        }
+      }
+
+      // Get staff ID
+      const staffId = staff?.id;
+      if (!staffId) {
+        toastify.error("Không tìm thấy thông tin nhân viên", {
+          position: "top-right",
+          autoClose: 4000,
+        });
+        setUpdatingProfile(false);
+        return;
+      }
+
+      // Build payload with all required staff fields (API PUT /api/v1/staffs/{id})
+      const payload = {
+        accountId: account.id || account.accountId,
+        staffCode: staff?.staffCode || "",
+        firstName: staff?.firstName || "",
+        lastName: staff?.lastName || "",
+        address: profileAddress.trim(),
+        citizenId: staff?.citizenId || "",
+        dateOfBirth: staff?.dateOfBirth ? (() => {
+          const date = new Date(staff.dateOfBirth);
+          date.setHours(0, 0, 0, 0);
+          return date.toISOString();
+        })() : null,
+        gender: staff?.gender || "MALE",
+        position: staff?.position || "MANAGER_BRANCH",
+        serviceCenterId: staff?.serviceCenterId || undefined,
+      };
+
+      if (avatarUrl) {
+        payload.avatarUrl = avatarUrl;
+      } else if (avatarFile && !avatarUrl) {
+        // If user selected a file but upload failed, don't update
+        setUpdatingProfile(false);
+        return;
+      }
+
+      // Update staff using PUT /api/v1/staffs/{id}
+      const response = await updateStaff(staffId, payload);
+
+      // Update email separately if needed (email is in account, not staff)
+      // Note: Email update might need a separate API call to update account
+      if (profileEmail.trim() !== (staff?.account?.email || account.email)) {
+        // Email update might require account API, but for now we'll just update staff
+        console.log("Email change detected but staff API doesn't update email");
+      }
+
+      if (response?.success !== false) {
+        toastify.success(response.message || "Cập nhật thông tin thành công!", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+
+        // Refresh staff data
+        const res = await getStaffByAccountId(account.id || account.accountId, { page: 1, pageSize: 10 });
+        const staffData = res?.data?.rowDatas?.[0];
+        setStaff(staffData || null);
+        setAvatarPreview(staffData?.avatarUrl || null);
+        setAvatarFile(null);
+        setEditingProfile(false);
+      } else {
+        throw new Error(response.message || "Cập nhật thông tin thất bại");
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toastify.error(error?.response?.data?.message || error?.message || "Không thể cập nhật thông tin. Vui lòng thử lại.", {
+        position: "top-right",
+        autoClose: 4000,
+      });
+    } finally {
+      setUpdatingProfile(false);
+    }
+  };
+
   const handleChangePassword = async () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
       toastify.error("Vui lòng nhập đầy đủ mật khẩu cũ và mật khẩu mới.");
@@ -120,8 +282,28 @@ export default function ManagerProfile() {
           </div>
           <p className="text-slate-600 text-sm">Thông tin tài khoản và đổi mật khẩu</p>
           <div className="flex items-center gap-3 p-4 bg-white/90 backdrop-blur border border-rose-100 rounded-2xl shadow-md">
-            <div className="h-14 w-14 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-lg font-bold uppercase">
-              {initials}
+            <div className="relative">
+              {avatarPreview ? (
+                <div className="h-14 w-14 rounded-full overflow-hidden border-2 border-red-200">
+                  <img src={avatarPreview} alt={displayName} className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <div className="h-14 w-14 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-lg font-bold uppercase">
+                  {initials}
+                </div>
+              )}
+              {editingProfile && (
+                <label className="absolute bottom-0 right-0 h-6 w-6 rounded-full bg-red-600 text-white flex items-center justify-center cursor-pointer hover:bg-red-700 transition-colors">
+                  <Camera className="h-3.5 w-3.5" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarFileChange}
+                    className="hidden"
+                    disabled={uploadingAvatar}
+                  />
+                </label>
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2">
@@ -142,16 +324,96 @@ export default function ManagerProfile() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <Card className="border border-rose-100 shadow-md bg-white/95 backdrop-blur">
             <CardHeader>
-              <CardTitle className="text-lg">Thông tin tài khoản</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">Thông tin tài khoản</CardTitle>
+                {!editingProfile ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditingProfile(true);
+                      setProfileEmail(staff?.account?.email || account.email || "");
+                      setProfileAddress(staff?.address || "");
+                      setAvatarPreview(staff?.avatarUrl || null);
+                      setAvatarFile(null);
+                    }}
+                  >
+                    Chỉnh sửa
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingProfile(false);
+                        setProfileEmail(staff?.account?.email || account.email || "");
+                        setProfileAddress(staff?.address || "");
+                        setAvatarPreview(staff?.avatarUrl || null);
+                        setAvatarFile(null);
+                      }}
+                      disabled={updatingProfile}
+                    >
+                      Hủy
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleUpdateProfile}
+                      disabled={updatingProfile || uploadingAvatar}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      {updatingProfile ? "Đang lưu..." : "Lưu"}
+                    </Button>
+                  </div>
+                )}
+              </div>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-4">
               <InfoRow label="Họ tên" value={displayName} />
-              <InfoRow label="Email" value={staff?.account?.email || account.email} />
+              {editingProfile ? (
+                <div className="space-y-2">
+                  <Label>Email *</Label>
+                  <Input
+                    value={profileEmail}
+                    onChange={(e) => setProfileEmail(e.target.value)}
+                    placeholder="Nhập email"
+                    disabled={updatingProfile}
+                  />
+                </div>
+              ) : (
+                <InfoRow label="Email" value={staff?.account?.email || account.email} />
+              )}
               <InfoRow label="Số điện thoại" value={staff?.account?.phone || account.phone} />
               <InfoRow label="Vai trò" value="Quản lý" />
               <InfoRow label="Chức vụ" value={toVietnamesePosition(staff?.position)} />
-              <InfoRow label="Địa chỉ" value={staff?.address} />
+              {editingProfile ? (
+                <div className="space-y-2">
+                  <Label>Địa chỉ</Label>
+                  <Input
+                    value={profileAddress}
+                    onChange={(e) => setProfileAddress(e.target.value)}
+                    placeholder="Nhập địa chỉ"
+                    disabled={updatingProfile}
+                  />
+                </div>
+              ) : (
+                <InfoRow label="Địa chỉ" value={staff?.address} />
+              )}
               <InfoRow label="Trạng thái" value={toVietnameseStatus(account.status || staff?.account?.status)} />
+              {editingProfile && avatarFile && (
+                <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+                  <span className="text-sm text-slate-600">Ảnh mới đã chọn</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRemoveAvatar}
+                    disabled={updatingProfile || uploadingAvatar}
+                    className="h-6 px-2"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 

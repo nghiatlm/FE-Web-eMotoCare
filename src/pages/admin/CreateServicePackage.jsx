@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Package, Calendar as CalendarIcon, Clock, DollarSign, Wrench, Tag, FileText, Hash, Sparkles } from "lucide-react";
+import { ArrowLeft, Package, Calendar as CalendarIcon, Clock, DollarSign, Wrench, Tag, FileText, Hash, Sparkles, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,7 @@ export default function CreateServicePackage() {
   const [partTypes, setPartTypes] = useState([]);
   const [loadingPartTypes, setLoadingPartTypes] = useState(false);
   const [errors, setErrors] = useState({});
+  const [isCollapsed, setIsCollapsed] = useState(true); // Thu gọn mặc định
 
   const { partTypeId: preSelectedPartTypeId, partTypeName: preSelectedPartTypeName } = location.state || {};
 
@@ -294,18 +295,40 @@ export default function CreateServicePackage() {
         {/* Form */}
         <Card className="border border-border/60 shadow-xl bg-card/95 backdrop-blur-sm">
           <CardHeader className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <FileText className="h-5 w-5" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl">Thông tin gói dịch vụ</CardTitle>
+                  <CardDescription className="mt-1">
+                    Vui lòng điền đầy đủ thông tin bên dưới. Các trường có dấu <span className="text-red-500 font-semibold">*</span> là bắt buộc.
+                  </CardDescription>
+                </div>
               </div>
-              <div>
-                <CardTitle className="text-xl">Thông tin gói dịch vụ</CardTitle>
-                <CardDescription className="mt-1">
-                  Vui lòng điền đầy đủ thông tin bên dưới. Các trường có dấu <span className="text-red-500 font-semibold">*</span> là bắt buộc.
-                </CardDescription>
-              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsCollapsed(!isCollapsed)}
+                className="h-8 px-3 hover:bg-primary/10"
+              >
+                {isCollapsed ? (
+                  <>
+                    <ChevronDown className="h-4 w-4 mr-1" />
+                    Mở rộng
+                  </>
+                ) : (
+                  <>
+                    <ChevronUp className="h-4 w-4 mr-1" />
+                    Thu gọn
+                  </>
+                )}
+              </Button>
             </div>
           </CardHeader>
+          {!isCollapsed && (
           <CardContent className="p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Loại phụ tùng */}
@@ -586,6 +609,7 @@ export default function CreateServicePackage() {
               </div>
             </form>
           </CardContent>
+          )}
         </Card>
       </div>
     </div>

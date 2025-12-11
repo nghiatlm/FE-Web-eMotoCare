@@ -5,7 +5,7 @@ import { getStaffByAccountId } from "@/api/staffsApi";
 import { getParts, getPartTypes } from "@/api/partsApi";
 import { getPartItems } from "@/api/partitemsApi";
 import { createImportNote } from "@/api/importNotesApi";
-import { useToast } from "@/hooks/use-toast";
+import { toast as toastify } from "react-toastify";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,6 @@ import { format, addMonths } from "date-fns";
 export default function CreateImportNotePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { toast } = useToast();
 
   const [loading, setLoading] = useState(false);
   const [loadingParts, setLoadingParts] = useState(false);
@@ -128,16 +127,15 @@ export default function CreateImportNotePage() {
       setParts(list);
     } catch (error) {
         console.error("Lỗi khi tải danh sách phụ tùng:", error);
-      toast({
-        title: "Lỗi",
-        description: "Không thể tải danh sách phụ tùng.",
-        variant: "destructive",
+      toastify.error("Không thể tải danh sách phụ tùng.", {
+        position: "top-right",
+        autoClose: 4000,
       });
       setParts([]);
     } finally {
       setLoadingParts(false);
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     fetchParts();
@@ -200,28 +198,25 @@ export default function CreateImportNotePage() {
   const handleAddPartToList = () => {
     // Validate
     if (!selectedPartTypeId) {
-      toast({
-        title: "Thiếu thông tin",
-        description: "Vui lòng chọn loại phụ tùng.",
-        variant: "destructive",
+      toastify.error("Vui lòng chọn loại phụ tùng.", {
+        position: "top-right",
+        autoClose: 4000,
       });
       return;
     }
 
     if (!selectedPartId && !form.newPartName?.trim()) {
-      toast({
-        title: "Thiếu thông tin",
-        description: "Vui lòng chọn phụ tùng có sẵn hoặc nhập tên phụ tùng mới.",
-        variant: "destructive",
+      toastify.error("Vui lòng chọn phụ tùng có sẵn hoặc nhập tên phụ tùng mới.", {
+        position: "top-right",
+        autoClose: 4000,
       });
       return;
     }
 
     if (hasManufacturerWarranty && !form.serialNumber?.trim()) {
-      toast({
-        title: "Thiếu thông tin",
-        description: "Phiếu nhập có bảo hành hãng, vui lòng nhập số serial.",
-        variant: "destructive",
+      toastify.error("Phiếu nhập có bảo hành hãng, vui lòng nhập số serial.", {
+        position: "top-right",
+        autoClose: 4000,
       });
       return;
     }
@@ -263,9 +258,9 @@ export default function CreateImportNotePage() {
     setHasManufacturerWarranty(false);
     setWarrantyDateError("");
     
-    toast({
-      title: "Thành công",
-      description: "Đã thêm phụ tùng vào danh sách.",
+    toastify.success("Đã thêm phụ tùng vào danh sách.", {
+      position: "top-right",
+      autoClose: 3000,
     });
   };
 
@@ -277,19 +272,17 @@ export default function CreateImportNotePage() {
   const handleSubmit = async () => {
     // Kiểm tra danh sách phụ tùng đã thêm
     if (addedParts.length === 0) {
-      toast({
-        title: "Thiếu thông tin",
-        description: "Vui lòng thêm ít nhất một phụ tùng vào danh sách trước khi tạo phiếu nhập.",
-        variant: "destructive",
+      toastify.error("Vui lòng thêm ít nhất một phụ tùng vào danh sách trước khi tạo phiếu nhập.", {
+        position: "top-right",
+        autoClose: 4000,
       });
       return;
     }
 
     if (!serviceCenterId || !staffId) {
-      toast({
-        title: "Thiếu dữ liệu",
-        description: "Không xác định được thông tin thủ kho hoặc trung tâm dịch vụ.",
-        variant: "destructive",
+      toastify.error("Không xác định được thông tin thủ kho hoặc trung tâm dịch vụ.", {
+        position: "top-right",
+        autoClose: 4000,
       });
       return;
     }
@@ -300,8 +293,6 @@ export default function CreateImportNotePage() {
       const importFromValue = form.importFrom?.trim() || "Chưa xác định";
       const supplierValue = form.supplier?.trim() || "Chưa xác định";
 
-      // Tạo partItemRequest cho tất cả các phụ tùng
-      // Tất cả sẽ được gộp vào một partRequest với partItemRequest là array
       const partItemRequests = addedParts.flatMap((part) => {
         const warrantyPeriod = Number(part.warrantyPeriod) || 0;
         const basePrice = Number(part.price) || 0;
@@ -310,10 +301,8 @@ export default function CreateImportNotePage() {
         let warantyStartDate = null;
         let warantyEndDate = null;
 
-        if (part.hasManufacturerWarranty) {
-          const start = part.warrantyStartDate
-            ? new Date(part.warrantyStartDate)
-            : new Date();
+        if (part.hasManufacturerWarranty && part.warrantyStartDate) {
+          const start = new Date(part.warrantyStartDate);
           warantyStartDate = start.toISOString();
 
           let endDate = start;
@@ -324,45 +313,41 @@ export default function CreateImportNotePage() {
           warantyEndDate = endDate.toISOString();
         }
 
-        // Nếu có serialNumber và quantity > 1, tạo từng item riêng
-        // Nếu không có serialNumber hoặc quantity = 1, gộp thành 1 item
+        const baseItem = {
+          partId: part.partId || null,
+          quantity: quantity,
+          serialNumber: part.hasManufacturerWarranty && part.serialNumber ? part.serialNumber : null,
+          price: basePrice,
+          warrantyPeriod: warrantyPeriod,
+          isManufacturerWarranty: part.hasManufacturerWarranty,
+        };
+
+        if (warantyStartDate) {
+          baseItem.warantyStartDate = warantyStartDate;
+        }
+        if (warantyEndDate) {
+          baseItem.warantyEndDate = warantyEndDate;
+        }
+
         if (part.hasManufacturerWarranty && part.serialNumber && quantity > 1) {
-          // Tạo từng item với serialNumber khác nhau
           const items = [];
           for (let i = 0; i < quantity; i++) {
-            items.push({
-              partId: part.partId || null,
+            const item = {
+              ...baseItem,
               quantity: 1,
               serialNumber: `${part.serialNumber}-${i + 1}`,
-              price: basePrice,
-              warrantyPeriod: warrantyPeriod,
-              warantyStartDate,
-              warantyEndDate,
-              isManufacturerWarranty: true,
-            });
+            };
+            items.push(item);
           }
           return items;
         } else {
-          // Gộp thành 1 item
-          return [{
-            partId: part.partId || null,
-            quantity: quantity,
-            serialNumber: part.hasManufacturerWarranty && part.serialNumber ? part.serialNumber : null,
-            price: basePrice,
-            warrantyPeriod: warrantyPeriod,
-            warantyStartDate,
-            warantyEndDate,
-            isManufacturerWarranty: part.hasManufacturerWarranty,
-          }];
+          return [baseItem];
         }
       });
 
-      // Lấy thông tin part đầu tiên để làm partRequest chính
-      // (hoặc có thể để null nếu có nhiều part khác nhau)
       const firstPart = addedParts[0];
       const hasMultipleParts = addedParts.some(p => p.partId !== firstPart.partId);
 
-      // Tạo payload với một partRequest chứa tất cả partItemRequest
       const payload = {
         type: form.type || "SUPPLIER",
         importById: staffId,
@@ -375,18 +360,17 @@ export default function CreateImportNotePage() {
           partId: hasMultipleParts ? null : (firstPart.partId || null),
           name: hasMultipleParts ? "" : (firstPart.partName || ""),
           image: hasMultipleParts ? "" : (firstPart.partImage || ""),
-          partItemRequest: partItemRequests, // Array chứa tất cả partItem của nhiều part
+          partItemRequest: partItemRequests,
         },
       };
 
-      console.log("📤 Creating import note with payload:", payload);
 
       const response = await createImportNote(payload);
 
       if (response?.success || response?.statusCode === 200) {
-        toast({
-          title: "Thành công",
-          description: response?.message || `Đã tạo thành công phiếu nhập với ${addedParts.length} phụ tùng.`,
+        toastify.success("Tạo phiếu nhập thành công!", {
+          position: "top-right",
+          autoClose: 3000,
         });
         navigate("/storekeeper/import-slips");
       } else {
@@ -394,54 +378,55 @@ export default function CreateImportNotePage() {
       }
     } catch (error) {
       console.error("Lỗi khi tạo phiếu nhập:", error);
-      toast({
-        title: "Lỗi",
-        description:
-          error?.response?.data?.message ||
-          error?.message ||
-          "Không thể tạo phiếu nhập. Vui lòng thử lại.",
-        variant: "destructive",
-      });
+      toastify.error(
+        error?.response?.data?.message ||
+        error?.message ||
+        "Không thể tạo phiếu nhập. Vui lòng thử lại.",
+        {
+          position: "top-right",
+          autoClose: 4000,
+        }
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="p-6 sm:p-8 max-w-6xl mx-auto space-y-6 pb-20">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-red-50 to-rose-100">
+      <div className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-6">
+        <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full"
+              className="rounded-full hover:bg-rose-100"
               onClick={() => navigate("/storekeeper/import-slips")}
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <FileDown className="h-5 w-5" />
-                </div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 text-primary shadow-sm">
+                <FileDown className="h-6 w-6" />
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
                   Tạo phiếu nhập
                 </h1>
+                <p className="text-slate-600 text-sm sm:text-base mt-1">
+                  Tạo phiếu nhập phụ tùng cho kho. Bạn có thể thêm một hoặc nhiều phụ tùng vào phiếu nhập.
+                </p>
               </div>
-              <p className="text-muted-foreground text-sm sm:text-base">
-                Tạo phiếu nhập phụ tùng cho kho. Bạn có thể thêm một hoặc nhiều phụ tùng vào phiếu nhập.
-              </p>
             </div>
           </div>
+          <div className="h-[2px] w-32 rounded-full bg-gradient-to-r from-red-400/60 via-rose-300/40 to-transparent" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-1 border-border/70 shadow-sm lg:sticky lg:top-20 lg:self-start">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <FileDown className="h-4 w-4 text-primary" />
+          <Card className="lg:col-span-1 border border-rose-200/60 shadow-md bg-white/95 backdrop-blur">
+            <CardHeader className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileDown className="h-5 w-5 text-primary" />
                 Thông tin phiếu nhập
               </CardTitle>
               <CardDescription>
@@ -480,10 +465,10 @@ export default function CreateImportNotePage() {
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2 border-border/70 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Package className="h-4 w-4 text-primary" />
+          <Card className="lg:col-span-2 border border-rose-200/60 shadow-md bg-white/95 backdrop-blur">
+            <CardHeader className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Package className="h-5 w-5 text-primary" />
                 Phụ tùng & thông tin bảo hành
               </CardTitle>
               <CardDescription>
@@ -869,7 +854,6 @@ export default function CreateImportNotePage() {
                 </div>
               )}
 
-              {/* Nút thêm phụ tùng vào danh sách */}
               <div className="flex justify-end pt-4 border-t">
                 <Button
                   type="button"
@@ -885,12 +869,11 @@ export default function CreateImportNotePage() {
           </Card>
         </div>
 
-        {/* Danh sách phụ tùng đã thêm */}
         {addedParts.length > 0 && (
-          <Card className="border-border/70 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Package className="h-4 w-4 text-primary" />
+          <Card className="border border-rose-200/60 shadow-md bg-white/95 backdrop-blur">
+            <CardHeader className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Package className="h-5 w-5 text-primary" />
                 Danh sách phụ tùng đã thêm ({addedParts.length})
               </CardTitle>
               <CardDescription>

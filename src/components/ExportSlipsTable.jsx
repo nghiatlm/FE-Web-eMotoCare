@@ -174,7 +174,7 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
   // Loading state
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white/95 backdrop-blur rounded-xl border border-rose-200/60 shadow-md overflow-hidden">
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
@@ -188,10 +188,10 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
   // Error state
   if (error) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white/95 backdrop-blur rounded-xl border border-rose-200/60 shadow-md overflow-hidden">
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            <p className="text-red-600 dark:text-red-400 mb-2">Lỗi khi tải phiếu xuất</p>
+            <p className="text-red-600 dark:text-red-400 mb-2 font-medium">Lỗi khi tải phiếu xuất</p>
             <p className="text-muted-foreground text-sm">{error}</p>
           </div>
         </div>
@@ -200,35 +200,39 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
   }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+    <div className="bg-white/95 backdrop-blur rounded-xl border border-rose-200/60 overflow-hidden shadow-md">
       <div className="overflow-x-auto">
         <table className="w-full table-fixed">
           <colgroup>
-            <col style={{ width: '20%' }} />
-            <col style={{ width: '20%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '15%' }} />
-            <col style={{ width: '15%' }} />
-            <col className="w-32" />
+            <col style={{ width: '5%', minWidth: '40px' }} />
+            <col style={{ width: '16%', minWidth: '140px' }} />
+            <col style={{ width: '20%', minWidth: '160px' }} />
+            <col style={{ width: '14%', minWidth: '100px' }} />
+            <col style={{ width: '14%', minWidth: '110px' }} />
+            <col style={{ width: '14%', minWidth: '120px' }} />
+            <col style={{ width: '17%', minWidth: '120px' }} />
           </colgroup>
           <thead>
-            <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
+            <tr className="bg-gradient-to-r from-rose-100 via-rose-50/80 to-pink-50 border-b border-rose-200">
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">
+                STT
+              </th>
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">
                 Mã phiếu
               </th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">
                 Người nhận
               </th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">
                 Tổng SL
               </th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">
                 Ngày xuất
               </th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">
                 Trạng thái
               </th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">
                 Thao tác
               </th>
             </tr>
@@ -238,45 +242,54 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
       <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
         <table className="w-full table-fixed">
           <colgroup>
-            <col style={{ width: '20%' }} />
-            <col style={{ width: '20%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '15%' }} />
-            <col style={{ width: '15%' }} />
-            <col className="w-32" />
+            <col style={{ width: '5%', minWidth: '40px' }} />
+            <col style={{ width: '16%', minWidth: '140px' }} />
+            <col style={{ width: '20%', minWidth: '160px' }} />
+            <col style={{ width: '14%', minWidth: '100px' }} />
+            <col style={{ width: '14%', minWidth: '110px' }} />
+            <col style={{ width: '14%', minWidth: '120px' }} />
+            <col style={{ width: '17%', minWidth: '120px' }} />
           </colgroup>
           <tbody>
             {filtered.length === 0 && !loading ? (
               <tr>
-                <td colSpan="6" className="py-12 px-6 text-center">
+                <td colSpan="7" className="py-12 px-6 text-center">
                   <div className="flex flex-col items-center gap-2">
-                    <p className="text-muted-foreground text-sm">Không tìm thấy phiếu xuất phù hợp</p>
+                    <FileUp className="h-12 w-12 text-muted-foreground/40 mb-2" />
+                    <p className="text-muted-foreground text-sm font-medium">Không tìm thấy phiếu xuất phù hợp</p>
                     <p className="text-xs text-muted-foreground">{search || status ? "Hãy thay đổi từ khóa hoặc bộ lọc" : "Chưa có phiếu xuất nào"}</p>
                   </div>
                 </td>
               </tr>
             ) : (
-              filtered.map((slip, i) => (
+              filtered.map((slip, i) => {
+                const stt = (page - 1) * pageSize + i + 1;
+                return (
                 <tr
                   key={`${slip.id}-${i}`}
-                  className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
-                    i % 2 === 0 ? "bg-white" : "bg-slate-50/40"
+                  className={`border-b border-rose-100/50 hover:bg-rose-50/50 transition-colors ${
+                    i % 2 === 0 ? "bg-white" : "bg-rose-50/20"
                   }`}
                 >
-                  <td className="py-4 px-6 text-center">
+                  <td className="py-4 px-6 text-center whitespace-nowrap">
+                    <span className="text-sm text-foreground font-medium">
+                      {stt}
+                    </span>
+                  </td>
+                  <td className="py-4 px-6 text-center whitespace-nowrap">
                     <span className="text-sm text-foreground font-medium">
                       {slip.id}
                     </span>
                   </td>
-                  <td className="py-4 px-6 text-center">
+                  <td className="py-4 px-6 text-center whitespace-nowrap">
                     <span className="text-sm text-foreground">{getServiceCenterName(slip.exportTo)}</span>
                   </td>
-                  <td className="py-4 px-6 text-center">
-                    <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-800 border border-red-200">
+                  <td className="py-4 px-6 text-center whitespace-nowrap">
+                    <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-semibold bg-rose-100 text-rose-800 border border-rose-200 shadow-sm">
                       {slip.totalQuantity}
                     </span>
                   </td>
-                  <td className="py-4 px-6 text-center">
+                  <td className="py-4 px-6 text-center whitespace-nowrap">
                     <span className="text-sm text-foreground">
                       {slip.date ? new Date(slip.date).toLocaleDateString('vi-VN', {
                         day: '2-digit',
@@ -285,7 +298,7 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
                       }) : 'N/A'}
                     </span>
                   </td>
-                  <td className="py-4 px-6 text-center">
+                  <td className="py-4 px-6 text-center whitespace-nowrap">
                     <Badge
                       variant="secondary"
                       className={`border ${getStatusBadgeClass(slip.status)}`}
@@ -293,12 +306,12 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
                       {getStatusLabel(slip.status)}
                     </Badge>
                   </td>
-                  <td className="py-4 px-6 text-center">
+                  <td className="py-4 px-6 text-center whitespace-nowrap">
                     <div className="flex items-center justify-center gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="gap-1.5 h-8 px-3 text-xs font-medium hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                        className="gap-1.5 h-8 px-3 text-xs font-medium hover:bg-primary/10 hover:text-primary transition-colors"
                         onClick={() => window?.openViewExportSlip?.(slip)}
                       >
                         <Eye className="h-3.5 w-3.5" />
@@ -307,15 +320,15 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
                     </div>
                   </td>
                 </tr>
-              ))
+              );
+              })
             )}
           </tbody>
         </table>
       </div>
 
-      {/* Pagination */}
       {total > 0 && (
-      <div className="flex items-center justify-between p-5 bg-gradient-to-r from-muted/30 to-muted/50 border-t border-border/50">
+      <div className="flex items-center justify-between p-5 bg-gradient-to-r from-rose-50/50 via-pink-50/30 to-rose-50/50 border-t border-rose-200/50">
         <div className="text-sm font-medium text-foreground/80">
           Hiển thị <span className="font-semibold text-foreground">{filtered.length}</span> / <span className="font-semibold text-foreground">{total}</span> phiếu
         </div>
@@ -327,7 +340,7 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
                   className={`cursor-pointer transition-all ${
                     page === 1 
                       ? "pointer-events-none opacity-50" 
-                      : "hover:bg-red-100 dark:hover:bg-red-900/30"
+                      : "hover:bg-rose-100 dark:hover:bg-rose-900/30"
                   }`}
                 />
               </PaginationItem>
@@ -339,8 +352,8 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
                     isActive={page === pageNum}
                     className={`cursor-pointer transition-all ${
                       page === pageNum
-                        ? "bg-red-500 text-white hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700"
-                        : "hover:bg-red-100 dark:hover:bg-red-900/30"
+                        ? "bg-primary text-white hover:bg-primary/90 dark:bg-primary dark:hover:bg-primary/90"
+                        : "hover:bg-rose-100 dark:hover:bg-rose-900/30"
                     }`}
                   >
                     {pageNum}
@@ -354,7 +367,7 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
                   className={`cursor-pointer transition-all ${
                     page >= Math.ceil(total / pageSize)
                       ? "pointer-events-none opacity-50"
-                      : "hover:bg-red-100 dark:hover:bg-red-900/30"
+                      : "hover:bg-rose-100 dark:hover:bg-rose-900/30"
                   }`}
                 />
               </PaginationItem>

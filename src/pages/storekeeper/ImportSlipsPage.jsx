@@ -11,7 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 import ImportSlipsTable from "@/components/ImportSlipsTable";
 import { getImportNoteById, updateImportNote, createImportNote } from "@/api/importNotesApi";
 import { getPartItemsByServiceCenter } from "@/api/partitemsApi";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStaffByAccountId } from "@/api/staffsApi";
 import { getServiceCenterById } from "@/api/serviceCentersApi";
@@ -34,7 +33,6 @@ export default function ImportSlipsPage() {
   const [serviceCenterId, setServiceCenterId] = useState(null);
   const [staffId, setStaffId] = useState("");
 
-  // Edit form state
   const [editFormData, setEditFormData] = useState({
     code: "",
     importDate: "",
@@ -310,17 +308,33 @@ export default function ImportSlipsPage() {
   }, [toast]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="p-8">
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-2">
-            <FileDown className="h-6 w-6 text-primary" />
-            <h1 className="text-3xl font-bold text-foreground">Phiếu nhập</h1>
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-red-50 to-rose-100">
+      <div className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-6">
+        {/* Header Section */}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
+                  <FileDown className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-foreground">Phiếu nhập</h1>
+                  <p className="text-sm text-muted-foreground mt-1">Quản lý các phiếu nhập hàng vào kho</p>
+                </div>
+              </div>
+            </div>
+            <Button 
+              className="gap-2 bg-primary hover:bg-primary/90 text-white shadow-md hover:shadow-lg transition-all"
+              onClick={() => navigate("/storekeeper/import-slips/create")}
+            >
+              <Plus className="h-4 w-4" />
+              Tạo phiếu nhập mới
+            </Button>
           </div>
-          <p className="text-muted-foreground mb-4">Quản lý các phiếu nhập hàng vào kho</p>
           
-          {/* Chi nhánh hiện tại */}
-          <div className="p-4 bg-card rounded-lg border border-border">
+          {/* Branch Info Card */}
+          <div className="p-5 bg-white/95 backdrop-blur rounded-xl border border-rose-200/60 shadow-md">
             {branchLoading ? (
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
@@ -333,19 +347,21 @@ export default function ImportSlipsPage() {
             ) : branchInfo ? (
               <div className="flex items-center justify-between gap-6 flex-wrap">
                 <div className="flex items-start gap-3">
-                  <Building2 className="h-5 w-5 text-primary mt-1" />
+                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center border border-primary/20">
+                    <Building2 className="h-5 w-5 text-primary" />
+                  </div>
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-foreground">{branchInfo.name}</span>
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-semibold text-lg text-foreground">{branchInfo.name}</span>
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 border-blue-200">
                         Chi nhánh của tôi
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <MapPin className="h-3 w-3" />
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
+                      <MapPin className="h-3.5 w-3.5" />
                       <span>{branchInfo.address}</span>
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1">
+                    <div className="text-sm text-muted-foreground">
                       Quản lý: <span className="font-medium text-foreground">{branchInfo.manager}</span>
                     </div>
                   </div>
@@ -359,6 +375,7 @@ export default function ImportSlipsPage() {
           </div>
         </div>
 
+        {/* Search and Filter Section */}
         <div className="mb-6 p-4 bg-card rounded-lg border border-border">
           <div className="flex flex-wrap items-center gap-4">
             <div className="relative w-[350px]">
@@ -410,16 +427,6 @@ export default function ImportSlipsPage() {
                 Xóa lọc
               </Button>
             )}
-
-            <div className="flex items-center gap-3 ml-auto">
-              <Button
-                className="gap-2 bg-primary hover:bg-primary/90"
-                onClick={() => navigate("/storekeeper/import-slips/create")}
-              >
-                <Plus className="h-4 w-4" />
-                Tạo phiếu nhập mới
-              </Button>
-            </div>
           </div>
         </div>
 
