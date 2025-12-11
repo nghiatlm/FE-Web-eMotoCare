@@ -1,9 +1,9 @@
 import { getStaffByPosition } from "../api/staffsApi";
 
 // 🟢 Lấy danh sách kỹ thuật viên
-export const fetchTechnicians = async () => {
+export const fetchTechnicians = async (serviceCenterId = null) => {
   try {
-    const res = await getStaffByPosition("TECHNICIAN_STAFF"); // truyền position
+    const res = await getStaffByPosition("TECHNICIAN_STAFF", serviceCenterId); // truyền position và serviceCenterId
     console.log("Technicians API response:", res.data); // kiểm tra response
     return res?.data?.rowDatas || []; // trả về mảng nhân viên
   } catch (error) {

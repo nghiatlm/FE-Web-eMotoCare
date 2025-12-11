@@ -535,7 +535,7 @@ export default function TechnicianBookingDetailPage({
               disabled={loading}
               style={{ flex: 1 }}
             />
-            <Button type='primary' loading={loading} onClick={handleSendKm}>
+            <Button type='danger' loading={loading} onClick={handleSendKm}>
               Cập nhật KM
             </Button>
           </div>

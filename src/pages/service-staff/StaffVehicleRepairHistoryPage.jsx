@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Table, Tag, Button, Card, Spin, Empty, Space, Typography } from "antd";
-import { ArrowLeft, Car, Hash, Palette, Wrench, User, Phone, Mail } from "lucide-react";
+import { ArrowLeft, Car, Hash, Palette, Wrench, User, Phone, Mail, FileText } from "lucide-react";
 import { toast } from "react-toastify";
 import dayjs from "dayjs";
 import { STATUS_COLORS, STATUS_MAP, UI_COLORS } from "../../utils/constants";
@@ -11,6 +11,11 @@ import { fetchAppointments } from "../../services/appointmentService";
 import { getAppointmentById } from "../../api/appointmentsApi";
 import PaymentInfo from "../../components/service-staff/PaymentInfo";
 import PaymentHistory from "../../components/service-staff/PaymentHistory";
+import { fetchEVCheckByAppointmentService } from "../../services/evcheckService";
+import RepairModeEVCheck from "../../components/technician/detail-content/RepairModeEVCheck";
+import RMARepairModeEVCheck from "../../components/technician/detail-content/RMARepairModeEVCheck";
+import MaintenanceModeEVCheck from "../../components/technician/detail-content/MaintenanceModeEVCheck";
+import CampaignModeEVCheck from "../../components/technician/detail-content/CampaignModeEVCheck";
 
 const { Text } = Typography;
 
@@ -45,6 +50,9 @@ export default function StaffVehicleRepairHistoryPage() {
   const [vehicleInfo, setVehicleInfo] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [loadingBooking, setLoadingBooking] = useState(false);
+  const [currentEVCheckId, setCurrentEVCheckId] = useState(null);
+  const [evCheckStatus, setEvCheckStatus] = useState(null);
+  const [loadingEVCheck, setLoadingEVCheck] = useState(false);
 
   // ================== LOAD APPOINTMENTS ==================
   const loadAppointments = async () => {
@@ -94,18 +102,50 @@ export default function StaffVehicleRepairHistoryPage() {
           customer: vehicleAppointments[0].customer,
         });
         
-        // ✅ Tự động load thông tin thanh toán của appointment đầu tiên
+        // ✅ Tự động load thông tin đầy đủ của appointment đầu tiên (bao gồm EVCheck)
         const firstAppointmentId = vehicleAppointments[0].id;
         if (firstAppointmentId) {
-          // ✅ Load booking detail của appointment đầu tiên
+          // ✅ Load booking detail và EVCheck của appointment đầu tiên
           try {
+            setLoadingBooking(true);
+            setLoadingEVCheck(true);
+            
             const res = await getAppointmentById(firstAppointmentId);
             const bookingData = res?.data?.data || res?.data || res;
             if (bookingData) {
               setSelectedBooking(bookingData);
+              
+              // ✅ Load EVCheck details
+              try {
+                const evCheck = await fetchEVCheckByAppointmentService(bookingData.id);
+                if (evCheck) {
+                  // ✅ Handle response format
+                  let evCheckData = null;
+                  if (Array.isArray(evCheck)) {
+                    evCheckData = evCheck[evCheck.length - 1]; // Lấy cái mới nhất
+                  } else if (evCheck?.data?.rowDatas && Array.isArray(evCheck.data.rowDatas)) {
+                    evCheckData = evCheck.data.rowDatas[evCheck.data.rowDatas.length - 1];
+                  } else if (evCheck?.rowDatas && Array.isArray(evCheck.rowDatas)) {
+                    evCheckData = evCheck.rowDatas[evCheck.rowDatas.length - 1];
+                  } else {
+                    evCheckData = evCheck;
+                  }
+
+                  if (evCheckData) {
+                    setCurrentEVCheckId(evCheckData.id);
+                    setEvCheckStatus(evCheckData.status || null);
+                  }
+                }
+              } catch (evErr) {
+                console.error("❌ Lỗi khi tự động load EVCheck đầu tiên:", evErr);
+              } finally {
+                setLoadingEVCheck(false);
+              }
             }
           } catch (err) {
             console.error("❌ Lỗi khi tự động load booking đầu tiên:", err);
+          } finally {
+            setLoadingBooking(false);
           }
         }
       }
@@ -132,16 +172,44 @@ export default function StaffVehicleRepairHistoryPage() {
     // ✅ Nếu đang xem booking này rồi thì ẩn đi
     if (selectedBooking?.id === appointmentId) {
       setSelectedBooking(null);
+      setCurrentEVCheckId(null);
+      setEvCheckStatus(null);
       return;
     }
 
     setLoadingBooking(true);
+    setLoadingEVCheck(true);
     try {
       const res = await getAppointmentById(appointmentId);
       // ✅ Parse response giống như StaffBookingDetailPage
       const bookingData = res?.data?.data || res?.data || res;
       if (bookingData) {
         setSelectedBooking(bookingData);
+        
+        // ✅ Load EVCheck details
+        try {
+          const evCheck = await fetchEVCheckByAppointmentService(bookingData.id);
+          if (evCheck) {
+            // ✅ Handle response format
+            let evCheckData = null;
+            if (Array.isArray(evCheck)) {
+              evCheckData = evCheck[evCheck.length - 1]; // Lấy cái mới nhất
+            } else if (evCheck?.data?.rowDatas && Array.isArray(evCheck.data.rowDatas)) {
+              evCheckData = evCheck.data.rowDatas[evCheck.data.rowDatas.length - 1];
+            } else if (evCheck?.rowDatas && Array.isArray(evCheck.rowDatas)) {
+              evCheckData = evCheck.rowDatas[evCheck.rowDatas.length - 1];
+            } else {
+              evCheckData = evCheck;
+            }
+
+            if (evCheckData) {
+              setCurrentEVCheckId(evCheckData.id);
+              setEvCheckStatus(evCheckData.status || null);
+            }
+          }
+        } catch (evErr) {
+          console.error("❌ Lỗi khi tải EVCheck:", evErr);
+        }
       } else {
         toast.error("Không tìm thấy thông tin booking");
       }
@@ -150,6 +218,7 @@ export default function StaffVehicleRepairHistoryPage() {
       toast.error("Không thể tải thông tin chi tiết");
     } finally {
       setLoadingBooking(false);
+      setLoadingEVCheck(false);
     }
   };
 
@@ -434,23 +503,118 @@ export default function StaffVehicleRepairHistoryPage() {
           />
         )}
 
-        {/* Hiển thị thông tin thanh toán khi bấm Xem */}
+        {/* ✅ Hiển thị bảng chi tiết hạng mục sửa chữa và thông tin thanh toán khi bấm Xem */}
         {selectedBooking && (
           <div style={{ marginTop: 24 }}>
-            {loadingBooking ? (
+            {loadingBooking || loadingEVCheck ? (
               <div style={{ textAlign: "center", padding: "40px 0" }}>
                 <Spin size="large" />
               </div>
             ) : (
-              <div style={{ marginBottom: 24 }}>
-                {selectedBooking.status === "COMPLETED" ? (
-                  // ✅ Đã hoàn thành: Hiển thị lịch sử thanh toán
-                  <PaymentHistory booking={selectedBooking} />
-                ) : (selectedBooking.status === "REPAIR_COMPLETED" || selectedBooking.status === "QUOTE_APPROVED") ? (
-                  // ✅ Chưa hoàn thành: Hiển thị thông tin thanh toán
-                  <PaymentInfo booking={selectedBooking} />
-                ) : null}
-              </div>
+              <>
+                {/* ✅ Bảng phiếu sửa chữa (EVCheck) */}
+                {currentEVCheckId && (
+                  <Card
+                    style={{
+                      marginBottom: 24,
+                      borderRadius: 12,
+                      border: "1px solid #e8e8e8",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                    }}
+                    bodyStyle={{ padding: "24px" }}>
+                    <h3
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 600,
+                        marginBottom: 16,
+                        color: "#d4380d",
+                        borderBottom: "1px solid #f0f0f0",
+                        paddingBottom: 12,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}>
+                      <FileText size={16} color="#d4380d" />
+                      {selectedBooking.type === "REPAIR_TYPE"
+                        ? "Phiếu sửa chữa"
+                        : selectedBooking.type === "MAINTENANCE_TYPE"
+                        ? "Kết quả kiểm tra EVCheck"
+                        : selectedBooking.type === "CAMPAIGN_TYPE"
+                        ? "Phiếu kiểm tra chiến dịch"
+                        : "Chi tiết kiểm tra"}
+                    </h3>
+                    {(() => {
+                      const isRepair = selectedBooking.type === "REPAIR_TYPE";
+                      const isMaintenance = selectedBooking.type === "MAINTENANCE_TYPE";
+                      const isCampaign = selectedBooking.type === "CAMPAIGN_TYPE";
+                      const note = (selectedBooking?.note || "").toLowerCase();
+                      const isRMABooking = note.includes("lịch thay") && note.includes("rma");
+
+                      if (isRepair && isRMABooking) {
+                        return (
+                          <RMARepairModeEVCheck
+                            key={`rma-repair-${currentEVCheckId}`}
+                            booking={selectedBooking}
+                            evCheckId={currentEVCheckId}
+                            onRefresh={() => {}}
+                            readOnly={true}
+                            forceEmpty={!currentEVCheckId}
+                          />
+                        );
+                      } else if (isRepair) {
+                        return (
+                          <RepairModeEVCheck
+                            key={`repair-${currentEVCheckId}`}
+                            booking={selectedBooking}
+                            evCheckId={currentEVCheckId}
+                            onRefresh={() => {}}
+                            readOnly={true}
+                            forceEmpty={!currentEVCheckId}
+                          />
+                        );
+                      } else if (isCampaign) {
+                        return (
+                          <CampaignModeEVCheck
+                            key={`campaign-${currentEVCheckId}`}
+                            booking={selectedBooking}
+                            evCheckId={currentEVCheckId}
+                            evCheckStatus={evCheckStatus}
+                            onRefresh={() => {}}
+                            readOnly={true}
+                            forceEmpty={!currentEVCheckId}
+                          />
+                        );
+                      } else if (isMaintenance && currentEVCheckId) {
+                        return (
+                          <MaintenanceModeEVCheck
+                            key={`maintenance-${currentEVCheckId}-${evCheckStatus}`}
+                            booking={selectedBooking}
+                            evCheckId={currentEVCheckId}
+                            evCheckStatus={evCheckStatus}
+                            setEvCheckStatus={setEvCheckStatus}
+                            readOnly={true}
+                            onRefresh={() => {}}
+                          />
+                        );
+                      }
+                      return null;
+                    })()}
+                  </Card>
+                )}
+
+                {/* ✅ Thông tin thanh toán */}
+                {currentEVCheckId && (
+                  <div style={{ marginBottom: 24 }}>
+                    {selectedBooking.status === "COMPLETED" ? (
+                      // ✅ Đã hoàn thành: Hiển thị lịch sử thanh toán
+                      <PaymentHistory booking={selectedBooking} />
+                    ) : (selectedBooking.status === "REPAIR_COMPLETED" || selectedBooking.status === "QUOTE_APPROVED") ? (
+                      // ✅ Chưa hoàn thành: Hiển thị thông tin thanh toán
+                      <PaymentInfo booking={selectedBooking} />
+                    ) : null}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

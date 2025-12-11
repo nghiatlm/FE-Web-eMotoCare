@@ -256,7 +256,7 @@ export default function RMARepairModeEVCheck({
             replacePartId,
             replacePartName: replacePartName || replacePartId || "",
             replacePart: item.replacePart || null, // ✅ Giữ nguyên replacePart từ RMA
-            result: item.result ?? "Lắp đặt phụ tùng đã được sửa chữa từ hãng", // ✅ Mặc định cho lịch thay thế từ RMA
+            result: item.result ?? "", // ✅ Không có giá trị mặc định
             remedies: item.remedies || "REPLACE", // ✅ Mặc định REPLACE vì đã có replacePart
             pricePart: Number(item.pricePart || 0),
             priceService: Number(item.priceService || 0),
@@ -589,11 +589,6 @@ export default function RMARepairModeEVCheck({
         <Input.TextArea
           value={r.result ?? ""}
           onChange={(e) => handleChange(i, "result", e.target.value)}
-          onBlur={(e) => {
-            if (!e.target.value.trim()) {
-              handleChange(i, "result", "Lắp đặt phụ tùng đã được sửa chữa từ hãng");
-            }
-          }}
           disabled={readOnly || !canEditFields}
           autoSize={{ minRows: 2, maxRows: 8 }}
           style={{ resize: "none", fontSize: 14, maxWidth: "100%" }}

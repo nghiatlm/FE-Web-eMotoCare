@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import { createPaymentLinkService } from "../../services/paymentService";
 import { fetchEVCheckByAppointmentService } from "../../services/evcheckService";
+import { changeAppointmentStatusService } from "../../services/appointmentService";
 import { SERVICE_TYPE_MAP } from "../../utils/constants";
 
 const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0, isPendingCancel = false }) => {
@@ -12,6 +13,9 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
   const [quoteItems, setQuoteItems] = useState([]);
   const [fetchingEVCheck, setFetchingEVCheck] = useState(false);
   const [totalAmount, setTotalAmount] = useState(0);
+  const [totalServiceFee, setTotalServiceFee] = useState(0); // ✅ Tổng phí dịch vụ
+  const [totalPartsFee, setTotalPartsFee] = useState(0); // ✅ Tổng phí phụ tùng
+  const [vat, setVat] = useState(0); // ✅ VAT (8%)
 
   const appointmentId = booking?.id;
 
@@ -31,7 +35,11 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
         serial: '',
         totalAmount: cancellationFee,
       }]);
-      setTotalAmount(cancellationFee);
+      setTotalServiceFee(cancellationFee);
+      setTotalPartsFee(0);
+      const vatAmount = Math.round(cancellationFee * 0.08);
+      setVat(vatAmount);
+      setTotalAmount(cancellationFee + vatAmount);
       return;
     }
 
@@ -165,18 +173,42 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
 
           const filteredItems = items.filter((item) => item.totalAmount > 0);
           setQuoteItems(filteredItems);
-          setTotalAmount(
-            filteredItems.reduce((s, i) => s + (i.totalAmount || 0), 0)
-          );
+          
+          // ✅ Tính tổng phí dịch vụ (tổng của tất cả priceService * quantity)
+          const serviceFee = filteredItems.reduce((s, i) => s + ((i.priceService || 0) * (i.quantity || 1)), 0);
+          setTotalServiceFee(serviceFee);
+          
+          // ✅ Tính tổng phí phụ tùng (tổng của tất cả pricePart * quantity, chỉ khi REPLACE)
+          const partsFee = filteredItems.reduce((s, i) => {
+            if (i.remedies === "REPLACE") {
+              return s + ((i.pricePartDisplay || 0) * (i.quantity || 1));
+            }
+            return s;
+          }, 0);
+          setTotalPartsFee(partsFee);
+          
+          // ✅ Tính VAT (8% của tổng phí dịch vụ + tổng phí phụ tùng)
+          const vatAmount = Math.round((serviceFee + partsFee) * 0.08);
+          setVat(vatAmount);
+          
+          // ✅ Tổng chi phí = tổng phí dịch vụ + tổng phí phụ tùng + VAT
+          const total = serviceFee + partsFee + vatAmount;
+          setTotalAmount(total);
         } else {
           setQuoteItems([]);
           setTotalAmount(0);
+          setTotalServiceFee(0);
+          setTotalPartsFee(0);
+          setVat(0);
         }
       } catch (e) {
         console.error(e);
         toast.warning("Không tải được báo giá từ EVCheck");
         setQuoteItems([]);
         setTotalAmount(0);
+        setTotalServiceFee(0);
+        setTotalPartsFee(0);
+        setVat(0);
       } finally {
         setFetchingEVCheck(false);
       }
@@ -191,6 +223,33 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
 
     setLoading(true);
     try {
+      // ✅ Thanh toán bằng app: không cần gọi payment API, chỉ cập nhật appointment status
+      if (paymentMethod === "APP") {
+        try {
+          // ✅ Lấy thông tin appointment hiện tại để giữ lại các field khác
+          const { getAppointmentById } = await import("../../api/appointmentsApi");
+          const appointmentRes = await getAppointmentById(appointmentId);
+          const currentAppointment = appointmentRes?.data?.data || appointmentRes?.data || appointmentRes;
+          
+          // ✅ Cập nhật appointment status thành WAITING_FOR_PAYMENT
+          await changeAppointmentStatusService(appointmentId, "WAITING_FOR_PAYMENT", {
+            note: currentAppointment?.note || booking?.note || "",
+            approveById: currentAppointment?.approveById || booking?.approveById || null,
+            code: currentAppointment?.code || booking?.code || "",
+            checkinQRCode: currentAppointment?.checkinQRCode || booking?.checkinQRCode || "",
+          });
+          
+          toast.success("Đã tạo yêu cầu thanh toán bằng app! Khách hàng sẽ thanh toán trên ứng dụng.");
+          onPaymentSuccess?.({ method: "APP", amount: totalAmount });
+          onClose();
+          return;
+        } catch (err) {
+          console.error("❌ Lỗi cập nhật appointment status:", err);
+          toast.error(`Lỗi cập nhật trạng thái: ${err.response?.data?.message || err.message || "Unknown error"}`);
+          return;
+        }
+      }
+
       // Theo swagger BE: muốn PayOS -> gửi PAY_OS_CENTER
       const payload = {
         amount: Math.round(totalAmount),
@@ -405,18 +464,50 @@ Xác nhận hóa đơn        </span>
               size='middle'
               rowKey='id'
               summary={() => (
-                <Table.Summary.Row className='font-bold bg-gray-50'>
-                  <Table.Summary.Cell
-                    colSpan={7}
-                    className='text-right text-lg'>
-                    TỔNG CỘNG:
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell className='text-right'>
-                    <span className='text-xl font-bold text-red-600'>
-                      {totalAmount.toLocaleString()} ₫
-                    </span>
-                  </Table.Summary.Cell>
-                </Table.Summary.Row>
+                <>
+                  <Table.Summary.Row className='bg-gray-50'>
+                    <Table.Summary.Cell
+                      colSpan={6}
+                      className='text-right'>
+                      Tổng phí dịch vụ:
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell className='text-right'>
+                      <span>{totalServiceFee.toLocaleString("vi-VN")} ₫</span>
+                    </Table.Summary.Cell>
+                  </Table.Summary.Row>
+                  <Table.Summary.Row className='bg-gray-50'>
+                    <Table.Summary.Cell
+                      colSpan={6}
+                      className='text-right'>
+                      Tổng phí phụ tùng:
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell className='text-right'>
+                      <span>{totalPartsFee.toLocaleString("vi-VN")} ₫</span>
+                    </Table.Summary.Cell>
+                  </Table.Summary.Row>
+                  <Table.Summary.Row className='bg-gray-50'>
+                    <Table.Summary.Cell
+                      colSpan={6}
+                      className='text-right'>
+                      VAT (8%):
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell className='text-right'>
+                      <span>{vat.toLocaleString("vi-VN")} ₫</span>
+                    </Table.Summary.Cell>
+                  </Table.Summary.Row>
+                  <Table.Summary.Row className='font-bold bg-gray-100 border-t-2 border-gray-300'>
+                    <Table.Summary.Cell
+                      colSpan={6}
+                      className='text-right text-lg'>
+                      TỔNG CỘNG:
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell className='text-right'>
+                      <span className='text-xl font-bold text-red-600'>
+                        {totalAmount.toLocaleString("vi-VN")} ₫
+                      </span>
+                    </Table.Summary.Cell>
+                  </Table.Summary.Row>
+                </>
               )}
             />
           ) : (
@@ -429,7 +520,8 @@ Xác nhận hóa đơn        </span>
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}>
               <Radio value='PAY_OS_CENTER'>Chuyển khoản ngân hàng</Radio>
-              <Radio value='CASH'>Tiền mặt </Radio>
+              <Radio value='CASH'>Tiền mặt</Radio>
+              <Radio value='APP'>Thanh toán bằng app</Radio>
             </Radio.Group>
           </div>
 
@@ -439,13 +531,17 @@ Xác nhận hóa đơn        </span>
             </Button>
             <Button
               type='primary'
+              danger
               size='large'
               onClick={handlePayment}
               loading={loading}
               disabled={loading || totalAmount === 0}
-              className=''>
+              className=''
+              style={{ backgroundColor: "#ff4d4f", borderColor: "#ff4d4f" }}>
               {paymentMethod === "CASH"
                 ? "Xác nhận đã thu tiền"
+                : paymentMethod === "APP"
+                ? "Tạo thanh toán"
                 : `Tạo thanh toán`}
             </Button>
           </div>

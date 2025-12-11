@@ -32,7 +32,6 @@ const translateColor = (color) => {
 };
 
 import { fetchTechnicians } from "../../services/staffsService";
-import TechnicianBookingDetailDrawer from "../../components/technician/TechnicanBookingDetailDrawer";
 import {
   changeAppointmentStatusService,
   approveAppointmentService,
@@ -49,6 +48,11 @@ import { getLaborCostByRemediesService } from "../../services/priceserviceServic
 import Payment from "../../components/service-staff/Payment";
 import PaymentInfo from "../../components/service-staff/PaymentInfo";
 import PaymentHistory from "../../components/service-staff/PaymentHistory";
+import BatteryDetailContent from "../../components/technician/BatteryDetailContent";
+import RepairModeEVCheck from "../../components/technician/detail-content/RepairModeEVCheck";
+import RMARepairModeEVCheck from "../../components/technician/detail-content/RMARepairModeEVCheck";
+import MaintenanceModeEVCheck from "../../components/technician/detail-content/MaintenanceModeEVCheck";
+import CampaignModeEVCheck from "../../components/technician/detail-content/CampaignModeEVCheck";
 import { useBookings } from "../../hooks/useBookings";
 import useAppointmentHub from "../../hooks/useAppointmentHub";
 
@@ -68,9 +72,11 @@ export default function StaffBookingDetailPage() {
   const [selectedTechnician, setSelectedTechnician] = useState(null);
   const [loadingTechs, setLoadingTechs] = useState(false);
   const [currentEVCheckId, setCurrentEVCheckId] = useState(null);
-  const [showTechnicianDrawer, setShowTechnicianDrawer] = useState(false);
+  const [evCheckStatus, setEvCheckStatus] = useState(null); // ✅ EVCheck status
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [technicianFromEVCheck, setTechnicianFromEVCheck] = useState(null);
+  const [selectedBatteryDetail, setSelectedBatteryDetail] = useState(null); // ✅ Battery detail được chọn để hiển thị
+  const [refreshKey, setRefreshKey] = useState(0); // ✅ Key để refresh EVCheck components
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [cancellationFee, setCancellationFee] = useState(0);
   const [isCalculatingFee, setIsCalculatingFee] = useState(false);
@@ -161,9 +167,27 @@ export default function StaffBookingDetailPage() {
 
       try {
         setLoadingTechs(true);
-        const list = await fetchTechnicians();
+        // ✅ Lấy serviceCenterId từ booking hoặc từ user
+        const serviceCenterId = 
+          booking?.serviceCenterId || 
+          booking?.serviceCenter?.id ||
+          null;
+        
+        // ✅ Nếu không có từ booking, lấy từ user
+        let finalServiceCenterId = serviceCenterId;
+        if (!finalServiceCenterId) {
+          const user = JSON.parse(localStorage.getItem("user") || "{}");
+          finalServiceCenterId = 
+            user?.accountResponse?.serviceCenterId || 
+            user?.serviceCenterId || 
+            user?.staff?.serviceCenterId ||
+            user?.accountResponse?.staff?.serviceCenterId ||
+            null;
+        }
+        
+        const list = await fetchTechnicians(finalServiceCenterId);
         setTechnicians(list);
-      } catch {
+      } catch (err) {
         toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tải danh sách kỹ thuật viên"));
       } finally {
         setLoadingTechs(false);
@@ -183,11 +207,26 @@ export default function StaffBookingDetailPage() {
       try {
         const evCheck = await fetchEVCheckByAppointmentService(booking.id);
         if (evCheck) {
-          setCurrentEVCheckId(evCheck.id);
+          // ✅ Handle response format
+          let evCheckData = null;
+          if (Array.isArray(evCheck)) {
+            evCheckData = evCheck[evCheck.length - 1]; // Lấy cái mới nhất
+          } else if (evCheck?.data?.rowDatas && Array.isArray(evCheck.data.rowDatas)) {
+            evCheckData = evCheck.data.rowDatas[evCheck.data.rowDatas.length - 1];
+          } else if (evCheck?.rowDatas && Array.isArray(evCheck.rowDatas)) {
+            evCheckData = evCheck.rowDatas[evCheck.rowDatas.length - 1];
+          } else {
+            evCheckData = evCheck;
+          }
+
+          if (evCheckData) {
+            setCurrentEVCheckId(evCheckData.id);
+            setEvCheckStatus(evCheckData.status || null);
           // ✅ Lấy technician từ evCheck nếu có
-          const tech = evCheck.taskExecutor || evCheck.technician || null;
+            const tech = evCheckData.taskExecutor || evCheckData.technician || null;
           if (tech) {
             setTechnicianFromEVCheck(tech);
+            }
           }
         }
       } catch {}
@@ -1051,27 +1090,155 @@ export default function StaffBookingDetailPage() {
           </Card>
           )}
 
-          {/* Nút xem EVCheck / Tạo RMA */}
+          {/* ✅ Phiếu sửa chữa / Phiếu kiểm tra - Hiển thị trực tiếp trên page */}
           {currentTechnician && currentEVCheckId && (
-            <div style={{ marginBottom: 24 }}>
-              <Button
-                type="default"
-                icon={<FileText size={16} />}
-                onClick={() => setShowTechnicianDrawer(true)}
-                style={{
-                  borderRadius: 8,
-                  height: 40,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8
-                }}>
-                Xem chi tiết kiểm tra / Tạo RMA
-              </Button>
-            </div>
+            <Card 
+              style={{ 
+                marginBottom: 24,
+                borderRadius: 12,
+                border: "1px solid #e8e8e8",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
+              }}
+              bodyStyle={{ padding: "24px" }}>
+              <h3 style={{ 
+                fontSize: 16, 
+                fontWeight: 600,
+                marginBottom: 16,
+                color: "#d4380d", 
+                borderBottom: "1px solid #f0f0f0",
+                paddingBottom: 12,
+                display: "flex",
+                alignItems: "center",
+                gap: 8
+              }}>
+                <FileText size={16} color="#d4380d" />
+                {(() => {
+                  const isRepair = (booking?.type || "").toUpperCase() === "REPAIR_TYPE";
+                  const isMaintenance = (booking?.type || "").toUpperCase() === "MAINTENANCE_TYPE";
+                  const isCampaign = (booking?.type || "").toUpperCase() === "CAMPAIGN_TYPE";
+                  
+                  if (isRepair) return "Phiếu sửa chữa";
+                  if (isMaintenance) return evCheckStatus === "REPAIR_IN_PROGRESS" ? "Tiến hành sửa chữa" : "Kết quả kiểm tra EVCheck";
+                  if (isCampaign) return "Phiếu kiểm tra chiến dịch";
+                  return "Phiếu kiểm tra";
+                })()}
+              </h3>
+              {(() => {
+                const isRepair = (booking?.type || "").toUpperCase() === "REPAIR_TYPE";
+                const isMaintenance = (booking?.type || "").toUpperCase() === "MAINTENANCE_TYPE";
+                const isCampaign = (booking?.type || "").toUpperCase() === "CAMPAIGN_TYPE";
+                const chassisConfirmed = !!booking?.vehicle?.chassisNumber;
+                const note = (booking?.note || "").toLowerCase();
+                const isRMABooking = note.includes("lịch thay") && note.includes("rma");
+
+                if (isRepair && chassisConfirmed) {
+                  return isRMABooking ? (
+                    <RMARepairModeEVCheck
+                      key={`rma-repair-${currentEVCheckId}-${refreshKey}`}
+                      booking={booking}
+                      evCheckId={currentEVCheckId}
+                      onRefresh={() => {
+                        setRefreshKey((prev) => prev + 1);
+                        loadBookingDetail(); // ✅ Reload booking để cập nhật status
+                      }}
+                      readOnly={true}
+                      forceEmpty={!currentEVCheckId}
+                      onViewBatteryDetail={(batteryData, evCheckDetailId) => {
+                        setSelectedBatteryDetail({ batteryData, evCheckDetailId });
+                      }}
+                    />
+                  ) : (
+                    <RepairModeEVCheck
+                      key={`repair-${currentEVCheckId}-${refreshKey}`}
+                      booking={booking}
+                      evCheckId={currentEVCheckId}
+                      onRefresh={() => {
+                        setRefreshKey((prev) => prev + 1);
+                        loadBookingDetail(); // ✅ Reload booking để cập nhật status
+                      }}
+                      readOnly={true}
+                      forceEmpty={!currentEVCheckId}
+                      onViewBatteryDetail={(batteryData, evCheckDetailId) => {
+                        setSelectedBatteryDetail({ batteryData, evCheckDetailId });
+                      }}
+                    />
+                  );
+                } else if (isMaintenance) {
+                  return (
+                    <MaintenanceModeEVCheck
+                      key={`maintenance-${currentEVCheckId}-${evCheckStatus}-${refreshKey}`}
+                      booking={booking}
+                      evCheckId={currentEVCheckId}
+                      evCheckStatus={evCheckStatus}
+                      setEvCheckStatus={setEvCheckStatus}
+                      readOnly={true}
+                      onRefresh={() => {
+                        setRefreshKey((prev) => prev + 1);
+                        loadBookingDetail(); // ✅ Reload booking để cập nhật status
+                      }}
+                    />
+                  );
+                } else if (isCampaign) {
+                  return (
+                    <CampaignModeEVCheck
+                      key={`campaign-${currentEVCheckId}-${refreshKey}`}
+                      booking={booking}
+                      evCheckId={currentEVCheckId}
+                      evCheckStatus={evCheckStatus}
+                      onRefresh={() => {
+                        setRefreshKey((prev) => prev + 1);
+                        loadBookingDetail(); // ✅ Reload booking để cập nhật status
+                      }}
+                      readOnly={true}
+                      forceEmpty={!currentEVCheckId}
+                    />
+                  );
+                }
+                return null;
+              })()}
+            </Card>
           )}
 
-          {/* Thông tin thanh toán / Lịch sử thanh toán */}
-          {currentTechnician && (
+          {/* ✅ Chi tiết Pin - Hiển thị trực tiếp trên page */}
+          {selectedBatteryDetail && (
+          <Card
+              style={{ 
+                marginBottom: 24,
+                borderRadius: 12,
+                border: "1px solid #e8e8e8",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
+              }}
+            bodyStyle={{ padding: "24px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h3 style={{ 
+                  fontSize: 16, 
+                  fontWeight: 600, 
+                  margin: 0,
+                  color: "#d4380d", 
+                  borderBottom: "1px solid #f0f0f0", 
+                  paddingBottom: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  flex: 1
+                }}>
+                  <FileText size={16} color="#d4380d" />
+                  Chi tiết Pin
+            </h3>
+                <Button
+                  type="text" 
+                  onClick={() => setSelectedBatteryDetail(null)}
+                  style={{ color: "#8c8c8c" }}
+                >
+                  ✕
+                </Button>
+              </div>
+              <BatteryDetailContent batteryData={selectedBatteryDetail.batteryData} />
+          </Card>
+          )}
+
+          {/* ✅ Thông tin thanh toán / Lịch sử thanh toán - Hiển thị ở dưới EVCheck */}
+          {currentTechnician && currentEVCheckId && (
             <div style={{ marginBottom: 24 }}>
               {status === "COMPLETED" ? (
                 // ✅ Đã hoàn thành: Hiển thị lịch sử thanh toán (không có nút thanh toán)
@@ -1140,13 +1307,6 @@ export default function StaffBookingDetailPage() {
         </motion.div>
       </div>
 
-      <TechnicianBookingDetailDrawer
-        booking={booking}
-        open={showTechnicianDrawer}
-        onClose={() => setShowTechnicianDrawer(false)}
-        initialEVCheckId={currentEVCheckId}
-        readOnly
-      />
 
       <Payment
         open={isPaymentModalOpen}

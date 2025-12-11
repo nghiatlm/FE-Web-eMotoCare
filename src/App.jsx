@@ -234,6 +234,10 @@ const App = () => (
                           path="vehicles/:vehicleId/history"
                           element={<StaffVehicleRepairHistoryPage />}
                         />
+                        <Route
+                          path="battery/:evCheckDetailId"
+                          element={<BatteryDetailPage />}
+                        />
 
                         <Route path="*" element={<NotFound />} />
                       </Routes>

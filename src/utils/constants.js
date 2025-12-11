@@ -12,6 +12,7 @@ export const STATUS_MAP = {
   QUOTE_APPROVED: "Đã xác nhận",
   REPAIR_COMPLETED: "Hoàn tất sửa chữa",
   COMPLETED: "Đã hoàn thành",
+  WAITING_FOR_PAYMENT: "Chờ thanh toán",
   REJECTED: "Bị từ chối",
   ASSIGNED: "Đã phân công",
   // IN_SERVICE: "Đang thực hiện",
@@ -29,6 +30,7 @@ export const STATUS_COLORS = {
   QUOTE_APPROVED: "#06b6d4",
   REPAIR_COMPLETED: "#10b981",
   COMPLETED: colorBase.success,
+  WAITING_FOR_PAYMENT: "#fa8c16", // Màu cam cho trạng thái chờ thanh toán
   CANCELED: colorBase.danger,
   REJECTED: colorBase.danger,
   // IN_SERVICE: "#f59e0b",
