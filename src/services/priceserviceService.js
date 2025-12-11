@@ -36,7 +36,7 @@ export const fetchPriceServices = async (params = {}) => {
  * - Lọc phần tử mới nhất theo effectiveDate nếu có nhiều bản ghi
  * - Có thể lấy "price" (giá dịch vụ) hoặc "laborCost" (phí gia công)
  * @param {string} partTypeId - ID của loại phụ tùng
- * @param {('NONE'|'CHECK'|'REPAIR'|'REPLACE')} remedies - Biện pháp sửa chữa
+ * @param {('NONE'|'CLEAN'|'TUNE'|'REPAIR'|'REPLACE'|'WARRANTY')} remedies - Biện pháp sửa chữa
  * @param {string} field - Field cần lấy: "laborCost" (mặc định) hoặc "price"
  * @returns {Promise<number>} laborCost hoặc price hoặc 0 nếu không có
  */

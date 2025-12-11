@@ -434,8 +434,8 @@ export default function RepairModeEVCheck({
       updateRow(index, { priceService: 0 });
       return;
     }
-    // ✅ Cập nhật: Lấy giá dịch vụ cho LUBRICATE, CHECK, REPAIR, REPLACE
-    if (!["LUBRICATE", "CHECK", "REPAIR", "REPLACE"].includes(remedies)) {
+    // ✅ Cập nhật: Lấy giá dịch vụ cho TUNE, CLEAN, REPAIR, REPLACE, WARRANTY
+    if (!["TUNE", "CLEAN", "REPAIR", "REPLACE", "WARRANTY"].includes(remedies)) {
       updateRow(index, { priceService: 0 });
       return;
     }
@@ -656,10 +656,40 @@ export default function RepairModeEVCheck({
         const isWarranty = checkWarrantyStatus(partItemForPrice);
         const initialPriceService = isWarranty ? 0 : Number(item.priceService || 0);
 
+        // ✅ Tạo displayName: ưu tiên từ partOption.label, sau đó từ partItem.part.name
+        let displayName = "";
+        if (partOption?.label) {
+          displayName = partOption.label;
+        } else if (partItemForPrice?.part?.name) {
+          const serial = partItemForPrice.serialNumber || "";
+          displayName = serial ? `${partItemForPrice.part.name} (${serial})` : partItemForPrice.part.name;
+        } else if (partItemId) {
+          // Nếu không có tên, thử gọi API để lấy thông tin
+          try {
+            const partItemDetail = await getPartItemByIdService(partItemId);
+            if (partItemDetail?.part?.name) {
+              const serial = partItemDetail.serialNumber || "";
+              displayName = serial ? `${partItemDetail.part.name} (${serial})` : partItemDetail.part.name;
+              // Cập nhật partItemForPrice với thông tin từ API
+              if (!partItemForPrice || !partItemForPrice.part) {
+                partItemForPrice = {
+                  ...partItemForPrice,
+                  ...partItemDetail,
+                  part: partItemDetail.part || partItemForPrice?.part || null,
+                };
+              }
+            }
+          } catch (err) {
+            console.error(`❌ Lỗi lấy thông tin bộ phận ${partItemId}:`, err);
+            // Fallback về partItemId nếu không lấy được
+            displayName = partItemId;
+          }
+        }
+        
         return {
           ...item,
           partItemId,
-          displayName: partOption?.label || partItemId || "",
+          displayName: displayName || partItemId || "",
           partItem: partItemForPrice,
           proposedReplacePartId: replacePartId,
             replacePartName: replacePartName || "", // ✅ Không fallback về ID, chỉ dùng name
@@ -691,11 +721,11 @@ export default function RepairModeEVCheck({
       if (mapped.length > 0) {
         setDetails(mapped);
         
-        // ✅ Tự động gọi giá dịch vụ cho các items có remedies là LUBRICATE, CHECK, REPAIR hoặc REPLACE (NONE không có giá)
+        // ✅ Tự động gọi giá dịch vụ cho các items có remedies là TUNE, CLEAN, REPAIR hoặc REPLACE (NONE không có giá)
         mapped.forEach((row, index) => {
           if (
             (!row.priceService || Number(row.priceService) === 0) &&
-            ["LUBRICATE", "CHECK", "REPAIR", "REPLACE"].includes(row.remedies) &&
+            ["TUNE", "CLEAN", "REPAIR", "REPLACE", "WARRANTY"].includes(row.remedies) &&
             row.partItem
           ) {
             // ✅ Truyền row data vào để có thể lấy partTypeId
@@ -1030,6 +1060,13 @@ export default function RepairModeEVCheck({
         );
       }
 
+      // ✅ Chỉ cho phép chọn WARRANTY khi phụ tùng còn trong thời gian bảo hành
+      if (item.remedies === "WARRANTY" && !checkWarrantyStatus(item.partItem)) {
+        return toast.error(
+          "Bộ phận không còn trong thời gian bảo hành. Không thể chọn biện pháp 'Bảo hành'."
+        );
+      }
+
       // Nếu REPLACE nhưng không có proposedReplacePartId -> báo lỗi FE, không call BE
       if (item.remedies === "REPLACE" && !item.proposedReplacePartId) {
         toast.error(
@@ -1174,10 +1211,10 @@ export default function RepairModeEVCheck({
 
       rawDetails = rawDetails.filter((item) => item != null);
 
-      // ✅ Chỉ kiểm tra các detail có remedies là REPAIR, REPLACE, hoặc LUBRICATE (những cái hiển thị trong bảng)
+      // ✅ Chỉ kiểm tra các detail có remedies là REPAIR, REPLACE, hoặc WARRANTY (những cái hiển thị trong bảng)
       const relevantDetails = rawDetails.filter((d) => {
         const remedies = (d.remedies || "").toUpperCase();
-        return remedies === "REPAIR" || remedies === "REPLACE" || remedies === "LUBRICATE";
+        return remedies === "REPAIR" || remedies === "REPLACE" || remedies === "WARRANTY";
       });
 
       // ✅ Kiểm tra xem tất cả detail liên quan đã COMPLETED chưa
@@ -1219,15 +1256,59 @@ export default function RepairModeEVCheck({
       },
       render: (_, r, i) => {
         const displayName = r.displayName || "";
+        const partItemId = r.partItemId || "";
+        
+        // ✅ Tìm option tương ứng với partItemId
+        const selectedOption = vehiclePartOptions.find((p) => p.partItemId === partItemId);
+        
+        // ✅ Lấy tên bộ phận: ưu tiên từ partOption.label, sau đó từ partItem.part.name, cuối cùng mới dùng displayName (có thể là ID)
+        let partName = "";
+        if (selectedOption?.label) {
+          partName = selectedOption.label;
+        } else if (r.partItem?.part?.name) {
+          const serial = r.partItem.serialNumber || "";
+          partName = serial ? `${r.partItem.part.name} (${serial})` : r.partItem.part.name;
+        } else if (displayName && displayName !== partItemId) {
+          // Chỉ dùng displayName nếu nó không phải là ID
+          partName = displayName;
+        } else if (partItemId) {
+          // Nếu vẫn không có tên, thử lấy từ partItem.part trực tiếp
+          // Hoặc có thể gọi API, nhưng để tránh performance issue, tạm thời dùng partItemId
+          // Chỉ hiển thị ID nếu thực sự không có tên
+        }
+        
+        // ✅ Nếu không tìm thấy trong options nhưng có partName hoặc partItem, thêm vào options tạm thời
+        const allOptions = [...vehiclePartOptions];
+        if (partItemId && !selectedOption) {
+          // Nếu có partName, dùng nó; nếu không, cố gắng tạo từ partItem
+          let labelToUse = partName;
+          if (!labelToUse && r.partItem?.part?.name) {
+            const serial = r.partItem.serialNumber || "";
+            labelToUse = serial ? `${r.partItem.part.name} (${serial})` : r.partItem.part.name;
+          }
+          
+          // Nếu vẫn không có label, chỉ thêm option nếu có partItem (để Select có thể hiển thị)
+          if (labelToUse || r.partItem) {
+            allOptions.push({
+              partItemId,
+              value: partItemId,
+              label: labelToUse || partItemId, // Fallback về ID nếu không có tên
+              price: r.pricePart || 0,
+              partItem: r.partItem || null,
+              partId: r.partItem?.part?.id || null,
+            });
+          }
+        }
+        
         return (
-          <Tooltip title={displayName} placement="topLeft">
+          <Tooltip title={partName || displayName || partItemId} placement="topLeft">
         <Select
           showSearch
           placeholder='Chọn bộ phận'
           value={r.partItemId || undefined}
           style={{ width: "100%", minWidth: "160px" }}
           onChange={(v) => {
-            const sel = vehiclePartOptions.find((p) => p.partItemId === v);
+            const sel = allOptions.find((p) => p.partItemId === v);
             const partItem = sel?.partItem;
             const part = partItem?.part || {};
             const partId = sel?.partId || part?.id || null;
@@ -1279,9 +1360,9 @@ export default function RepairModeEVCheck({
             
             updateRow(i, updatedRow);
             
-            // ✅ Tự động gọi giá dịch vụ nếu remedies là LUBRICATE, CHECK, REPAIR hoặc REPLACE (NONE không có giá)
+            // ✅ Tự động gọi giá dịch vụ nếu remedies là TUNE, CLEAN, REPAIR hoặc REPLACE (NONE không có giá)
             const currentRemedies = details[i]?.remedies || "NONE";
-            if (["LUBRICATE", "CHECK", "REPAIR", "REPLACE"].includes(currentRemedies)) {
+            if (["TUNE", "CLEAN", "REPAIR", "REPLACE"].includes(currentRemedies)) {
               // ✅ Tạo row data mới với partItem vừa chọn, đảm bảo có partTypeId
               const rowDataWithNewPartItem = { 
                 ...details[i], 
@@ -1292,7 +1373,7 @@ export default function RepairModeEVCheck({
               updatePriceService(i, currentRemedies, rowDataWithNewPartItem);
             }
           }}
-          options={vehiclePartOptions}
+          options={allOptions}
           loading={vehiclePartLoading}
           disabled={readOnly || !canEditFields}
           filterOption={(input, opt) =>
@@ -1442,8 +1523,9 @@ export default function RepairModeEVCheck({
           const map = {
             REPLACE: "Thay thế",
             REPAIR: "Sửa chữa",
-            CHECK: "Kiểm tra",
-            LUBRICATE: "Bôi trơn",
+            CLEAN: "Vệ sinh",
+            TUNE: "Điều chỉnh",
+            WARRANTY: "Bảo hành",
             NONE: "Biện pháp",
           };
           const normalized = (remedies || "").toString().toUpperCase().trim();
@@ -1460,14 +1542,18 @@ export default function RepairModeEVCheck({
             style={{ width: 100 }}
             onChange={(v) => handleChange(i, "remedies", v)}
             disabled={readOnly || !canEditFields}>
-            <Option value='LUBRICATE'>Bôi trơn</Option>
-            {!isAfterQuote && <Option value='CHECK'>Kiểm tra</Option>}
+            <Option value='TUNE'>Điều chỉnh</Option>
+            {!isAfterQuote && <Option value='CLEAN'>Vệ sinh</Option>}
             {/* Nếu đang bảo hành thì không cho chọn "Thay thế" và "Sửa chữa" */}
             <Option value='REPLACE' disabled={isWarranty}>
               Thay thế
             </Option>
             <Option value='REPAIR' disabled={isWarranty}>
               Sửa chữa
+            </Option>
+            {/* Chỉ cho phép chọn "Bảo hành" khi phụ tùng còn trong thời gian bảo hành */}
+            <Option value='WARRANTY' disabled={!isWarranty}>
+              Bảo hành
             </Option>
           </Select>
         );
@@ -1930,11 +2016,11 @@ export default function RepairModeEVCheck({
     return false;
   };
 
-  // ✅ Filter details: Sau khi gửi báo giá, chỉ hiển thị những detail có remedies là REPAIR, REPLACE, hoặc LUBRICATE
-  // Bỏ NONE và CHECK vì chúng là mặc định, không tính tiền nên không hiện
+  // ✅ Filter details: Sau khi gửi báo giá, chỉ hiển thị những detail có remedies là REPAIR, REPLACE, hoặc WARRANTY
+  // Ẩn CLEAN và TUNE vì không phải biện pháp chính cần theo dõi
   // Áp dụng cho tất cả các status sau INSPECTION_COMPLETED
   // ✅ NHƯNG: Nếu là staff (readOnly=true), LUÔN áp dụng filter này
-  // ✅ EXCEPTION: Vẫn hiển thị các item có dữ liệu pin (battery) dù remedies = "CHECK"
+  // ✅ EXCEPTION: Vẫn hiển thị các item có dữ liệu pin (battery) dù remedies = "CLEAN"
   const filteredDetails = useMemo(() => {
     // ✅ Các status sau khi gửi báo giá
     const afterQuoteStatuses = [
@@ -1952,12 +2038,12 @@ export default function RepairModeEVCheck({
       return details.filter((detail) => {
         const remedies = (detail.remedies || "").toUpperCase();
         
-        // ✅ Luôn hiển thị REPAIR, REPLACE, LUBRICATE
-        if (remedies === "REPAIR" || remedies === "REPLACE" || remedies === "LUBRICATE") {
+        // ✅ Luôn hiển thị REPAIR, REPLACE, WARRANTY
+        if (remedies === "REPAIR" || remedies === "REPLACE" || remedies === "WARRANTY") {
           return true;
         }
         
-        // ✅ Nếu là pin và có dữ liệu pin → vẫn hiển thị dù remedies = "CHECK"
+        // ✅ Nếu là pin và có dữ liệu pin → vẫn hiển thị dù remedies = "CLEAN"
         if (isBatteryItem(detail) && hasBatteryData(detail)) {
           return true;
         }

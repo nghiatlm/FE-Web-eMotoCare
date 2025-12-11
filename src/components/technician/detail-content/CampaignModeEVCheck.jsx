@@ -27,6 +27,13 @@ const REPAIR_STATUS = {
   COMPLETED: { label: "Đã hoàn thành", color: "success" },
 };
 
+// ✅ Hàm kiểm tra bảo hành
+const checkWarrantyStatus = (partItem) => {
+  if (!partItem) return false;
+  // ✅ Lấy từ isManufacturerWarranty thay vì tính từ ngày
+  return partItem.isManufacturerWarranty === true;
+};
+
 export default function CampaignModeEVCheck({
   booking,
   evCheckId,
@@ -619,7 +626,7 @@ export default function CampaignModeEVCheck({
               // ✅ Nếu đã có detail, tự động gán recallPartId vào phụ tùng đề xuất (gán cứng, luôn gán lại)
               existingDetail.proposedReplacePartId = recallPartId;
               existingDetail.replacePartName = recallPartNameMapLocal[recallPartId] || "";
-              if (!existingDetail.remedies || existingDetail.remedies === "NONE" || existingDetail.remedies === "CHECK") {
+              if (!existingDetail.remedies || existingDetail.remedies === "NONE" || existingDetail.remedies === "CLEAN") {
                 existingDetail.remedies = "REPLACE";
               }
               console.log(`✅ Campaign: Tự động gán lại recallPartId ${recallPartId} vào phụ tùng đề xuất cho detail ${existingDetail.id}`);
@@ -904,6 +911,12 @@ export default function CampaignModeEVCheck({
     for (const item of itemsToSave) {
       if (!item.remedies) return toast.warning("Vui lòng chọn Biện pháp!");
 
+      // ✅ Chỉ cho phép chọn WARRANTY khi phụ tùng còn trong thời gian bảo hành
+      if (item.remedies === "WARRANTY" && !checkWarrantyStatus(item.partItem)) {
+        return toast.error(
+          "Bộ phận không còn trong thời gian bảo hành. Không thể chọn biện pháp 'Bảo hành'."
+        );
+      }
 
       // Nếu REPLACE nhưng không có proposedReplacePartId -> báo lỗi FE, không call BE
       if (item.remedies === "REPLACE" && !item.proposedReplacePartId) {
@@ -1271,7 +1284,8 @@ export default function CampaignModeEVCheck({
         showTitle: true,
       },
       render: (_, r, i) => {
-        const remediesLabel = r.remedies === "REPLACE" ? "Thay thế" : r.remedies === "REPAIR" ? "Sửa chữa" : "Chọn";
+        const isWarranty = checkWarrantyStatus(r.partItem);
+        const remediesLabel = r.remedies === "REPLACE" ? "Thay thế" : r.remedies === "REPAIR" ? "Sửa chữa" : r.remedies === "TUNE" ? "Điều chỉnh" : r.remedies === "CLEAN" ? "Vệ sinh" : r.remedies === "WARRANTY" ? "Bảo hành" : "Chọn";
         return (
           <Tooltip title={remediesLabel} placement="topLeft">
             <Select
@@ -1280,10 +1294,12 @@ export default function CampaignModeEVCheck({
               style={{ width: "100%", minWidth: 120 }}
               onChange={(v) => handleChange(i, "remedies", v)}
               disabled={readOnly || !canEditFields}>
-              <Option value='LUBRICATE'>Bôi trơn</Option>
-              <Option value='CHECK'>Kiểm tra</Option>
-              <Option value='REPLACE'>Thay thế</Option>
-              <Option value='REPAIR'>Sửa chữa</Option>
+              <Option value='TUNE'>Điều chỉnh</Option>
+              <Option value='CLEAN'>Vệ sinh</Option>
+              <Option value='REPLACE' disabled={isWarranty}>Thay thế</Option>
+              <Option value='REPAIR' disabled={isWarranty}>Sửa chữa</Option>
+              {/* ✅ Chỉ cho phép chọn "Bảo hành" khi phụ tùng còn trong thời gian bảo hành */}
+              <Option value='WARRANTY' disabled={!isWarranty}>Bảo hành</Option>
             </Select>
           </Tooltip>
         );

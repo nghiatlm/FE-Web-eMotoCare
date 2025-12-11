@@ -180,13 +180,13 @@ export default function MaintenanceModeEVCheck({
           const isWarranty = checkWarrantyStatus(partItemForPrice);
           const initialPriceService = isWarranty ? 0 : Number(item.priceService || 0);
 
-        // ✅ Cho bảo dưỡng: Mặc định remedies = "CHECK" nếu không có hoặc là "NONE"/"LUBRICATE" (trừ khi đã có "REPLACE" hoặc "REPAIR")
+        // ✅ Cho bảo dưỡng: Mặc định remedies = "CLEAN" nếu không có hoặc là "NONE"/"TUNE" (trừ khi đã có "REPLACE" hoặc "REPAIR")
         let finalRemedies = item.remedies || item.solution;
-        if (!finalRemedies || finalRemedies === "NONE" || finalRemedies === "LUBRICATE") {
+        if (!finalRemedies || finalRemedies === "NONE" || finalRemedies === "TUNE") {
           // ✅ Chỉ override nếu không có hoặc là giá trị không phải hành động cụ thể
           // Giữ nguyên "REPLACE" và "REPAIR" vì đây là hành động đã được xác định
           if (finalRemedies !== "REPLACE" && finalRemedies !== "REPAIR") {
-            finalRemedies = "CHECK";
+            finalRemedies = "CLEAN";
           }
         }
 
@@ -198,7 +198,7 @@ export default function MaintenanceModeEVCheck({
           partItem: item.partItem || null,
           maintenanceStageDetail: item.maintenanceStageDetail || null,
             result: item.result ?? "Tốt", // ✅ Mặc định "Tốt"
-            remedies: finalRemedies, // ✅ Mặc định "CHECK" (Kiểm tra) cho bảo dưỡng
+            remedies: finalRemedies, // ✅ Mặc định "CLEAN" (Vệ sinh) cho bảo dưỡng
           warranty: item.warranty ?? false,
           quantity: item.quantity ?? 1,
           unit: item.unit ?? "cái",
@@ -228,7 +228,7 @@ export default function MaintenanceModeEVCheck({
       mapped.forEach((row) => {
         if (
           (!row.priceService || Number(row.priceService) === 0) &&
-            ["NONE", "LUBRICATE", "CHECK", "REPAIR", "REPLACE"].includes(row.remedies) &&
+            ["NONE", "TUNE", "CLEAN", "REPAIR", "REPLACE", "WARRANTY"].includes(row.remedies) &&
           (row.partItem || row.maintenanceStageDetail?.part)
         ) {
           // ✅ Truyền row data vào để có thể lấy partTypeId
@@ -308,8 +308,8 @@ export default function MaintenanceModeEVCheck({
   };
 
   const updateLaborCostForRow = async (recordId, remedies, rowData = null) => {
-    // ✅ Cập nhật: Lấy giá dịch vụ cho NONE, CHECK, REPAIR, REPLACE
-    if (!["NONE", "LUBRICATE", "CHECK", "REPAIR", "REPLACE"].includes(remedies)) {
+    // ✅ Cập nhật: Lấy giá dịch vụ cho NONE, CLEAN, REPAIR, REPLACE, TUNE, WARRANTY
+    if (!["NONE", "TUNE", "CLEAN", "REPAIR", "REPLACE", "WARRANTY"].includes(remedies)) {
       setEvCheckDetails((prev) =>
         prev.map((row) => {
           if (row.id !== recordId) return row;
@@ -623,6 +623,14 @@ export default function MaintenanceModeEVCheck({
             "Bộ phận đang trong thời gian bảo hành. Chỉ cho phép 'Kiểm tra' hoặc 'Bôi trơn'."
           );
         }
+
+        // ✅ Chỉ cho phép chọn WARRANTY khi phụ tùng còn trong thời gian bảo hành
+        if (item.remedies === "WARRANTY" && !checkWarrantyStatus(item.partItem)) {
+          toast.dismiss(loadingToast);
+          return toast.error(
+            "Bộ phận không còn trong thời gian bảo hành. Không thể chọn biện pháp 'Bảo hành'."
+          );
+        }
       }
 
       for (const item of evCheckDetails) {
@@ -637,7 +645,7 @@ export default function MaintenanceModeEVCheck({
 
         const payload = {
           result: (item.result || "").trim() || "Tốt", // ✅ Nếu rỗng thì mặc định "Tốt"
-          remedies: item.remedies ?? "CHECK", // ✅ Mặc định "CHECK" (Kiểm tra) cho bảo dưỡng
+          remedies: item.remedies ?? "CLEAN", // ✅ Mặc định "CLEAN" (Vệ sinh) cho bảo dưỡng
           warranty: item.warranty,
           unit: item.unit,
           priceService: Number(item.priceService) || null,
@@ -683,7 +691,7 @@ export default function MaintenanceModeEVCheck({
       const loadingToast = toast.loading("Đang cập nhật trạng thái hạng mục...");
 
       // ✅ Tìm những detail bị filter (không có trong filteredDetails sau khi gửi báo giá)
-      // Đây là những detail có remedies = "CHECK" hoặc "NONE" - không hiển thị trong bảng
+      // Đây là những detail có remedies = "CLEAN" hoặc "NONE" - không hiển thị trong bảng
       const afterQuoteStatuses = [
         "INSPECTION_COMPLETED",
         "QUOTE_APPROVED", 
@@ -697,8 +705,8 @@ export default function MaintenanceModeEVCheck({
           return false; // Chỉ xử lý sau khi gửi báo giá
         }
         const remedies = (detail.remedies || "").toUpperCase();
-        // ✅ Những detail có remedies không phải REPAIR, REPLACE, LUBRICATE sẽ bị filter
-        return remedies !== "REPAIR" && remedies !== "REPLACE" && remedies !== "LUBRICATE";
+        // ✅ Những detail có remedies không phải REPAIR, REPLACE, WARRANTY sẽ bị filter
+        return remedies !== "REPAIR" && remedies !== "REPLACE" && remedies !== "WARRANTY";
       });
 
       // ✅ Set status = "COMPLETED" cho những detail bị filter và gửi lên BE
@@ -849,32 +857,31 @@ export default function MaintenanceModeEVCheck({
           const map = {
             REPLACE: "Thay thế",
             REPAIR: "Sửa chữa",
-            CHECK: "Kiểm tra",
+            CLEAN: "Vệ sinh",
+            TUNE: "Điều chỉnh",
+            WARRANTY: "Bảo hành",
             NONE: "Biện pháp",
-            LUBRICATE: "Bôi trơn",
-            LUBBR: "Bôi trơn",
-            LUB: "Bôi trơn",
           };
           // ✅ Normalize: chuyển về uppercase và remove spaces
           const normalized = (remedies || "").toString().toUpperCase().trim();
           return map[normalized] || "Biện pháp"; // ✅ Mặc định "Biện pháp"
         };
 
-        const remediesValue = r.remedies || "CHECK";
+        const remediesValue = r.remedies || "CLEAN";
         const remediesLabel = getRemediesLabel(remediesValue);
 
         return (
           <Tooltip title={remediesLabel || "Biện pháp"} placement="topLeft">
             <Select
               placeholder='Biện pháp'
-              value={remediesValue === "CHECK" ? { value: remediesValue, label: remediesLabel } : (remediesValue ? { value: remediesValue, label: remediesLabel } : undefined)}
+              value={remediesValue === "CLEAN" ? { value: remediesValue, label: remediesLabel } : (remediesValue ? { value: remediesValue, label: remediesLabel } : undefined)}
               labelInValue={true} // ✅ Luôn dùng labelInValue để hiển thị label
               style={{ width: 100 }}
               onChange={(v) => handleChange(r.id, "remedies", v.value || v)} // ✅ Lấy value từ object, dùng r.id thay vì i
               disabled={!canEditFields}>
-              <Option value='LUBRICATE'>Bôi trơn</Option>
+              <Option value='TUNE'>Điều chỉnh</Option>
               {(() => {
-                // ✅ Sau khi gửi báo giá, không hiển thị CHECK (vì là mặc định, không tính tiền)
+                // ✅ Sau khi gửi báo giá, không hiển thị CLEAN (vì là mặc định, không tính tiền)
                 const afterQuoteStatuses = [
                   "INSPECTION_COMPLETED",
                   "QUOTE_APPROVED", 
@@ -884,7 +891,7 @@ export default function MaintenanceModeEVCheck({
                 ];
                 const isAfterQuote = afterQuoteStatuses.includes(evCheckStatus);
                 if (!isAfterQuote) {
-                  return <Option value='CHECK'>Kiểm tra</Option>;
+                  return <Option value='CLEAN'>Vệ sinh</Option>;
                 }
                 return null;
               })()}
@@ -894,6 +901,10 @@ export default function MaintenanceModeEVCheck({
               </Option>
               <Option value='REPAIR' disabled={isWarranty}>
                 Sửa chữa
+              </Option>
+              {/* ✅ Chỉ cho phép chọn "Bảo hành" khi phụ tùng còn trong thời gian bảo hành */}
+              <Option value='WARRANTY' disabled={!isWarranty}>
+                Bảo hành
               </Option>
             </Select>
           </Tooltip>
@@ -1360,10 +1371,10 @@ export default function MaintenanceModeEVCheck({
   }
   // ✅ Bỏ cột RMA, dùng rowSelection thay thế
 
-  // ✅ Filter details: Sau khi gửi báo giá, chỉ hiển thị những detail có remedies là REPAIR, REPLACE, hoặc LUBRICATE
-  // Bỏ CHECK vì là mặc định, không tính tiền nên không hiện
+  // ✅ Filter details: Sau khi gửi báo giá, chỉ hiển thị những detail có remedies là REPAIR, REPLACE, hoặc WARRANTY
+  // Ẩn CLEAN và TUNE vì không phải biện pháp chính cần theo dõi
   // Áp dụng cho tất cả các status sau INSPECTION_COMPLETED
-  // ✅ NHƯNG: Nếu là staff (readOnly=true), LUÔN áp dụng filter này và vẫn hiển thị các item có thể tạo RMA (warranty items) dù có remedies = "CHECK"
+  // ✅ NHƯNG: Nếu là staff (readOnly=true), LUÔN áp dụng filter này và vẫn hiển thị các item có thể tạo RMA (warranty items) dù có remedies = "CLEAN"
   const filteredDetails = useMemo(() => {
     // ✅ Các status sau khi gửi báo giá
     const afterQuoteStatuses = [
@@ -1383,8 +1394,8 @@ export default function MaintenanceModeEVCheck({
         const result = (detail.result || "").trim();
         const isGood = result.toLowerCase() === "tốt" || result.toLowerCase() === "tot" || result === "";
         
-        // ✅ 1. Luôn hiển thị REPAIR, REPLACE, LUBRICATE (bất kể kết quả)
-        if (remedies === "REPAIR" || remedies === "REPLACE" || remedies === "LUBRICATE") {
+        // ✅ 1. Luôn hiển thị REPAIR, REPLACE, WARRANTY (bất kể kết quả)
+        if (remedies === "REPAIR" || remedies === "REPLACE" || remedies === "WARRANTY") {
           return true;
         }
         
@@ -1394,7 +1405,7 @@ export default function MaintenanceModeEVCheck({
           if (readOnly && isRMAEligible(detail)) {
             return true;
           }
-          // ✅ Ẩn tất cả các item có kết quả "Tốt" (trừ REPAIR/REPLACE/LUBRICATE và RMA-eligible)
+          // ✅ Ẩn tất cả các item có kết quả "Tốt" (trừ REPAIR/REPLACE/WARRANTY và RMA-eligible)
           return false;
         }
         

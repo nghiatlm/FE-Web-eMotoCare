@@ -461,8 +461,9 @@ function RMADetails({ rma, details = [], loading }) {
                   const solutionMap = {
                     REPLACE: "Thay thế",
                     REPAIR: "Sửa chữa",
-                    CHECK: "Kiểm tra",
-                    LUBRICATE: "Bôi trơn",
+                    CLEAN: "Vệ sinh",
+                    TUNE: "Điều chỉnh",
+                    WARRANTY: "Bảo hành",
                     NONE: "Không có",
                   };
                   return solutionMap[solution] || solution;
@@ -472,8 +473,9 @@ function RMADetails({ rma, details = [], loading }) {
                   const colorMap = {
                     REPLACE: "red",
                     REPAIR: "blue",
-                    CHECK: "cyan",
-                    LUBRICATE: "orange",
+                    CLEAN: "cyan",
+                    TUNE: "orange",
+                    WARRANTY: "green",
                     NONE: "default",
                   };
                   return colorMap[solution] || "default";
@@ -759,16 +761,18 @@ function RMADetails({ rma, details = [], loading }) {
                   const solutionMap = {
                     "REPLACE": "Thay thế",
                     "REPAIR": "Sửa chữa",
-                    "CHECK": "Kiểm tra",
-                    "LUBRICATE": "Bôi trơn",
+                    "CLEAN": "Vệ sinh",
+                    "TUNE": "Điều chỉnh",
+                    "WARRANTY": "Bảo hành",
                     "NONE": "Không có",
                   };
                   
                   const colorMap = {
                     "REPLACE": "red",
                     "REPAIR": "blue",
-                    "CHECK": "cyan",
-                    "LUBRICATE": "orange",
+                    "CLEAN": "cyan",
+                    "TUNE": "orange",
+                    "WARRANTY": "green",
                     "NONE": "default",
                   };
                   

@@ -465,6 +465,13 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
       console.log("🔍 Total available stages:", availableStages.length);
 
       setVehicleStages(availableStages);
+      
+      // ✅ Tự động chọn mốc bảo dưỡng UPCOMING nếu có và chưa có giá trị
+      const upcomingStage = availableStages.find(s => (s.status || "").toUpperCase() === "UPCOMING");
+      if (upcomingStage?.id && !form.getFieldValue("vehicleStageId")) {
+        form.setFieldsValue({ vehicleStageId: upcomingStage.id });
+        console.log("✅ Đã tự động chọn mốc bảo dưỡng UPCOMING:", upcomingStage.id);
+      }
     } catch (err) {
       console.error("Lỗi load mốc bảo dưỡng:", err);
       setVehicleStages([]);
@@ -1228,12 +1235,36 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                       width: "100%",
                       borderRadius: 8,
                     }}>
-                    {vehicleStages.map((stage) => (
+                    {vehicleStages
+                      .sort((a, b) => {
+                        // ✅ Sắp xếp: UPCOMING trước, NO_START sau
+                        const statusA = (a.status || "").toUpperCase();
+                        const statusB = (b.status || "").toUpperCase();
+                        if (statusA === "UPCOMING" && statusB !== "UPCOMING") return -1;
+                        if (statusA !== "UPCOMING" && statusB === "UPCOMING") return 1;
+                        return 0;
+                      })
+                      .map((stage) => {
+                        const status = (stage.status || "").toUpperCase();
+                        const statusLabel = status === "UPCOMING" ? "Sắp tới" : status === "NO_START" ? "Chưa bắt đầu" : "";
+                        const isUpcoming = status === "UPCOMING";
+                        
+                        return (
                       <Option key={stage.id} value={stage.id}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span>
                         {stage.maintenanceStage?.name || "Mốc bảo dưỡng"} -{" "}
                         {stage.maintenanceStage?.mileage || ""}
+                              </span>
+                              {statusLabel && (
+                                <Tag color={isUpcoming ? "red" : "default"} style={{ margin: 0 }}>
+                                  {statusLabel}
+                                </Tag>
+                              )}
+                            </div>
                       </Option>
-                    ))}
+                        );
+                      })}
         </Select>
       </Form.Item>
               </Col>
@@ -1249,27 +1280,27 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                 margin: "24px 0" 
               }} />
 
-              <Form.Item
-                label={
+          <Form.Item
+            label={
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <FileText size={16} style={{ color: "#ff4d4f" }} />
                     <span style={{ fontSize: 14, fontWeight: 500, color: "#262626" }}>
 Nội dung sửa chữa                    </span>
                   </div>
-                }
-                name='note'>
-                <Input.TextArea
-                  rows={4}
+            }
+            name='note'>
+            <Input.TextArea
+              rows={4}
                   placeholder="Nhập tình trạng xe"
-                  showCount
-                  maxLength={500}
-                  disabled={!isChassisNumberLoaded}
+              showCount
+              maxLength={500}
+              disabled={!isChassisNumberLoaded}
                   style={{
                     borderRadius: 8,
                     fontSize: 14,
                   }}
-                />
-              </Form.Item>
+            />
+          </Form.Item>
             </>
           )}
         </Card>

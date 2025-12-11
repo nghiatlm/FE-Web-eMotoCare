@@ -140,7 +140,9 @@ export default function PartTypeDetail() {
     const map = {
       "REPAIR": "Sửa chữa",
       "REPLACE": "Thay thế",
-      "CHECK": "Kiểm tra",
+      "CLEAN": "Vệ sinh",
+      "TUNE": "Điều chỉnh",
+      "WARRANTY": "Bảo hành",
       "NONE": "Không có"
     };
     return map[remedies] || remedies;
@@ -697,7 +699,9 @@ export default function PartTypeDetail() {
                       <SelectContent>
                         <SelectItem value="REPAIR">Sửa chữa</SelectItem>
                         <SelectItem value="REPLACE">Thay thế</SelectItem>
-                        <SelectItem value="CHECK">Kiểm tra</SelectItem>
+                        <SelectItem value="CLEAN">Vệ sinh</SelectItem>
+                        <SelectItem value="TUNE">Điều chỉnh</SelectItem>
+                        <SelectItem value="WARRANTY">Bảo hành</SelectItem>
                         <SelectItem value="NONE">Không có</SelectItem>
                       </SelectContent>
                     </Select>

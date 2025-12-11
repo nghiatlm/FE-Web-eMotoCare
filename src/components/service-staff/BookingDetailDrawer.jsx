@@ -1,5 +1,5 @@
 import { STATUS_COLORS, STATUS_MAP } from "../../utils/constants";
-import { Drawer, Button, Tag, Divider, Select } from "antd";
+import { Drawer, Button, Tag, Divider, Select, Input } from "antd";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
@@ -62,6 +62,7 @@ export default function BookingDetailDrawer({
   const [currentEVCheckId, setCurrentEVCheckId] = useState(null);
   const [showTechnicianDrawer, setShowTechnicianDrawer] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [checkinCodeInput, setCheckinCodeInput] = useState(""); // ✅ Mã appointment nhập vào để check-in
 
   const status = booking?.status?.toUpperCase();
 
@@ -156,6 +157,18 @@ export default function BookingDetailDrawer({
       return;
     }
 
+    // ✅ Validate mã appointment nhập vào
+    if (!checkinCodeInput || checkinCodeInput.trim() === "") {
+      toast.error("Vui lòng nhập mã lịch hẹn để check-in!");
+      return;
+    }
+
+    // ✅ Kiểm tra mã có khớp với mã booking không
+    if (checkinCodeInput.trim().toUpperCase() !== booking.code?.toUpperCase()) {
+      toast.error("Mã lịch hẹn không khớp! Vui lòng kiểm tra lại.");
+      return;
+    }
+
     try {
       await changeAppointmentStatusService(booking.id, "CHECKED_IN", {
         code: booking.code,
@@ -166,6 +179,7 @@ export default function BookingDetailDrawer({
 
       toast.success("Check-in thành công!");
       onUpdateStatus?.(booking.id, "CHECKED_IN");
+      setCheckinCodeInput(""); // ✅ Reset input sau khi check-in thành công
       onClose();
     } catch (error) {
       console.error("Lỗi check-in:", error);
@@ -232,14 +246,26 @@ export default function BookingDetailDrawer({
               </p>
 
               {/* MANUAL CHECK-IN BUTTON */}
-              <div className='mt-6 text-center'>
+              <div className='mt-6 flex flex-col gap-4 items-center'>
+                <div className='w-full max-w-md'>
+                  <Input
+                    placeholder="Nhập mã lịch hẹn để check-in"
+                    value={checkinCodeInput}
+                    onChange={(e) => setCheckinCodeInput(e.target.value)}
+                    onPressEnter={handleManualCheckIn}
+                    size="large"
+                    className="text-center uppercase"
+                    allowClear
+                  />
+                </div>
                 <Button
                   type='primary'
                   size='large'
                   danger
                   onClick={handleManualCheckIn}
+                  disabled={!checkinCodeInput || checkinCodeInput.trim() === ""}
                   style={{ minWidth: 200 }}>
-                  Check-in ngay
+                  Check-in
                 </Button>
               </div>
             </section>

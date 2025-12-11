@@ -1,5 +1,5 @@
 // src/components/Payment.jsx
-import { Modal, Table, Radio, Button, Spin, Empty, Tag } from "antd";
+import { Modal, Table, Radio, Button, Spin, Empty, Tag, Image } from "antd";
 import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import { createPaymentLinkService } from "../../services/paymentService";
@@ -113,6 +113,41 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
               item.serialNumber ||
               "";
 
+            // ✅ Lấy hình ảnh từ nhiều nguồn, ưu tiên theo thứ tự
+            let imageUrl = "";
+            // 1. Từ replacePart (phụ tùng thay thế)
+            if (item.replacePart?.image) {
+              imageUrl = item.replacePart.image;
+            }
+            // 2. Từ replacePart.part.image
+            else if (item.replacePart?.part?.image) {
+              imageUrl = item.replacePart.part.image;
+            }
+            // 3. Từ proposedReplacePart
+            else if (item.proposedReplacePart?.image) {
+              imageUrl = item.proposedReplacePart.image;
+            }
+            // 4. Từ proposedReplacePart.part.image
+            else if (item.proposedReplacePart?.part?.image) {
+              imageUrl = item.proposedReplacePart.part.image;
+            }
+            // 5. Từ partItem.part.image (phụ tùng của xe)
+            else if (item.partItem?.part?.image) {
+              imageUrl = item.partItem.part.image;
+            }
+            // 6. Từ maintenanceStageDetail.part.image (bảo dưỡng)
+            else if (item.maintenanceStageDetail?.part?.image) {
+              imageUrl = item.maintenanceStageDetail.part.image;
+            }
+            // 7. Từ partItem.image
+            else if (item.partItem?.image) {
+              imageUrl = item.partItem.image;
+            }
+            // 8. Từ item.image
+            else if (item.image) {
+              imageUrl = item.image;
+            }
+
             return {
               id: item.id || `item-${idx}`,
               name: partName,
@@ -122,6 +157,7 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
               priceService,
               pricePartDisplay: pricePart, // đã áp dụng rules REPLACE
               serial,
+              imageUrl,
               // tính tiền
               totalAmount: lineTotal,
             };
@@ -209,6 +245,44 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
       render: (t) => <span className='font-medium'>{t}</span>,
     },
     {
+      title: "Hình ảnh",
+      dataIndex: "imageUrl",
+      key: "image",
+      width: 80,
+      align: "center",
+      render: (imageUrl) => {
+        if (imageUrl) {
+          return (
+            <Image
+              src={imageUrl}
+              alt="Part"
+              width={48}
+              height={48}
+              style={{ objectFit: "cover", borderRadius: 4, border: "1px solid #e8e8e8" }}
+              preview={{ src: imageUrl }}
+              fallback="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik0yNCAzMkMyOC40MTgzIDMyIDMyIDI4LjQxODMgMzIgMjRDMzIgMTkuNTgxNyAyOC40MTgzIDE2IDI0IDE2QzE5NTgxNyAxNiAxNiAxOS41ODE3IDE2IDI0QzE2IDI4LjQxODMgMTkuNTgxNyAzMiAyNCAzMloiIGZpbGw9IiNEMEQwRDAiLz4KPC9zdmc+"
+            />
+          );
+        }
+        return (
+          <div style={{
+            width: 48,
+            height: 48,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "#f5f5f5",
+            borderRadius: 4,
+            border: "1px dashed #d9d9d9",
+            fontSize: 10,
+            color: "#999"
+          }}>
+            NA
+          </div>
+        );
+      },
+    },
+    {
       title: "Biện pháp",
       dataIndex: "remedies",
       key: "remedies",
@@ -222,18 +296,26 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
             ? "Thay thế"
             : v === "REPAIR"
             ? "Sửa chữa"
-            : v === "CHECK"
-            ? "Kiểm tra"
+            : v === "CLEAN"
+            ? "Vệ sinh"
+            : v === "TUNE"
+            ? "Điều chỉnh"
+            : v === "WARRANTY"
+            ? "Bảo hành"
             : v === "NONE"
-            ? "Bôi trơn"
+            ? "Biện pháp"
             : v;
         const color =
           v === "REPLACE"
             ? "volcano"
             : v === "REPAIR"
             ? "geekblue"
-            : v === "CHECK"
+            : v === "CLEAN"
             ? "blue"
+            : v === "TUNE"
+            ? "cyan"
+            : v === "WARRANTY"
+            ? "green"
             : "default";
         return <Tag color={color}>{label}</Tag>;
       },
@@ -325,7 +407,7 @@ Xác nhận hóa đơn        </span>
               summary={() => (
                 <Table.Summary.Row className='font-bold bg-gray-50'>
                   <Table.Summary.Cell
-                    colSpan={6}
+                    colSpan={7}
                     className='text-right text-lg'>
                     TỔNG CỘNG:
                   </Table.Summary.Cell>
