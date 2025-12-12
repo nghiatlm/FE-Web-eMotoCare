@@ -9,11 +9,15 @@ import {
   Typography,
   Space,
   Table,
+  Statistic,
+  Divider,
 } from "antd";
 import {
   Zap,
   TrendingDown,
   Activity,
+  TrendingUp,
+  Thermometer,
 } from "lucide-react";
 import ReactECharts from "echarts-for-react";
 
@@ -381,9 +385,76 @@ export default function BatteryDetailContent({ batteryData }) {
 
   return (
     <div style={{ padding: "16px 0" }}>
-      {/* 3 Biểu đồ trên 1 hàng */}
-      {time.length > 0 && (
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+      {/* Tóm tắt nhanh */}
+      <div style={{ marginBottom: 24 }}>
+        <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "#ff4d4f" }}>
+          Tóm tắt nhanh
+        </h4>
+        <Row gutter={[8, 8]}>
+          <Col span={6}>
+            <Card size="small" style={{ textAlign: "center" }}>
+              <Statistic
+                title="Điện áp (V)"
+                value={voltageStats.avg.toFixed(2)}
+                prefix={<Zap style={{ width: 12, height: 12 }} />}
+                valueStyle={{ fontSize: "14px", color: "#1890ff" }}
+              />
+              <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>
+                {voltageStats.min.toFixed(1)} - {voltageStats.max.toFixed(1)}
+              </div>
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card size="small" style={{ textAlign: "center" }}>
+              <Statistic
+                title="Dòng điện (A)"
+                value={currentStats.avg.toFixed(2)}
+                prefix={<Activity style={{ width: 12, height: 12 }} />}
+                valueStyle={{ fontSize: "14px", color: "#52c41a" }}
+              />
+              <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>
+                {currentStats.min.toFixed(1)} - {currentStats.max.toFixed(1)}
+              </div>
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card size="small" style={{ textAlign: "center" }}>
+              <Statistic
+                title="Nhiệt độ (°C)"
+                value={tempStats.avg.toFixed(1)}
+                prefix={<Thermometer style={{ width: 12, height: 12 }} />}
+                valueStyle={{ fontSize: "14px", color: "#fa8c16" }}
+              />
+              <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>
+                {tempStats.min.toFixed(1)} - {tempStats.max.toFixed(1)}
+              </div>
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card size="small" style={{ textAlign: "center" }}>
+              <Statistic
+                title="SOC (%)"
+                value={socStats.avg.toFixed(1)}
+                prefix={<TrendingUp style={{ width: 12, height: 12 }} />}
+                valueStyle={{ fontSize: "14px", color: "#722ed1" }}
+              />
+              <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>
+                {socStats.min.toFixed(0)} - {socStats.max.toFixed(0)}
+              </div>
+            </Card>
+          </Col>
+        </Row>
+      </div>
+
+      <Divider />
+
+      {/* Biểu đồ dữ liệu Pin */}
+      <div style={{ marginBottom: 24 }}>
+        <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "#ff4d4f" }}>
+          Biểu đồ dữ liệu Pin
+        </h4>
+        {time.length > 0 && (
+          <Row gutter={[16, 16]}>
           <Col xs={24} md={8}>
             <Card bodyStyle={{ padding: "16px" }}>
               <ReactECharts 
@@ -415,7 +486,8 @@ export default function BatteryDetailContent({ batteryData }) {
             </Card>
           </Col>
         </Row>
-      )}
+        )}
+      </div>
 
       {/* Bảng tóm tắt số liệu */}
       <Card 
@@ -436,128 +508,330 @@ export default function BatteryDetailContent({ batteryData }) {
 
       {/* Kết luận đánh giá Pin */}
       {conclusion && Object.keys(conclusion).length > 0 && (
-        <Card 
-          title={
-            <Space>
-              <Activity size={16} />
-              <span>Kết luận đánh giá Pin</span>
-            </Space>
-          }
-          bodyStyle={{ padding: "16px" }}
-        >
-          <Row gutter={[16, 16]}>
-            {/* Card 1: Khả năng cung cấp năng lượng */}
-            {conclusion.energyCapability && (
-              <Col xs={24} md={8}>
-                <Card
-                  style={{
-                    background: "linear-gradient(135deg, #52c41a 0%, #73d13d 100%)",
-                    border: "none",
-                  }}
-                  bodyStyle={{ padding: "20px" }}
-                >
-                  <Space direction="vertical" size="small" style={{ width: "100%" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                      <Zap size={20} color="#fff" />
-                      <Title level={5} style={{ margin: 0, color: "#fff", fontWeight: 600 }}>
-                        Khả năng cung cấp năng lượng
-                      </Title>
-                    </div>
-                    <Paragraph style={{ color: "#fff", margin: 0, fontSize: 13 }}>
-                      {conclusion.energyCapability}
-                    </Paragraph>
-                  </Space>
-                </Card>
-              </Col>
-            )}
+        <div style={{ marginTop: 24 }}>
+          <Divider orientation="left">
+            <Title level={4} style={{ margin: 0, color: "#ff4d4f" }}>
+              Kết luận đánh giá Pin
+            </Title>
+          </Divider>
+          
+          <div style={{ marginTop: 24 }}>
+            <Row gutter={[20, 20]}>
+              {/* Card 1: Khả năng cung cấp năng lượng */}
+              {conclusion.energyCapability && (
+                <Col xs={24} sm={24} md={8}>
+                  <Card
+                    size="small"
+                    style={{
+                      backgroundColor: "#f6ffed",
+                      border: "1px solid #b7eb8f",
+                      borderLeft: "5px solid #52c41a",
+                      borderRadius: "10px",
+                      height: "100%",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                    }}
+                    bodyStyle={{ padding: "20px" }}
+                    hoverable
+                  >
+                    <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+                        <div 
+                          style={{ 
+                            color: "#52c41a",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "8px",
+                            backgroundColor: "rgba(82, 196, 26, 0.15)",
+                          }}
+                        >
+                          <Zap size={20} />
+                        </div>
+                        <Title 
+                          level={5} 
+                          style={{ 
+                            margin: 0, 
+                            color: "#52c41a",
+                            fontWeight: 600,
+                            fontSize: "16px",
+                            lineHeight: "1.5",
+                          }}
+                        >
+                          Khả năng cung cấp năng lượng
+                        </Title>
+                      </div>
+                      <Paragraph
+                        style={{
+                          whiteSpace: "pre-wrap",
+                          lineHeight: 1.75,
+                          color: "#262626",
+                          fontSize: "14px",
+                          margin: 0,
+                          textAlign: "justify",
+                        }}
+                      >
+                        {conclusion.energyCapability}
+                      </Paragraph>
+                    </Space>
+                  </Card>
+                </Col>
+              )}
 
-            {/* Card 2: Hiệu suất nạp/xả */}
-            {conclusion.chargeDischargeEfficiency && (
-              <Col xs={24} md={8}>
-                <Card
-                  style={{
-                    background: "linear-gradient(135deg, #1890ff 0%, #40a9ff 100%)",
-                    border: "none",
-                  }}
-                  bodyStyle={{ padding: "20px" }}
-                >
-                  <Space direction="vertical" size="small" style={{ width: "100%" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                      <Activity size={20} color="#fff" />
-                      <Title level={5} style={{ margin: 0, color: "#fff", fontWeight: 600 }}>
-                        Hiệu suất nạp/xả
-                      </Title>
-                    </div>
-                    <Paragraph style={{ color: "#fff", margin: 0, fontSize: 13 }}>
-                      {conclusion.chargeDischargeEfficiency}
-                    </Paragraph>
-                  </Space>
-                </Card>
-              </Col>
-            )}
+              {/* Card 2: Hiệu suất nạp/xả */}
+              {conclusion.chargeDischargeEfficiency && (
+                <Col xs={24} sm={24} md={8}>
+                  <Card
+                    size="small"
+                    style={{
+                      backgroundColor: "#f0f5ff",
+                      border: "1px solid #adc6ff",
+                      borderLeft: "5px solid #1890ff",
+                      borderRadius: "10px",
+                      height: "100%",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                    }}
+                    bodyStyle={{ padding: "20px" }}
+                    hoverable
+                  >
+                    <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+                        <div 
+                          style={{ 
+                            color: "#1890ff",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "8px",
+                            backgroundColor: "rgba(24, 144, 255, 0.15)",
+                          }}
+                        >
+                          <Activity size={20} />
+                        </div>
+                        <Title 
+                          level={5} 
+                          style={{ 
+                            margin: 0, 
+                            color: "#1890ff",
+                            fontWeight: 600,
+                            fontSize: "16px",
+                            lineHeight: "1.5",
+                          }}
+                        >
+                          Hiệu suất nạp/xả
+                        </Title>
+                      </div>
+                      <Paragraph
+                        style={{
+                          whiteSpace: "pre-wrap",
+                          lineHeight: 1.75,
+                          color: "#262626",
+                          fontSize: "14px",
+                          margin: 0,
+                          textAlign: "justify",
+                        }}
+                      >
+                        {conclusion.chargeDischargeEfficiency}
+                      </Paragraph>
+                    </Space>
+                  </Card>
+                </Col>
+              )}
 
-            {/* Card 3: Tình trạng xuống cấp */}
-            {conclusion.degradationStatus && (
-              <Col xs={24} md={8}>
-                <Card
-                  style={{
-                    background: "linear-gradient(135deg, #faad14 0%, #ffc53d 100%)",
-                    border: "none",
-                  }}
-                  bodyStyle={{ padding: "20px" }}
-                >
-                  <Space direction="vertical" size="small" style={{ width: "100%" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                      <TrendingDown size={20} color="#fff" />
-                      <Title level={5} style={{ margin: 0, color: "#fff", fontWeight: 600 }}>
-                        Tình trạng xuống cấp
-                      </Title>
-                    </div>
-                    <Paragraph style={{ color: "#fff", margin: 0, fontSize: 13 }}>
-                      {conclusion.degradationStatus}
-                    </Paragraph>
-                  </Space>
-                </Card>
-              </Col>
-            )}
-          </Row>
+              {/* Card 3: Tình trạng xuống cấp */}
+              {conclusion.degradationStatus && (
+                <Col xs={24} sm={24} md={8}>
+                  <Card
+                    size="small"
+                    style={{
+                      backgroundColor: "#fffbe6",
+                      border: "1px solid #ffe58f",
+                      borderLeft: "5px solid #faad14",
+                      borderRadius: "10px",
+                      height: "100%",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                    }}
+                    bodyStyle={{ padding: "20px" }}
+                    hoverable
+                  >
+                    <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+                        <div 
+                          style={{ 
+                            color: "#faad14",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "8px",
+                            backgroundColor: "rgba(250, 173, 20, 0.15)",
+                          }}
+                        >
+                          <TrendingDown size={20} />
+                        </div>
+                        <Title 
+                          level={5} 
+                          style={{ 
+                            margin: 0, 
+                            color: "#faad14",
+                            fontWeight: 600,
+                            fontSize: "16px",
+                            lineHeight: "1.5",
+                          }}
+                        >
+                          Tình trạng xuống cấp
+                        </Title>
+                      </div>
+                      <Paragraph
+                        style={{
+                          whiteSpace: "pre-wrap",
+                          lineHeight: 1.75,
+                          color: "#262626",
+                          fontSize: "14px",
+                          margin: 0,
+                          textAlign: "justify",
+                        }}
+                      >
+                        {conclusion.degradationStatus}
+                      </Paragraph>
+                    </Space>
+                  </Card>
+                </Col>
+              )}
+            </Row>
 
-          {/* Thông tin bổ sung */}
-          <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-            {conclusion.remainingUsefulLife && (
-              <Col xs={24}>
-                <Alert
-                  message="Tuổi thọ còn lại"
-                  description={conclusion.remainingUsefulLife}
-                  type="info"
-                  showIcon
-                  style={{ marginBottom: 16 }}
-                />
-              </Col>
-            )}
-            {conclusion.safety && (
-              <Col xs={24}>
-                <Alert
-                  message="An toàn"
-                  description={conclusion.safety}
-                  type={conclusion.safety.includes("vượt ngưỡng") || conclusion.safety.includes("quá nhiệt") ? "warning" : "success"}
-                  showIcon
-                  style={{ marginBottom: 16 }}
-                />
-              </Col>
-            )}
-            {conclusion.solution && (
-              <Col xs={24}>
-                <Alert
-                  message="Giải pháp"
-                  description={conclusion.solution}
-                  type="info"
-                  showIcon
-                />
-              </Col>
-            )}
-          </Row>
-        </Card>
+            {/* Hàng thứ 2: Tuổi thọ còn lại và An toàn */}
+            <Row gutter={[20, 20]} style={{ marginTop: 20 }}>
+              {/* Card 4: Tuổi thọ còn lại */}
+              {conclusion.remainingUsefulLife && (
+                <Col xs={24} sm={24} md={12}>
+                  <Card
+                    size="small"
+                    style={{
+                      backgroundColor: "#f9f0ff",
+                      border: "1px solid #d3adf7",
+                      borderLeft: "5px solid #722ed1",
+                      borderRadius: "10px",
+                      height: "100%",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                    }}
+                    bodyStyle={{ padding: "20px" }}
+                    hoverable
+                  >
+                    <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+                        <div 
+                          style={{ 
+                            color: "#722ed1",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "8px",
+                            backgroundColor: "rgba(114, 46, 209, 0.15)",
+                          }}
+                        >
+                          <TrendingUp size={20} />
+                        </div>
+                        <Title 
+                          level={5} 
+                          style={{ 
+                            margin: 0, 
+                            color: "#722ed1",
+                            fontWeight: 600,
+                            fontSize: "16px",
+                            lineHeight: "1.5",
+                          }}
+                        >
+                          Tuổi thọ còn lại
+                        </Title>
+                      </div>
+                      <Paragraph
+                        style={{
+                          whiteSpace: "pre-wrap",
+                          lineHeight: 1.75,
+                          color: "#262626",
+                          fontSize: "14px",
+                          margin: 0,
+                          textAlign: "justify",
+                        }}
+                      >
+                        {conclusion.remainingUsefulLife}
+                      </Paragraph>
+                    </Space>
+                  </Card>
+                </Col>
+              )}
+
+              {/* Card 5: An toàn */}
+              {conclusion.safety && (
+                <Col xs={24} sm={24} md={12}>
+                  <Card
+                    size="small"
+                    style={{
+                      backgroundColor: "#fff1f0",
+                      border: "1px solid #ffccc7",
+                      borderLeft: "5px solid #ff4d4f",
+                      borderRadius: "10px",
+                      height: "100%",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                    }}
+                    bodyStyle={{ padding: "20px" }}
+                    hoverable
+                  >
+                    <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+                        <div 
+                          style={{ 
+                            color: "#ff4d4f",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "8px",
+                            backgroundColor: "rgba(255, 77, 79, 0.15)",
+                          }}
+                        >
+                          <Activity size={20} />
+                        </div>
+                        <Title 
+                          level={5} 
+                          style={{ 
+                            margin: 0, 
+                            color: "#ff4d4f",
+                            fontWeight: 600,
+                            fontSize: "16px",
+                            lineHeight: "1.5",
+                          }}
+                        >
+                          An toàn
+                        </Title>
+                      </div>
+                      <Paragraph
+                        style={{
+                          whiteSpace: "pre-wrap",
+                          lineHeight: 1.75,
+                          color: "#262626",
+                          fontSize: "14px",
+                          margin: 0,
+                          textAlign: "justify",
+                        }}
+                      >
+                        {conclusion.safety}
+                      </Paragraph>
+                    </Space>
+                  </Card>
+                </Col>
+              )}
+            </Row>
+          </div>
+        </div>
       )}
     </div>
   );

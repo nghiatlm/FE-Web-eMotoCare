@@ -605,7 +605,7 @@ export default function StaffBookingDetailPage() {
                     <Space size={8}>
                       <Clock size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
                       <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "120px" }}>
-                        Thời gian:
+                        Thời gian đặt lịch:
                       </Text>
                     </Space>
                     <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
@@ -615,6 +615,53 @@ export default function StaffBookingDetailPage() {
                       })() : "—"}
                     </Text>
                   </div>
+
+                  {/* ✅ Hiển thị thời gian check-in thực tế nếu check-in trước thời gian đặt lịch */}
+                  {(() => {
+                    // ✅ Lấy thời gian check-in thực tế (có thể là checkinTime, actualCheckinTime, checkedInAt, hoặc updatedAt khi status là CHECKED_IN)
+                    const actualCheckinTime = booking.checkinTime || booking.actualCheckinTime || booking.checkedInAt || 
+                      (booking.status === "CHECKED_IN" && booking.updatedAt ? booking.updatedAt : null);
+                    
+                    if (!actualCheckinTime) return null;
+                    
+                    // ✅ Tính thời gian đặt lịch (appointmentDate + slotTime start)
+                    const appointmentDateTime = booking.appointmentDate ? new Date(booking.appointmentDate) : null;
+                    let scheduledTime = null;
+                    if (appointmentDateTime && booking.slotTime) {
+                      const [startHour] = booking.slotTime.replace("H", "").split("_");
+                      scheduledTime = new Date(appointmentDateTime);
+                      scheduledTime.setHours(parseInt(startHour, 10), 0, 0, 0);
+                    }
+                    
+                    const checkinDateTime = new Date(actualCheckinTime);
+                    
+                    // ✅ Chỉ hiển thị nếu check-in trước thời gian đặt lịch
+                    if (scheduledTime && checkinDateTime < scheduledTime) {
+                      return (
+                        <>
+                          <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+                            <Space size={8}>
+                              <Clock size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                              <Text type="secondary" style={{ fontSize: 14, fontWeight: 600, minWidth: "120px" }}>
+                                Thời gian check-in:
+                              </Text>
+                            </Space>
+                            <Text strong style={{ fontSize: 14, color: "#52c41a" }}>
+                              {checkinDateTime.toLocaleString("vi-VN", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </Text>
+                          </div>
+                         
+                        </>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
                     <Space size={8}>

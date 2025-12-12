@@ -1616,9 +1616,7 @@ export default function RepairModeEVCheck({
                   onViewDetail={onViewBatteryDetail} // ✅ Truyền callback xuống BatteryDataDisplay
                 />
               ) : (
-                <div className="text-xs text-gray-500 italic p-2 bg-yellow-50 rounded">
-                  💡 Vui lòng chọn biện pháp để tự động lưu hạng mục
-                </div>
+                <span className="text-gray-400">—</span>
               )}
             </div>
           );
