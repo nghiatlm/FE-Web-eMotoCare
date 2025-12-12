@@ -1012,7 +1012,6 @@ export default function CampaignModeEVCheck({
       }
 
       toast.dismiss(loadingToast);
-      toast.success("Cập nhật trạng thái thành công!");
       
       // ✅ Clear statusChanges trước khi reload
       setStatusChanges({});
@@ -1074,10 +1073,12 @@ export default function CampaignModeEVCheck({
             console.error("❌ Lỗi cập nhật appointment status:", err);
             console.error("❌ Error details:", err.response?.data || err.message);
             // Không throw error để không ảnh hưởng đến flow chính
+            return; // ✅ Dừng lại nếu có lỗi
           }
         }
         
-        toast.success("Đã hoàn thành tất cả hạng mục sửa chữa!");
+        // ✅ Chỉ hiển thị 1 toast thành công
+        toast.success("Cập nhật trạng thái thành công!");
       }
 
       onRefresh?.();

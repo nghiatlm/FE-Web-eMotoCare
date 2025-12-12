@@ -1208,7 +1208,6 @@ export default function RepairModeEVCheck({
       }
 
       toast.dismiss(loadingToast);
-      toast.success("Cập nhật trạng thái thành công!");
       
       // ✅ Clear statusChanges trước khi reload
       setStatusChanges({});
@@ -1340,9 +1339,7 @@ export default function RepairModeEVCheck({
             const verifiedAppointment = verifyRes?.data?.data || verifyRes?.data || verifyRes;
             console.log(`🔍 Appointment status sau khi update:`, verifiedAppointment?.status);
             
-            if (verifiedAppointment?.status === "REPAIR_COMPLETED") {
-              toast.success("Đã cập nhật trạng thái appointment thành REPAIR_COMPLETED!");
-            } else {
+            if (verifiedAppointment?.status !== "REPAIR_COMPLETED") {
               console.warn(`⚠️ Appointment status không đúng sau khi update. Expected: REPAIR_COMPLETED, Actual: ${verifiedAppointment?.status}`);
               toast.warning(`Appointment status: ${verifiedAppointment?.status}`);
             }
@@ -1352,6 +1349,7 @@ export default function RepairModeEVCheck({
             console.error("❌ Error data:", err.response?.data || err.message);
             toast.error(`Lỗi cập nhật appointment: ${err.response?.data?.message || err.message || "Unknown error"}`);
             // Không throw error để không ảnh hưởng đến flow chính
+            return; // ✅ Dừng lại nếu có lỗi
           }
         } else {
           console.warn(`⚠️ Không có booking.id để cập nhật appointment status. booking:`, booking);
@@ -1359,7 +1357,7 @@ export default function RepairModeEVCheck({
         
         // ✅ Reload lại để cập nhật UI
         await loadRepairDetails();
-        toast.success("Đã hoàn thành tất cả hạng mục sửa chữa!");
+        toast.success("Cập nhật trạng thái thành công!");
       } else {
         console.log(`⚠️ Chưa hoàn thành: ${detailsToCheck.length} items cần kiểm tra, ${detailsToCheck.filter(d => d.status !== "COMPLETED").length} items chưa COMPLETED`);
         if (detailsToCheck.length > 0) {
@@ -2304,8 +2302,6 @@ export default function RepairModeEVCheck({
           setSelectedRMAItems(new Set());
           setIsRMAConfirmationOpen(false);
           
-          toast.success("Tạo RMA thành công! Đang cập nhật trạng thái appointment...");
-          
           // ✅ Sau khi tạo RMA thành công, chuyển appointment thành COMPLETED
           if (booking?.id) {
             try {
@@ -2328,15 +2324,16 @@ export default function RepairModeEVCheck({
               const verifyRes = await getAppointmentById(booking.id);
               const verifiedAppointment = verifyRes?.data?.data || verifyRes?.data || verifyRes;
               
-              if (verifiedAppointment?.status === "COMPLETED") {
-                toast.success("Đã cập nhật trạng thái appointment thành hoàn thành!");
-              } else {
+              if (verifiedAppointment?.status !== "COMPLETED") {
                 console.warn(`⚠️ Appointment status không đúng sau khi update. Expected: COMPLETED, Actual: ${verifiedAppointment?.status}`);
                 toast.warning(`Appointment status: ${verifiedAppointment?.status}`);
               }
               
               // ✅ Reload data để cập nhật UI
               await loadRepairDetails();
+              
+              // ✅ Chỉ hiển thị 1 toast thành công
+              toast.success("Tạo RMA thành công!");
               onRefresh?.();
             } catch (err) {
               console.error("❌ Lỗi cập nhật appointment status sau khi tạo RMA:", err);
