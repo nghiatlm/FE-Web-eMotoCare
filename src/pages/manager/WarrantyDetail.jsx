@@ -480,10 +480,26 @@ export default function WarrantyDetail() {
         return "Sửa chữa";
       case "REPLACE":
         return "Thay thế";
+      case "WARRANTY":
+        return "Bảo hành";
       case "REFUND":
         return "Hoàn tiền";
       default:
         return remedies;
+    }
+  };
+
+  const translateSolution = (solution) => {
+    if (!solution || solution === "—") return "—";
+    const solutionUpper = solution.toUpperCase();
+    switch (solutionUpper) {
+      case "REPLACE":
+      case "WARRANTY":
+        return "Bảo hành ";
+      case "REPAIR":
+        return "Sửa chữa";
+      default:
+        return solution;
     }
   };
 
@@ -1499,7 +1515,7 @@ export default function WarrantyDetail() {
                                                     </p>
                                                   </div>
                                                   <p className="text-sm md:text-base font-medium text-foreground leading-relaxed">
-                                                    {solution}
+                                                    {translateSolution(solution)}
                                                   </p>
                                                 </div>
                                               )}
@@ -1731,19 +1747,30 @@ export default function WarrantyDetail() {
                                             >
                                               Giải pháp
                                             </Label>
-                                            <Textarea
-                                              id={`solution-${detailId}`}
+                                            <Select
                                               value={
-                                                detailForms[detailId]?.solution !== undefined 
-                                                  ? detailForms[detailId].solution 
-                                                  : (detail.solution && detail.solution !== "CLEAN" ? detail.solution : "")
+                                                (() => {
+                                                  const formValue = detailForms[detailId]?.solution;
+                                                  if (formValue !== undefined) return formValue;
+                                                  
+                                                  // Map các giá trị cũ sang giá trị mới
+                                                  const detailSolution = detail.solution || "";
+                                                  if (detailSolution === "WARRANTY" || detailSolution === "REPLACE") return "REPLACE";
+                                                  if (detailSolution === "REPAIR") return "REPAIR";
+                                                  return "";
+                                                })()
                                               }
-                                              onChange={(e) => handleFormChange(detailId, "solution", e.target.value)}
-                                              placeholder="Nhập giải pháp từ hãng (thay thế, sửa chữa, v.v.)"
-                                              rows={3}
-                                              className="resize-none"
+                                              onValueChange={(value) => handleFormChange(detailId, "solution", value)}
                                               disabled={isSaved}
-                                            />
+                                            >
+                                              <SelectTrigger id={`solution-${detailId}`}>
+                                                <SelectValue placeholder="Chọn giải pháp" />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="REPLACE">Thay thế</SelectItem>
+                                                <SelectItem value="REPAIR">Sửa chữa</SelectItem>
+                                              </SelectContent>
+                                            </Select>
                                           </div>
 
                                           <div className="rounded-xl border border-red-200/80 bg-red-50/70 shadow-sm overflow-hidden mt-4">

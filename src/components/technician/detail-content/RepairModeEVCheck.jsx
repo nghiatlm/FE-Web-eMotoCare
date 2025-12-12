@@ -79,11 +79,11 @@ export default function RepairModeEVCheck({
     return !!(row.rmaDetail || row.rmaDetailId || row.rmaDetail?.id);
   };
 
-  // ✅ Kiểm tra item có vấn đề về kho (hết hàng hoặc chờ xuất kho)
+  // ✅ Kiểm tra item có vấn đề về kho (hết hàng, không tìm thấy hàng hoặc chờ xuất kho)
   const hasStockIssue = (row) => {
     const exportStatus = row?.exportNoteStatus || exportNoteStatusMap[row?.id];
     const exportStatusUpper = (exportStatus || "").toUpperCase();
-    return exportStatusUpper === "STOCK_NOT_FOUND" || exportStatusUpper === "STOCK_FOUND";
+    return exportStatusUpper === "STOCK_NOT_FOUND" || exportStatusUpper === "NOT_FOUND" || exportStatusUpper === "STOCK_FOUND";
   };
 
   // ✅ Kiểm tra item có bảo hành và đã gửi đi bảo hành (cần ngăn cập nhật trạng thái)
@@ -1208,7 +1208,6 @@ export default function RepairModeEVCheck({
       }
 
       toast.dismiss(loadingToast);
-      toast.success("Cập nhật trạng thái thành công!");
       
       // ✅ Clear statusChanges trước khi reload
       setStatusChanges({});
@@ -1340,9 +1339,7 @@ export default function RepairModeEVCheck({
             const verifiedAppointment = verifyRes?.data?.data || verifyRes?.data || verifyRes;
             console.log(`🔍 Appointment status sau khi update:`, verifiedAppointment?.status);
             
-            if (verifiedAppointment?.status === "REPAIR_COMPLETED") {
-              toast.success("Đã cập nhật trạng thái appointment thành REPAIR_COMPLETED!");
-            } else {
+            if (verifiedAppointment?.status !== "REPAIR_COMPLETED") {
               console.warn(`⚠️ Appointment status không đúng sau khi update. Expected: REPAIR_COMPLETED, Actual: ${verifiedAppointment?.status}`);
               toast.warning(`Appointment status: ${verifiedAppointment?.status}`);
             }
@@ -1352,6 +1349,7 @@ export default function RepairModeEVCheck({
             console.error("❌ Error data:", err.response?.data || err.message);
             toast.error(`Lỗi cập nhật appointment: ${err.response?.data?.message || err.message || "Unknown error"}`);
             // Không throw error để không ảnh hưởng đến flow chính
+            return; // ✅ Dừng lại nếu có lỗi
           }
         } else {
           console.warn(`⚠️ Không có booking.id để cập nhật appointment status. booking:`, booking);
@@ -1359,7 +1357,7 @@ export default function RepairModeEVCheck({
         
         // ✅ Reload lại để cập nhật UI
         await loadRepairDetails();
-        toast.success("Đã hoàn thành tất cả hạng mục sửa chữa!");
+        toast.success("Cập nhật trạng thái thành công!");
       } else {
         console.log(`⚠️ Chưa hoàn thành: ${detailsToCheck.length} items cần kiểm tra, ${detailsToCheck.filter(d => d.status !== "COMPLETED").length} items chưa COMPLETED`);
         if (detailsToCheck.length > 0) {
@@ -1934,7 +1932,7 @@ export default function RepairModeEVCheck({
       render: (_, r) => {
         // ✅ Hiển thị exportNoteStatus nếu có (không chỉ khi COMPLETED)
         const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
-        if (!status) return "";
+        if (!status) return <span style={{ color: "#999" }}>—</span>;
         
         // ✅ Format status với Tag và màu sắc
         const getStatusColor = (s) => {
@@ -1942,8 +1940,9 @@ export default function RepairModeEVCheck({
           if (statusUpper === "COMPLETED") return "success";
           if (statusUpper === "PENDING") return "processing";
           if (statusUpper === "REJECTED" || statusUpper === "CANCELLED") return "error";
-          if (statusUpper === "STOCK_NOT_FOUND") return "warning";
-          if (statusUpper === "STOCK_FOUND") return "success";
+          if (statusUpper === "STOCK_NOT_FOUND") return "danger"; // ✅ Hết hàng → màu đỏ
+          if (statusUpper === "NOT_FOUND") return "danger"; // ✅ Không tìm thấy hàng → màu đỏ
+          if (statusUpper === "STOCK_FOUND") return "warning"; // ✅ Đợi xuất kho → màu vàng
           return "default";
         };
         
@@ -1955,14 +1954,19 @@ export default function RepairModeEVCheck({
             REJECTED: "Từ chối",
             CANCELLED: "Hủy",
             STOCK_NOT_FOUND: "Hết hàng",
+            NOT_FOUND: "Không tìm thấy hàng", // ✅ Thêm status mới
             STOCK_FOUND: "Đợi xuất kho",
-
           };
           return statusMap[statusUpper] || s;
         };
         
+        const tagColor = getStatusColor(status);
+        // ✅ Dùng custom color cho "Hết hàng" và "Không tìm thấy hàng" để đảm bảo hiển thị màu đỏ
+        const statusUpper = (status || "").toUpperCase();
+        const finalColor = (statusUpper === "STOCK_NOT_FOUND" || statusUpper === "NOT_FOUND") ? "#ff4d4f" : tagColor;
+        
         return (
-          <Tag color={getStatusColor(status)}>
+          <Tag color={finalColor}>
             {getStatusLabel(status)}
           </Tag>
         );
@@ -2298,8 +2302,6 @@ export default function RepairModeEVCheck({
           setSelectedRMAItems(new Set());
           setIsRMAConfirmationOpen(false);
           
-          toast.success("Tạo RMA thành công! Đang cập nhật trạng thái appointment...");
-          
           // ✅ Sau khi tạo RMA thành công, chuyển appointment thành COMPLETED
           if (booking?.id) {
             try {
@@ -2322,15 +2324,16 @@ export default function RepairModeEVCheck({
               const verifyRes = await getAppointmentById(booking.id);
               const verifiedAppointment = verifyRes?.data?.data || verifyRes?.data || verifyRes;
               
-              if (verifiedAppointment?.status === "COMPLETED") {
-                toast.success("Đã cập nhật trạng thái appointment thành hoàn thành!");
-              } else {
+              if (verifiedAppointment?.status !== "COMPLETED") {
                 console.warn(`⚠️ Appointment status không đúng sau khi update. Expected: COMPLETED, Actual: ${verifiedAppointment?.status}`);
                 toast.warning(`Appointment status: ${verifiedAppointment?.status}`);
               }
               
               // ✅ Reload data để cập nhật UI
               await loadRepairDetails();
+              
+              // ✅ Chỉ hiển thị 1 toast thành công
+              toast.success("Tạo RMA thành công!");
               onRefresh?.();
             } catch (err) {
               console.error("❌ Lỗi cập nhật appointment status sau khi tạo RMA:", err);
