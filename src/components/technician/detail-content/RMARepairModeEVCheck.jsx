@@ -720,6 +720,7 @@ export default function RMARepairModeEVCheck({
           if (statusUpper === "PENDING") return "processing";
           if (statusUpper === "REJECTED" || statusUpper === "CANCELLED") return "error";
           if (statusUpper === "STOCK_NOT_FOUND") return "danger";
+          if (statusUpper === "NOT_FOUND") return "danger"; // ✅ Không tìm thấy hàng → màu đỏ
           if (statusUpper === "STOCK_FOUND") return "warning";
           return "default";
         };
@@ -732,15 +733,16 @@ export default function RMARepairModeEVCheck({
             REJECTED: "Từ chối",
             CANCELLED: "Hủy",
             STOCK_NOT_FOUND: "Hết hàng",
+            NOT_FOUND: "Không tìm thấy hàng", // ✅ Thêm status mới
             STOCK_FOUND: "Đợi xuất kho",
           };
           return statusMap[statusUpper] || s;
         };
         
         const tagColor = getStatusColor(status);
-        // ✅ Dùng custom color cho "Hết hàng" để đảm bảo hiển thị màu đỏ
+        // ✅ Dùng custom color cho "Hết hàng" và "Không tìm thấy hàng" để đảm bảo hiển thị màu đỏ
         const statusUpper = (status || "").toUpperCase();
-        const finalColor = statusUpper === "STOCK_NOT_FOUND" ? "#ff4d4f" : tagColor;
+        const finalColor = (statusUpper === "STOCK_NOT_FOUND" || statusUpper === "NOT_FOUND") ? "#ff4d4f" : tagColor;
         
         return (
           <Tag color={finalColor}>
