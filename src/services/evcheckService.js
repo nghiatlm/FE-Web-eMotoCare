@@ -120,7 +120,8 @@ export const fetchEVCheckDetailsServiceRe = async (checkId) => {
 };
 
 export const fetchEVCheckDetailsServiceMain = async (checkId) => {
-  const { data } = await getEVCheckDetails({ params: { eVCheckId: checkId } });
+  // ✅ Sửa lỗi nested params: getEVCheckDetails đã nhận params object, không cần wrap trong { params: ... }
+  const { data } = await getEVCheckDetails({ eVCheckId: checkId });
   console.log("fetchEVCheckDetailsService RAW DATA:", data);
 
   const rowDatas = data?.data?.rowDatas || data?.rowDatas || [];

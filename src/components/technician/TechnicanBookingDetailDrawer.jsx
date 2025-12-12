@@ -22,6 +22,7 @@ export default function TechnicianBookingDetailDrawer({
   onClose,
   initialEVCheckId,
   readOnly = false, // staff sẽ truyền readOnly = true
+  onViewBatteryDetail = null, // ✅ Callback để hiển thị battery detail trên page chính (cho staff)
 }) {
   const [loading, setLoading] = useState(false);
   const [km, setKm] = useState("");
@@ -304,6 +305,7 @@ export default function TechnicianBookingDetailDrawer({
                 onRefresh={() => setRefreshKey((prev) => prev + 1)}
                 readOnly={readOnly}
                 forceEmpty={!evCheckId}
+                onViewBatteryDetail={onViewBatteryDetail} // ✅ Truyền callback xuống RepairModeEVCheck
               />
             );
           })()}

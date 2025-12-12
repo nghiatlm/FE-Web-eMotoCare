@@ -72,7 +72,29 @@ export default function BookingDetailDrawer({
 
       try {
         setLoadingTechs(true);
-        const list = await fetchTechnicians();
+        // ✅ Lấy serviceCenterId từ booking hoặc từ user
+        const serviceCenterId = 
+          booking?.serviceCenterId || 
+          booking?.serviceCenter?.id ||
+          null;
+        
+        // ✅ Nếu không có từ booking, lấy từ user
+        if (!serviceCenterId) {
+          const user = JSON.parse(localStorage.getItem("user") || "{}");
+          const userServiceCenterId = 
+            user?.accountResponse?.serviceCenterId || 
+            user?.serviceCenterId || 
+            user?.staff?.serviceCenterId ||
+            user?.accountResponse?.staff?.serviceCenterId ||
+            null;
+          if (userServiceCenterId) {
+            const list = await fetchTechnicians(userServiceCenterId);
+            setTechnicians(list);
+            return;
+          }
+        }
+        
+        const list = await fetchTechnicians(serviceCenterId);
         setTechnicians(list);
       } catch (err) {
         toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tải danh sách kỹ thuật viên"));
@@ -85,7 +107,7 @@ export default function BookingDetailDrawer({
       loadTechs();
       setSelectedTechnician(null);
     }
-  }, [open, status]);
+  }, [open, status, booking]);
 
   useEffect(() => {
     const loadEV = async () => {

@@ -14,6 +14,7 @@ import { getLaborCostByRemediesService } from "../../../services/priceserviceSer
 import { fetchVehiclePartItems } from "../../../services/vehiclePartItemService.js";
 import { getPartItemsService, getPartItemByIdService, getPartItemsByServiceCenterService } from "../../../services/partitemsService.js";
 import { getExportStatusByAppointmentCodeAndPartId } from "../../../services/exportNotesService.js";
+import { changeAppointmentStatusService } from "../../../services/appointmentService.js";
 import { PlusOutlined } from "@ant-design/icons";
 import useEVCheckHub from "../../../hooks/useEVCheckHub.jsx";
 import BatteryDataDisplay from "../BatteryDataDisplay";
@@ -380,7 +381,7 @@ export default function CampaignModeEVCheck({
     displayName: "",
     proposedReplacePartId: "",
     replacePartName: "",
-    result: "Tốt", // ✅ Mặc định "Tốt"
+    result: "", // ✅ Không có giá trị mặc định
     remedies: "REPLACE",
     pricePart: 0,
     priceService: 0,
@@ -552,7 +553,7 @@ export default function CampaignModeEVCheck({
           partItem: item.partItem || partOption?.partItem || null,
           proposedReplacePartId: finalReplacePartId || replacePartId,
             replacePartName: finalReplacePartName || replacePartName || "", // ✅ Không fallback về ID, chỉ dùng name
-            result: item.result ?? "Tốt", // ✅ Mặc định "Tốt"
+            result: item.result ?? "", // ✅ Không có giá trị mặc định
           remedies: item.remedies || "REPLACE",
           pricePart: Number(item.pricePart || 0),
           priceService: Number(item.priceService || 0),
@@ -860,7 +861,7 @@ export default function CampaignModeEVCheck({
     try {
       const payload = {
         partItemId: item.partItemId,
-        result: (item.result || "").trim() || "Tốt",
+        result: (item.result || "").trim(),
         remedies: item.remedies ?? "REPLACE",
         unit: item.unit || "cái",
         priceService: Number(item.priceService || 0),
@@ -926,12 +927,7 @@ export default function CampaignModeEVCheck({
         return;
       }
 
-      if (
-        ["REPAIR", "REPLACE"].includes(item.remedies) &&
-        !item.result?.trim()
-      ) {
-        return toast.warning("Vui lòng nhập Kết quả!");
-      }
+      // ✅ Bỏ validation required cho field "Kết quả"
     }
 
     if (!evCheckId) return toast.error("Thiếu EVCheckId!");
@@ -943,7 +939,7 @@ export default function CampaignModeEVCheck({
       for (const item of itemsToSave) {
         const payload = {
           partItemId: item.partItemId,
-          result: (item.result || "").trim() || "Tốt", // ✅ Nếu rỗng thì mặc định "Tốt"
+          result: (item.result || "").trim(),
           remedies: item.remedies ?? "REPLACE",
           unit: item.unit || "cái",
           priceService: Number(item.priceService || 0),
@@ -1056,6 +1052,31 @@ export default function CampaignModeEVCheck({
         console.log(`📤 Cập nhật EVCheck ${evCheckId} thành REPAIR_COMPLETED`);
         await updateEVCheckService(evCheckId, { status: "REPAIR_COMPLETED" });
         setEvCheckStatus("REPAIR_COMPLETED");
+        
+        // ✅ Cập nhật appointment status thành REPAIR_COMPLETED
+        if (booking?.id) {
+          try {
+            console.log(`📤 Cập nhật Appointment ${booking.id} thành REPAIR_COMPLETED`);
+            // ✅ Lấy thông tin appointment hiện tại để giữ lại các field khác
+            const { getAppointmentById } = await import("../../../api/appointmentsApi");
+            const appointmentRes = await getAppointmentById(booking.id);
+            const currentAppointment = appointmentRes?.data?.data || appointmentRes?.data || appointmentRes;
+            
+            // ✅ Update với đầy đủ thông tin cần thiết, chỉ thay đổi status
+            await changeAppointmentStatusService(booking.id, "REPAIR_COMPLETED", {
+              note: currentAppointment?.note || booking?.note || "",
+              approveById: currentAppointment?.approveById || booking?.approveById || null,
+              code: currentAppointment?.code || booking?.code || "",
+              checkinQRCode: currentAppointment?.checkinQRCode || booking?.checkinQRCode || "",
+            });
+            console.log(`✅ Đã cập nhật Appointment ${booking.id} thành REPAIR_COMPLETED`);
+          } catch (err) {
+            console.error("❌ Lỗi cập nhật appointment status:", err);
+            console.error("❌ Error details:", err.response?.data || err.message);
+            // Không throw error để không ảnh hưởng đến flow chính
+          }
+        }
+        
         toast.success("Đã hoàn thành tất cả hạng mục sửa chữa!");
       }
 
@@ -1239,12 +1260,6 @@ export default function CampaignModeEVCheck({
         <Input.TextArea
               value={r.result ?? ""}
           onChange={(e) => handleChange(i, "result", e.target.value)}
-              onBlur={(e) => {
-                // ✅ Nếu để trống khi blur, tự động set về "Tốt"
-                if (!e.target.value.trim()) {
-                  handleChange(i, "result", "Tốt");
-                }
-              }}
           disabled={readOnly || !canEditFields}
           autoSize={{ minRows: 2, maxRows: 8 }}
               style={{ resize: "none", fontSize: 14, maxWidth: "100%" }}
@@ -1267,9 +1282,7 @@ export default function CampaignModeEVCheck({
                     }
                   />
                 ) : (
-                  <div className="text-xs text-gray-500 italic p-2 bg-yellow-50 rounded">
-                    💡 Vui lòng chọn biện pháp để tự động lưu hạng mục
-                  </div>
+                  <span className="text-gray-400">—</span>
                 )}
               </div>
             )}
@@ -1285,7 +1298,19 @@ export default function CampaignModeEVCheck({
       },
       render: (_, r, i) => {
         const isWarranty = checkWarrantyStatus(r.partItem);
-        const remediesLabel = r.remedies === "REPLACE" ? "Thay thế" : r.remedies === "REPAIR" ? "Sửa chữa" : r.remedies === "TUNE" ? "Điều chỉnh" : r.remedies === "CLEAN" ? "Vệ sinh" : r.remedies === "WARRANTY" ? "Bảo hành" : "Chọn";
+        const getRemediesLabel = (remedies) => {
+          const map = {
+            REPLACE: "Thay thế",
+            REPAIR: "Sửa chữa",
+            CLEAN: "Vệ sinh",
+            TUNE: "Điều chỉnh",
+            WARRANTY: "Bảo hành",
+            NONE: "Không",
+          };
+          const normalized = (remedies || "").toString().toUpperCase().trim();
+          return map[normalized] || "Chọn";
+        };
+        const remediesLabel = getRemediesLabel(r.remedies);
         return (
           <Tooltip title={remediesLabel} placement="topLeft">
             <Select
@@ -1294,12 +1319,14 @@ export default function CampaignModeEVCheck({
               style={{ width: "100%", minWidth: 120 }}
               onChange={(v) => handleChange(i, "remedies", v)}
               disabled={readOnly || !canEditFields}>
+              <Option value='NONE'>Không</Option>
               <Option value='TUNE'>Điều chỉnh</Option>
               <Option value='CLEAN'>Vệ sinh</Option>
-              <Option value='REPLACE' disabled={isWarranty}>Thay thế</Option>
-              <Option value='REPAIR' disabled={isWarranty}>Sửa chữa</Option>
-              {/* ✅ Chỉ cho phép chọn "Bảo hành" khi phụ tùng còn trong thời gian bảo hành */}
-              <Option value='WARRANTY' disabled={!isWarranty}>Bảo hành</Option>
+              {/* ✅ Nếu đang bảo hành thì không hiển thị "Thay thế" và "Sửa chữa" */}
+              {!isWarranty && <Option value='REPLACE'>Thay thế</Option>}
+              {!isWarranty && <Option value='REPAIR'>Sửa chữa</Option>}
+              {/* ✅ Chỉ hiển thị "Bảo hành" khi phụ tùng còn trong thời gian bảo hành */}
+              {isWarranty && <Option value='WARRANTY'>Bảo hành</Option>}
             </Select>
           </Tooltip>
         );

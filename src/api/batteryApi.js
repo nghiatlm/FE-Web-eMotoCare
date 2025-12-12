@@ -14,3 +14,10 @@ export const importBatteryData = (evCheckDetailId, file) => {
   });
 };
 
+// ✅ Lấy dữ liệu pin theo evCheckDetailId (dùng query param)
+// Backend có thể hỗ trợ cả query param hoặc cần battery check ID
+export const getBatteryDataByDetailId = (evCheckDetailId) => {
+  // ✅ Thử dùng query parameter trước
+  return api.get(`${BASE_URL}?evCheckDetailId=${evCheckDetailId}`);
+};
+
