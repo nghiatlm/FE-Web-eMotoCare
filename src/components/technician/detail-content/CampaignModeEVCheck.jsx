@@ -1434,8 +1434,8 @@ export default function CampaignModeEVCheck({
           if (statusUpper === "COMPLETED") return "success";
           if (statusUpper === "PENDING") return "processing";
           if (statusUpper === "REJECTED" || statusUpper === "CANCELLED") return "error";
-          if (statusUpper === "STOCK_NOT_FOUND") return "warning";
-          if (statusUpper === "STOCK_FOUND") return "success";
+          if (statusUpper === "STOCK_NOT_FOUND") return "danger"; // ✅ Hết hàng → màu đỏ
+          if (statusUpper === "STOCK_FOUND") return "warning"; // ✅ Đợi xuất kho → màu vàng
           return "default";
         };
         
@@ -1453,8 +1453,13 @@ export default function CampaignModeEVCheck({
           return statusMap[statusUpper] || s;
         };
         
+        const tagColor = getStatusColor(status);
+        // ✅ Dùng custom color cho "Hết hàng" để đảm bảo hiển thị màu đỏ
+        const statusUpper = (status || "").toUpperCase();
+        const finalColor = statusUpper === "STOCK_NOT_FOUND" ? "#ff4d4f" : tagColor;
+        
         return (
-          <Tag color={getStatusColor(status)}>
+          <Tag color={finalColor}>
             {getStatusLabel(status)}
           </Tag>
         );

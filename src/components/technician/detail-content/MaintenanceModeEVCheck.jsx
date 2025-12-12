@@ -1260,8 +1260,13 @@ export default function MaintenanceModeEVCheck({
           return statusMap[statusUpper] || s;
         };
         
+        const tagColor = getStatusColor(status);
+        // ✅ Dùng custom color cho "Hết hàng" để đảm bảo hiển thị màu đỏ
+        const statusUpper = (status || "").toUpperCase();
+        const finalColor = statusUpper === "STOCK_NOT_FOUND" ? "#ff4d4f" : tagColor;
+        
         return (
-          <Tag color={getStatusColor(status)}>
+          <Tag color={finalColor}>
             {getStatusLabel(status)}
           </Tag>
         );
