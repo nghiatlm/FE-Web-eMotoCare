@@ -13,6 +13,12 @@ export const getParts = ({ page = 1, pageSize = 10, search, status, serviceCente
   return api.get(BASE_URL, { params });
 };
 
+// Lấy part theo model (model-part-types)
+export const getModelParts = ({ modelId, partId, page = 1, pageSize = 100 } = {}) => {
+  const params = { modelId, partId, page, pageSize };
+  return api.get("/v1/model-part-types", { params });
+};
+
 export const getPartTypeById = (partTypeId) => {
   return api.get(`${PART_TYPES_BASE_URL}/${partTypeId}`);
 };

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye } from "lucide-react";
+import { Eye, FileDown } from "lucide-react";
 import { getImportNotes } from "@/api/importNotesApi";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useServiceCenter } from "@/hooks/useServiceCenter";
@@ -139,7 +139,7 @@ export default function ImportSlipsTable({ search = "", typeFilter = "", statusF
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+      <div className="bg-white/95 backdrop-blur rounded-xl border border-rose-200/60 shadow-md overflow-hidden">
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
@@ -153,10 +153,10 @@ export default function ImportSlipsTable({ search = "", typeFilter = "", statusF
   // Error state
   if (error) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+      <div className="bg-white/95 backdrop-blur rounded-xl border border-rose-200/60 shadow-md overflow-hidden">
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            <p className="text-red-600 dark:text-red-400 mb-2">Lỗi khi tải phiếu nhập</p>
+            <p className="text-red-600 dark:text-red-400 mb-2 font-medium">Lỗi khi tải phiếu nhập</p>
             <p className="text-muted-foreground text-sm">{error}</p>
           </div>
         </div>
@@ -165,25 +165,27 @@ export default function ImportSlipsTable({ search = "", typeFilter = "", statusF
   }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+    <div className="bg-white/95 backdrop-blur rounded-xl border border-rose-200/60 overflow-hidden shadow-md">
       <div className="overflow-x-auto">
         <table className="w-full table-fixed">
           <colgroup>
-            <col style={{ width: '18%' }} />
-            <col style={{ width: '18%' }} />
+            <col style={{ width: '5%' }} />
+            <col style={{ width: '16%' }} />
+            <col style={{ width: '16%' }} />
             <col style={{ width: '15%' }} />
-            <col style={{ width: '18%' }} />
-            <col style={{ width: '18%' }} />
+            <col style={{ width: '16%' }} />
+            <col style={{ width: '16%' }} />
             <col className="w-32" />
           </colgroup>
           <thead>
-            <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Mã phiếu</th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Ngày nhập</th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Loại phiếu</th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Tổng giá trị</th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Người nhập</th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Thao tác</th>
+            <tr className="bg-gradient-to-r from-rose-100 via-rose-50/80 to-pink-50 border-b border-rose-200">
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">STT</th>
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">Mã phiếu</th>
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">Ngày nhập</th>
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">Loại phiếu</th>
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">Tổng giá trị</th>
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">Người nhập</th>
+              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">Thao tác</th>
             </tr>
           </thead>
         </table>
@@ -191,41 +193,48 @@ export default function ImportSlipsTable({ search = "", typeFilter = "", statusF
       <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
         <table className="w-full table-fixed">
           <colgroup>
-            <col style={{ width: '18%' }} />
-            <col style={{ width: '18%' }} />
+            <col style={{ width: '5%' }} />
+            <col style={{ width: '16%' }} />
+            <col style={{ width: '16%' }} />
             <col style={{ width: '15%' }} />
-            <col style={{ width: '18%' }} />
-            <col style={{ width: '18%' }} />
+            <col style={{ width: '16%' }} />
+            <col style={{ width: '16%' }} />
             <col className="w-32" />
           </colgroup>
           <tbody>
             {filtered.length === 0 && !loading ? (
               <tr>
-                <td colSpan="6" className="py-12 px-6 text-center">
+                <td colSpan="7" className="py-12 px-6 text-center">
                   <div className="flex flex-col items-center gap-2">
-                    <p className="text-muted-foreground text-sm">Không tìm thấy phiếu nhập phù hợp</p>
-                    <p className="text-xs text-muted-foreground">{search ? "Hãy thay đổi từ khóa tìm kiếm" : "Chưa có phiếu nhập nào"}</p>
+                    <FileDown className="h-12 w-12 text-muted-foreground/40 mb-2" />
+                    <p className="text-muted-foreground text-sm font-medium">Không tìm thấy phiếu nhập phù hợp</p>
+                    <p className="text-xs text-muted-foreground">{search || typeFilter || statusFilter ? "Hãy thay đổi từ khóa hoặc bộ lọc" : "Chưa có phiếu nhập nào"}</p>
                   </div>
                 </td>
               </tr>
             ) : (
-              filtered.map((slip, i) => (
+              filtered.map((slip, i) => {
+                const stt = (page - 1) * pageSize + i + 1;
+                return (
                 <tr
                   key={slip.code || slip.rawData?.id || i}
-                  className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
-                    i % 2 === 0 ? "bg-white" : "bg-slate-50/40"
+                  className={`border-b border-rose-100/50 hover:bg-rose-50/50 transition-colors ${
+                    i % 2 === 0 ? "bg-white" : "bg-rose-50/20"
                   }`}
                 >
-                  <td className="py-4 px-6 text-center">
+                  <td className="py-4 px-6 text-center whitespace-nowrap">
+                    <span className="text-sm text-foreground font-medium">{stt}</span>
+                  </td>
+                  <td className="py-4 px-6 text-center whitespace-nowrap">
                     <span className="text-sm text-foreground font-medium">{slip.code || "—"}</span>
                   </td>
-                  <td className="py-4 px-6 text-center">
+                  <td className="py-4 px-6 text-center whitespace-nowrap">
                     <span className="text-sm text-foreground">{slip.importDate}</span>
                   </td>
-                  <td className="py-4 px-6 text-center">
+                  <td className="py-4 px-6 text-center whitespace-nowrap">
                     {(() => {
                       const typeRaw = slip.typeRaw || slip.rawData?.type || "";
-                      let badgeClass = "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium";
+                      let badgeClass = "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium shadow-sm";
                       
                       if (typeRaw === "SUPPLIER") {
                         badgeClass += " bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100";
@@ -242,8 +251,8 @@ export default function ImportSlipsTable({ search = "", typeFilter = "", statusF
                       );
                     })()}
                   </td>
-                  <td className="py-4 px-6 text-center">
-                    <span className="text-sm font-medium text-foreground">
+                  <td className="py-4 px-6 text-center whitespace-nowrap">
+                    <span className="text-sm font-semibold text-emerald-700">
                       {new Intl.NumberFormat("vi-VN", {
                         style: "currency",
                         currency: "VND",
@@ -251,15 +260,15 @@ export default function ImportSlipsTable({ search = "", typeFilter = "", statusF
                       }).format(slip.totalValue)}
                     </span>
                   </td>
-                  <td className="py-4 px-6 text-center">
+                  <td className="py-4 px-6 text-center whitespace-nowrap">
                     <span className="text-sm text-foreground">{slip.importByName}</span>
                   </td>
-                  <td className="py-4 px-6 text-center">
+                  <td className="py-4 px-6 text-center whitespace-nowrap">
                     <div className="flex items-center justify-center gap-1.5">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="gap-1.5 h-8 px-3 text-xs font-medium hover:bg-red-50 hover:text-red-600 transition-colors"
+                        className="gap-1.5 h-8 px-3 text-xs font-medium hover:bg-primary/10 hover:text-primary transition-colors"
                         onClick={() => {
                           if (slip.rawData?.id) {
                             navigate(`/storekeeper/import-slips/${slip.rawData.id}`);
@@ -274,24 +283,25 @@ export default function ImportSlipsTable({ search = "", typeFilter = "", statusF
                     </div>
                   </td>
                 </tr>
-              ))
+              );
+              })
             )}
           </tbody>
         </table>
       </div>
 
-      {/* Pagination */}
       {total > 0 && (
-        <div className="flex items-center justify-between p-4 border-t border-border">
-          <div className="text-sm text-muted-foreground">
-            Hiển thị {filtered.length} / {total} phiếu
-          </div>
+        <div className="flex items-center justify-between p-5 bg-gradient-to-r from-rose-50/50 via-pink-50/30 to-rose-50/50 border-t border-rose-200/50">
           <Pagination>
-            <PaginationContent>
+            <PaginationContent className="gap-1">
               <PaginationItem>
                 <PaginationPrevious 
                   onClick={() => setPage(prev => Math.max(1, prev - 1))}
-                  className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  className={`cursor-pointer transition-all ${
+                    page === 1 
+                      ? "pointer-events-none opacity-50" 
+                      : "hover:bg-rose-100 dark:hover:bg-rose-900/30"
+                  }`}
                 />
               </PaginationItem>
               
@@ -300,7 +310,11 @@ export default function ImportSlipsTable({ search = "", typeFilter = "", statusF
                   <PaginationLink
                     onClick={() => setPage(pageNum)}
                     isActive={page === pageNum}
-                    className="cursor-pointer"
+                    className={`cursor-pointer transition-all ${
+                      page === pageNum
+                        ? "bg-primary text-white hover:bg-primary/90 dark:bg-primary dark:hover:bg-primary/90"
+                        : "hover:bg-rose-100 dark:hover:bg-rose-900/30"
+                    }`}
                   >
                     {pageNum}
                   </PaginationLink>
@@ -310,7 +324,11 @@ export default function ImportSlipsTable({ search = "", typeFilter = "", statusF
               <PaginationItem>
                 <PaginationNext 
                   onClick={() => setPage(prev => Math.min(Math.ceil(total / pageSize), prev + 1))}
-                  className={page >= Math.ceil(total / pageSize) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  className={`cursor-pointer transition-all ${
+                    page >= Math.ceil(total / pageSize)
+                      ? "pointer-events-none opacity-50"
+                      : "hover:bg-rose-100 dark:hover:bg-rose-900/30"
+                  }`}
                 />
               </PaginationItem>
             </PaginationContent>

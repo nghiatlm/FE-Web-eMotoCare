@@ -49,7 +49,7 @@ export default function MaintenancePlans() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [total, setTotal] = useState(0);
-  const [syncStatus, setSyncStatus] = useState("idle"); // idle | syncing | success | error
+  const [syncStatus, setSyncStatus] = useState("idle");
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState(null);
 
@@ -157,7 +157,6 @@ export default function MaintenancePlans() {
           <div className="mt-3 h-1.5 w-28 rounded-full bg-red-500 shadow-[0_4px_16px_-6px_rgba(239,68,68,0.65)]"/>
         </div>
 
-        {/* Sync card */}
         <Card className="rounded-2xl border border-slate-200/80 bg-white shadow-sm mb-6">
           <CardContent className="p-4 md:p-5">
             <div className="flex flex-col md:flex-row md:items-center gap-4">
@@ -256,18 +255,10 @@ export default function MaintenancePlans() {
                 Xóa lọc
               </Button>
             )}
-
-            <div className="flex items-center gap-3 ml-auto">
-              <Button className="gap-2 bg-red-600 hover:bg-red-700 shadow-sm">
-                <Plus className="h-4 w-4" />
-                Thêm lịch bảo dưỡng
-              </Button>
-            </div>
           </div>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          {/* Header table (không scroll) */}
           <div className="overflow-x-auto">
             <table className="w-full table-fixed">
               <colgroup>

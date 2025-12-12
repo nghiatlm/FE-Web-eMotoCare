@@ -173,6 +173,17 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
                 return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400";
         }
     };
+
+    const getStatusLabel = (status) => {
+        const statusLower = (status || "").toLowerCase();
+        if (statusLower === "active" || statusLower === "Hoạt động" || statusLower === "Đang hoạt động") {
+            return "Đang hoạt động";
+        }
+        if (statusLower === "blocked" || statusLower === "Khóa" || statusLower === "Bị chặn" || statusLower === "inactive" || statusLower === "in_active") {
+            return "Khóa";
+        }
+        return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    };
     const getAvatarColorClasses = (index) => {
         const palette = [
             "bg-red-50 text-red-700",
@@ -217,7 +228,6 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
       </p>
       
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-        {/* Header table (không scroll) */}
         <div className="overflow-x-auto">
           <table className="w-full table-fixed">
             <colgroup>
@@ -269,8 +279,8 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
               </tr>
             ) : (
               filteredUsers.map((user, index) => (<tr key={user.id} className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-slate-50/40"}`}>
-                <td className="py-4 px-4 text-sm text-slate-600 text-center">{(page - 1) * pageSize + index + 1}</td>
-                <td className="py-4 px-4">
+                <td className="py-4 px-4 text-sm text-slate-600 text-center whitespace-nowrap">{(page - 1) * pageSize + index + 1}</td>
+                <td className="py-4 px-4 whitespace-nowrap">
                   <div className="flex items-center justify-center">
                   <Avatar className="h-10 w-10 bg-white border border-slate-100 shadow-sm">
                     <AvatarImage src={user.avatar} alt={user.fullName}/>
@@ -280,24 +290,24 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
                   </Avatar>
                   </div>
                 </td>
-                <td className="py-4 px-6 text-sm text-foreground">{formatPhoneNumber(user.phoneNumber)}</td>
-                <td className="py-4 px-6 text-sm text-muted-foreground">{user.email}</td>
-                <td className="py-4 px-6 text-sm font-medium text-foreground">{user.fullName}</td>
-                <td className="py-4 px-6">
+                <td className="py-4 px-6 text-sm text-foreground whitespace-nowrap">{formatPhoneNumber(user.phoneNumber)}</td>
+                <td className="py-4 px-6 text-sm text-muted-foreground whitespace-nowrap">{user.email}</td>
+                <td className="py-4 px-6 text-sm font-medium text-foreground whitespace-nowrap">{user.fullName}</td>
+                <td className="py-4 px-6 whitespace-nowrap">
                   <div className="flex justify-center">
-                    <span className={`inline-flex px-4 py-1 rounded-full text-xs font-medium justify-center ${getRoleBadgeColor(user.role)}`}>
+                    <span className={`inline-flex px-4 py-1 rounded-full text-xs font-medium justify-center whitespace-nowrap ${getRoleBadgeColor(user.role)}`}>
                       {getRoleLabelVi(user.role)}
                     </span>
                   </div>
                 </td>
-                <td className="py-4 px-6">
+                <td className="py-4 px-6 whitespace-nowrap">
                   <div className="flex justify-center">
-                    <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(user.status)}`}>
-                      {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
+                    <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getStatusBadgeColor(user.status)}`}>
+                      {getStatusLabel(user.status)}
                     </span>
                   </div>
                 </td>
-                <td className="py-4 px-6">
+                <td className="py-4 px-6 whitespace-nowrap">
                   <div className="flex items-center justify-center gap-2">
                     <Button 
                       variant="ghost" 
@@ -340,7 +350,7 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
                               )
                             );
                             
-                            toast.success(`Đã chặn người dùng: ${user.fullName} đã bị chặn (inactive)`, {
+                            toast.success(`Đã chặn người dùng: ${user.fullName} đã bị chặn`, {
                               position: "top-right",
                               autoClose: 4000,
                             });

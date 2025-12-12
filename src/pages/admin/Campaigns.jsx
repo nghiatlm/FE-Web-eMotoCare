@@ -195,12 +195,6 @@ export default function Campaigns() {
           >
             <Eye className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-600 hover:bg-slate-100" title="Chỉnh sửa">
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-600 hover:bg-rose-50" title="Xóa">
-            <Trash2 className="h-4 w-4" />
-          </Button>
         </div>
       ),
       onHeaderCell: () => ({ style: headerCellStyle }),
@@ -478,13 +472,7 @@ export default function Campaigns() {
                               title="Xem chi tiết"
                               onClick={() => navigate(`/admin/campaigns/${record.id}`)}
                             >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-600 hover:bg-slate-100" title="Chỉnh sửa">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-600 hover:bg-rose-50" title="Xóa">
-                              <Trash2 className="h-4 w-4" />
+                              <Eye className="h-4 w-4" /> Chi tiết 
                             </Button>
                           </div>
                         </td>

@@ -8,7 +8,7 @@ import {
   Boxes,
   AlertTriangle,
 } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import {
   Sidebar,
@@ -23,10 +23,9 @@ import {
 } from "@/components/ui/sidebar";
 import { authService } from "@/services/authService";
 import { cn } from "@/lib/utils";
-import { Layout, Avatar, Space } from "antd";
+import { Avatar } from "antd";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStaffByAccountId } from "@/api/staffsApi";
-const { Header } = Layout;
 
 const sections = [
   {
@@ -161,6 +160,7 @@ export function ManagerSidebar() {
 // Header (Ant Design) for manager layout
 export function ManagerTopHeader() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [displayName, setDisplayName] = useState("Quản lý");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [initials, setInitials] = useState("QL");
@@ -231,30 +231,31 @@ export function ManagerTopHeader() {
   }, [user]);
 
   return (
-    <Header
-      className="flex items-center justify-between px-4"
-      style={{
-        background: "linear-gradient(90deg, #b71324 0%, #c81e32 50%, #b71324 100%)",
-        height: 56,
-        lineHeight: "56px",
-        paddingInline: 16,
-        borderBottom: "1px solid rgba(255,255,255,0.15)",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-      }}
-    >
-      <div className="flex items-center gap-3 text-white">
-        <SidebarTrigger className="text-white" />
-      </div>
-      <Space size="middle" className="text-white">
+    <header className="h-14 bg-white border-b border-red-100 flex items-center justify-between px-4 sticky top-0 z-10 text-red-600">
+      <SidebarTrigger className="text-red-600" />
+      <button
+        type="button"
+        onClick={() => navigate("/manager/profile")}
+        className="flex items-center gap-3 hover:bg-red-50 px-2 py-1 rounded-lg transition-colors"
+        aria-label="Xem hồ sơ quản lý"
+      >
         <div className="flex flex-col items-end leading-tight">
-          <span className="text-sm font-semibold">{displayName}</span>
-          <span className="text-[11px] text-red-50/90">Quản lý</span>
+          <span className="text-sm font-semibold text-red-700">{displayName}</span>
+          <span className="text-[11px] text-red-400">Quản lý</span>
         </div>
-        <Avatar src={avatarUrl} style={{ backgroundColor: "#fff", color: "#b71324" }}>
-          {initials}
-        </Avatar>
-      </Space>
-    </Header>
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={displayName}
+            className="h-9 w-9 rounded-full object-cover border border-red-100"
+          />
+        ) : (
+          <div className="h-9 w-9 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold uppercase">
+            {initials}
+          </div>
+        )}
+      </button>
+    </header>
   );
 }
 

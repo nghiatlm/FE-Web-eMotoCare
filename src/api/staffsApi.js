@@ -24,3 +24,7 @@ export const getStaffsByServiceCenterId = (serviceCenterId, params = {}) => {
 export const getStaffById = (id) => {
   return api.get(`${BASE_URL}/${id}`);
 };
+
+export const updateStaff = (staffId, staffData) => {
+  return api.put(`${BASE_URL}/${staffId}`, staffData);
+};

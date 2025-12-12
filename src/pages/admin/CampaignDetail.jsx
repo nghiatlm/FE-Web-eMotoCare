@@ -81,28 +81,57 @@ export default function CampaignDetail() {
 
   // const campaign = mockCampaigns.find((c) => c.id === id);
   const [campaign, setCampaign] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetchCampaign(id);
   }, [id])
 
   const fetchCampaign = async (id) => {
-    var res = await getProgramDetails(id);
-    console.log("Campaign details:", res);
-    if (res) {
-      setCampaign(res);
+    try {
+      setLoading(true);
+      setError("");
+      const res = await getProgramDetails(id);
+      console.log("Campaign details:", res);
+      if (res) {
+        setCampaign(res);
+      } else {
+        setError("Không tìm thấy chiến dịch");
+      }
+    } catch (err) {
+      console.error("Fetch campaign error:", err);
+      setError(err?.message || "Lỗi tải dữ liệu chiến dịch");
+    } finally {
+      setLoading(false);
     }
   }
 
+
+  if (loading && !campaign) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <Megaphone className="h-12 w-12 text-slate-300 mx-auto animate-pulse" />
+          <h2 className="text-xl font-semibold text-slate-900">Đang tải chiến dịch...</h2>
+        </div>
+      </div>
+    );
+  }
 
   if (!campaign) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center space-y-4">
           <Megaphone className="h-16 w-16 text-slate-300 mx-auto" />
-          <h2 className="text-2xl font-bold text-slate-900">Không tìm thấy campaign</h2>
+          <h2 className="text-2xl font-bold text-slate-900">{error || "Không tìm thấy campaign"}</h2>
           <p className="text-muted-foreground">Campaign với ID "{id}" không tồn tại</p>
-          <Button onClick={() => navigate("/admin/campaigns")}>Quay lại danh sách</Button>
+          <div className="flex items-center justify-center gap-3">
+            <Button onClick={() => fetchCampaign(id)} disabled={loading}>
+              {loading ? "Đang tải..." : "Thử lại"}
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/admin/campaigns")}>Quay lại danh sách</Button>
+          </div>
         </div>
       </div>
     );
@@ -114,10 +143,10 @@ export default function CampaignDetail() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="p-6 md:p-8 space-y-6">
+      <div className="max-w-6xl mx-auto p-6 md:p-8 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <Button variant="outline" size="sm" onClick={() => navigate("/admin/campaigns")} className="gap-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/admin/campaigns")} className="gap-2">
             <ArrowLeft className="h-4 w-4" />
             Quay lại
           </Button>
@@ -134,19 +163,23 @@ export default function CampaignDetail() {
         </div>
 
         {/* Campaign Info */}
-        <Card className="rounded-2xl border border-slate-200/80 bg-white shadow-lg overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-b border-slate-200/80 pb-4">
-            <div className="flex items-start justify-between">
+        <Card className="rounded-2xl border border-slate-200/80 bg-white shadow-xl overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-primary/5 via-sky-50 to-white border-b border-slate-200/80 pb-5">
+            <div className="flex items-start justify-between gap-4">
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
+                  <div className="p-3 rounded-xl bg-primary/10">
                     <Megaphone className="h-6 w-6 text-primary" />
                   </div>
                   <div>
                     <CardTitle className="text-2xl font-bold text-slate-900">{campaign.title || campaign.name}</CardTitle>
-                    <p className="text-sm text-slate-600 mt-1">Mã: <span className="font-semibold text-primary">{campaign.id}</span></p>
                   </div>
                 </div>
+                {campaign.description && (
+                  <p className="text-sm text-slate-600 leading-relaxed max-w-3xl">
+                    {campaign.description}
+                  </p>
+                )}
               </div>
               <Badge
                 variant="outline"
@@ -156,43 +189,35 @@ export default function CampaignDetail() {
               </Badge>
             </div>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-6 space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left Column - Main Info */}
-              <div className="lg:col-span-2 space-y-6">
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Mô tả
-                  </h3>
-                  <p className="text-sm text-slate-600 leading-relaxed">{campaign.description}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+              <div className="lg:col-span-2 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {typeof campaign.discount !== 'undefined' && (
-                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <div className="p-4 rounded-xl bg-gradient-to-r from-slate-50 to-white border border-slate-200 shadow-sm">
                       <div className="flex items-center gap-2 mb-2">
                         <Percent className="h-5 w-5 text-primary" />
                         <p className="text-xs font-semibold uppercase text-slate-600 tracking-wider">Mức giảm giá</p>
                       </div>
-                      <p className="text-2xl font-bold text-primary">{campaign.discount}%</p>
+                      <p className="text-3xl font-bold text-primary">{campaign.discount}%</p>
                     </div>
                   )}
 
                   {hasQuantity && (
-                    <div className="p-4 rounded-xl bg-blue-50 border border-blue-200">
+                    <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-white border border-blue-100 shadow-sm">
                       <div className="flex items-center gap-2 mb-2">
                         <Users className="h-5 w-5 text-blue-600" />
                         <p className="text-xs font-semibold uppercase text-slate-600 tracking-wider">Số lượng</p>
                       </div>
-                      <p className="text-2xl font-bold text-blue-700">{campaign.usedQuantity} / {campaign.totalQuantity}</p>
+                      <p className="text-3xl font-bold text-blue-700">{campaign.usedQuantity} / {campaign.totalQuantity}</p>
                     </div>
                   )}
                 </div>
 
                 {/* Progress Bar */}
                 {hasQuantity && (
-                  <div>
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 shadow-sm">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-slate-700">Tiến độ sử dụng</span>
                       <span className="text-sm font-semibold text-slate-900">{usagePercentage.toFixed(1)}%</span>
@@ -213,43 +238,41 @@ export default function CampaignDetail() {
 
               {/* Right Column - Details */}
               <div className="space-y-4">
-                <Card className="border border-slate-200">
+                <Card className="border border-slate-200 shadow-sm">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base font-semibold">Thông tin chi tiết</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <Calendar className="h-4 w-4 text-slate-500" />
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-slate-100">
+                        <Calendar className="h-4 w-4 text-slate-600" />
+                      </div>
+                      <div>
                         <p className="text-xs font-semibold text-slate-600">Ngày bắt đầu</p>
+                        <p className="text-sm font-medium text-slate-900">{formatDate(campaign.startDate)}</p>
                       </div>
-                      <p className="text-sm font-medium text-slate-900">{formatDate(campaign.startDate)}</p>
                     </div>
 
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <Calendar className="h-4 w-4 text-slate-500" />
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-slate-100">
+                        <Calendar className="h-4 w-4 text-slate-600" />
+                      </div>
+                      <div>
                         <p className="text-xs font-semibold text-slate-600">Ngày kết thúc</p>
+                        <p className="text-sm font-medium text-slate-900">{formatDate(campaign.endDate)}</p>
                       </div>
-                      <p className="text-sm font-medium text-slate-900">{formatDate(campaign.endDate)}</p>
                     </div>
 
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <Clock className="h-4 w-4 text-slate-500" />
-                        <p className="text-xs font-semibold text-slate-600">Ngày tạo</p>
-                      </div>
-                      <p className="text-sm font-medium text-slate-900">{formatDateTime(campaign.createdAt) || campaign.createdBy || "—"}</p>
-                    </div>
+                    
                   </CardContent>
                 </Card>
 
-                <Card className="border border-slate-200">
+                <Card className="border border-slate-200 shadow-sm">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base font-semibold">Áp dụng cho</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <div>
+                    <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
                       <p className="text-xs font-semibold text-slate-600 mb-2">Chương trình / Chi tiết</p>
                       <div className="space-y-1">
                         {(campaign.programDetails || campaign.programs || []).map((pd, idx) => (
@@ -260,18 +283,17 @@ export default function CampaignDetail() {
                       </div>
                     </div>
 
-                    <div>
+                    <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
                       <p className="text-xs font-semibold text-slate-600 mb-2">Áp dụng cho mẫu xe</p>
-                      <div className="space-y-1">
+                      <div className="flex flex-wrap gap-2">
                         {(campaign.programModels || campaign.models || []).map((m, idx) => (
-                          <Badge key={idx} variant="outline" className="mr-1">
+                          <Badge key={idx} variant="outline" className="border-slate-200">
                             {renderModel(m)}
                           </Badge>
                         ))}
                       </div>
                       {campaign.attachmentUrl && (
-                        <div className="mt-3">
-                          <p className="text-xs font-semibold text-slate-600 mb-1">Tài liệu đính kèm</p>
+                        <div className="mt-3 flex items-center gap-2">
                           <a href={campaign.attachmentUrl} target="_blank" rel="noreferrer" className="text-sm text-primary underline">
                             Xem tài liệu
                           </a>
@@ -293,7 +315,7 @@ export default function CampaignDetail() {
 
         {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="border border-slate-200">
+          <Card className="border border-slate-200 shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-lg bg-emerald-100">
@@ -307,7 +329,7 @@ export default function CampaignDetail() {
             </CardContent>
           </Card>
 
-          <Card className="border border-slate-200">
+          <Card className="border border-slate-200 shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-lg bg-blue-100">
@@ -321,7 +343,7 @@ export default function CampaignDetail() {
             </CardContent>
           </Card>
 
-          <Card className="border border-slate-200">
+          <Card className="border border-slate-200 shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-lg bg-amber-100">
