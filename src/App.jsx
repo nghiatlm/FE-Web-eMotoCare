@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AdminSidebar } from "@/components/AdminSidebar";
+import { AdminSidebar, AdminTopHeader } from "@/components/AdminSidebar";
 
 // auth
 import Login from "./pages/login/Login";
@@ -17,16 +17,15 @@ import PaymentFailed from "./pages/PaymentFailed";
 import VerifySuccess from "./pages/VerifySuccess";
 
 // admin
-import WarrantyClaims from "./pages/WarrantyClaims";
-import UserManagement from "./pages/UserManagement";
+import UserManagement from "./pages/admin/UserManagement";
 import Index from "./pages/Index";
-import Branches from "./pages/Branches";
+import Branches from "./pages/admin/Branches";
 import BranchDetail from "./pages/admin/BranchDetail";
 import BranchReport from "./pages/admin/BranchReport";
 import ServicePackages from "./pages/ServicePackages";
 import CreateServicePackage from "./pages/admin/CreateServicePackage";
 import PartTypeDetail from "./pages/admin/PartTypeDetail";
-import Campaigns from "./pages/admin/campaigns/Campaigns";
+import Campaigns from "./pages/admin/Campaigns";
 import CampaignDetail from "./pages/admin/campaigns/CampaignDetail";
 import CreateCampaign from "./pages/admin/CreateCampaign";
 import CreateUserPage from "./pages/admin/CreateUserPage";
@@ -36,6 +35,7 @@ import Models from "./pages/admin/Models";
 import ModelDetail from "./pages/admin/ModelDetail";
 import MaintenancePlans from "./pages/admin/MaintenancePlans";
 import MaintenancePlanDetail from "./pages/admin/MaintenancePlanDetail";
+import AdminProfile from "./pages/admin/AdminProfile";
 import NotFound from "./pages/NotFound";
 
 // service staff
@@ -57,7 +57,7 @@ import TechnicianBookingDetailPage from "./pages/technician/TechnicianBookingDet
 import BatteryDetailPage from "./pages/technician/BatteryDetailPage";
 
 // manager
-import { ManagerSidebar } from "./components/ManagerSidebar";
+import { ManagerSidebar, ManagerTopHeader } from "./components/ManagerSidebar";
 import Dashboard from "./pages/manager/Dashboard";
 import InformationDetail from "./pages/manager/InformationDetail";
 import AppointmentsList from "./pages/manager/AppointmentsList";
@@ -68,12 +68,13 @@ import WarrantyList from "./pages/manager/WarrantyList";
 import WarrantyDetail from "./pages/manager/WarrantyDetail";
 import MissingPartsList from "./pages/manager/MissingPartsList";
 import MissingPartDetail from "./pages/manager/MissingPartDetail";
+import ManagerProfile from "./pages/manager/ManagerProfile";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import InventorySummary from "./pages/manager/InventorySummary";
 import InventoryDetail from "./pages/manager/InventoryDetail";
 
 // storekeeper
-import { StoreKeeperSidebar } from "./components/StoreKeeperSidebar";
+import { StoreKeeperSidebar, StoreKeeperTopHeader } from "./components/StoreKeeperSidebar";
 import StorekeeperInventory from "./pages/storekeeper/StorekeeperInventory";
 import StorekeeperAccessoryDetail from "./pages/storekeeper/StorekeeperAccessoryDetail";
 import ImportSlipsPage from "./pages/storekeeper/ImportSlipsPage";
@@ -82,6 +83,7 @@ import ExportSlipsPage from "./pages/storekeeper/ExportSlipsPage";
 import CreateExportSlipPage from "./pages/storekeeper/CreateExportSlipPage";
 import ExportNoteDetail from "./pages/storekeeper/ExportNoteDetail";
 import CreateImportNotePage from "./pages/storekeeper/CreateImportNotePage";
+import StoreKeeperProfile from "./pages/storekeeper/StoreKeeperProfile";
 
 const queryClient = new QueryClient();
 
@@ -126,9 +128,7 @@ const App = () => (
                 <div className="flex min-h-screen w-full">
                   <AdminSidebar />
                   <div className="flex-1 flex flex-col">
-                    <header className="h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10">
-                      <SidebarTrigger className="text-foreground" />
-                    </header>
+                  <AdminTopHeader />
                     <main className="flex-1">
                       <Routes>
                         <Route path="" element={<Index />} />
@@ -140,10 +140,6 @@ const App = () => (
                         <Route
                           path="branches/:id/report"
                           element={<BranchReport />}
-                        />
-                        <Route
-                          path="warranty-claims"
-                          element={<WarrantyClaims />}
                         />
                         <Route path="models" element={<Models />} />
                         <Route path="models/:id" element={<ModelDetail />} />
@@ -180,6 +176,7 @@ const App = () => (
                           path="maintenance-plans/:id"
                           element={<MaintenancePlanDetail />}
                         />
+                        <Route path="profile" element={<AdminProfile />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </main>
@@ -198,9 +195,7 @@ const App = () => (
                 <div className="flex min-h-screen w-full">
                   <StaffSidebar />
                   <div className="flex-1 flex flex-col">
-                    <header className="h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10">
-                      <SidebarTrigger className="text-foreground" />
-                    </header>
+                    <StoreKeeperTopHeader />
                     <main className="flex-1">
                       <Routes>
                         <Route
@@ -257,9 +252,7 @@ const App = () => (
                 <div className="flex min-h-screen w-full">
                   <TechnicianSidebar />
                   <div className="flex-1 flex flex-col">
-                    <header className="h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10">
-                      <SidebarTrigger className="text-foreground" />
-                    </header>
+                    <ManagerTopHeader />
                     <main className="flex-1">
                       <Routes>
                         <Route
@@ -297,9 +290,7 @@ const App = () => (
                 <div className="flex min-h-screen w-full">
                   <StoreKeeperSidebar />
                   <div className="flex-1 flex flex-col">
-                    <header className="h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10">
-                      <SidebarTrigger className="text-foreground" />
-                    </header>
+                    <StoreKeeperTopHeader />
                     <main className="flex-1">
                       <Routes>
                         <Route path="" element={<StorekeeperInventory />} />
@@ -331,6 +322,7 @@ const App = () => (
                           path="export-slips/create"
                           element={<CreateExportSlipPage />}
                         />
+                    <Route path="profile" element={<StoreKeeperProfile />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </main>
@@ -349,9 +341,7 @@ const App = () => (
                 <div className="flex min-h-screen w-full">
                   <ManagerSidebar />
                   <div className="flex-1 flex flex-col">
-                    <header className="h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10">
-                      <SidebarTrigger className="text-foreground" />
-                    </header>
+                    <ManagerTopHeader />
                     <main className="flex-1">
                       <Routes>
                         <Route path="" element={<Dashboard />} />
@@ -390,6 +380,7 @@ const App = () => (
                           path="missing-parts/:id"
                           element={<MissingPartDetail />}
                         />
+                        <Route path="profile" element={<ManagerProfile />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </main>

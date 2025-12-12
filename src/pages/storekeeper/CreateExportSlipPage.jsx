@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileUp, ArrowLeft, Loader2, CheckSquare, Square, Search } from "lucide-react";
+import { FileUp, ArrowLeft, Loader2, CheckSquare, Square, Search, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
+import { toast as toastify } from "react-toastify";
 import { createExportNote } from "@/api/exportNotesApi";
 import { getPartItems } from "@/api/partitemsApi";
 import { getServiceCenters } from "@/api/serviceCentersApi";
@@ -24,7 +24,6 @@ import { cn } from "@/lib/utils";
 export default function CreateExportSlipPage() {
   const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
-  const { toast } = useToast();
   const { serviceCenterId, staffId } = useServiceCenter();
   
   const [partItems, setPartItems] = useState([]);
@@ -57,10 +56,9 @@ export default function CreateExportSlipPage() {
         setServiceCenters(centers);
       } catch (error) {
         console.error("Error fetching service centers:", error);
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải danh sách chi nhánh",
-          variant: "destructive"
+        toastify.error("Không thể tải danh sách chi nhánh", {
+          position: "top-right",
+          autoClose: 4000,
         });
         setAllServiceCenters([]);
         setServiceCenters([]);
@@ -74,7 +72,7 @@ export default function CreateExportSlipPage() {
       // Error đã được handle trong fetchServiceCenters, chỉ log thôi
       console.error("Unhandled error in fetchServiceCenters:", error);
     });
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     if (serviceCenterId && allServiceCenters.length > 0) {
@@ -120,16 +118,15 @@ export default function CreateExportSlipPage() {
       setPartItems(items || []);
     } catch (error) {
       console.error("❌ Error fetching part items:", error);
-      toast({
-        title: "Lỗi",
-        description: error?.message || error?.data?.message || "Không thể tải danh sách phụ tùng",
-        variant: "destructive",
+      toastify.error(error?.message || error?.data?.message || "Không thể tải danh sách phụ tùng", {
+        position: "top-right",
+        autoClose: 4000,
       });
       setPartItems([]);
     } finally {
       setLoadingPartItems(false);
     }
-  }, [serviceCenterId, toast]);
+  }, [serviceCenterId]);
 
   useEffect(() => {
     if (serviceCenterId) {
@@ -220,28 +217,25 @@ export default function CreateExportSlipPage() {
 
   const handleSubmit = async () => {
     if (!serviceCenterId || !staffId) {
-      toast({
-        title: "Thiếu thông tin",
-        description: "Không xác định được người xuất hoặc trung tâm dịch vụ.",
-        variant: "destructive"
+      toastify.error("Không xác định được người xuất hoặc trung tâm dịch vụ.", {
+        position: "top-right",
+        autoClose: 4000,
       });
       return;
     }
 
     if (!formData.exportTo || formData.exportTo === "") {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng chọn chi nhánh nhận",
-        variant: "destructive"
+      toastify.error("Vui lòng chọn chi nhánh nhận", {
+        position: "top-right",
+        autoClose: 4000,
       });
       return;
     }
 
     if (!formData.partItemId || formData.partItemId.length === 0) {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng chọn ít nhất một phụ tùng",
-        variant: "destructive"
+      toastify.error("Vui lòng chọn ít nhất một phụ tùng", {
+        position: "top-right",
+        autoClose: 4000,
       });
       return;
     }
@@ -258,24 +252,23 @@ export default function CreateExportSlipPage() {
         totalValue: formData.totalValue,
         note: formData.note,
         partItemId: formData.partItemId,
-        exportNoteStatus: "PROCESSING"
+        exportNoteStatus: "COMPLETED"
       };
       const response = await createExportNote(createData);
       
-      if (response.success) {
-        toast({
-          title: "Thành công",
-          description: "Tạo phiếu xuất mới thành công"
+      if (response.success || response.statusCode === 200) {
+        toastify.success("Tạo phiếu xuất thành công!", {
+          position: "top-right",
+          autoClose: 3000,
         });
         navigate("/storekeeper/export-slips");
       } else {
-        throw new Error(response.message || "Tạo thất bại");
+        throw new Error(response?.message || "Tạo thất bại");
       }
     } catch (error) {
-      toast({
-        title: "Lỗi",
-        description: error.message || "Không thể tạo phiếu xuất mới",
-        variant: "destructive"
+      toastify.error(error?.message || "Không thể tạo phiếu xuất mới", {
+        position: "top-right",
+        autoClose: 4000,
       });
     } finally {
       setCreating(false);
@@ -283,34 +276,44 @@ export default function CreateExportSlipPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <div className="mx-auto max-w-5xl px-4 py-8 space-y-6">
-        <div className="rounded-2xl border border-slate-200/60 bg-white/80 shadow-lg backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/80">
-          <div className="flex flex-wrap items-center gap-3 px-5 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-red-50 to-rose-100">
+      <div className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-6">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
-              className="h-9 w-9 rounded-lg border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+              className="rounded-full hover:bg-rose-100"
               onClick={() => navigate("/storekeeper/export-slips")}
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div className="flex-1 min-w-0">
-              <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
-                <FileUp className="h-5 w-5 text-primary" />
-                Tạo phiếu xuất mới
-              </h1>
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                Chọn chi nhánh nhận cùng phụ tùng cần xuất. Hệ thống tự tính số lượng và giá trị.
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 text-primary shadow-sm">
+                <FileUp className="h-6 w-6" />
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+                  Tạo phiếu xuất mới
+                </h1>
+                <p className="text-slate-600 text-sm sm:text-base mt-1">
+                  Chọn chi nhánh nhận cùng phụ tùng cần xuất. Hệ thống tự tính số lượng và giá trị.
+                </p>
+              </div>
             </div>
           </div>
+          <div className="h-[2px] w-32 rounded-full bg-gradient-to-r from-red-400/60 via-rose-300/40 to-transparent" />
         </div>
 
-        <Card className="border-slate-200/60 shadow-lg dark:border-slate-800">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-semibold">Thông tin phiếu xuất</CardTitle>
-            <CardDescription className="text-xs">Điền thông tin cơ bản trước khi xác nhận.</CardDescription>
+        <Card className="border border-rose-200/60 shadow-md bg-white/95 backdrop-blur">
+          <CardHeader className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <FileUp className="h-5 w-5 text-primary" />
+              Thông tin phiếu xuất
+            </CardTitle>
+            <CardDescription>
+              Điền thông tin cơ bản trước khi xác nhận.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="grid gap-4 md:grid-cols-2">
@@ -357,36 +360,6 @@ export default function CreateExportSlipPage() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="totalQuantity" className="text-sm font-medium">Tổng số lượng</Label>
-                <Input 
-                  id="totalQuantity" 
-                  type="number" 
-                  min="0" 
-                  value={formData.totalQuantity} 
-                  readOnly 
-                  className="bg-slate-50/80 dark:bg-slate-800/50 h-10" 
-                />
-                <p className="text-xs text-muted-foreground">
-                  Tính theo tổng phụ tùng đang được chọn ở kho bên dưới.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="totalValue" className="text-sm font-medium">Tổng giá trị (VND)</Label>
-                <Input 
-                  id="totalValue" 
-                  type="text" 
-                  value={formattedTotalValue} 
-                  readOnly 
-                  className="bg-slate-50/80 dark:bg-slate-800/50 font-semibold h-10" 
-                />
-                <p className="text-xs text-muted-foreground">
-                  Tự động quy đổi theo đơn giá từng phụ tùng.
-                </p>
-              </div>
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="note" className="text-sm font-medium">Ghi chú</Label>
               <Textarea
@@ -401,11 +374,47 @@ export default function CreateExportSlipPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200/60 shadow-lg dark:border-slate-800">
-          <CardHeader className="pb-4 space-y-4">
+        <Card className="border border-rose-200/60 shadow-md bg-white/95 backdrop-blur">
+          <CardHeader className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 space-y-4">
             <div>
-              <CardTitle className="text-lg font-semibold">Kho phụ tùng</CardTitle>
-              <CardDescription className="text-xs">Chọn phụ tùng cần xuất, có thể lọc theo tên, mã hoặc serial.</CardDescription>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Package className="h-5 w-5 text-primary" />
+                Kho phụ tùng
+              </CardTitle>
+              <CardDescription>
+                Chọn phụ tùng cần xuất, có thể lọc theo tên, mã hoặc serial.
+              </CardDescription>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div className="rounded-lg border border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Số lượng xuất</p>
+                    <p className="text-2xl font-bold text-primary">{formData.totalQuantity || 0}</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Package className="h-6 w-6 text-primary" />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Tự động tính khi chọn phụ tùng
+                </p>
+              </div>
+              <div className="rounded-lg border border-emerald-200/60 bg-gradient-to-br from-emerald-50/50 to-emerald-100/30 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Tổng giá trị</p>
+                    <p className="text-2xl font-bold text-emerald-700">{formattedTotalValue}</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <FileUp className="h-6 w-6 text-emerald-700" />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Tự động tính theo đơn giá
+                </p>
+              </div>
             </div>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
               <div className="relative flex-1">

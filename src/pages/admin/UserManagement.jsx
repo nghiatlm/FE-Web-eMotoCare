@@ -15,6 +15,7 @@ export default function UserManagement() {
     const [isEditUserOpen, setIsEditUserOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
 
+    // Setup global functions for UserTable communication
     useEffect(() => {
         window.openEditUserDialog = (user) => {
             setSelectedUser(user);
@@ -96,17 +97,20 @@ export default function UserManagement() {
           </div>
         </div>
 
+        {/* User Table */}
         <UserTable 
           searchQuery={searchQuery}
           nameFilter={nameFilter}
           roleFilter={roleFilter}
         />
 
+        {/* Edit User Dialog */}
         <EditUserForm 
           open={isEditUserOpen}
           onOpenChange={setIsEditUserOpen}
           user={selectedUser}
           onUserUpdated={() => {
+            // UserTable will handle the update
           }}
         />
       </div>

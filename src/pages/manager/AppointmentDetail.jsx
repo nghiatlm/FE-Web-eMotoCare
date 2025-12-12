@@ -18,6 +18,7 @@ import {
   Tag,
   Gauge, 
   Clock3,
+  Bike,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -399,7 +400,7 @@ export default function AppointmentDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+      <div className="w-full mx-auto px-4 py-8 sm:px-6 lg:px-10 xl:px-14 2xl:px-16">
         <Button variant="ghost" onClick={() => navigate("/manager/appointments")} className="mb-8 text-slate-600 hover:bg-slate-100">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Quay lại danh sách
@@ -510,8 +511,16 @@ export default function AppointmentDetail() {
                 </CardContent>
               </Card>
             )}
+            {appointment.note && (
+                <div className="rounded-xl border border-dashed border-blue-300 bg-blue-50/70 p-5 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                        <MessageSquare className="h-4 w-4 text-blue-600" />
+                        <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">Ghi chú từ khách hàng</p>
+                    </div>
+                    <p className="text-sm text-slate-700 leading-relaxed">{appointment.note}</p>
+                </div>
+            )}
 
-            {/* 6. Missing Parts */}
             <Card className="shadow-md border-slate-200">
               <CardHeader className="pb-4">
                 <div className="flex items-center gap-2">
@@ -549,20 +558,9 @@ export default function AppointmentDetail() {
               </CardContent>
             </Card>
 
-            {/* 7. Note */}
-            {appointment.note && (
-                <div className="rounded-xl border border-dashed border-blue-300 bg-blue-50/70 p-5 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                        <MessageSquare className="h-4 w-4 text-blue-600" />
-                        <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">Ghi chú từ khách hàng</p>
-                    </div>
-                    <p className="text-sm text-slate-700 leading-relaxed">{appointment.note}</p>
-                </div>
-            )}
           
           </div>
 
-          {/* Column 2: Sidebar (Sticky) */}
           <div className="space-y-6 lg:col-span-1">
             <Card className="sticky top-8 shadow-md border-slate-200">
               <CardHeader className="pb-4">

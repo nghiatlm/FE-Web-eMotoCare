@@ -5,12 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "react-toastify";
 import { updateUser } from "@/api/usersApi";
 import { getServiceCenters } from "@/api/serviceCentersApi";
 import { uploadFile } from "@/utils/firebaseUpload";
@@ -30,7 +28,6 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
     password: "",
     roleName: "",
     status: "ACTIVE",
-    // Staff fields
     staffCode: "",
     firstName: "",
     lastName: "",
@@ -41,7 +38,6 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
     avatarUrl: "",
     position: "",
     serviceCenterId: "",
-    // Customer fields
     customerFirstName: "",
     customerLastName: "",
     customerAddress: "",
@@ -56,9 +52,7 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
   const [selectedAvatar, setSelectedAvatar] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState("");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const { toast } = useToast();
 
-  // Fetch service centers
   useEffect(() => {
     const fetchServiceCenters = async () => {
       try {
@@ -80,7 +74,6 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
     }
   }, [open]);
 
-  // Helper function to transform role name
   const transformRoleName = (roleName) => {
     switch (roleName) {
       case "ROLE_ADMIN":
@@ -119,15 +112,12 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
     }
   };
 
-  // Update form data when user prop changes
   useEffect(() => {
     if (user) {
-      // Use rawData if available (API data), otherwise use transformed data
       const rawUser = user.rawData || user;
       const staff = rawUser.staff || user.staff || {};
       const customer = rawUser.customer || user.customer || {};
       
-      // Parse dateOfBirth if it exists
       let dateOfBirth = null;
       if (staff.dateOfBirth) {
         try {
@@ -137,7 +127,6 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
         }
       }
 
-      // Parse customer dateOfBirth if it exists
       let customerDob = null;
       if (customer.dateOfBirth) {
         try {
@@ -147,13 +136,19 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
         }
       }
 
+      const serviceCenterId = 
+        staff.serviceCenterId || 
+        staff.serviceCenter?.id || 
+        rawUser.serviceCenterId || 
+        rawUser.serviceCenter?.id || 
+        "";
+
       setFormData({
         phone: rawUser.phone || user.phoneNumber || "",
         email: rawUser.email || user.email || "",
-        password: "", // Don't pre-fill password
+        password: "",
         roleName: rawUser.roleName || transformRoleToApi(user.role) || "",
         status: rawUser.status || (user.status === "active" ? "ACTIVE" : "INACTIVE") || "ACTIVE",
-        // Staff fields
         staffCode: staff.staffCode || rawUser.staffCode || "",
         firstName: staff.firstName || rawUser.firstName || "",
         lastName: staff.lastName || rawUser.lastName || "",
@@ -163,8 +158,7 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
         gender: normalizeGender(staff.gender || rawUser.gender || ""),
         avatarUrl: staff.avatarUrl || rawUser.avatarUrl || customer.avatarUrl || "",
         position: staff.position || rawUser.position || "",
-        serviceCenterId: staff.serviceCenterId || rawUser.serviceCenterId || "",
-        // Customer fields
+        serviceCenterId: serviceCenterId,
         customerFirstName: customer.firstName || "",
         customerLastName: customer.lastName || "",
         customerAddress: customer.address || "",
@@ -177,17 +171,53 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (user && serviceCenters.length > 0) {
+      const rawUser = user.rawData || user;
+      const staff = rawUser.staff || user.staff || {};
+      const serviceCenterId = 
+        staff.serviceCenterId || 
+        staff.serviceCenter?.id || 
+        rawUser.serviceCenterId || 
+        rawUser.serviceCenter?.id || 
+        "";
+      
+      if (serviceCenterId && serviceCenters.some(center => center.id === serviceCenterId)) {
+        setFormData(prev => {
+          if (prev.serviceCenterId !== serviceCenterId) {
+            return { ...prev, serviceCenterId };
+          }
+          return prev;
+        });
+      }
+    }
+  }, [serviceCenters, user]);
+
   const validateForm = () => {
     const newErrors = {};
     const isCustomer = formData.roleName === "ROLE_CUSTOMER";
 
     const phone = formData.phone.trim();
-    const vnPhoneRegex = /^(0\d{9}|\+84\d{9,10})$/;
-    if (!phone) newErrors.phone = "Số điện thoại là bắt buộc";
-    else if (!vnPhoneRegex.test(phone)) newErrors.phone = "Số điện thoại không hợp lệ";
+    if (!phone) {
+      newErrors.phone = "Số điện thoại không được để trống";
+    } else {
+      const cleanedPhone = phone.replace(/\s+/g, "").replace(/[-()]/g, "");
+      const phoneRegex = /^0[35789]\d{8}$/;
+      if (cleanedPhone.length !== 10) {
+        newErrors.phone = "Số điện thoại phải có đúng 10 số và bắt đầu bằng số 0";
+      } else if (!phoneRegex.test(cleanedPhone)) {
+        newErrors.phone = "Số điện thoại không hợp lệ. Format: 10 số, bắt đầu bằng 0, số thứ 2 là 3, 5, 7, 8 hoặc 9 (VD: 0987654321)";
+      }
+    }
 
-    if (!formData.email.trim()) newErrors.email = "Email là bắt buộc";
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Email không hợp lệ";
+    if (!formData.email.trim()) {
+      newErrors.email = "Email không được để trống";
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email.trim())) {
+        newErrors.email = "Email không hợp lệ. Format: example@domain.com";
+      }
+    }
 
     if (!formData.roleName) newErrors.roleName = "Vai trò là bắt buộc";
     const addressToValidate = isCustomer ? formData.customerAddress : formData.address;
@@ -198,7 +228,6 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
       if (!formData.serviceCenterId) newErrors.serviceCenterId = "Chi nhánh là bắt buộc";
     }
 
-    // Password optional; if filled must be >=6
     if (formData.password && formData.password.trim().length < 6) {
       newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự";
     }
@@ -217,7 +246,6 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
     setIsLoading(true);
     
     try {
-      // Upload avatar if user chọn file mới
       let avatarUrl = formData.avatarUrl.trim();
       if (selectedAvatar) {
         try {
@@ -241,11 +269,9 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
           avatarUrl = await uploadFile(path, selectedAvatar);
         } catch (error) {
           console.error("Error uploading avatar:", error);
-          toast({
-            title: "Lỗi tải ảnh đại diện",
-            description:
-              error.message || "Không thể tải ảnh đại diện lên. Vui lòng thử lại.",
-            variant: "destructive",
+          toast.error(error.message || "Không thể tải ảnh đại diện lên. Vui lòng thử lại.", {
+            position: "top-right",
+            autoClose: 4000,
           });
           setIsLoading(false);
           setUploadingAvatar(false);
@@ -294,12 +320,10 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
         };
       }
 
-      // Only include password if provided
       if (formData.password && formData.password.trim()) {
         payload.password = formData.password;
       }
 
-      // Only include avatarUrl nếu có (URL cũ hoặc mới upload)
       if (avatarUrl) {
         if (isCustomer) {
           payload.customer.avatarUrl = avatarUrl;
@@ -308,7 +332,6 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
         }
       }
 
-      // Include accountId if available (from existing user)
       const rawUser = user?.rawData || user;
       const staff = rawUser.staff || user.staff || {};
       const customer = rawUser.customer || user.customer || {};
@@ -319,21 +342,19 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
         payload.customer.accountId = customer.accountId;
       }
 
-      // Call API to update user
       const userId = user?.id || user?.rawData?.id;
       const response = await updateUser(userId, payload);
 
       if (response?.success !== false) {
-        // Update list immediately
         if (window.refreshUserList) {
           window.refreshUserList();
         } else if (onUserUpdated) {
           onUserUpdated(response?.data || null);
         }
 
-        toast({
-          title: "Cập nhật người dùng thành công",
-          description: response.message || "Đã cập nhật thông tin người dùng thành công!",
+        toast.success(response.message || "Cập nhật người dùng thành công!", {
+          position: "top-right",
+          autoClose: 3000,
         });
 
         onOpenChange(false);
@@ -342,10 +363,9 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
       }
     } catch (error) {
       console.error("Error updating user:", error);
-      toast({
-        title: "Cập nhật người dùng thất bại",
-        description: error.message || "Không thể cập nhật người dùng. Vui lòng thử lại.",
-        variant: "destructive",
+      toast.error(error.message || "Không thể cập nhật người dùng. Vui lòng thử lại.", {
+        position: "top-right",
+        autoClose: 4000,
       });
     } finally {
       setIsLoading(false);
@@ -353,8 +373,7 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
   };
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
+    setFormData(prev => ({ ...prev, [field]: value }));   
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: "" }));
     }
@@ -365,19 +384,17 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng chọn file ảnh hợp lệ.",
-        variant: "destructive",
+      toast.error("Vui lòng chọn file ảnh hợp lệ.", {
+        position: "top-right",
+        autoClose: 3000,
       });
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "Lỗi",
-        description: "Kích thước ảnh không được vượt quá 5MB.",
-        variant: "destructive",
+      toast.error("Kích thước ảnh không được vượt quá 5MB.", {
+        position: "top-right",
+        autoClose: 3000,
       });
       return;
     }
@@ -419,7 +436,6 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
 
   if (!user) return null;
 
-  // Get display name for title
   const displayName = user.fullName || user.rawData?.phone || "User";
   const isCustomer = formData.roleName === "ROLE_CUSTOMER";
 
@@ -437,7 +453,6 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Thông tin tài khoản */}
           <div className="space-y-4 pb-4 border-b">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <Shield className="h-5 w-5" />
@@ -782,90 +797,6 @@ export function EditUserForm({ open, onOpenChange, user, onUserUpdated }) {
               </div>
             </div>
           )}
-
-          <div className="space-y-3">
-            <Label className="flex items-center gap-2">
-              <ImageIcon className="h-4 w-4" />
-              Ảnh đại diện (tùy chọn)
-            </Label>
-
-            <div className="space-y-2">
-              {avatarPreview || formData.avatarUrl ? (
-                <div className="flex items-center gap-4">
-                  <div className="relative group">
-                    <img
-                      src={avatarPreview || formData.avatarUrl}
-                      alt="Avatar preview"
-                      className="h-20 w-20 rounded-full object-cover border border-border shadow-sm"
-                    />
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="destructive"
-                      className="absolute -top-2 -right-2 h-7 w-7 rounded-full shadow-md"
-                      onClick={handleAvatarRemove}
-                      disabled={uploadingAvatar || isLoading}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <p className="font-medium text-foreground">
-                      Ảnh đại diện hiện tại
-                    </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const input = document.getElementById("editAvatarFile");
-                        if (input) input.click();
-                      }}
-                      disabled={uploadingAvatar || isLoading}
-                      className="gap-2"
-                    >
-                      <Upload className="h-3.5 w-3.5" />
-                      Đổi ảnh khác
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="border-2 border-dashed border-muted-foreground/40 rounded-lg p-4 flex items-center gap-3">
-                  <input
-                    type="file"
-                    id="editAvatarFile"
-                    accept="image/*"
-                    onChange={handleAvatarFileChange}
-                    className="hidden"
-                  />
-                  <label
-                    htmlFor="editAvatarFile"
-                    className="flex items-center gap-3 cursor-pointer"
-                  >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                      <Upload className="h-4 w-4 text-foreground" />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium text-foreground">
-                        Thêm ảnh đại diện
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        JPG, PNG, GIF • Tối đa 5MB
-                      </span>
-                    </div>
-                  </label>
-                </div>
-              )}
-
-              {uploadingAvatar && (
-                <p className="text-xs text-muted-foreground flex items-center gap-2">
-                  <span className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                  Đang tải ảnh đại diện...
-                </p>
-              )}
-            </div>
-          </div>
-
           <DialogFooter className="gap-2">
             <Button 
               type="button" 

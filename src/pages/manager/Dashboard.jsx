@@ -14,8 +14,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { fetchAppointments } from "@/services/appointmentService";
 import { format } from "date-fns";
+import { useAuth } from "@/contexts/AuthContext";
+import { getStaffByAccountId } from "@/api/staffsApi";
+import { getDashboardOverview } from "@/api/dashboardApi";
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const [stats, setStats] = useState({
     totalAppointments: 0,
     todayAppointments: 0,
@@ -30,28 +34,129 @@ export default function Dashboard() {
   const [recentAppointments, setRecentAppointments] = useState([]);
   const [recentLoading, setRecentLoading] = useState(true);
   const [recentError, setRecentError] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(true);
 
+  // Lấy serviceCenterId và load dashboard data
   useEffect(() => {
-    // Mock cho thống kê – có thể thay bằng API riêng
-    setStats({
-      totalAppointments: 156,
-      todayAppointments: 12,
-      totalStaff: 24,
-      activeStaff: 20,
-      pendingAppointments: 45,
-      completedAppointments: 98,
-      cancelledAppointments: 13,
-      revenue: 105000,
-      revenueChange: 12.5,
-    });
+    const loadDashboardData = async () => {
+      try {
+        setLoadingStats(true);
+        
+        // Lấy accountId từ user
+        const accountId = user?.accountResponse?.id;
+        if (!accountId) {
+          console.error("Không tìm thấy accountId");
+          return;
+        }
+
+        // Lấy serviceCenterId từ staff
+        const staffResponse = await getStaffByAccountId(accountId, { page: 1, pageSize: 10 });
+        const staffData = staffResponse?.data?.rowDatas?.[0];
+        
+        if (!staffData?.serviceCenterId) {
+          console.error("Không tìm thấy serviceCenterId");
+          return;
+        }
+
+        const serviceCenterId = staffData.serviceCenterId;
+
+        // Call API dashboard overview
+        const dashboardResponse = await getDashboardOverview(serviceCenterId);
+        const dashboardData = dashboardResponse?.data || dashboardResponse;
+
+        // Call API appointments để tính toán thống kê chi tiết
+        try {
+          const appointmentsResponse = await fetchAppointments({ 
+            page: 1, 
+            pageSize: 1000, 
+            serviceCenterId 
+          });
+          
+          const appointmentsData =
+            appointmentsResponse?.data?.data?.rowDatas ||
+            appointmentsResponse?.data?.rowDatas ||
+            appointmentsResponse?.rowDatas ||
+            [];
+
+          // Tính toán thống kê từ appointments
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          const todayAppointments = appointmentsData.filter(apt => {
+            if (!apt.appointmentDate) return false;
+            const aptDate = new Date(apt.appointmentDate);
+            aptDate.setHours(0, 0, 0, 0);
+            return aptDate.getTime() === today.getTime();
+          }).length;
+
+          const pendingAppointments = appointmentsData.filter(apt => {
+            const status = apt.status?.toUpperCase();
+            return status === "PENDING" || status === "APPROVED" || status === "QUOTE_APPROVED" || status === "WAITING_FOR_PAYMENT";
+          }).length;
+
+          const completedAppointments = appointmentsData.filter(apt => {
+            const status = apt.status?.toUpperCase();
+            return status === "COMPLETED" || status === "REPAIR_COMPLETED";
+          }).length;
+
+          const cancelledAppointments = appointmentsData.filter(apt => {
+            const status = apt.status?.toUpperCase();
+            return status === "CANCELLED" || status === "CANCELED" || status === "PAYMENT_FAILED";
+          }).length;
+
+          // Map dữ liệu từ API vào stats
+          setStats({
+            totalAppointments: dashboardData.totalAppointment || appointmentsData.length || 0,
+            todayAppointments: todayAppointments,
+            totalStaff: 0, // API không có, cần call API khác
+            activeStaff: 0, // API không có, cần call API khác
+            pendingAppointments: pendingAppointments,
+            completedAppointments: completedAppointments,
+            cancelledAppointments: cancelledAppointments,
+            revenue: dashboardData.totalRevenue || 0,
+            revenueChange: 0, // API không có, có thể tính từ dữ liệu tháng trước
+          });
+        } catch (appointmentsError) {
+          console.error("Error fetching appointments:", appointmentsError);
+          // Nếu không lấy được appointments, chỉ dùng data từ dashboard API
+          setStats({
+            totalAppointments: dashboardData.totalAppointment || 0,
+            todayAppointments: 0,
+            totalStaff: 0,
+            activeStaff: 0,
+            pendingAppointments: 0,
+            completedAppointments: 0,
+            cancelledAppointments: 0,
+            revenue: dashboardData.totalRevenue || 0,
+            revenueChange: 0,
+          });
+        }
+      } catch (error) {
+        console.error("Error loading dashboard data:", error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
 
     const loadRecentAppointments = async () => {
       try {
         setRecentLoading(true);
         setRecentError(null);
 
+        // Lấy accountId và serviceCenterId để filter appointments
+        const accountId = user?.accountResponse?.id;
+        if (!accountId) return;
+
+        const staffResponse = await getStaffByAccountId(accountId, { page: 1, pageSize: 10 });
+        const staffData = staffResponse?.data?.rowDatas?.[0];
+        const serviceCenterId = staffData?.serviceCenterId;
+
         // Lấy 5 lịch hẹn mới nhất cho dashboard
-        const response = await fetchAppointments({ page: 1, pageSize: 5 });
+        const response = await fetchAppointments({ 
+          page: 1, 
+          pageSize: 5,
+          serviceCenterId 
+        });
 
         // Sau interceptor, data thường có dạng { statusCode, data: { rowDatas, total, ... } }
         const data =
@@ -70,8 +175,11 @@ export default function Dashboard() {
       }
     };
 
-    loadRecentAppointments();
-  }, []);
+    if (user) {
+      loadDashboardData();
+      loadRecentAppointments();
+    }
+  }, [user]);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('vi-VN', {

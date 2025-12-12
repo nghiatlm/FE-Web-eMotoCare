@@ -19,6 +19,7 @@ import { toast } from "react-toastify";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { getDashboardOverview } from "@/api/dashboardApi";
 
 export default function BranchDetail() {
   const { id } = useParams();
@@ -27,6 +28,8 @@ export default function BranchDetail() {
   const [loading, setLoading] = useState(true);
   const [isCreateSlotOpen, setIsCreateSlotOpen] = useState(false);
   const [isCreatingSlot, setIsCreatingSlot] = useState(false);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loadingDashboard, setLoadingDashboard] = useState(false);
   const [selectedWeekStart, setSelectedWeekStart] = useState(() => {
     // Mặc định là thứ 2 của tuần hiện tại
     const today = new Date();
@@ -43,17 +46,6 @@ export default function BranchDetail() {
     isActive: true,
     note: "",
   });
-
-  // Mock summary stats - có thể lấy từ API sau
-  const summaryStats = {
-    totalRevenue: 903000000,
-    totalAppointments: 340,
-    completedAppointments: 318,
-    totalStaff: 24,
-    activeStaff: 20,
-    totalWarrantyClaims: 86,
-    confirmedWarranty: 101,
-  };
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -94,14 +86,30 @@ export default function BranchDetail() {
 
   useEffect(() => {
     fetchBranchDetail();
+    const fetchDashboard = async () => {
+      if (!id) return;
+      try {
+        setLoadingDashboard(true);
+        const res = await getDashboardOverview(id);
+        const data = res?.data?.data || res?.data || res;
+        setDashboardData(data || null);
+      } catch (error) {
+        console.error("Error fetching dashboard overview:", error);
+        setDashboardData(null);
+      } finally {
+        setLoadingDashboard(false);
+      }
+    };
+    fetchDashboard();
   }, [id]);
 
-  // Slot time options
+  // Slot time options - SlotTime enum values từ API
   const SLOT_TIME_OPTIONS = [
     { value: "H07_08", label: "07:00 - 08:00" },
     { value: "H08_09", label: "08:00 - 09:00" },
     { value: "H09_10", label: "09:00 - 10:00" },
     { value: "H10_11", label: "10:00 - 11:00" },
+    { value: "H11_12", label: "11:00 - 12:00" },
     { value: "H13_14", label: "13:00 - 14:00" },
     { value: "H14_15", label: "14:00 - 15:00" },
     { value: "H15_16", label: "15:00 - 16:00" },
@@ -114,6 +122,20 @@ export default function BranchDetail() {
     const date = new Date(dateString);
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     return days[date.getDay()];
+  };
+
+  // Sort slots by time (slotTime format: H07_08, H08_09, etc.)
+  const sortSlotsByTime = (slots) => {
+    if (!slots || !Array.isArray(slots)) return [];
+    return [...slots].sort((a, b) => {
+      // Extract hour from slotTime (e.g., "H07_08" -> 7)
+      const getHour = (slotTime) => {
+        if (!slotTime || !slotTime.startsWith("H")) return 0;
+        const hourStr = slotTime.replace("H", "").split("_")[0];
+        return parseInt(hourStr, 10) || 0;
+      };
+      return getHour(a.slotTime) - getHour(b.slotTime);
+    });
   };
 
   // Handle create slot
@@ -198,9 +220,19 @@ export default function BranchDetail() {
     (staff) => staff.position === "MANAGER_BRANCH"
   );
 
+  const summaryStats = {
+    totalRevenue: dashboardData?.totalRevenue ?? 0,
+    totalAppointments: dashboardData?.totalAppointment ?? 0,
+    completedAppointments: dashboardData?.totalAppointment ?? 0,
+    totalStaff: branchDetail?.staffs?.length ?? 0,
+    activeStaff: branchDetail?.staffs?.filter((s) => s.status === "ACTIVE")?.length ?? 0,
+    totalWarrantyClaims: dashboardData?.totalRMA ?? 0,
+    confirmedWarranty: dashboardData?.totalRMA ?? 0,
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="p-8 max-w-7xl mx-auto space-y-6">
+      <div className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-6">
         {/* Header */}
         <div className="mb-2">
           <Button
@@ -570,7 +602,7 @@ export default function BranchDetail() {
                     }, {});
 
                     return weekDays.map((dayInfo) => {
-                      const slots = groupedByDate[dayInfo.date] || [];
+                      const slots = sortSlotsByTime(groupedByDate[dayInfo.date] || []);
 
                       return (
                         <div key={dayInfo.date} className="border border-border rounded-lg p-4 space-y-3">

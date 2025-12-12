@@ -51,20 +51,19 @@ export default function ServicePackagesTable({ search = "", category = "", statu
   const [total, setTotal] = useState(0);
   const { toast } = useToast();
 
-  // Map remedies to display label
   const getRemediesLabel = (remedies) => {
     const map = {
       REPAIR: "Sửa chữa",
       REPLACE: "Thay thế",
-      CHECK: "Kiểm tra",
-      NONE: "Không có"
+      CLEAN: "Vệ sinh",
+      TUNE: "Điều chỉnh",
+      WARRANTY: "Bảo hành",
+      NONE: "Bôi trơn"
     };
     return map[remedies] || remedies;
   };
 
-  // Map remedies to category (for backward compatibility with old data)
   const mapRemediesToCategory = (remedies) => {
-    // Map new enum values to a default category for display purposes
     if (remedies === "REPAIR" || remedies === "REPLACE") {
       return "Repair";
     }
@@ -74,7 +73,6 @@ export default function ServicePackagesTable({ search = "", category = "", statu
     if (remedies === "NONE") {
       return "Maintenance";
     }
-    // Handle old values
     const oldMap = {
       MAINTENANCE: "Maintenance",
       WARRANTY: "Warranty",
@@ -83,7 +81,6 @@ export default function ServicePackagesTable({ search = "", category = "", statu
     return oldMap[remedies] || "Maintenance";
   };
 
-  // Format price
   const formatPrice = (price) => {
     return new Intl.NumberFormat('vi-VN').format(price || 0);
   };
@@ -93,17 +90,10 @@ export default function ServicePackagesTable({ search = "", category = "", statu
       setLoading(true);
       setError(null);
       const response = await getPriceServices(page, pageSize);
-      
-      console.log("📋 Price Services API Response:", response);
-      
-      // Handle response structure: 
-      // After axios interceptor returns response.data, we get:
-      // { statusCode: 200, success: true, message: "...", data: { rowDatas: [...], total: ... } }
+            
       const priceServicesData = response?.data?.rowDatas || response?.rowDatas || [];
       const totalCount = response?.data?.total || response?.total || 0;
-      
-      console.log("✅ Parsed price services:", priceServicesData.length, "Total:", totalCount);
-      
+            
       if (priceServicesData.length > 0 || totalCount >= 0) {
         const transformedRows = priceServicesData.map(item => ({
           id: item.code || item.id,
@@ -128,7 +118,6 @@ export default function ServicePackagesTable({ search = "", category = "", statu
         setTotal(0);
       }
     } catch (err) {
-      console.error("❌ Error fetching price services:", err);
       setError(err?.message || err?.data?.message || "Không thể tải bảng giá dịch vụ. Vui lòng thử lại sau.");
       setRows([]);
       toast({
@@ -146,7 +135,6 @@ export default function ServicePackagesTable({ search = "", category = "", statu
   }, [fetchPriceServices]);
 
   useEffect(() => {
-    // Expose refresh function
     window.refreshPriceServices = fetchPriceServices;
 
     return () => {
@@ -158,21 +146,18 @@ export default function ServicePackagesTable({ search = "", category = "", statu
 
   useEffect(() => {
     const applyAdd = (packageItem) => {
-      // Refresh data after add
       if (window.refreshPriceServices) {
         window.refreshPriceServices();
       }
     };
 
     const applyEdit = (packageId, updates) => {
-      // Refresh data after edit
       if (window.refreshPriceServices) {
         window.refreshPriceServices();
       }
     };
 
     const applyDelete = (packageId) => {
-      // Refresh data after delete
       if (window.refreshPriceServices) {
         window.refreshPriceServices();
       }
@@ -232,7 +217,6 @@ export default function ServicePackagesTable({ search = "", category = "", statu
     );
   };
 
-  // Loading state
   if (loading) {
     return (
       <Card className="border border-border/60 bg-card overflow-hidden rounded-lg">
@@ -255,7 +239,6 @@ export default function ServicePackagesTable({ search = "", category = "", statu
     );
   }
 
-  // Error state
   if (error) {
     return (
       <Card className="border border-red-200 shadow-xl bg-red-50/50 backdrop-blur-sm overflow-hidden">
@@ -415,7 +398,6 @@ export default function ServicePackagesTable({ search = "", category = "", statu
           </table>
         </div>
 
-        {/* Pagination */}
         {total > 0 && (
           <div className="flex items-center justify-between p-4 border-t border-border/60 bg-muted/30">
             <div className="text-sm text-muted-foreground">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   User,
   Mail,
@@ -36,6 +36,7 @@ import { toast } from "react-toastify";
 import { createUser } from "@/api/usersApi";
 import { getServiceCenters } from "@/api/serviceCentersApi";
 import { uploadFile } from "@/utils/firebaseUpload";
+import provincesApi from "vn-provinces";
 
 export default function CreateUserPage() {
   const navigate = useNavigate();
@@ -64,6 +65,18 @@ export default function CreateUserPage() {
     customerCitizenId: "",
     customerDateOfBirth: null,
     customerGender: "",
+    provinceCode: "",
+    provinceName: "",
+    districtCode: "",
+    districtName: "",
+    wardCode: "",
+    wardName: "",
+    customerProvinceCode: "",
+    customerProvinceName: "",
+    customerDistrictCode: "",
+    customerDistrictName: "",
+    customerWardCode: "",
+    customerWardName: "",
   });
   const hasLetter = (value) => /[A-Za-zÀ-ỹ]/i.test((value || "").trim());
   const isDigitsOnly = (value) => /^\d+$/.test((value || "").trim());
@@ -74,6 +87,11 @@ export default function CreateUserPage() {
   const [selectedAvatar, setSelectedAvatar] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState("");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const provinces = useMemo(() => provincesApi.getProvinces() || [], []);
+  const [districtOptions, setDistrictOptions] = useState([]);
+  const [wardOptions, setWardOptions] = useState([]);
+  const [customerDistrictOptions, setCustomerDistrictOptions] = useState([]);
+  const [customerWardOptions, setCustomerWardOptions] = useState([]);
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
@@ -102,30 +120,37 @@ export default function CreateUserPage() {
     switch (field) {
       case "phone": {
         const phone = (nextForm.phone || "").trim();
-        const vnPhoneRegex = /^(0\d{9}|\+84\d{9,10})$/;
-        if (!phone) return "Số điện thoại là bắt buộc";
-        if (!vnPhoneRegex.test(phone)) return "Số điện thoại không hợp lệ";
+        if (!phone) return "Số điện thoại không được để trống";
+        const cleanedPhone = phone.replace(/\s+/g, "").replace(/[-()]/g, "");
+        // Số điện thoại VN: bắt đầu bằng 0, số thứ 2 là 3,5,7,8,9, tổng 10 số
+        const phoneRegex = /^0[35789]\d{8}$/;
+        if (cleanedPhone.length !== 10) {
+          return "Số điện thoại phải có đúng 10 số và bắt đầu bằng số 0";
+        } else if (!phoneRegex.test(cleanedPhone)) {
+          return "Số điện thoại không hợp lệ. Format: 10 số, bắt đầu bằng 0, số thứ 2 là 3, 5, 7, 8 hoặc 9 (VD: 0987654321)";
+        }
         return "";
       }
       case "email": {
         const email = (nextForm.email || "").trim();
-        if (!email) return "Email là bắt buộc";
-        if (!/\S+@\S+\.\S+/.test(email)) return "Email không hợp lệ";
+        if (!email) return "Email không được để trống";
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) return "Email không hợp lệ. Format: example@domain.com";
         return "";
       }
-      case "password": {
-        const pwd = (nextForm.password || "").trim();
-        if (!pwd) return "Mật khẩu là bắt buộc";
-        if (pwd.length < 6) return "Mật khẩu phải có ít nhất 6 ký tự";
-        return "";
-      }
+      // case "password": {
+      //   const pwd = (nextForm.password || "").trim();
+      //   if (!pwd) return "Mật khẩu là bắt buộc";
+      //   if (pwd.length < 6) return "Mật khẩu phải có ít nhất 6 ký tự";
+      //   return "";
+      // }
       case "roleName": {
         return nextForm.roleName ? "" : "Vai trò là bắt buộc";
       }
-      // Staff fields (only when not customer)
-      case "staffCode":
-        if (!isCustomer && !nextForm.staffCode.trim()) return "Mã nhân viên là bắt buộc";
-        return "";
+      // // Staff fields (only when not customer)
+      // case "staffCode":
+      //   if (!isCustomer && !nextForm.staffCode.trim()) return "Mã nhân viên là bắt buộc";
+      //   return "";
       case "firstName":
         if (isCustomer) return "";
         if (!nextForm.firstName.trim()) return "Tên là bắt buộc";
@@ -148,6 +173,7 @@ export default function CreateUserPage() {
       case "dateOfBirth":
         if (isCustomer) return "";
         if (!nextForm.dateOfBirth) return "Ngày sinh là bắt buộc";
+        if (new Date(nextForm.dateOfBirth) > today) return "Ngày sinh không được vượt quá hiện tại";
         return "";
       case "gender":
         if (isCustomer) return "";
@@ -227,6 +253,11 @@ export default function CreateUserPage() {
     setIsLoading(true);
 
     try {
+      const buildFullAddress = (base, wardName, districtName, provinceName) => {
+        const parts = [base?.trim(), wardName?.trim(), districtName?.trim(), provinceName?.trim()].filter(Boolean);
+        return parts.join(", ");
+      };
+
       // Upload avatar to Firebase if selected
       let avatarUrl = formData.avatarUrl.trim();
       if (selectedAvatar) {
@@ -275,11 +306,18 @@ export default function CreateUserPage() {
       };
 
       if (!isCustomer) {
+        const staffAddress = buildFullAddress(
+          formData.address,
+          formData.wardName,
+          formData.districtName,
+          formData.provinceName
+        );
+
         payload.staff = {
           staffCode: formData.staffCode.trim(),
           firstName: formData.firstName.trim(),
           lastName: formData.lastName.trim(),
-          address: formData.address.trim(),
+          address: staffAddress,
           citizenId: formData.citizenId.trim(),
           dateOfBirth: formData.dateOfBirth
             ? (() => {
@@ -302,7 +340,12 @@ export default function CreateUserPage() {
       const customer = {
         firstName: formData.customerFirstName.trim(),
         lastName: formData.customerLastName.trim(),
-        address: formData.customerAddress.trim(),
+        address: buildFullAddress(
+          formData.customerAddress,
+          formData.customerWardName,
+          formData.customerDistrictName,
+          formData.customerProvinceName
+        ),
         citizenId: formData.customerCitizenId.trim(),
         dateOfBirth: formData.customerDateOfBirth
           ? (() => {
@@ -349,14 +392,27 @@ export default function CreateUserPage() {
     }
   };
 
+  const rolePositionMap = {
+    ROLE_MANAGER: "MANAGER_BRANCH",
+    ROLE_STAFF: "SERVICE_STAFF",
+    ROLE_TECHNICIAN: "TECHNICIAN_STAFF",
+    ROLE_STOREKEEPER: "STORE_KEEPER",
+  };
+
   const handleInputChange = (field, value) => {
     setFormData((prev) => {
-      const next = { ...prev, [field]: value };
+      const mappedPosition = field === "roleName" ? rolePositionMap[value] || "" : undefined;
+      const next = {
+        ...prev,
+        [field]: value,
+        ...(mappedPosition !== undefined ? { position: mappedPosition } : {}),
+      };
       const err = getFieldError(field, next);
 
       setErrors((prevErr) => {
         // If value changes role, clear dependent sections errors
         if (field === "roleName") {
+          const positionErrorReset = mappedPosition ? "" : prevErr.position;
           if (value === "ROLE_CUSTOMER") {
             return {
               ...prevErr,
@@ -367,8 +423,14 @@ export default function CreateUserPage() {
               citizenId: "",
               dateOfBirth: "",
               gender: "",
-              position: "",
+              position: positionErrorReset,
               serviceCenterId: "",
+              provinceCode: "",
+              provinceName: "",
+              districtCode: "",
+              districtName: "",
+              wardCode: "",
+              wardName: "",
               [field]: err,
             };
           }
@@ -381,6 +443,13 @@ export default function CreateUserPage() {
               customerCitizenId: "",
               customerDateOfBirth: "",
               customerGender: "",
+              customerProvinceCode: "",
+              customerProvinceName: "",
+              customerDistrictCode: "",
+              customerDistrictName: "",
+              customerWardCode: "",
+              customerWardName: "",
+              position: positionErrorReset,
               [field]: err,
             };
           }
@@ -430,6 +499,51 @@ export default function CreateUserPage() {
     setAvatarPreview("");
     setFormData((prev) => ({ ...prev, avatarUrl: "" }));
   };
+
+  const handleProvinceChange = (code, isCustomer = false) => {
+    const province = (provinces || []).find((p) => p.code === code);
+    handleInputChange(isCustomer ? "customerProvinceCode" : "provinceCode", code);
+    handleInputChange(isCustomer ? "customerProvinceName" : "provinceName", province?.name || "");
+    handleInputChange(isCustomer ? "customerDistrictCode" : "districtCode", "");
+    handleInputChange(isCustomer ? "customerDistrictName" : "districtName", "");
+    handleInputChange(isCustomer ? "customerWardCode" : "wardCode", "");
+    handleInputChange(isCustomer ? "customerWardName" : "wardName", "");
+
+    const districts = code ? provincesApi.getDistrictsByProvinceCode(code) || [] : [];
+    if (isCustomer) {
+      setCustomerDistrictOptions(districts);
+      setCustomerWardOptions([]);
+    } else {
+      setDistrictOptions(districts);
+      setWardOptions([]);
+    }
+  };
+
+  const handleDistrictChange = (code, isCustomer = false) => {
+    const districtList = isCustomer ? customerDistrictOptions : districtOptions;
+    const district = districtList.find((d) => d.code === code);
+    handleInputChange(isCustomer ? "customerDistrictCode" : "districtCode", code);
+    handleInputChange(isCustomer ? "customerDistrictName" : "districtName", district?.name || "");
+    handleInputChange(isCustomer ? "customerWardCode" : "wardCode", "");
+    handleInputChange(isCustomer ? "customerWardName" : "wardName", "");
+
+    const wards = code ? provincesApi.getWardsByDistrictCode(code) || [] : [];
+    if (isCustomer) {
+      setCustomerWardOptions(wards);
+    } else {
+      setWardOptions(wards);
+    }
+  };
+
+  const handleWardChange = (code, isCustomer = false) => {
+    const wardList = isCustomer ? customerWardOptions : wardOptions;
+    const ward = wardList.find((w) => w.code === code);
+    handleInputChange(isCustomer ? "customerWardCode" : "wardCode", code);
+    handleInputChange(isCustomer ? "customerWardName" : "wardName", ward?.name || "");
+  };
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   const roleOptions = [
     { value: "ROLE_MANAGER", label: "Quản lý" },
@@ -513,7 +627,7 @@ export default function CreateUserPage() {
                   )}
                 </div>
 
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label htmlFor="password" className="flex items-center gap-2">
                     <Shield className="h-4 w-4" />
                     Mật khẩu <span className="text-red-500">*</span>
@@ -541,7 +655,7 @@ export default function CreateUserPage() {
                   {errors.password && (
                     <p className="text-sm text-destructive">{errors.password}</p>
                   )}
-                </div>
+                </div> */}
 
                 <div className="space-y-2">
                   <Label htmlFor="roleName" className="flex items-center gap-2">
@@ -611,10 +725,78 @@ export default function CreateUserPage() {
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <MapPin className="h-4 w-4" />
-                    Địa chỉ
+                    Tỉnh/Thành phố
+                  </Label>
+                  <Select
+                    value={formData.customerProvinceCode}
+                    onValueChange={(value) => handleProvinceChange(value, true)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn tỉnh/thành phố" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {provinces.map((item) => (
+                        <SelectItem key={item.code} value={item.code}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Quận/Huyện
+                  </Label>
+                  <Select
+                    value={formData.customerDistrictCode}
+                    onValueChange={(value) => handleDistrictChange(value, true)}
+                    disabled={!formData.customerProvinceCode}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn quận/huyện" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {customerDistrictOptions.map((item) => (
+                        <SelectItem key={item.code} value={item.code}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Phường/Xã
+                  </Label>
+                  <Select
+                    value={formData.customerWardCode}
+                    onValueChange={(value) => handleWardChange(value, true)}
+                    disabled={!formData.customerDistrictCode}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn phường/xã" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {customerWardOptions.map((item) => (
+                        <SelectItem key={item.code} value={item.code}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Số nhà, tên đường
                   </Label>
                   <Input
-                    placeholder="VD: 123 Lý Thường Kiệt, Q.10"
+                    placeholder="VD: 123 Đường ABC"
                     value={formData.customerAddress}
                     onChange={(e) => handleInputChange("customerAddress", e.target.value)}
                     className={errors.customerAddress ? "border-destructive" : ""}
@@ -669,7 +851,7 @@ export default function CreateUserPage() {
                         onSelect={(date) => handleInputChange("customerDateOfBirth", date)}
                         initialFocus
                         locale={vi}
-                        maxDate={new Date()}
+                        disabled={(date) => date > today}
                       />
                     </PopoverContent>
                   </Popover>
@@ -710,7 +892,7 @@ export default function CreateUserPage() {
                 Thông tin nhân viên
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label htmlFor="staffCode" className="flex items-center gap-2">
                     <IdCard className="h-4 w-4" />
                     Mã nhân viên <span className="text-red-500">*</span>
@@ -725,7 +907,7 @@ export default function CreateUserPage() {
                   {errors.staffCode && (
                     <p className="text-sm text-destructive">{errors.staffCode}</p>
                   )}
-                </div>
+                </div> */}
 
                 <div className="space-y-2">
                   <Label htmlFor="citizenId" className="flex items-center gap-2">
@@ -738,6 +920,9 @@ export default function CreateUserPage() {
                     value={formData.citizenId}
                     onChange={(e) => handleInputChange("citizenId", e.target.value)}
                     className={errors.citizenId ? "border-destructive" : ""}
+                    maxLength={15}
+                    inputMode="numeric"
+                    pattern="\d*"
                   />
                   {errors.citizenId && (
                     <p className="text-sm text-destructive">{errors.citizenId}</p>
@@ -864,14 +1049,82 @@ export default function CreateUserPage() {
                   )}
                 </div>
 
-              <div className="space-y-2 md:col-span-2 xl:col-span-2">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Tỉnh/Thành phố
+                  </Label>
+                  <Select
+                    value={formData.provinceCode}
+                    onValueChange={(value) => handleProvinceChange(value, false)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn tỉnh/thành phố" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {provinces.map((item) => (
+                        <SelectItem key={item.code} value={item.code}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Quận/Huyện
+                  </Label>
+                  <Select
+                    value={formData.districtCode}
+                    onValueChange={(value) => handleDistrictChange(value, false)}
+                    disabled={!formData.provinceCode}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn quận/huyện" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {districtOptions.map((item) => (
+                        <SelectItem key={item.code} value={item.code}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Phường/Xã
+                  </Label>
+                  <Select
+                    value={formData.wardCode}
+                    onValueChange={(value) => handleWardChange(value, false)}
+                    disabled={!formData.districtCode}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn phường/xã" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {wardOptions.map((item) => (
+                        <SelectItem key={item.code} value={item.code}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2 md:col-span-2 xl:col-span-2">
                   <Label htmlFor="address" className="flex items-center gap-2">
                     <MapPin className="h-4 w-4" />
-                    Địa chỉ <span className="text-red-500">*</span>
+                    Số nhà, tên đường <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="address"
-                    placeholder="VD: 123 Đường ABC, Quận XYZ, TP.HCM"
+                    placeholder="VD: 123 Đường ABC"
                     value={formData.address}
                     onChange={(e) => handleInputChange("address", e.target.value)}
                     className={errors.address ? "border-destructive" : ""}
@@ -885,7 +1138,7 @@ export default function CreateUserPage() {
                 <div className="space-y-2">
                     <Label htmlFor="serviceCenterId" className="flex items-center gap-2">
                       <Building2 className="h-4 w-4" />
-                      Chi nhánh <span className="text-red-500">*</span>
+                      Chi nhánh làm việc <span className="text-red-500">*</span>
                     </Label>
                     <Select
                       value={formData.serviceCenterId}
@@ -909,7 +1162,7 @@ export default function CreateUserPage() {
                   </div>
                 )}
 
-                <div className="space-y-3 md:col-span-2 xl:col-span-3">
+                {/* <div className="space-y-3 md:col-span-2 xl:col-span-3">
                   <Label className="flex items-center gap-2">
                     <ImageIcon className="h-4 w-4" />
                     Ảnh đại diện (tùy chọn)
@@ -990,7 +1243,7 @@ export default function CreateUserPage() {
                       </p>
                     )}
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
             )}

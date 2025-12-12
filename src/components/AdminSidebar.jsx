@@ -10,7 +10,8 @@ import {
   Car,
   Wrench,
 } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -20,9 +21,12 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { authService } from "@/services/authService";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { getStaffByAccountId } from "@/api/staffsApi";
 
 const sections = [
   {
@@ -157,5 +161,40 @@ export function AdminSidebar() {
         </SidebarFooter>
       </Sidebar>
     </>
+  );
+}
+
+export function AdminTopHeader() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [displayName] = useState("Admin Service");
+  const [initials] = useState("AS");
+  const [avatarUrl] = useState("");
+
+  return (
+    <header className="h-14 bg-white border-b border-red-100 flex items-center justify-between px-4 sticky top-0 z-10 text-red-600">
+      <SidebarTrigger className="text-red-600" />
+      <button
+        type="button"
+        onClick={() => navigate("/admin/profile")}
+        className="flex items-center gap-3 cursor-pointer hover:bg-red-50/60 rounded-full px-2 py-1 transition-colors"
+        aria-label="Mở hồ sơ"
+      >
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={displayName}
+            className="h-9 w-9 rounded-full object-cover border border-red-100"
+          />
+        ) : (
+          <div className="h-9 w-9 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold uppercase">
+            {initials}
+          </div>
+        )}
+        <span className="text-sm font-semibold text-red-700 max-w-[200px] truncate leading-tight">
+          {displayName}
+        </span>
+      </button>
+    </header>
   );
 }

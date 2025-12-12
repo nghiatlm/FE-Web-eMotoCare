@@ -9,7 +9,7 @@ import { Card, CardContent} from "@/components/ui/card";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { toast } from "react-toastify";
 import { syncCampaignsData } from "@/api/campaignsApi";
-import { getPrograms } from "../../../services/programService";
+import { getPrograms } from "../../services/programService";
 
 
 const getStatusLabel = (status) => {
@@ -205,7 +205,7 @@ export default function Campaigns() {
     fetchCampaigns(page, pageSize);
   };
 
-  const [syncStatus, setSyncStatus] = useState("idle");
+  const [syncStatus, setSyncStatus] = useState("idle"); // idle | syncing | success | error
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState(null);
 
@@ -472,13 +472,7 @@ export default function Campaigns() {
                               title="Xem chi tiết"
                               onClick={() => navigate(`/admin/campaigns/${record.id}`)}
                             >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-600 hover:bg-slate-100" title="Chỉnh sửa">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-600 hover:bg-rose-50" title="Xóa">
-                              <Trash2 className="h-4 w-4" />
+                              <Eye className="h-4 w-4" /> Chi tiết 
                             </Button>
                           </div>
                         </td>

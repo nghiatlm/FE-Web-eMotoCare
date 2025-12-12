@@ -29,8 +29,8 @@ const SYNC_STATUS = {
 const DATA_TYPES = [
   {
     id: "models",
-    label: "Model xe",
-    description: "Đồng bộ thông tin model xe từ hệ thống OEM",
+    label: "Mẫu xe",
+    description: "Đồng bộ thông tin mẫu xe từ hệ thống OEM",
     icon: Bike,
     buttonBg: "bg-red-600 dark:bg-red-700",
     buttonHover: "hover:bg-red-700 dark:hover:bg-red-800",
@@ -42,7 +42,7 @@ const DATA_TYPES = [
   },
   {
     id: "maintenance-plans",
-    label: "Lịch và giai đoạn bảo dưỡng",
+    label: "Lịch bảo dưỡng",
     description: "Đồng bộ dữ liệu lịch bảo dưỡng và các giai đoạn bảo dưỡng từ hệ thống OEM",
     icon: Server,
     buttonBg: "bg-red-600 dark:bg-red-700",
@@ -56,7 +56,7 @@ const DATA_TYPES = [
   {
     id: "campaigns",
     label: "Chiến dịch",
-    description: "Đồng bộ dữ liệu chiến dịch và chương trình từ hệ thống OEM",
+    description: "Đồng bộ dữ liệu chiến dịch từ hệ thống OEM",
     icon: Sparkles,
     buttonBg: "bg-red-600 dark:bg-red-700",
     buttonHover: "hover:bg-red-700 dark:hover:bg-red-800",
@@ -271,25 +271,27 @@ export default function SyncOEMData() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6 sm:py-8">
         <div className="mb-6">
-          <div className="flex items-center gap-3 p-5 rounded-xl bg-card border border-border shadow-sm">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400">
-              <Server className="h-7 w-7" />
-            </div>
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                Đồng bộ dữ liệu OEM
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Đồng bộ dữ liệu từ hệ thống OEM vào hệ thống quản lý
-              </p>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between p-5 rounded-xl bg-card border border-border shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400">
+                <Server className="h-7 w-7" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                  Đồng bộ dữ liệu OEM
+                </h1>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Đồng bộ dữ liệu từ hệ thống OEM vào hệ thống quản lý
+                </p>
+              </div>
             </div>
             <Button
               onClick={handleSyncAll}
               disabled={isAnySyncing}
               size="sm"
-              className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white shadow-md"
+              className="w-full sm:w-auto bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white shadow-md"
             >
               {isAnySyncing ? (
                 <>
@@ -306,7 +308,7 @@ export default function SyncOEMData() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 xl:gap-6 mb-6">
           {DATA_TYPES.map((type) => {
             const Icon = type.icon;
             const state = syncStates[type.id];

@@ -109,7 +109,7 @@ export default function InventorySummary() {
     inventories.forEach((inventory) => {
       const serviceCenter = inventory.serviceCenter || {};
       const storeKeeper = serviceCenter.staffs?.find((s) => s.position === "STORE_KEEPER");
-      const warehouseInfo = `${serviceCenter.name || serviceCenter.code || ""}\nQL kho: ${storeKeeper ? `${storeKeeper.firstName || ""} ${storeKeeper.lastName || ""}`.trim() : ""}\n${serviceCenter.phone || ""}`.trim();
+      const warehouseInfo = `${serviceCenter.name || serviceCenter.code || ""}\n${serviceCenter.phone || ""}`.trim();
       const description = serviceCenter.description || inventory.serviceCenterInventoryName || "";
 
       (inventory.partItems || []).forEach((item) => {
@@ -303,75 +303,69 @@ export default function InventorySummary() {
   const displayEnd = Math.min(currentPage * pagination.pageSize, pagination.total);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="p-6 md:p-8">
-        <div className="mb-6 md:mb-8">
-          <div className="flex items-center gap-3 mb-1">
-            <Boxes className="h-7 w-7 text-primary" />
-            <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Kho tổng</h1>
+    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-slate-50">
+      <div className="w-full max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+        <div className="mb-2">
+          <div className="flex items-center gap-3 mb-2">
+            <Boxes className="h-8 w-8 text-red-600" />
+            <h1 className="text-3xl md:text-4xl font-bold text-slate-900">Kho tổng</h1>
           </div>
-          <p className="text-muted-foreground">Tổng quan tồn kho phụ tùng</p>
+          <p className="text-base md:text-lg font-medium text-slate-700">
+            Tổng quan tồn kho phụ tùng
+          </p>
+          <div className="mt-3 h-1.5 w-28 rounded-full bg-red-500 shadow-[0_4px_16px_-6px_rgba(239,68,68,0.65)]" />
         </div>
 
-        <Card className="mb-6 shadow-sm rounded-xl border border-border bg-card">
+        <Card className="mb-2 shadow-sm rounded-xl border border-slate-200 bg-white">
           <CardContent className="p-4">
             <div className="flex flex-wrap items-end gap-4">
-              {/* Search Input */}
-              <div className="w-[300px]">
-                <Label className="mb-2 block text-sm font-medium">Tìm kiếm</Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Nhập từ mã/tên phụ tùng..."
-                    className="pl-9 border-border"
-                  />
-                </div>
+              <div className="relative flex-1 min-w-[260px] md:min-w-[320px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Nhập từ mã/tên phụ tùng..."
+                  className="pl-9 bg-slate-50 border-slate-200 focus-visible:ring-red-500/70"
+                />
               </div>
 
-              {/* Status Dropdown */}
-              <div className="min-w-[180px]">
-                <Label className="mb-2 block text-sm font-medium">Trạng thái</Label>
-                <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger className="border-border">
-                    <SelectValue placeholder="Tất cả" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tất cả</SelectItem>
-                    <SelectItem value="active">Còn hàng</SelectItem>
-                    <SelectItem value="out">Hết hàng</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger className="w-[150px] md:w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
+                  <SelectValue placeholder="Tất cả" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả</SelectItem>
+                  <SelectItem value="active">Còn hàng</SelectItem>
+                  <SelectItem value="out">Hết hàng</SelectItem>
+                </SelectContent>
+              </Select>
 
-              {/* Search Button */}
-              <div>
-                <Button 
-                  className="bg-red-600 hover:bg-red-700 text-white whitespace-nowrap h-10 px-6"
-                  onClick={() => {
-                    setSearch("");
-                    setStatus("all");
-                  }}
-                >
-                  Tìm kiếm
-                </Button>
-              </div>
+              <Button 
+                variant="outline"
+                className="border-transparent text-slate-600 hover:text-red-600 hover:bg-red-50"
+                onClick={() => {
+                  setSearch("");
+                  setStatus("all");
+                }}
+              >
+                Tìm kiếm
+              </Button>
             </div>
           </CardContent>
         </Card>
 
-        <div className="rounded-2xl border border-border bg-card/80 shadow-lg backdrop-blur-sm overflow-x-auto">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm overflow-x-auto">
+          <div className="min-w-[1100px]">
           <table className="w-full text-sm border-separate border-spacing-y-2">
-            <thead className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm">
-              <tr>
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-gradient-to-r from-red-60 via-red-10/80 to-red-100/60 border-b border-red-100">
                 <th className="px-5 py-3 w-12"></th>
-                <th className="text-center px-5 py-3 w-16 font-semibold text-foreground">STT</th>
-                <th className="text-center px-5 py-3 font-semibold text-foreground">Mã phụ tùng</th>
-                <th className="text-center px-5 py-3 font-semibold text-foreground">Tên phụ tùng</th>
-                <th className="text-center px-5 py-3 font-semibold text-foreground">Số lượng tồn kho</th>
-                <th className="text-center px-5 py-3 min-w-[260px] font-semibold text-foreground">Kho</th>
-                <th className="text-center px-5 py-3 max-w-[200px] font-semibold text-foreground">Mô tả</th>
+                <th className="text-center px-5 py-3 w-16 text-xs font-semibold tracking-wide text-red-700 uppercase">STT</th>
+                <th className="text-center px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase">Mã phụ tùng</th>
+                <th className="text-center px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase">Tên phụ tùng</th>
+                <th className="text-center px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase">Số lượng tồn kho</th>
+                <th className="text-center px-5 py-3 min-w-[260px] text-xs font-semibold tracking-wide text-red-700 uppercase">Kho</th>
+                <th className="text-center px-5 py-3 max-w-[200px] text-xs font-semibold tracking-wide text-red-700 uppercase">Mô tả</th>
               </tr>
             </thead>
             <tbody>
@@ -392,8 +386,8 @@ export default function InventorySummary() {
                 return (
                   <Fragment key={r.id}>
                     <tr
-                      className={`bg-card border border-border/60 hover:border-primary/40 hover:shadow-md transition-all duration-200 ${
-                        isExpanded ? "ring-1 ring-primary/20 shadow-md" : ""
+                      className={`border border-slate-100 hover:border-red-200 hover:shadow-md transition-all duration-200 ${
+                        isExpanded ? "ring-1 ring-red-200 shadow-md bg-rose-50/40" : "bg-white"
                       }`}
                     >
                       <td className="px-5 py-4 text-center">
@@ -449,7 +443,7 @@ export default function InventorySummary() {
                       <td className="px-5 py-4 text-center">
                         <div className="flex flex-col items-center gap-2">
                           <Badge variant="secondary" className="text-sm px-3 py-1 w-fit">
-                            {r.totalQty} bộ
+                            {r.totalQty}
                           </Badge>
                           <div className="flex justify-center">
                             {renderStatusBadge(r.status)}
@@ -465,13 +459,6 @@ export default function InventorySummary() {
                                 return (
                                   <div key={idx} className="flex items-center gap-2">
                                     <MapPin className="h-4 w-4" />
-                                    <span>{line}</span>
-                                  </div>
-                                );
-                              } else if (line.includes("QL kho:")) {
-                                return (
-                                  <div key={idx} className="flex items-center gap-2">
-                                    <User2 className="h-4 w-4" />
                                     <span>{line}</span>
                                   </div>
                                 );
@@ -610,6 +597,7 @@ export default function InventorySummary() {
             </tbody>
           </table>
         </div>
+        </div>
 
         <div className="flex items-center justify-between mt-4 text-sm flex-wrap gap-3">
           <div className="flex items-center gap-2 text-muted-foreground">
@@ -663,47 +651,47 @@ export default function InventorySummary() {
                 range.push(i);
               }
               return (
-              <>
-                {range[0] > 1 && (
-                  <>
+                <>
+                  {range[0] > 1 && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setTablePage(1)}
+                      >
+                        1
+                      </Button>
+                      {range[0] > 2 && <span className="text-muted-foreground">...</span>}
+                    </>
+                  )}
+                  {range.map((pageNumber) => (
                     <Button
+                      key={pageNumber}
                       size="sm"
-                      variant="outline"
-                      onClick={() => setTablePage(1)}
+                      variant={pageNumber === tablePage ? "default" : "outline"}
+                      onClick={() => {
+                        setTablePage(pageNumber);
+                        setExpandedId(null);
+                      }}
                     >
-                      1
+                      {pageNumber}
                     </Button>
-                    {range[0] > 2 && <span className="text-muted-foreground">...</span>}
-                  </>
-                )}
-                {range.map((pageNumber) => (
-                  <Button
-                    key={pageNumber}
-                    size="sm"
-                    variant={pageNumber === tablePage ? "default" : "outline"}
-                    onClick={() => {
-                      setTablePage(pageNumber);
-                      setExpandedId(null);
-                    }}
-                  >
-                    {pageNumber}
-                  </Button>
-                ))}
-                {range[range.length - 1] < totalPageCount && (
-                  <>
-                    {range[range.length - 1] < totalPageCount - 1 && (
-                      <span className="text-muted-foreground">...</span>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setTablePage(totalPageCount)}
-                    >
-                      {totalPageCount}
-                    </Button>
-                  </>
-                )}
-              </>
+                  ))}
+                  {range[range.length - 1] < totalPageCount && (
+                    <>
+                      {range[range.length - 1] < totalPageCount - 1 && (
+                        <span className="text-muted-foreground">...</span>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setTablePage(totalPageCount)}
+                      >
+                        {totalPageCount}
+                      </Button>
+                    </>
+                  )}
+                </>
               );
             })()}
             <Button

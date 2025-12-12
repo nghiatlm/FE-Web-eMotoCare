@@ -158,13 +158,6 @@ export default function Models() {
                 Xóa lọc
               </Button>
             )}
-
-            <div className="flex items-center gap-3 ml-auto">
-              <Button className="gap-2 bg-red-600 hover:bg-red-700 shadow-sm">
-                <Plus className="h-4 w-4" />
-                Thêm model
-              </Button>
-            </div>
           </div>
         </div>
 

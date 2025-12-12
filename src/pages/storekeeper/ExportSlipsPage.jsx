@@ -209,16 +209,24 @@ export default function ExportSlipsPage() {
   }, [toast]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="p-8">
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <FileUp className="h-6 w-6 text-primary" />
-              <h1 className="text-3xl font-bold text-foreground">Phiếu xuất</h1>
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-red-50 to-rose-100">
+      <div className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-6">
+        {/* Header Section */}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
+                  <FileUp className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-foreground">Phiếu xuất</h1>
+                  <p className="text-sm text-muted-foreground mt-1">Quản lý các phiếu xuất hàng cho appointments</p>
+                </div>
+              </div>
             </div>
             <Button 
-              className="gap-2 bg-primary hover:bg-primary/90 text-white"
+              className="gap-2 bg-primary hover:bg-primary/90 text-white shadow-md hover:shadow-lg transition-all"
               onClick={() => navigate("/storekeeper/export-slips/create")}
             >
               <Plus className="h-4 w-4" />
