@@ -320,7 +320,7 @@ export default function BatteryDetailContent({ batteryData }) {
 
 
   const formatValue = (value, decimals = 2) => {
-    if (value === null || value === undefined || isNaN(value)) return "—";
+    if (value === null || value === undefined || isNaN(value)) return "";
     return Number(value).toFixed(decimals);
   };
 

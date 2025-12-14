@@ -182,7 +182,7 @@ export default function TechnicianBookingDetailDrawer({
         </h3>
         <div className='grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700'>
           <p>
-            <strong>Mã lịch hẹn:</strong> {booking.code || "—"}
+            <strong>Mã lịch hẹn:</strong> {booking.code || ""}
           </p>
           <p>
             <strong>Khách hàng:</strong> {booking.customer?.firstName}{" "}
@@ -214,7 +214,7 @@ export default function TechnicianBookingDetailDrawer({
                 ? "Bảo hành"
                 : isCampaign
                 ? "Chiến dịch"
-                : "—"}
+                : ""}
             </span>
           </p>
           {isRepair && chassisNumber && (

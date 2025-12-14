@@ -261,7 +261,7 @@ export default function TechnicianBookingDetailPage({
                 </Text>
               </Space>
               <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
-                {booking.code || "—"}
+                {booking.code || ""}
               </Text>
             </div>
             
@@ -288,7 +288,7 @@ export default function TechnicianBookingDetailPage({
                 {booking.slotTime ? (() => {
                   const [start, end] = booking.slotTime.replace("H", "").split("_");
                   return `${start}:00-${end}:00`;
-                })() : "—"}
+                })() : ""}
               </Text>
             </div>
           </div>
@@ -303,7 +303,7 @@ export default function TechnicianBookingDetailPage({
                 </Text>
               </Space>
               <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
-                {`${booking.customer?.firstName || ""} ${booking.customer?.lastName || ""}`.trim() || "—"}
+                {`${booking.customer?.firstName || ""} ${booking.customer?.lastName || ""}`.trim() || ""}
               </Text>
             </div>
             
@@ -315,7 +315,7 @@ export default function TechnicianBookingDetailPage({
                 </Text>
               </Space>
               <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
-                {booking.serviceCenter?.name || "—"}
+                {booking.serviceCenter?.name || ""}
               </Text>
             </div>
             
@@ -328,7 +328,7 @@ export default function TechnicianBookingDetailPage({
                   </Text>
                 </Space>
                 <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
-                  {booking.maintenanceStage?.name || "—"}
+                  {booking.maintenanceStage?.name || ""}
                 </Text>
               </div>
             )}
@@ -364,7 +364,7 @@ export default function TechnicianBookingDetailPage({
                   ? "Bảo hành"
                   : isCampaign
                   ? "Chiến dịch"
-                  : "—"}
+                  : ""}
               </Tag>
             </div>
             

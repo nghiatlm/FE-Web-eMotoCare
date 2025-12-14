@@ -541,7 +541,7 @@ export default function StaffBookingDetailPage() {
                       {booking.slotTime ? (() => {
                         const [start, end] = booking.slotTime.replace("H", "").split("_");
                         return `${start}:00-${end}:00`;
-                      })() : "—"}
+                      })() : ""}
                     </Text>
                   </div>
 
@@ -600,7 +600,7 @@ export default function StaffBookingDetailPage() {
                       </Text>
                     </Space>
                     <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
-                      {booking.serviceCenter?.name || "—"}
+                      {booking.serviceCenter?.name || ""}
                     </Text>
                   </div>
                   
@@ -613,7 +613,7 @@ export default function StaffBookingDetailPage() {
                         </Text>
                       </Space>
                       <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
-                        {booking.maintenanceStage?.name || "—"}
+                        {booking.maintenanceStage?.name || ""}
                       </Text>
                     </div>
                   )}
@@ -661,7 +661,7 @@ export default function StaffBookingDetailPage() {
                           </Text>
                         </Space>
                         <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
-                          {`${booking.customer.firstName || ""} ${booking.customer.lastName || ""}`.trim() || "—"}
+                          {`${booking.customer.firstName || ""} ${booking.customer.lastName || ""}`.trim() || ""}
                         </Text>
                       </div>
                     )}
@@ -674,7 +674,7 @@ export default function StaffBookingDetailPage() {
                         </Text>
                       </Space>
                       <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
-                        {booking.customer.account?.phone || booking.customer.phoneNumber || booking.customer.phone || "—"}
+                        {booking.customer.account?.phone || booking.customer.phoneNumber || booking.customer.phone || ""}
                       </Text>
                     </div>
                     
@@ -686,7 +686,7 @@ export default function StaffBookingDetailPage() {
                         </Text>
                       </Space>
                       <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
-                        {booking.customer.account?.email || booking.customer.email || "—"}
+                        {booking.customer.account?.email || booking.customer.email || ""}
                       </Text>
                     </div>
                   </div>

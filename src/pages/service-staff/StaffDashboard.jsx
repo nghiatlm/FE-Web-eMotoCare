@@ -121,15 +121,15 @@ const StaffDashboard = () => {
       key: "customer",
       render: (_, record) => {
         const customer = record.customer;
-        if (!customer) return "-";
-        return `${customer.firstName || ""} ${customer.lastName || ""}`.trim() || "-";
+        if (!customer) return "";
+        return `${customer.firstName || ""} ${customer.lastName || ""}`.trim() || "";
       },
     },
     {
       title: "Ngày hẹn",
       dataIndex: "appointmentDate",
       key: "appointmentDate",
-      render: (date) => date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "-",
+      render: (date) => date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "",
     },
     {
       title: "Trạng thái",

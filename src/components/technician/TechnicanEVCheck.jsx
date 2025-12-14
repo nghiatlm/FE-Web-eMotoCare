@@ -17,7 +17,7 @@ export default function TechnicianEVCheckDrawer({
         id: crypto.randomUUID(),
         ev_check_id: evCheckId || "EV-001",
         item_name: item.name || `Hạng mục ${i + 1}`,
-        description: item.description || "—",
+        description: item.description || "",
         result: item.result || "",
         solution: item.solution || "",
         warranty: item.warranty || "",

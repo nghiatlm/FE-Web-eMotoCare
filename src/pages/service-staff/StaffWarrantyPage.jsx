@@ -99,8 +99,8 @@ export default function StaffWarrantyPage() {
       width: 200,
       render: (_, record) => {
         const c = record.customer;
-        if (!c) return "—";
-        return `${c.firstName || ""} ${c.lastName || ""}`.trim() || "—";
+        if (!c) return "";
+        return `${c.firstName || ""} ${c.lastName || ""}`.trim() || "";
       },
     },
     {
@@ -109,7 +109,7 @@ export default function StaffWarrantyPage() {
       width: 180,
       render: (_, record) => {
         const s = record.staff;
-        return s ? `${s.firstName || ""} ${s.lastName || ""}`.trim() : "—";
+        return s ? `${s.firstName || ""} ${s.lastName || ""}`.trim() : "";
       },
     },
     {
@@ -124,7 +124,7 @@ export default function StaffWarrantyPage() {
               month: "2-digit",
               year: "numeric",
             })
-          : "—",
+          : "",
     },
     {
       title: "Giờ",
@@ -137,14 +137,14 @@ export default function StaffWarrantyPage() {
               hour: "2-digit",
               minute: "2-digit",
             })
-          : "—",
+          : "",
     },
     {
       title: "Ghi chú",
       dataIndex: "note",
       key: "note",
       width: 200,
-      render: (note) => note || "—",
+      render: (note) => note || "",
     },
     {
       title: "Trạng thái",

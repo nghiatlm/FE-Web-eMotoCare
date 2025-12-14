@@ -29,7 +29,6 @@ export const useServiceCenter = () => {
           }
         }
       } catch (error) {
-        console.error("Error fetching service center:", error);
       } finally {
         setLoading(false);
       }

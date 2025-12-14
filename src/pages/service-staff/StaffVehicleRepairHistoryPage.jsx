@@ -226,7 +226,7 @@ export default function StaffVehicleRepairHistoryPage() {
       width: 120,
       render: (_, record) => {
         const date = record.appointmentDate || record.createdAt;
-        return date ? dayjs(date).format("DD/MM/YYYY") : "—";
+        return date ? dayjs(date).format("DD/MM/YYYY") : "";
       },
     },
     {
@@ -235,7 +235,7 @@ export default function StaffVehicleRepairHistoryPage() {
       key: "slotTime",
       width: 100,
       render: (slot) => {
-        if (!slot) return "—";
+        if (!slot) return "";
         const [start, end] = slot.replace("H", "").split("_");
         return `${start}:00-${end}:00`;
       },
@@ -364,7 +364,7 @@ export default function StaffVehicleRepairHistoryPage() {
                         </Text>
                       </Space>
                       <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
-                        {vehicleInfo.customer.account?.phone || vehicleInfo.customer.phoneNumber || vehicleInfo.customer.phone || "—"}
+                        {vehicleInfo.customer.account?.phone || vehicleInfo.customer.phoneNumber || vehicleInfo.customer.phone || ""}
                       </Text>
                     </div>
                     
@@ -376,7 +376,7 @@ export default function StaffVehicleRepairHistoryPage() {
                         </Text>
                       </Space>
                       <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
-                        {vehicleInfo.customer.account?.email || vehicleInfo.customer.email || "—"}
+                        {vehicleInfo.customer.account?.email || vehicleInfo.customer.email || ""}
                       </Text>
                     </div>
                   </div>

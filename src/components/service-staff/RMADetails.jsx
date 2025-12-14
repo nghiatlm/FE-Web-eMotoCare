@@ -39,7 +39,7 @@ function PartNameCell({ row }) {
         }
       }
       
-      setPartName(name || "—");
+      setPartName(name || "");
       setSerialNumber(partItem?.serialNumber || "");
     };
     
@@ -48,7 +48,7 @@ function PartNameCell({ row }) {
   
   return (
     <div>
-      <div style={{ fontWeight: 500, marginBottom: 2, fontSize: 12 }}>{partName || "—"}</div>
+      <div style={{ fontWeight: 500, marginBottom: 2, fontSize: 12 }}>{partName || ""}</div>
       {serialNumber && partName !== serialNumber && (
         <div style={{ fontSize: 11, color: "#8c8c8c" }}>
           S/N: {serialNumber}
@@ -284,7 +284,7 @@ function RMADetails({ rma, details = [], loading }) {
       REJECTED: "Từ chối",
       COMPLETED: "Hoàn thành",
     };
-    return statusMap[statusUpper] || status || "—";
+    return statusMap[statusUpper] || status || "";
   };
 
   return (
@@ -317,8 +317,8 @@ function RMADetails({ rma, details = [], loading }) {
             </Space>
             <div style={{ marginTop: 4, fontSize: 14 }}>
           {rma.customer
-                ? `${rma.customer.firstName || ""} ${rma.customer.lastName || ""}`.trim() || "—"
-                : "—"}
+                ? `${rma.customer.firstName || ""} ${rma.customer.lastName || ""}`.trim() || ""
+                : ""}
             </div>
           </div>
 
@@ -336,7 +336,7 @@ function RMADetails({ rma, details = [], loading }) {
                     hour: "2-digit",
                     minute: "2-digit",
                   })
-            : "—"}
+            : ""}
             </div>
       </div>
 
