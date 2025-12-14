@@ -14,6 +14,7 @@ import { fetchVehiclePartItems } from "../../../services/vehiclePartItemService.
 import { getPartItemByIdService } from "../../../services/partitemsService.js";
 import { getExportStatusByAppointmentCodeAndPartId } from "../../../services/exportNotesService.js";
 import useEVCheckHub from "../../../hooks/useEVCheckHub.jsx";
+import useRMAHub from "../../../hooks/useRMAHub.jsx";
 
 const { Option } = Select;
 
@@ -322,9 +323,9 @@ export default function RMARepairModeEVCheck({
     loadRepairDetails,
   ]);
 
-  // ✅ Kết nối SignalR để nhận real-time updates
-  const handleSignalRUpdate = useCallback(() => {
-    console.log("🔄 SignalR update received, reloading EVCheck details...");
+  // ✅ Kết nối SignalR để nhận real-time updates cho EVCheck
+  const handleEVCheckUpdate = useCallback(() => {
+    console.log("🔄 EVCheck SignalR update received, reloading EVCheck details...");
     if (evCheckId && !forceEmpty && !vehiclePartLoading) {
       loadRepairDetails();
       if (onRefresh) {
@@ -333,7 +334,20 @@ export default function RMARepairModeEVCheck({
     }
   }, [evCheckId, forceEmpty, vehiclePartLoading, loadRepairDetails, onRefresh]);
 
-  useEVCheckHub(evCheckId, handleSignalRUpdate);
+  useEVCheckHub(evCheckId, handleEVCheckUpdate);
+
+  // ✅ Kết nối SignalR để nhận real-time updates cho RMA
+  const handleRMAUpdate = useCallback(() => {
+    console.log("🔄 RMA SignalR update received, reloading EVCheck details...");
+    if (evCheckId && !forceEmpty && !vehiclePartLoading) {
+      loadRepairDetails();
+      if (onRefresh) {
+        onRefresh();
+      }
+    }
+  }, [evCheckId, forceEmpty, vehiclePartLoading, loadRepairDetails, onRefresh]);
+
+  useRMAHub(handleRMAUpdate);
 
   // ✅ Tự động cập nhật trạng thái khi technician vào EVCheck của RMA
   useEffect(() => {

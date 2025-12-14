@@ -29,6 +29,7 @@ import { getExportStatusByAppointmentCodeAndPartId } from "../../../services/exp
 import { changeAppointmentStatusService } from "../../../services/appointmentService.js";
 import RMAConfirmationModal from "../../../components/service-staff/RMAConfirmationModal";
 import useEVCheckHub from "../../../hooks/useEVCheckHub.jsx";
+import useRMAHub from "../../../hooks/useRMAHub.jsx";
 import BatteryDataDisplay from "../BatteryDataDisplay";
 // Campaign logic đã được tách ra CampaignModeEVCheck component riêng
 
@@ -503,33 +504,31 @@ export default function MaintenanceModeEVCheck({
     }
   }, [evCheckId, booking?.id]); // ✅ Thêm booking?.id vào dependency để clear khi chuyển appointment
 
-  // ✅ Kết nối SignalR để nhận real-time updates
-  const handleSignalRUpdate = useCallback(() => {
-    console.log("🔄 SignalR update received, reloading EVCheck details...");
-    // Reload data khi nhận được update từ SignalR
+  // ✅ Kết nối SignalR để nhận real-time updates cho EVCheck
+  const handleEVCheckUpdate = useCallback(() => {
+    console.log("🔄 EVCheck SignalR update received, reloading EVCheck details...");
     if (evCheckId) {
       loadEVCheckDetails();
-      // Gọi onRefresh nếu có
       if (onRefresh) {
         onRefresh();
       }
     }
-  }, [evCheckId, onRefresh]);
+  }, [evCheckId, onRefresh, loadEVCheckDetails]);
 
-  useEVCheckHub(evCheckId, handleSignalRUpdate);
+  useEVCheckHub(evCheckId, handleEVCheckUpdate);
 
-  // ✅ Kết nối SignalR để nhận real-time updates
-  useEVCheckHub(evCheckId, () => {
-    console.log("🔄 SignalR update received, reloading EVCheck details...");
-    // Reload data khi nhận được update từ SignalR
+  // ✅ Kết nối SignalR để nhận real-time updates cho RMA
+  const handleRMAUpdate = useCallback(() => {
+    console.log("🔄 RMA SignalR update received, reloading EVCheck details...");
     if (evCheckId) {
       loadEVCheckDetails();
-      // Gọi onRefresh nếu có
       if (onRefresh) {
         onRefresh();
       }
     }
-  });
+  }, [evCheckId, onRefresh, loadEVCheckDetails]);
+
+  useRMAHub(handleRMAUpdate);
 
   // ✅ Load serviceCenterId từ booking khi component mount
   useEffect(() => {

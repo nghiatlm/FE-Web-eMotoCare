@@ -17,6 +17,7 @@ import { getExportStatusByAppointmentCodeAndPartId } from "../../../services/exp
 import { changeAppointmentStatusService } from "../../../services/appointmentService.js";
 import { PlusOutlined } from "@ant-design/icons";
 import useEVCheckHub from "../../../hooks/useEVCheckHub.jsx";
+import useRMAHub from "../../../hooks/useRMAHub.jsx";
 import BatteryDataDisplay from "../BatteryDataDisplay";
 import { getCampaignById } from "../../../api/campaignsApi.js";
 
@@ -740,20 +741,31 @@ export default function CampaignModeEVCheck({
     loadRepairDetails,
   ]);
 
-  // ✅ Kết nối SignalR để nhận real-time updates
-  const handleSignalRUpdate = useCallback(() => {
-    console.log("🔄 SignalR update received, reloading EVCheck details...");
-    // Reload data khi nhận được update từ SignalR
+  // ✅ Kết nối SignalR để nhận real-time updates cho EVCheck
+  const handleEVCheckUpdate = useCallback(() => {
+    console.log("🔄 EVCheck SignalR update received, reloading EVCheck details...");
     if (evCheckId && !forceEmpty && !vehiclePartLoading && !replacePartLoading) {
       loadRepairDetails();
-      // Gọi onRefresh nếu có
       if (onRefresh) {
         onRefresh();
       }
     }
   }, [evCheckId, forceEmpty, vehiclePartLoading, replacePartLoading, loadRepairDetails, onRefresh]);
 
-  useEVCheckHub(evCheckId, handleSignalRUpdate);
+  useEVCheckHub(evCheckId, handleEVCheckUpdate);
+
+  // ✅ Kết nối SignalR để nhận real-time updates cho RMA
+  const handleRMAUpdate = useCallback(() => {
+    console.log("🔄 RMA SignalR update received, reloading EVCheck details...");
+    if (evCheckId && !forceEmpty && !vehiclePartLoading && !replacePartLoading) {
+      loadRepairDetails();
+      if (onRefresh) {
+        onRefresh();
+      }
+    }
+  }, [evCheckId, forceEmpty, vehiclePartLoading, replacePartLoading, loadRepairDetails, onRefresh]);
+
+  useRMAHub(handleRMAUpdate);
 
   // ========= CONTROL FLAG =========
   // ✅ Chỉ cho phép sửa khi vừa vào làm EVCheck (chưa gửi báo giá)
