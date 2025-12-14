@@ -1,4 +1,3 @@
-// src/pages/technician/BatteryDetailPage.jsx
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -53,11 +52,9 @@ export default function BatteryDetailPage() {
       try {
         const parsedData = JSON.parse(savedData);
         if (parsedData && (parsedData.id || parsedData.sampleCount !== undefined)) {
-          console.log("🔋 Loaded battery data from localStorage:", parsedData);
           setBatteryData(parsedData);
         }
       } catch (error) {
-        console.error("🔋 Error parsing saved battery data:", error);
       }
     }
     setLoading(false);
@@ -113,7 +110,6 @@ export default function BatteryDetailPage() {
     );
   }
 
-  // ✅ Parse dữ liệu từ API format mới (arrays)
   const {
     time = [],
     voltage = [],
@@ -126,10 +122,8 @@ export default function BatteryDetailPage() {
     conclusion = {},
   } = batteryData;
 
-  // ✅ Sử dụng power nếu có, nếu không thì dùng current
   const currentArray = (power && power.length > 0) ? power : (currentFromData && currentFromData.length > 0 ? currentFromData : []);
 
-  // ✅ Tính toán Min, Max, Trung bình từ arrays
   const calculateStats = (arr) => {
     if (!arr || !Array.isArray(arr) || arr.length === 0) return { min: 0, max: 0, avg: 0 };
     const validValues = arr.filter(v => v !== null && v !== undefined && !isNaN(v)).map(v => Number(v));
@@ -145,11 +139,6 @@ export default function BatteryDetailPage() {
   const tempStats = calculateStats(temp);
   const socStats = calculateStats(soc);
   const sohStats = calculateStats(soh);
-
-  // ✅ Sử dụng component BatteryDetailContent thay vì tự render
-  // Hoặc giữ lại logic cũ nhưng tính toán từ arrays
-
-  // ====== ECharts options ======
 
   const getVoltageCurrentOption = () => ({
     title: {
@@ -367,7 +356,7 @@ export default function BatteryDetailPage() {
 
   return (
     <div className="p-6" style={{ maxWidth: "1400px", margin: "0 auto" }}>
-      {/* Header */}
+      
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Button icon={<ArrowLeft className="h-4 w-4" />} onClick={() => navigate(-1)}>
@@ -383,7 +372,7 @@ export default function BatteryDetailPage() {
       </div>
 
       <div className="space-y-6">
-        {/* Tóm tắt nhanh */}
+        
         <div>
           <h4 className="text-sm font-semibold mb-3" style={{ color: "#ff4d4f" }}>
             Tóm tắt nhanh
@@ -446,15 +435,15 @@ export default function BatteryDetailPage() {
 
         <Divider />
 
-        {/* Biểu đồ dữ liệu */}
+        
         <div className="space-y-6">
           <h4 className="text-sm font-semibold mb-3" style={{ color: "#ff4d4f" }}>
             Biểu đồ dữ liệu Pin
           </h4>
 
-          {/* 3 biểu đồ trên 1 hàng */}
+          
           <Row gutter={[16, 16]}>
-            {/* Voltage + Current */}
+            
             <Col span={8}>
               <Card title="Điện áp - Dòng điện" size="small">
                 <ReactECharts
@@ -466,7 +455,7 @@ export default function BatteryDetailPage() {
               </Card>
             </Col>
 
-            {/* Temperature */}
+            
             <Col span={8}>
               <Card title="Nhiệt độ" size="small">
                 <ReactECharts
@@ -478,7 +467,7 @@ export default function BatteryDetailPage() {
               </Card>
             </Col>
 
-            {/* SOC & SOH */}
+            
             <Col span={8}>
               <Card title="SOC - SOH" size="small">
                 <ReactECharts
@@ -491,7 +480,7 @@ export default function BatteryDetailPage() {
             </Col>
           </Row>
 
-          {/* Bảng tóm tắt số liệu */}
+          
           <Row gutter={[16, 16]}>
             <Col span={24}>
               <Card title="Bảng tóm tắt số liệu" size="small">
@@ -569,7 +558,7 @@ export default function BatteryDetailPage() {
           </Row>
         </div>
 
-        {/* Kết luận */}
+        
         {conclusion && (
           <div className="mt-6">
             <Divider orientation="left" style={{ marginTop: 0 }}>
@@ -583,14 +572,10 @@ export default function BatteryDetailPage() {
                 {(() => {
                   let conclusionObj = null;
 
-                  console.log("🔍 Conclusion type:", typeof conclusion);
-                  console.log("🔍 Conclusion value:", conclusion);
 
                   if (typeof conclusion === "string") {
                     try {
-                      // ✅ Thử parse toàn bộ string trước
                       const parsed = JSON.parse(conclusion);
-                      console.log("🔍 Parsed conclusion:", parsed);
                       if (
                         typeof parsed === "object" &&
                         parsed !== null &&
@@ -598,15 +583,10 @@ export default function BatteryDetailPage() {
                       ) {
                         conclusionObj = parsed;
                       } else if (Array.isArray(parsed)) {
-                        // ✅ Nếu là array, merge các objects lại
                         conclusionObj = parsed.reduce((acc, item) => ({ ...acc, ...item }), {});
                       }
                     } catch (e) {
-                      console.log("🔍 Failed to parse as single JSON, trying to parse multiple JSON objects...");
-                      // ✅ Nếu parse toàn bộ thất bại, thử parse từng JSON object riêng biệt
                       try {
-                        // ✅ Tìm tất cả các JSON objects trong string (có thể có nhiều objects)
-                        // Sử dụng regex để tìm các JSON objects (cân bằng ngoặc nhọn)
                         const jsonMatches = [];
                         let depth = 0;
                         let start = -1;
@@ -646,30 +626,22 @@ export default function BatteryDetailPage() {
                           }
                         }
                         
-                        console.log("🔍 Found JSON matches:", jsonMatches.length);
-                        console.log("🔍 JSON matches:", jsonMatches);
                         
                         if (jsonMatches && jsonMatches.length > 0) {
                           conclusionObj = {};
                           jsonMatches.forEach((match, idx) => {
                             try {
                               const parsed = JSON.parse(match.trim());
-                              console.log(`🔍 Parsed JSON match ${idx}:`, parsed);
                               if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-                                // ✅ Merge các keys vào conclusionObj
                                 Object.keys(parsed).forEach(key => {
                                   conclusionObj[key] = parsed[key];
                                 });
                               }
                             } catch (err) {
-                              console.warn(`Failed to parse JSON match ${idx}:`, err);
-                              console.warn(`Match content:`, match.substring(0, 100));
                             }
                           });
-                          console.log("🔍 Final merged conclusionObj:", conclusionObj);
                         }
                       } catch (e2) {
-                        console.error("Failed to parse conclusion:", e2);
                       conclusionObj = null;
                       }
                     }
@@ -680,11 +652,9 @@ export default function BatteryDetailPage() {
                   ) {
                     conclusionObj = conclusion;
                   } else if (Array.isArray(conclusion)) {
-                    // ✅ Nếu là array, merge các objects lại
                     conclusionObj = conclusion.reduce((acc, item) => ({ ...acc, ...item }), {});
                   }
 
-                  // ✅ Hiển thị UI mới nếu có bất kỳ dữ liệu nào trong conclusionObj
                   if (conclusionObj && Object.keys(conclusionObj).length > 0) {
                     const sections = [
                       {
@@ -736,9 +706,9 @@ export default function BatteryDetailPage() {
 
                     return (
                       <div className="space-y-6">
-                        {/* ✅ Các section phân tích - Layout 3-2 (3 trên, 2 dưới) */}
+                        
                         <div>
-                          {/* Hàng đầu: 3 cards */}
+                          
                           <Row gutter={[20, 20]} justify="start">
                             {sections.slice(0, 3).map((section) => {
                           const content = conclusionObj[section.key];
@@ -809,7 +779,7 @@ export default function BatteryDetailPage() {
                         })}
                           </Row>
                           
-                          {/* Hàng dưới: 2 cards - tổng chiều rộng bằng 3 cards trên */}
+                          
                           {sections.slice(3).length > 0 && (
                             <Row gutter={[20, 20]} justify="start" style={{ marginTop: 20 }}>
                               {sections.slice(3).map((section) => {
@@ -891,8 +861,6 @@ export default function BatteryDetailPage() {
                     );
                   }
 
-                  // ✅ Nếu không parse được, vẫn thử hiển thị UI mới với dữ liệu thô
-                  // Hoặc hiển thị thông báo lỗi parse
                   return (
                     <Card
                       style={{

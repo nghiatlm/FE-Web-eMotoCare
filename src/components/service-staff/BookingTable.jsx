@@ -107,7 +107,7 @@ export default function BookingTable({
       align: "center",
       render: (slot) => {
         if (!slot) return <span style={{ color: "#bfbfbf" }}>-</span>;
-        // Loại bỏ 'H' và tách theo dấu '_'
+
         const [start, end] = slot.replace("H", "").split("_");
         return (
           <span style={{ color: "#595959", fontWeight: 500 }}>

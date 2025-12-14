@@ -1,4 +1,3 @@
-// src/components/Payment.jsx
 import { Modal, Table, Radio, Button, Spin, Empty, Tag, Image } from "antd";
 import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
@@ -13,17 +12,15 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
   const [quoteItems, setQuoteItems] = useState([]);
   const [fetchingEVCheck, setFetchingEVCheck] = useState(false);
   const [totalAmount, setTotalAmount] = useState(0);
-  const [totalServiceFee, setTotalServiceFee] = useState(0); // ✅ Tổng phí dịch vụ
-  const [totalPartsFee, setTotalPartsFee] = useState(0); // ✅ Tổng phí phụ tùng
-  const [vat, setVat] = useState(0); // ✅ VAT (8%)
+  const [totalServiceFee, setTotalServiceFee] = useState(0);
+  const [totalPartsFee, setTotalPartsFee] = useState(0);
+  const [vat, setVat] = useState(0);
 
   const appointmentId = booking?.id;
 
   useEffect(() => {
     if (!open || !appointmentId) return;
 
-    // ✅ TRƯỜNG HỢP 1: Staff hủy - đang chờ thanh toán phí hủy để hủy lịch
-    // ✅ TRƯỜNG HỢP 2: Khách hủy - lịch đã bị hủy, cần thanh toán phí hủy
     if (cancellationFee > 0 && (isPendingCancel || booking?.status === "CANCELED")) {
       setQuoteItems([{
         id: 'cancellation-fee',
@@ -54,7 +51,6 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
         else if (evCheck?.data?.rowDatas) details = evCheck.data.rowDatas;
 
         if (details.length > 0) {
-          // ✅ Fetch partItem nếu chưa có đầy đủ thông tin
           const items = await Promise.all(details.map(async (item, idx) => {
             const remedies = String(
               item.remedies || item.solution || "NONE"
@@ -63,38 +59,29 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
             const priceService = Number(item.priceService || 0);
             const quantity = Number(item.quantity || 1);
 
-            // ✅ Chỉ tính tiền phụ tùng khi biện pháp là REPLACE
             const pricePart = remedies === "REPLACE" ? pricePartRaw : 0;
             const lineTotal = (pricePart + priceService) * quantity;
 
-            // ✅ Lấy tên phụ tùng từ nhiều nguồn, ưu tiên theo thứ tự
             let partName = "";
             
-            // 1. Từ replacePart (phụ tùng thay thế)
             if (item.replacePart?.name) {
               partName = item.replacePart.name;
             }
-            // 2. Từ proposedReplacePart (phụ tùng đề xuất)
             else if (item.proposedReplacePart?.name) {
               partName = item.proposedReplacePart.name;
             }
-            // 3. Từ partItem.part.name (phụ tùng của xe)
             else if (item.partItem?.part?.name) {
               partName = item.partItem.part.name;
             }
-            // 4. Từ maintenanceStageDetail.part.name (bảo dưỡng)
             else if (item.maintenanceStageDetail?.part?.name) {
               partName = item.maintenanceStageDetail.part.name;
             }
-            // 5. Từ displayName (tên hiển thị)
             else if (item.displayName) {
               partName = item.displayName;
             }
-            // 6. Từ partName
             else if (item.partName) {
               partName = item.partName;
             }
-            // 7. Thử fetch từ API nếu có partItemId nhưng chưa có part.name
             else {
               const partItemId = item.partItemId || item.partItem?.id;
               if (partItemId && (!item.partItem?.part?.name)) {
@@ -105,53 +92,41 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
                     partName = partItemDetail.part.name;
                   }
                 } catch (error) {
-                  console.error(`❌ Lỗi lấy thông tin partItem ${partItemId}:`, error);
                 }
               }
-              // 8. Fallback
               if (!partName) {
                 partName = "Hạng mục";
               }
             }
 
-            // Thông tin phụ tùng/serial để hiển thị
             const serial =
               item.partItem?.serialNumber ||
               item.replacePart?.serialNumber ||
               item.serialNumber ||
               "";
 
-            // ✅ Lấy hình ảnh từ nhiều nguồn, ưu tiên theo thứ tự
             let imageUrl = "";
-            // 1. Từ replacePart (phụ tùng thay thế)
             if (item.replacePart?.image) {
               imageUrl = item.replacePart.image;
             }
-            // 2. Từ replacePart.part.image
             else if (item.replacePart?.part?.image) {
               imageUrl = item.replacePart.part.image;
             }
-            // 3. Từ proposedReplacePart
             else if (item.proposedReplacePart?.image) {
               imageUrl = item.proposedReplacePart.image;
             }
-            // 4. Từ proposedReplacePart.part.image
             else if (item.proposedReplacePart?.part?.image) {
               imageUrl = item.proposedReplacePart.part.image;
             }
-            // 5. Từ partItem.part.image (phụ tùng của xe)
             else if (item.partItem?.part?.image) {
               imageUrl = item.partItem.part.image;
             }
-            // 6. Từ maintenanceStageDetail.part.image (bảo dưỡng)
             else if (item.maintenanceStageDetail?.part?.image) {
               imageUrl = item.maintenanceStageDetail.part.image;
             }
-            // 7. Từ partItem.image
             else if (item.partItem?.image) {
               imageUrl = item.partItem.image;
             }
-            // 8. Từ item.image
             else if (item.image) {
               imageUrl = item.image;
             }
@@ -161,12 +136,10 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
               name: partName,
               remedies,
               quantity,
-              // hiển thị
               priceService,
-              pricePartDisplay: pricePart, // đã áp dụng rules REPLACE
+              pricePartDisplay: pricePart,
               serial,
               imageUrl,
-              // tính tiền
               totalAmount: lineTotal,
             };
           }));
@@ -174,11 +147,9 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
           const filteredItems = items.filter((item) => item.totalAmount > 0);
           setQuoteItems(filteredItems);
           
-          // ✅ Tính tổng phí dịch vụ (tổng của tất cả priceService * quantity)
           const serviceFee = filteredItems.reduce((s, i) => s + ((i.priceService || 0) * (i.quantity || 1)), 0);
           setTotalServiceFee(serviceFee);
           
-          // ✅ Tính tổng phí phụ tùng (tổng của tất cả pricePart * quantity, chỉ khi REPLACE)
           const partsFee = filteredItems.reduce((s, i) => {
             if (i.remedies === "REPLACE") {
               return s + ((i.pricePartDisplay || 0) * (i.quantity || 1));
@@ -187,11 +158,9 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
           }, 0);
           setTotalPartsFee(partsFee);
           
-          // ✅ Tính VAT (8% của tổng phí dịch vụ + tổng phí phụ tùng)
           const vatAmount = Math.round((serviceFee + partsFee) * 0.08);
           setVat(vatAmount);
           
-          // ✅ Tổng chi phí = tổng phí dịch vụ + tổng phí phụ tùng + VAT
           const total = serviceFee + partsFee + vatAmount;
           setTotalAmount(total);
         } else {
@@ -202,7 +171,6 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
           setVat(0);
         }
       } catch (e) {
-        console.error(e);
         toast.warning("Không tải được báo giá từ EVCheck");
         setQuoteItems([]);
         setTotalAmount(0);
@@ -223,15 +191,12 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
 
     setLoading(true);
     try {
-      // ✅ Thanh toán bằng app: không cần gọi payment API, chỉ cập nhật appointment status
       if (paymentMethod === "APP") {
         try {
-          // ✅ Lấy thông tin appointment hiện tại để giữ lại các field khác
           const { getAppointmentById } = await import("../../api/appointmentsApi");
           const appointmentRes = await getAppointmentById(appointmentId);
           const currentAppointment = appointmentRes?.data?.data || appointmentRes?.data || appointmentRes;
           
-          // ✅ Cập nhật appointment status thành WAITING_FOR_PAYMENT
           await changeAppointmentStatusService(appointmentId, "WAITING_FOR_PAYMENT", {
             note: currentAppointment?.note || booking?.note || "",
             approveById: currentAppointment?.approveById || booking?.approveById || null,
@@ -244,33 +209,28 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
           onClose();
           return;
         } catch (err) {
-          console.error("❌ Lỗi cập nhật appointment status:", err);
           toast.error(`Lỗi cập nhật trạng thái: ${err.response?.data?.message || err.message || "Unknown error"}`);
           return;
         }
       }
 
-      // Theo swagger BE: muốn PayOS -> gửi PAY_OS_CENTER
       const payload = {
         amount: Math.round(totalAmount),
         paymentMethod:
           paymentMethod === "PAY_OS_CENTER" ? "PAY_OS_CENTER" : "CASH",
         currency: "VND",
         appointmentId,
-        returnUrl: "https://emotocare.vercel.app/payment-success",
-        callbackUrl: "https://emotocare.vercel.app/payment-failed",
+        returnUrl: `${window.location.origin}/payment-success`,
+        callbackUrl: `${window.location.origin}/payment-failed`,
       };
 
-      // ✅ Luôn gọi API, truyền paymentMethod (CASH hoặc PAY_OS_CENTER)
       const res = await createPaymentLinkService(payload);
       
       if (paymentMethod === "CASH") {
-        // ✅ Thanh toán tiền mặt: truyền CASH vào API
         toast.success("Đã xác nhận thanh toán tiền mặt!");
         onPaymentSuccess?.({ method: "CASH", amount: totalAmount });
         onClose();
       } else {
-        // ✅ Thanh toán PayOS: mở link thanh toán
         const url =
           res?.data?.urlPayemt ||
           res?.data?.urlPayment ||
@@ -289,7 +249,6 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
         }
       }
     } catch (e) {
-      console.error(e);
       toast.error(e?.response?.data?.message || e?.data?.message || e?.message || "Không thể tạo yêu cầu thanh toán");
     } finally {
       setLoading(false);

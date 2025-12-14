@@ -1,4 +1,3 @@
-// src/components/staff/RMADetails.jsx
 import React, { useState, useMemo } from "react";
 import { Table, Spin, Button, Modal, Card, Tag, Image, Space, Divider, Typography, Tooltip } from "antd";
 import { toast } from "react-toastify";
@@ -11,7 +10,6 @@ import { getAppointmentById } from "../../api/appointmentsApi";
 import { getPartById } from "../../api/partsApi";
 import { getPartItemByIdService } from "../../services/partitemsService";
 
-// ✅ Component để hiển thị tên phụ tùng (có thể gọi API nếu cần)
 function PartNameCell({ row }) {
   const [partName, setPartName] = React.useState("");
   const [serialNumber, setSerialNumber] = React.useState("");
@@ -22,31 +20,25 @@ function PartNameCell({ row }) {
       const partItem = evCheckDetail?.partItem || row.partItem;
       const part = partItem?.part;
       
-      // ✅ Ưu tiên lấy tên từ part.name
       let name = part?.name || "";
       
-      // ✅ Nếu không có part.name, thử lấy từ part.code
       if (!name && part?.code) {
         name = part.code;
       }
       
-      // ✅ Nếu vẫn không có, thử lấy từ serialNumber
       if (!name && partItem?.serialNumber) {
         name = partItem.serialNumber;
       }
       
-      // ✅ Nếu vẫn không có và có partItemId, gọi API để lấy thông tin
       if (!name && partItem?.id) {
         try {
           const partItemData = await getPartItemByIdService(partItem.id);
           const partData = partItemData?.part || {};
           name = partData.name || partData.code || partItemData.serialNumber || "";
         } catch (err) {
-          console.error(`❌ Lỗi lấy thông tin phụ tùng ${partItem.id}:`, err);
         }
       }
       
-      // ✅ Nếu vẫn không có, hiển thị "—" thay vì ID
       setPartName(name || "—");
       setSerialNumber(partItem?.serialNumber || "");
     };
@@ -66,26 +58,20 @@ function PartNameCell({ row }) {
   );
 }
 
-// ✅ Component để hiển thị thông tin phụ tùng thay thế
 function ReplacePartInfo({ replacePart }) {
   const [partInfo, setPartInfo] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
 
-  // ✅ Debug: log replacePart để kiểm tra
   React.useEffect(() => {
-    console.log("🔍 ReplacePartInfo - replacePart:", replacePart);
   }, [replacePart]);
 
-  // ✅ Ưu tiên lấy part.name và part.code từ replacePart.part (response mới)
   React.useEffect(() => {
     if (replacePart?.part?.name || replacePart?.part?.code) {
-      // ✅ Response mới đã có sẵn part object
       setPartInfo({
         name: replacePart.part.name,
         code: replacePart.part.code,
       });
     } else if (replacePart?.partId && !partInfo) {
-      // ✅ Fallback: gọi API nếu không có part object
       const loadPartInfo = async () => {
         try {
           setLoading(true);
@@ -98,7 +84,6 @@ function ReplacePartInfo({ replacePart }) {
             });
           }
         } catch (err) {
-          console.error("Lỗi lấy thông tin part:", err);
         } finally {
           setLoading(false);
         }
@@ -107,7 +92,6 @@ function ReplacePartInfo({ replacePart }) {
     }
   }, [replacePart?.part, replacePart?.partId]);
 
-  // ✅ Kiểm tra xem có thông tin nào để hiển thị không
   const hasAnyInfo = 
     partInfo?.name || 
     partInfo?.code || 
@@ -118,9 +102,7 @@ function ReplacePartInfo({ replacePart }) {
     replacePart?.warrantyPeriod ||
     (replacePart?.warantyStartDate && replacePart?.warantyEndDate);
 
-  // ✅ Luôn hiển thị nếu có replacePart object (để debug)
   if (!replacePart) {
-    console.warn("⚠️ ReplacePartInfo: replacePart is null/undefined");
     return null;
   }
 
@@ -137,7 +119,6 @@ function ReplacePartInfo({ replacePart }) {
         flexDirection: "column",
         gap: 6
       }}>
-        {/* Tên phụ tùng */}
         {partInfo?.name && (
           <div style={{ display: "flex", gap: 8 }}>
             <Text type="secondary" style={{ fontSize: 12, minWidth: 80 }}>Tên:</Text>
@@ -150,7 +131,6 @@ function ReplacePartInfo({ replacePart }) {
             <Text style={{ fontSize: 13, fontFamily: "monospace", color: "#595959" }}>{partInfo.code}</Text>
           </div>
         )}
-        {/* Serial Number - luôn hiển thị nếu có */}
         {replacePart?.serialNumber && (
           <div style={{ display: "flex", gap: 8 }}>
             <Text type="secondary" style={{ fontSize: 12, minWidth: 80 }}>Số seri:</Text>
@@ -159,7 +139,6 @@ function ReplacePartInfo({ replacePart }) {
             </Text>
           </div>
         )}
-        {/* Part ID - hiển thị nếu có nhưng chưa load được part info */}
         {replacePart?.partId && !partInfo && !loading && (
           <div style={{ display: "flex", gap: 8 }}>
             <Text type="secondary" style={{ fontSize: 12, minWidth: 80 }}>Part ID:</Text>
@@ -168,14 +147,12 @@ function ReplacePartInfo({ replacePart }) {
             </Text>
           </div>
         )}
-        {/* Số lượng */}
         {replacePart?.quantity !== undefined && replacePart?.quantity !== null && (
           <div style={{ display: "flex", gap: 8 }}>
             <Text type="secondary" style={{ fontSize: 12, minWidth: 80 }}>Số lượng:</Text>
             <Text style={{ fontSize: 13, color: "#595959" }}>{replacePart.quantity}</Text>
           </div>
         )}
-        {/* Giá */}
         {replacePart?.price !== undefined && replacePart?.price !== null && replacePart?.price > 0 && (
           <div style={{ display: "flex", gap: 8 }}>
             <Text type="secondary" style={{ fontSize: 12, minWidth: 80 }}>Giá:</Text>
@@ -184,7 +161,6 @@ function ReplacePartInfo({ replacePart }) {
             </Text>
           </div>
         )}
-        {/* Bảo hành */}
         {replacePart?.warrantyPeriod && (
           <div style={{ display: "flex", gap: 8 }}>
             <Text type="secondary" style={{ fontSize: 12, minWidth: 80 }}>Bảo hành:</Text>
@@ -193,7 +169,6 @@ function ReplacePartInfo({ replacePart }) {
             </Text>
           </div>
         )}
-        {/* Thời gian bảo hành */}
         {replacePart?.warantyStartDate && replacePart?.warantyEndDate && (
           <div style={{ display: "flex", gap: 8 }}>
             <Text type="secondary" style={{ fontSize: 12, minWidth: 80 }}>Thời gian BH:</Text>
@@ -207,7 +182,6 @@ function ReplacePartInfo({ replacePart }) {
             Đang tải thông tin...
           </Text>
         )}
-        {/* Debug info - có thể xóa sau */}
         {!hasAnyInfo && !loading && (
           <Text type="secondary" style={{ fontSize: 11, color: "#999", fontStyle: "italic" }}>
             (Chưa có thông tin phụ tùng thay thế)
@@ -219,7 +193,6 @@ function ReplacePartInfo({ replacePart }) {
 }
 
 function RMADetails({ rma, details = [], loading }) {
-  // 👉 Khi nào có ít nhất 1 detail đã được hãng duyệt thì cho tạo lịch
   const hasReadyParts = useMemo(
     () =>
       details.some((d) => d.status === "APPROVED" ),
@@ -231,7 +204,6 @@ function RMADetails({ rma, details = [], loading }) {
 
   if (!rma) return <p>Không tìm thấy thông tin RMA.</p>;
 
-  // Prefill cho BookingForm - tự động lấy từ RMA
   const initialBookingValues = useMemo(
     () => ({
       customerId: rma?.customer?.id,
@@ -239,8 +211,7 @@ function RMADetails({ rma, details = [], loading }) {
       chassisNumber: rma?.vehicle?.chassisNumber,
       serviceCenterId: rma?.staff?.serviceCenterId,
       estimatedCost: 0,
-      type: "REPAIR_TYPE", // ✅ Set sẵn type là "Sửa chữa" khi tạo lịch từ RMA
-      // ✅ Truyền đầy đủ thông tin customer và vehicle để hiển thị
+      type: "REPAIR_TYPE",
       customer: rma?.customer,
       vehicle: rma?.vehicle,
     }),
@@ -259,14 +230,12 @@ function RMADetails({ rma, details = [], loading }) {
         ...values,
         customerId: values.customerId || rma?.customer?.id,
         serviceCenterId: values.serviceCenterId || rma?.staff?.serviceCenterId,
-        // tuỳ nghiệp vụ, mình coi đây là lịch hẹn bảo hành / thay thế
         type: "REPAIR_TYPE",
-        status: "PENDING", // ✅ Tạo với status PENDING trước
+        status: "PENDING",
         note: `Lịch thay thế phụ tùng từ RMA ${rma.code}`,
-        rmaId: rma?.id || null, // ✅ Truyền rmaId xuống BE
+        rmaId: rma?.id || null,
       };
 
-      // ✅ 1. Tạo appointment
       const newAppointment = await createAppointmentService(payload);
       const appointmentId = newAppointment?.id || newAppointment?.data?.id;
       
@@ -274,11 +243,9 @@ function RMADetails({ rma, details = [], loading }) {
         throw new Error("Không nhận được ID của lịch hẹn sau khi tạo");
       }
 
-      // ✅ 2. Tự động approve để tạo QR code (bỏ qua bước approve thủ công)
       try {
         await approveAppointmentService(appointmentId);
         
-        // ✅ 3. Sau khi approve thành công, lấy thông tin appointment để xác nhận QR code đã được tạo
         const appointmentRes = await getAppointmentById(appointmentId);
         const appointment = appointmentRes?.data || appointmentRes;
         const checkinQRCode = appointment?.checkinQRCode;
@@ -289,20 +256,17 @@ function RMADetails({ rma, details = [], loading }) {
           toast.success("Tạo lịch thay thế và đã duyệt lịch hẹn thành công!");
         }
       } catch (approveError) {
-        console.error("Lỗi approve appointment:", approveError);
         toast.warning("Tạo lịch hẹn thành công nhưng chưa tạo được QR code. Vui lòng duyệt lại sau.");
       }
 
       setBookingOpen(false);
     } catch (err) {
-      console.error("Lỗi tạo lịch hẹn từ RMA:", err);
       toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tạo lịch hẹn. Vui lòng thử lại."));
     } finally {
       setBookingLoading(false);
     }
   };
 
-  // ✅ Map status colors
   const getStatusColor = (status) => {
     const statusUpper = (status || "").toUpperCase();
     if (statusUpper === "APPROVED") return "success";
@@ -325,7 +289,6 @@ function RMADetails({ rma, details = [], loading }) {
 
   return (
     <div style={{ padding: "24px", width: "100%", margin: "0 auto" }}>
-      {/* ✅ CARD THÔNG TIN CHUNG */}
       <Card
         title={
           <Space>
@@ -391,7 +354,6 @@ function RMADetails({ rma, details = [], loading }) {
         </div>
       </Card>
 
-      {/* ✅ NÚT TẠO LỊCH HẸN */}
       {hasReadyParts && (
         <div style={{ marginBottom: 24, display: "flex", justifyContent: "flex-end" }}>
           <Button
@@ -412,7 +374,6 @@ function RMADetails({ rma, details = [], loading }) {
         </div>
       )}
 
-      {/* ✅ CARD BẢNG CHI TIẾT RMA */}
       <Card
         title={
           <Space>
@@ -441,21 +402,15 @@ function RMADetails({ rma, details = [], loading }) {
                 const partItem = evCheckDetail?.partItem || record.partItem;
                 const part = partItem?.part;
                 
-                // ✅ Lấy thông tin từ rma object (đã có sẵn) thay vì từ nested objects
+
                 const customer = rma?.customer;
                 const booking = rma?.appointment || evCheckDetail?.evCheck?.appointment;
                 const vehicle = booking?.vehicle || rma?.vehicle;
                 const technician = booking?.technician || rma?.technician;
                 const evCheck = evCheckDetail?.evCheck;
                 
-                // ✅ Chỉ hiển thị thông tin nguyên nhân hư hỏng từ hãng (RMA detail)
-                // ✅ Lấy replacePart từ record (theo cấu trúc API response)
                 const replacePart = record.replacePart || evCheckDetail?.replacePart;
                 
-                // ✅ Debug: log để kiểm tra
-                console.log("🔍 expandedRowRender - record:", record);
-                console.log("🔍 expandedRowRender - replacePart:", replacePart);
-                console.log("🔍 expandedRowRender - record.solution:", record.solution);
                 
                 const getSolutionLabel = (solution) => {
                   const solutionMap = {
@@ -489,7 +444,6 @@ function RMADetails({ rma, details = [], loading }) {
                       border: "1px solid #e0e0e0",
                       overflow: "hidden"
                     }}>
-                      {/* Header với icon */}
                       <div style={{ 
                         background: "linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%)",
                         padding: "16px 20px",
@@ -513,10 +467,8 @@ function RMADetails({ rma, details = [], loading }) {
                         </Text>
                       </div>
 
-                      {/* Nội dung */}
                       <div style={{ padding: "20px" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                          {/* Lý do RMA */}
                           <div style={{ 
                             padding: "14px 16px",
                             backgroundColor: "#fffbf0",
@@ -539,8 +491,6 @@ function RMADetails({ rma, details = [], loading }) {
                             </Text>
                           </div>
 
-
-                          {/* Giải pháp */}
                           <div style={{ 
                             padding: "14px 16px",
                             backgroundColor: "#f0f5ff",
@@ -572,7 +522,6 @@ function RMADetails({ rma, details = [], loading }) {
                                     {getSolutionLabel(record.solution)}
                                   </Tag>
                                   
-                                  {/* Thông tin phụ tùng thay thế từ replacePart */}
                                   {record.solution === "REPLACE" && replacePart ? (
                                     <ReplacePartInfo replacePart={replacePart} />
                                   ) : record.solution === "REPLACE" ? (
@@ -591,7 +540,6 @@ function RMADetails({ rma, details = [], loading }) {
                             </div>
                           </div>
 
-                          {/* Thông tin phụ tùng thay thế từ hãng */}
                           <div style={{ 
                             padding: "14px 16px",
                             backgroundColor: "#f6ffed",
@@ -612,7 +560,6 @@ function RMADetails({ rma, details = [], loading }) {
                             <div style={{ marginLeft: 14 }}>
                               {replacePart?.part?.name ? (
                                 <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-                                  {/* Ảnh phụ tùng */}
                                   {replacePart.part.image && (
                                     <div style={{ flexShrink: 0 }}>
                                       <Image
@@ -632,7 +579,6 @@ function RMADetails({ rma, details = [], loading }) {
                                       />
                                     </div>
                                   )}
-                                  {/* Thông tin phụ tùng */}
                                   <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
                                     <div style={{ display: "flex", gap: 8 }}>
                                       <Text type="secondary" style={{ fontSize: 12, minWidth: 80 }}>Tên:</Text>
@@ -814,7 +760,6 @@ function RMADetails({ rma, details = [], loading }) {
       )}
       </Card>
 
-      {/* ✅ MODAL ĐẶT LỊCH HẸN */}
       <Modal
         title={
           <Space>

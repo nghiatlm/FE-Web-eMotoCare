@@ -1,5 +1,5 @@
-// src/components/technician/BatteryDetailContent.jsx
-// Component này được sử dụng để hiển thị chi tiết pin trong modal (cho staff) hoặc trong page (cho technician)
+
+
 import {
   Card,
   Row,
@@ -35,8 +35,8 @@ export default function BatteryDetailContent({ batteryData }) {
     );
   }
 
-  // ✅ Parse dữ liệu từ API format mới
-  // Dữ liệu có thể đến trực tiếp hoặc từ rowDatas[0]
+
+
   const data = batteryData?.rowDatas?.[0] || batteryData;
   
   const {
@@ -51,29 +51,19 @@ export default function BatteryDetailContent({ batteryData }) {
     conclusion = {},
   } = data || {};
 
-  // ✅ API trả về `power` thay vì `current`, nhưng hiển thị là "Dòng điện (A)"
-  // ✅ Sử dụng power nếu có, nếu không thì dùng current
+
+
   const currentArray = (power && power.length > 0) ? power : (currentFromData && currentFromData.length > 0 ? currentFromData : []);
 
-  // ✅ Debug log
-  console.log("🔋 BatteryDetailContent - batteryData:", batteryData);
-  console.log("🔋 BatteryDetailContent - parsed data:", data);
-  console.log("🔋 BatteryDetailContent - time length:", time?.length);
-  console.log("🔋 BatteryDetailContent - voltage length:", voltage?.length);
-  console.log("🔋 BatteryDetailContent - currentArray length:", currentArray?.length);
-  console.log("🔋 BatteryDetailContent - temp length:", temp?.length);
-  console.log("🔋 BatteryDetailContent - soc length:", soc?.length);
-  console.log("🔋 BatteryDetailContent - soh length:", soh?.length);
 
-  // ✅ Tính toán Min, Max, Trung bình từ arrays
+
+
   const calculateStats = (arr) => {
     if (!arr || !Array.isArray(arr) || arr.length === 0) {
-      console.warn("🔋 calculateStats - invalid array:", arr);
       return { min: 0, max: 0, avg: 0 };
     }
     const validValues = arr.filter(v => v !== null && v !== undefined && !isNaN(v)).map(v => Number(v));
     if (validValues.length === 0) {
-      console.warn("🔋 calculateStats - no valid values in array:", arr);
       return { min: 0, max: 0, avg: 0 };
     }
     const min = Math.min(...validValues);
@@ -83,23 +73,14 @@ export default function BatteryDetailContent({ batteryData }) {
   };
 
   const voltageStats = calculateStats(voltage);
-  const currentStats = calculateStats(currentArray); // ✅ Dùng currentArray thay vì current
+  const currentStats = calculateStats(currentArray);
   const tempStats = calculateStats(temp);
   const socStats = calculateStats(soc);
   const sohStats = calculateStats(soh);
 
-  console.log("🔋 BatteryDetailContent - stats:", { voltageStats, currentStats, tempStats, socStats, sohStats });
-  console.log("🔋 BatteryDetailContent - summaryData will be:", {
-    voltage: voltageStats,
-    current: currentStats,
-    temp: tempStats,
-    soc: socStats,
-    soh: sohStats
-  });
 
-  // ====== Chart options ======
   
-  // ✅ Chart 1: Voltage & Current (line chart theo thời gian)
+
   const voltageCurrentOption = {
     title: {
       text: "V",
@@ -161,7 +142,7 @@ export default function BatteryDetailContent({ batteryData }) {
         type: "line",
         smooth: true,
         symbolSize: 4,
-        data: time.map((t, idx) => [t, currentArray[idx] || 0]), // ✅ Dùng currentArray
+        data: time.map((t, idx) => [t, currentArray[idx] || 0]),
         lineStyle: { width: 2, color: "#91cc75" },
         itemStyle: { color: "#91cc75" },
         yAxisIndex: 1,
@@ -169,7 +150,7 @@ export default function BatteryDetailContent({ batteryData }) {
     ],
   };
 
-  // ✅ Chart 2: Temperature (line chart theo thời gian)
+
   const tempOption = {
     title: {
       text: "°C",
@@ -224,7 +205,7 @@ export default function BatteryDetailContent({ batteryData }) {
     ],
   };
 
-  // ✅ Chart 3: SOC & SOH (line chart theo thời gian)
+
   const socSohOption = {
     title: {
       text: "SOC & SOH",
@@ -306,7 +287,7 @@ export default function BatteryDetailContent({ batteryData }) {
     ],
   };
 
-  // ✅ Bảng tóm tắt số liệu
+
   const summaryColumns = [
     {
       title: "Chỉ số",
@@ -337,7 +318,7 @@ export default function BatteryDetailContent({ batteryData }) {
     },
   ];
 
-  // ✅ Tạo summary data với fallback
+
   const formatValue = (value, decimals = 2) => {
     if (value === null || value === undefined || isNaN(value)) return "—";
     return Number(value).toFixed(decimals);
@@ -381,11 +362,10 @@ export default function BatteryDetailContent({ batteryData }) {
     },
   ];
 
-  console.log("🔋 BatteryDetailContent - summaryData:", summaryData);
 
   return (
     <div style={{ padding: "16px 0" }}>
-      {/* Tóm tắt nhanh */}
+      
       <div style={{ marginBottom: 24 }}>
         <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "#ff4d4f" }}>
           Tóm tắt nhanh
@@ -448,7 +428,7 @@ export default function BatteryDetailContent({ batteryData }) {
 
       <Divider />
 
-      {/* Biểu đồ dữ liệu Pin */}
+      
       <div style={{ marginBottom: 24 }}>
         <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "#ff4d4f" }}>
           Biểu đồ dữ liệu Pin
@@ -489,7 +469,7 @@ export default function BatteryDetailContent({ batteryData }) {
         )}
       </div>
 
-      {/* Bảng tóm tắt số liệu */}
+      
       <Card 
         title="Bảng tóm tắt số liệu"
         bodyStyle={{ padding: "16px" }}
@@ -506,7 +486,7 @@ export default function BatteryDetailContent({ batteryData }) {
         </div>
       </Card>
 
-      {/* Kết luận đánh giá Pin */}
+      
       {conclusion && Object.keys(conclusion).length > 0 && (
         <div style={{ marginTop: 24 }}>
           <Divider orientation="left">
@@ -517,7 +497,7 @@ export default function BatteryDetailContent({ batteryData }) {
           
           <div style={{ marginTop: 24 }}>
             <Row gutter={[20, 20]}>
-              {/* Card 1: Khả năng cung cấp năng lượng */}
+              
               {conclusion.energyCapability && (
                 <Col xs={24} sm={24} md={8}>
                   <Card
@@ -579,7 +559,7 @@ export default function BatteryDetailContent({ batteryData }) {
                 </Col>
               )}
 
-              {/* Card 2: Hiệu suất nạp/xả */}
+              
               {conclusion.chargeDischargeEfficiency && (
                 <Col xs={24} sm={24} md={8}>
                   <Card
@@ -641,7 +621,7 @@ export default function BatteryDetailContent({ batteryData }) {
                 </Col>
               )}
 
-              {/* Card 3: Tình trạng xuống cấp */}
+              
               {conclusion.degradationStatus && (
                 <Col xs={24} sm={24} md={8}>
                   <Card
@@ -704,9 +684,9 @@ export default function BatteryDetailContent({ batteryData }) {
               )}
             </Row>
 
-            {/* Hàng thứ 2: Tuổi thọ còn lại và An toàn */}
+            
             <Row gutter={[20, 20]} style={{ marginTop: 20 }}>
-              {/* Card 4: Tuổi thọ còn lại */}
+              
               {conclusion.remainingUsefulLife && (
                 <Col xs={24} sm={24} md={12}>
                   <Card
@@ -768,7 +748,7 @@ export default function BatteryDetailContent({ batteryData }) {
                 </Col>
               )}
 
-              {/* Card 5: An toàn */}
+              
               {conclusion.safety && (
                 <Col xs={24} sm={24} md={12}>
                   <Card

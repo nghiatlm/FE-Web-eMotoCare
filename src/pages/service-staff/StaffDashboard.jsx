@@ -28,16 +28,13 @@ const StaffDashboard = () => {
     loadRMAs();
   }, []);
 
-  // ✅ Lấy staffId của staff hiện tại (tùy chọn, có thể dùng để filter sau)
   const loadCurrentStaff = async () => {
     try {
       const staff = await fetchServiceStaff();
       const staffData = staff?.data?.data || staff?.data || staff;
       const staffId = staffData?.id;
       setCurrentStaffId(staffId);
-      console.log("Current staffId loaded:", staffId);
     } catch (error) {
-      console.error("Lỗi lấy staffId:", error);
     }
   };
 
@@ -48,20 +45,15 @@ const StaffDashboard = () => {
       const list = res?.rowDatas || res?.data?.rowDatas || (Array.isArray(res) ? res : []);
       setRmaData(list);
     } catch (error) {
-      console.error("Lỗi load RMA:", error);
     } finally {
       setRmaLoading(false);
     }
   };
 
-  // ✅ Hiển thị tất cả bookings của service center
-  // Có thể lọc theo approveById nếu cần, nhưng tạm thời hiển thị tất cả để dashboard có dữ liệu
+  
   const approvedBookings = Array.isArray(bookings) ? bookings : [];
   
-  // Debug log
-  console.log("StaffDashboard - Bookings loaded:", approvedBookings.length, "Current staffId:", currentStaffId);
 
-  // Tính toán thống kê (chỉ tính booking đã approve bởi staff này)
   const stats = {
     total: approvedBookings.length,
     pending: approvedBookings.filter(b => b.status === "PENDING").length,
@@ -71,26 +63,22 @@ const StaffDashboard = () => {
     canceled: approvedBookings.filter(b => b.status === "CANCELED").length,
   };
 
-  // Booking hôm nay (chỉ booking đã approve)
   const today = dayjs().startOf("day");
   const todayBookings = approvedBookings.filter(b => {
     const bookingDate = dayjs(b.appointmentDate);
     return bookingDate.isSame(today, "day");
   });
 
-  // Booking sắp tới (trong 7 ngày tới, chỉ booking đã approve)
   const next7Days = dayjs().add(7, "day");
   const upcomingBookings = approvedBookings.filter(b => {
     const bookingDate = dayjs(b.appointmentDate);
     return bookingDate.isAfter(today) && bookingDate.isBefore(next7Days);
   });
 
-  // RMA đang xử lý
   const pendingRMAs = rmaData.filter(rma => 
     rma.status === "PENDING" || rma.status === "IN_PROGRESS"
   ).length;
 
-  // Booking gần đây (5 booking mới nhất, chỉ booking đã approve)
   const recentBookings = [...approvedBookings]
     .sort((a, b) => dayjs(b.createdAt || b.appointmentDate).diff(dayjs(a.createdAt || a.appointmentDate)))
     .slice(0, 5);
@@ -157,7 +145,7 @@ const StaffDashboard = () => {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
+      
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2 flex items-center gap-3" style={{ color: "#ff4d4f" }}>
           <LayoutDashboard className="h-8 w-8" />
@@ -166,7 +154,7 @@ const StaffDashboard = () => {
         <p className="text-muted-foreground">Tổng quan hoạt động của trung tâm dịch vụ</p>
       </div>
 
-      {/* Stats Cards */}
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <Statistic
@@ -205,7 +193,7 @@ const StaffDashboard = () => {
         </Card>
       </div>
 
-      {/* Secondary Stats */}
+      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <Statistic
@@ -235,7 +223,7 @@ const StaffDashboard = () => {
         </Card>
       </div>
 
-      {/* Status Breakdown */}
+      
       <Card title={
         <Space>
           <Activity style={{ color: "#ff4d4f" }} />
@@ -272,7 +260,7 @@ const StaffDashboard = () => {
         </div>
       </Card>
 
-      {/* Recent Bookings */}
+      
       <Card 
         title={
           <Space>

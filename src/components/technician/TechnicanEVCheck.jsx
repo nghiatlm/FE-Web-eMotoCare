@@ -52,7 +52,6 @@ export default function TechnicianEVCheckDrawer({
       status: d.status,
     }));
 
-    console.log("📤 Payload gửi lên BE (evcheck_detail):", payload);
 
     message.loading("Đang gửi dữ liệu kiểm tra...");
     setTimeout(() => {

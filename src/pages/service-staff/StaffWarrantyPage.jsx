@@ -1,4 +1,3 @@
-// src/pages/staff/StaffWarrantyPage.jsx
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Table, Tag, Button, Select, Input, Card } from "antd";
@@ -19,7 +18,6 @@ export default function StaffWarrantyPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [search, setSearch] = useState("");
 
-  // ================== LOAD DATA LIST RMA ==================
   const loadRMAList = async () => {
     setLoading(true);
     try {
@@ -32,14 +30,12 @@ export default function StaffWarrantyPage() {
 
       if (!Array.isArray(list)) list = [];
 
-      // Gắn thêm customer cho từng RMA
       const enriched = await Promise.all(
         list.map(async (rma) => {
           try {
             const customer = await getCustomerByRMAService(rma.id);
             return { ...rma, customer };
           } catch (e) {
-            console.error("Không load được customer cho RMA", rma.id, e);
             return rma;
           }
         })
@@ -47,7 +43,6 @@ export default function StaffWarrantyPage() {
 
       setRmaList(enriched);
     } catch (err) {
-      console.error("❌ Lỗi khi tải danh sách RMA:", err);
     } finally {
       setLoading(false);
     }
@@ -57,7 +52,6 @@ export default function StaffWarrantyPage() {
     loadRMAList();
   }, []);
 
-  // ================== FILTER ==================
   const filteredData = useMemo(() => {
     return (rmaList || []).filter((item) => {
       const matchStatus = statusFilter
@@ -81,12 +75,10 @@ export default function StaffWarrantyPage() {
     });
   }, [rmaList, statusFilter, search]);
 
-  // ================== ACTION: XEM CHI TIẾT ==================
   const handleViewDetail = (record) => {
     navigate(`/staff/warranty/${record.id}`);
   };
 
-  // ================== TABLE ==================
   const columns = [
     {
       title: "STT",
@@ -195,17 +187,16 @@ export default function StaffWarrantyPage() {
     },
   ];
 
-  // ================== RENDER ==================
   return (
     <div style={{ padding: 24, width: "100%", margin: "0 auto" }}>
-      {/* ✅ HEADER */}
+      
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#ff4d4f", display: "flex", alignItems: "center", gap: 12 }}>
           Danh sách phiếu bảo hành 
         </h2>
       </div>
 
-      {/* ✅ FILTER CARD */}
+      
       <Card
         style={{ marginBottom: 24, borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
         headStyle={{ 
@@ -221,7 +212,7 @@ export default function StaffWarrantyPage() {
           gap: "20px",
           alignItems: "end"
         }}>
-          {/* Trạng thái */}
+          
           <div>
             <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 500, color: "#595959" }}>
               Trạng thái
@@ -242,7 +233,7 @@ export default function StaffWarrantyPage() {
             </Select>
           </div>
 
-          {/* Tìm kiếm */}
+          
           <div>
             <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 500, color: "#595959" }}>
               Tìm kiếm
@@ -258,7 +249,7 @@ export default function StaffWarrantyPage() {
             />
           </div>
 
-          {/* Nút Reset */}
+          
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "flex-start" }}>
             <div
               onClick={() => {
@@ -291,7 +282,7 @@ export default function StaffWarrantyPage() {
         </div>
       </Card>
 
-      {/* TABLE LIST RMA */}
+      
       <Table
         columns={columns}
         dataSource={filteredData}

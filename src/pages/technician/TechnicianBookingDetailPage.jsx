@@ -1,4 +1,3 @@
-// src/pages/technician/TechnicianBookingDetailPage.jsx
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import RepairModeEVCheck from "../../components/technician/detail-content/RepairModeEVCheck";
@@ -16,7 +15,6 @@ import { toast } from "react-toastify";
 import { ArrowLeft, Car, Hash, Palette, Calendar, Wrench, Clock, Building, User } from "lucide-react";
 const { Text } = Typography;
 
-// ✅ Hàm dịch màu sắc từ tiếng Anh sang tiếng Việt
 const translateColor = (color) => {
   if (!color) return "";
   const colorUpper = String(color).trim().toUpperCase();
@@ -55,10 +53,8 @@ export default function TechnicianBookingDetailPage({
   const navigate = useNavigate();
   const { data, loading: bookingsLoading } = useBookings();
   
-  // ✅ Lấy bookingId từ params hoặc props
   const bookingId = propBookingId || params.id;
   
-  // ✅ Tìm booking từ danh sách đã có
   const booking = data.find(b => b.id === bookingId);
   
   const [loading, setLoading] = useState(false);
@@ -74,13 +70,11 @@ export default function TechnicianBookingDetailPage({
   const isWarranty = (booking?.type || "").toUpperCase() === "WARRANTY_TYPE";
   const isCampaign = (booking?.type || "").toUpperCase() === "CAMPAIGN_TYPE";
 
-  // LẤY SỐ KHUNG TỪ BOOKING.VEHICLE → TỰ ĐỘNG XÁC NHẬN
   const chassisNumber = booking?.vehicle?.chassisNumber || "";
   const chassisConfirmed = !!chassisNumber;
 
-  // ======== LOAD EV CHECK ========
   useEffect(() => {
-    if (!booking) return; // ✅ Đợi booking có trước
+    if (!booking) return;
     
     if (initialEVCheckId) {
       setEvCheckId(initialEVCheckId);
@@ -117,21 +111,16 @@ export default function TechnicianBookingDetailPage({
             setEvCheckId(checkId);
             if (checkStatus) setEvCheckStatus(checkStatus);
 
-            // ✅ Kiểm tra odometer: nếu là số thì > 0, nếu là string thì không rỗng
             const hasKm =
               typeof odometerValue === "number"
                 ? odometerValue > 0
                 : !!odometerValue;
 
-            // ✅ Chỉ set hasOdometer = false nếu thực sự chưa có odometer
-            // Nếu đã từng có odometer (km state đã có giá trị) thì giữ nguyên
             setHasOdometer(hasKm || (km && km.trim() !== ""));
             
-            // ✅ Chỉ set km nếu có odometerValue từ API, không reset nếu đã có giá trị
             if (hasKm && odometerValue != null) {
               setKm(String(odometerValue));
             } else if (!km || km.trim() === "") {
-              // Chỉ reset km nếu chưa có giá trị
               setKm("");
             }
           } else {
@@ -145,7 +134,6 @@ export default function TechnicianBookingDetailPage({
             }
           }
         } catch (err) {
-          console.error("Lỗi tải EV Check:", err);
           toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tải EV Check!"));
         } finally {
           setLoading(false);
@@ -154,10 +142,9 @@ export default function TechnicianBookingDetailPage({
 
       loadData();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [booking, initialEVCheckId, refreshKey]);
 
-  // ======== CẬP NHẬT KM (Maintenance) – CHỈ DÙNG CHO TECHNICIAN =========
   const handleSendKm = async () => {
     if (!km && km !== 0) return toast.error("Vui lòng nhập số KM!");
     const odometerNumber = Number(km);
@@ -183,7 +170,6 @@ export default function TechnicianBookingDetailPage({
       setHasOdometer(true);
       setRefreshKey((prev) => prev + 1);
     } catch (err) {
-      console.error("Lỗi cập nhật KM:", err);
       toast.dismiss(loadingToast);
       toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể cập nhật số KM!"));
     } finally {
@@ -191,7 +177,6 @@ export default function TechnicianBookingDetailPage({
     }
   };
 
-  // ✅ Hiển thị loading khi đang load dữ liệu
   if (bookingsLoading || loading) {
     return (
       <div style={{ padding: 24, display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
@@ -200,7 +185,6 @@ export default function TechnicianBookingDetailPage({
     );
   }
 
-  // ✅ Chỉ hiển thị "Không tìm thấy" khi đã load xong mà không có dữ liệu
   if (!booking) {
     return (
       <div style={{ padding: 24 }}>
@@ -224,7 +208,7 @@ export default function TechnicianBookingDetailPage({
 
   return (
     <div style={{ padding: 24, width: "100%" }}>
-      {/* Header */}
+      
       <div style={{ marginBottom: 24, display: "flex", alignItems: "center", gap: 16 }}>
         <Button
           icon={<ArrowLeft size={16} />}
@@ -244,7 +228,7 @@ export default function TechnicianBookingDetailPage({
         </h2>
       </div>
 
-      {/* THÔNG TIN CHUNG */}
+      
       <Card
         style={{ 
           marginBottom: 24, 
@@ -268,7 +252,6 @@ export default function TechnicianBookingDetailPage({
           Thông tin chung
         </h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "24px 32px" }}>
-          {/* Cột trái */}
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
               <Space size={8}>
@@ -310,7 +293,7 @@ export default function TechnicianBookingDetailPage({
             </div>
           </div>
           
-          {/* Cột phải */}
+          
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
               <Space size={8}>
@@ -402,7 +385,7 @@ export default function TechnicianBookingDetailPage({
         </div>
       </Card>
 
-      {/* THÔNG TIN PHƯƠNG TIỆN */}
+      
       {booking.vehicle && (
         <Card
           style={{ 
@@ -427,7 +410,7 @@ export default function TechnicianBookingDetailPage({
             </div>
           }>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "24px 32px" }}>
-            {/* Cột trái - 2 trường */}
+            
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {(booking.vehicle.modelName || booking.vehicle.model?.name) && (
                 <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
@@ -458,7 +441,7 @@ export default function TechnicianBookingDetailPage({
               )}
             </div>
             
-            {/* Cột phải - 2 trường */}
+            
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {chassisNumber && (
                 <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
@@ -510,7 +493,7 @@ export default function TechnicianBookingDetailPage({
         </Card>
       )}
 
-      {/* ==== NHẬP KM – CHỈ KỸ THUẬT VIÊN THẤY (readOnly = false) ==== */}
+      
       {isMaintenance && 
        evCheckId && 
        !hasOdometer && 
@@ -552,7 +535,7 @@ export default function TechnicianBookingDetailPage({
         </Card>
       )}
 
-      {/* NẾU MAINTENANCE MÀ CHƯA CÓ EVCheckID LUÔN */}
+      
       {isMaintenance && !evCheckId && (
         <Card
           style={{ marginBottom: 24, borderRadius: 8 }}
@@ -564,7 +547,7 @@ export default function TechnicianBookingDetailPage({
         </Card>
       )}
 
-      {/* NỘI DUNG CHÍNH */}
+      
       {loading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
           <Spin />
@@ -576,7 +559,7 @@ export default function TechnicianBookingDetailPage({
           <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: UI_COLORS.PRIMARY_RED_DARK, borderBottom: `1px solid ${UI_COLORS.BORDER_LIGHT}`, paddingBottom: 12 }}>
             Phiếu sửa chữa
           </h3>
-          {/* ✅ Kiểm tra note: nếu có "lịch thay" và "rma" thì dùng RMARepairModeEVCheck */}
+          
           {(() => {
             const note = (booking?.note || "").toLowerCase();
             const isRMABooking = note.includes("lịch thay") && note.includes("rma");
