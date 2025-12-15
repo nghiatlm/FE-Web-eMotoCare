@@ -62,7 +62,7 @@ export default function BookingDetailDrawer({
   const [currentEVCheckId, setCurrentEVCheckId] = useState(null);
   const [showTechnicianDrawer, setShowTechnicianDrawer] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [checkinCodeInput, setCheckinCodeInput] = useState(""); // ✅ Mã appointment nhập vào để check-in
+  const [checkinCodeInput, setCheckinCodeInput] = useState("");
 
   const status = booking?.status?.toUpperCase();
 
@@ -72,13 +72,11 @@ export default function BookingDetailDrawer({
 
       try {
         setLoadingTechs(true);
-        // ✅ Lấy serviceCenterId từ booking hoặc từ user
         const serviceCenterId = 
           booking?.serviceCenterId || 
           booking?.serviceCenter?.id ||
           null;
         
-        // ✅ Nếu không có từ booking, lấy từ user
         if (!serviceCenterId) {
           const user = JSON.parse(localStorage.getItem("user") || "{}");
           const userServiceCenterId = 
@@ -151,7 +149,6 @@ export default function BookingDetailDrawer({
 
       toast.success("Đã gán kỹ thuật viên và tạo EVCheck!");
     } catch (error) {
-      console.error("Lỗi gán kỹ thuật viên:", error);
       toast.error((error?.response?.data?.message || error?.data?.message || error?.message || "Không thể gán kỹ thuật viên!"));
     }
   };
@@ -172,20 +169,17 @@ export default function BookingDetailDrawer({
     }
   };
 
-  /* ------------ MANUAL CHECK-IN BUTTON ------------ */
   const handleManualCheckIn = async () => {
     if (!booking.checkinQRCode) {
       toast.error("Lịch hẹn chưa có mã QR check-in!");
       return;
     }
 
-    // ✅ Validate mã appointment nhập vào
     if (!checkinCodeInput || checkinCodeInput.trim() === "") {
       toast.error("Vui lòng nhập mã lịch hẹn để check-in!");
       return;
     }
 
-    // ✅ Kiểm tra mã có khớp với mã booking không
     if (checkinCodeInput.trim().toUpperCase() !== booking.code?.toUpperCase()) {
       toast.error("Mã lịch hẹn không khớp! Vui lòng kiểm tra lại.");
       return;
@@ -195,16 +189,13 @@ export default function BookingDetailDrawer({
       await changeAppointmentStatusService(booking.id, "CHECKED_IN", {
         code: booking.code,
         checkinQRCode: booking.checkinQRCode,
-        // Không gửi approveById
-        // Không gửi note
       });
 
       toast.success("Check-in thành công!");
       onUpdateStatus?.(booking.id, "CHECKED_IN");
-      setCheckinCodeInput(""); // ✅ Reset input sau khi check-in thành công
+      setCheckinCodeInput("");
       onClose();
     } catch (error) {
-      console.error("Lỗi check-in:", error);
       toast.error((error?.response?.data?.message || error?.data?.message || error?.message || "Check-in thất bại!"));
     }
   };
@@ -229,7 +220,6 @@ export default function BookingDetailDrawer({
         onClose={onClose}
         bodyStyle={{ background: "#fff7f3", paddingBottom: 80 }}>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          {/* GENERAL INFO */}
           <section className='bg-white rounded-2xl shadow-md p-5 mb-6 border'>
             <h3 className='font-semibold mb-3 border-b pb-2 text-[#d4380d]'>
               Thông tin chung
@@ -252,7 +242,6 @@ export default function BookingDetailDrawer({
             </div>
           </section>
 
-          {/* QR CODE DISPLAY */}
           {status === "APPROVED" && booking.checkinQRCode && (
             <section className='bg-white rounded-2xl shadow-md p-5 mb-6 border'>
               <h3 className='font-semibold mb-3 border-b pb-2 text-[#d4380d]'>
@@ -267,7 +256,6 @@ export default function BookingDetailDrawer({
                 Khách dùng mã này để thực hiện check-in tại quầy.
               </p>
 
-              {/* MANUAL CHECK-IN BUTTON */}
               <div className='mt-6 flex flex-col gap-4 items-center'>
                 <div className='w-full max-w-md'>
                   <Input
@@ -293,7 +281,6 @@ export default function BookingDetailDrawer({
             </section>
           )}
 
-          {/* ASSIGN TECHNICIAN */}
           {status === "CHECKED_IN" && !booking.technician && (
             <section style={{ 
               marginBottom: 24, 
@@ -408,7 +395,7 @@ export default function BookingDetailDrawer({
             )}
           </section>
 
-          {/* Thông tin thanh toán - hiển thị khi có EVCheck và status phù hợp */}
+          
           {(status === "REPAIR_COMPLETED" || status === "COMPLETED" || status === "QUOTE_APPROVED") && booking.technician && (
             <div className='mb-6'>
               <PaymentInfo
@@ -420,7 +407,7 @@ export default function BookingDetailDrawer({
 
           <Divider />
 
-          {/* ACTION BUTTONS */}
+          
           <div className='flex gap-3 justify-end'>
             {status === "PENDING" && (
               <>
@@ -462,7 +449,7 @@ export default function BookingDetailDrawer({
         open={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
         booking={booking}
-        // onPaymentSuccess={() => handleChangeStatus("COMPLETED")}
+
       />
     </>
   );

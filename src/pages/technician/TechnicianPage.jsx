@@ -21,8 +21,6 @@ const TechnicianPage = () => {
   const [phoneFilter, setPhoneFilter] = useState("");
   const [codeFilter, setCodeFilter] = useState("");
 
-  // ✅ Lấy staff_id từ localStorage (khi đăng nhập backend sẽ lưu vào token/localStorage)
-  // ✅ Lấy staffId đúng cách
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const staffId = user?.accountResponse?.id;
 
@@ -66,14 +64,14 @@ const TechnicianPage = () => {
 
   return (
     <div style={{ padding: 24, width: "100%", maxWidth: "100%", margin: "0 auto", overflowX: "hidden", transform: "scale(1)", zoom: 1 }}>
-      {/* ✅ HEADER */}
+      
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#ff4d4f", display: "flex", alignItems: "center", gap: 12 }}>
           Danh sách được phân công
         </h2>
       </div>
 
-      {/* ✅ FILTER CARD */}
+      
       <Card
         style={{ marginBottom: 24, borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
         headStyle={{ 
@@ -89,7 +87,7 @@ const TechnicianPage = () => {
           gap: "20px",
           alignItems: "end"
         }}>
-          {/* Trạng thái */}
+          
           <div>
             <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 500, color: "#595959" }}>
               Trạng thái
@@ -107,7 +105,7 @@ const TechnicianPage = () => {
             </Select>
           </div>
 
-          {/* Loại dịch vụ */}
+          
           <div>
             <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 500, color: "#595959" }}>
               Loại dịch vụ
@@ -127,7 +125,7 @@ const TechnicianPage = () => {
             </Select>
           </div>
 
-          {/* Số điện thoại */}
+          
           <div>
             <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 500, color: "#595959" }}>
               Số điện thoại
@@ -143,7 +141,7 @@ const TechnicianPage = () => {
             />
           </div>
 
-          {/* Mã booking */}
+          
           <div>
             <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 500, color: "#595959" }}>
               Mã booking
@@ -159,7 +157,7 @@ const TechnicianPage = () => {
             />
           </div>
 
-          {/* Nút Reset */}
+          
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "flex-start" }}>
             <div
               onClick={() => {
@@ -195,7 +193,7 @@ const TechnicianPage = () => {
         </div>
       </Card>
 
-      {/* ✅ Tabs */}
+      
       <Card
         style={{ marginBottom: 24, borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
         bodyStyle={{ padding: "8px 16px" }}>
@@ -217,7 +215,7 @@ const TechnicianPage = () => {
         />
       </Card>
 
-      {/* Booking Table */}
+      
       <BookingTable
         data={getFilteredData(data)}
         loading={loading}
@@ -225,7 +223,7 @@ const TechnicianPage = () => {
         onShowQR={handleShowQR}
       />
 
-      {/* QR Modal */}
+      
       <Modal
         title={qrRecord ? `QR Check-in — ${qrRecord.code}` : "QR Check-in"}
         open={openQRModal}

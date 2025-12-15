@@ -1,4 +1,4 @@
-// src/components/technician/TechnicianBookingDetailDrawer.jsx
+
 import { useState, useEffect } from "react";
 import RepairModeEVCheck from "./detail-content/RepairModeEVCheck";
 import RMARepairModeEVCheck from "./detail-content/RMARepairModeEVCheck";
@@ -21,8 +21,8 @@ export default function TechnicianBookingDetailDrawer({
   open,
   onClose,
   initialEVCheckId,
-  readOnly = false, // staff sẽ truyền readOnly = true
-  onViewBatteryDetail = null, // ✅ Callback để hiển thị battery detail trên page chính (cho staff)
+  readOnly = false,
+  onViewBatteryDetail = null,
 }) {
   const [loading, setLoading] = useState(false);
   const [km, setKm] = useState("");
@@ -37,11 +37,11 @@ export default function TechnicianBookingDetailDrawer({
   const isWarranty = (booking?.type || "").toUpperCase() === "WARRANTY_TYPE";
   const isCampaign = (booking?.type || "").toUpperCase() === "CAMPAIGN_TYPE";
 
-  // LẤY SỐ KHUNG TỪ BOOKING.VEHICLE → TỰ ĐỘNG XÁC NHẬN
+
   const chassisNumber = booking?.vehicle?.chassisNumber || "";
   const chassisConfirmed = !!chassisNumber;
 
-  // ======== LOAD EV CHECK ========
+
   useEffect(() => {
     if (!open) {
       setKm("");
@@ -88,21 +88,21 @@ export default function TechnicianBookingDetailDrawer({
             setEvCheckId(checkId);
             if (checkStatus) setEvCheckStatus(checkStatus);
 
-            // ✅ Kiểm tra odometer: nếu là số thì > 0, nếu là string thì không rỗng
+
             const hasKm =
               typeof odometerValue === "number"
                 ? odometerValue > 0
                 : !!odometerValue;
 
-            // ✅ Chỉ set hasOdometer = false nếu thực sự chưa có odometer
-            // Nếu đã từng có odometer (km state đã có giá trị) thì giữ nguyên
+
+
             setHasOdometer(hasKm || (km && km.trim() !== ""));
             
-            // ✅ Chỉ set km nếu có odometerValue từ API, không reset nếu đã có giá trị
+
             if (hasKm && odometerValue != null) {
               setKm(String(odometerValue));
             } else if (!km || km.trim() === "") {
-              // Chỉ reset km nếu chưa có giá trị
+
               setKm("");
             }
           } else {
@@ -116,7 +116,6 @@ export default function TechnicianBookingDetailDrawer({
             }
           }
         } catch (err) {
-          console.error("Lỗi tải EV Check:", err);
           toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tải EV Check!"));
         } finally {
           setLoading(false);
@@ -125,10 +124,10 @@ export default function TechnicianBookingDetailDrawer({
 
       loadData();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [open, booking?.id, initialEVCheckId, refreshKey]);
 
-  // ======== CẬP NHẬT KM (Maintenance) – CHỈ DÙNG CHO TECHNICIAN =========
+
   const handleSendKm = async () => {
     if (!km && km !== 0) return toast.error("Vui lòng nhập số KM!");
     const odometerNumber = Number(km);
@@ -154,7 +153,6 @@ export default function TechnicianBookingDetailDrawer({
       setHasOdometer(true);
       setRefreshKey((prev) => prev + 1);
     } catch (err) {
-      console.error("Lỗi cập nhật KM:", err);
       toast.dismiss(loadingToast);
       toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể cập nhật số KM!"));
     } finally {
@@ -177,14 +175,14 @@ export default function TechnicianBookingDetailDrawer({
       open={open}
       onClose={onClose}
       bodyStyle={{ paddingBottom: 80 }}>
-      {/* THÔNG TIN CHUNG */}
+      
       <section className='bg-white rounded-xl shadow p-5 mb-6 border border-orange-200'>
         <h3 className='font-semibold text-base mb-3 border-b pb-2 text-orange-600'>
           Thông tin chung
         </h3>
         <div className='grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700'>
           <p>
-            <strong>Mã lịch hẹn:</strong> {booking.code || "—"}
+            <strong>Mã lịch hẹn:</strong> {booking.code || ""}
           </p>
           <p>
             <strong>Khách hàng:</strong> {booking.customer?.firstName}{" "}
@@ -216,7 +214,7 @@ export default function TechnicianBookingDetailDrawer({
                 ? "Bảo hành"
                 : isCampaign
                 ? "Chiến dịch"
-                : "—"}
+                : ""}
             </span>
           </p>
           {isRepair && chassisNumber && (
@@ -230,8 +228,8 @@ export default function TechnicianBookingDetailDrawer({
         </div>
       </section>
 
-      {/* ==== NHẬP KM – CHỈ KỸ THUẬT VIÊN THẤY (readOnly = false) ==== */}
-      {/* ✅ Chỉ hiển thị khi: maintenance + có evCheckId + chưa có odometer + chưa ở trạng thái REPAIR_IN_PROGRESS hoặc các trạng thái sau */}
+      
+      
       {isMaintenance && 
        evCheckId && 
        !hasOdometer && 
@@ -264,7 +262,7 @@ export default function TechnicianBookingDetailDrawer({
         </section>
       )}
 
-      {/* NẾU MAINTENANCE MÀ CHƯA CÓ EVCheckID LUÔN */}
+      
       {isMaintenance && !evCheckId && (
         <section className='bg-white p-5 border border-orange-200 rounded-xl mb-6'>
           <p className='text-gray-500 italic'>
@@ -274,7 +272,7 @@ export default function TechnicianBookingDetailDrawer({
         </section>
       )}
 
-      {/* NỘI DUNG CHÍNH */}
+      
       {loading ? (
         <div className='flex justify-center p-10'>
           <Spin />
@@ -284,7 +282,7 @@ export default function TechnicianBookingDetailDrawer({
           <h3 className='font-semibold text-base mb-3 border-b pb-2 text-orange-600'>
             Phiếu sửa chữa
           </h3>
-          {/* ✅ Kiểm tra note: nếu có "lịch thay" và "rma" thì dùng RMARepairModeEVCheck */}
+          
           {(() => {
             const note = (booking?.note || "").toLowerCase();
             const isRMABooking = note.includes("lịch thay") && note.includes("rma");
@@ -305,7 +303,7 @@ export default function TechnicianBookingDetailDrawer({
                 onRefresh={() => setRefreshKey((prev) => prev + 1)}
                 readOnly={readOnly}
                 forceEmpty={!evCheckId}
-                onViewBatteryDetail={onViewBatteryDetail} // ✅ Truyền callback xuống RepairModeEVCheck
+                onViewBatteryDetail={onViewBatteryDetail}
               />
             );
           })()}
@@ -325,7 +323,7 @@ export default function TechnicianBookingDetailDrawer({
             forceEmpty={!evCheckId}
           />
         </section>
-      ) : isMaintenance && evCheckId && (hasOdometer || readOnly) ? ( // 🔴 staff (readOnly) vẫn được xem bảng dù hasOdometer = false
+      ) : isMaintenance && evCheckId && (hasOdometer || readOnly) ? (
         <section className='bg-white rounded-xl shadow p-5 border border-orange-200'>
           <h3 className='font-semibold text-base mb-3 border-b pb-2 text-orange-600'>
             {evCheckStatus === "REPAIR_IN_PROGRESS"

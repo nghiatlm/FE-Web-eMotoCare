@@ -61,14 +61,14 @@ const StaffBooking = () => {
 
   return (
     <div style={{ padding: 24, width: "100%", maxWidth: "100%", margin: "0 auto", overflowX: "hidden", transform: "scale(1)", zoom: 1 }}>
-      {/* ✅ HEADER */}
+      
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#ff4d4f", display: "flex", alignItems: "center", gap: 12 }}>
           Danh sách lịch hẹn
         </h2>
       </div>
 
-      {/* ✅ FILTER CARD */}
+      
       <Card
         style={{ marginBottom: 24, borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
         headStyle={{ 
@@ -84,7 +84,7 @@ const StaffBooking = () => {
           gap: "20px",
           alignItems: "end"
         }}>
-          {/* Trạng thái */}
+          
           <div>
             <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 500, color: "#595959" }}>
               Trạng thái
@@ -102,7 +102,7 @@ const StaffBooking = () => {
             </Select>
           </div>
 
-          {/* Loại dịch vụ */}
+          
           <div>
             <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 500, color: "#595959" }}>
               Loại dịch vụ
@@ -122,7 +122,7 @@ const StaffBooking = () => {
             </Select>
           </div>
 
-          {/* Số điện thoại */}
+          
           <div>
             <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 500, color: "#595959" }}>
               Số điện thoại
@@ -138,7 +138,7 @@ const StaffBooking = () => {
             />
           </div>
 
-          {/* Mã booking */}
+          
           <div>
             <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 500, color: "#595959" }}>
               Mã booking
@@ -154,7 +154,7 @@ const StaffBooking = () => {
             />
           </div>
 
-          {/* Nút Reset */}
+          
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "flex-start" }}>
             <div
               onClick={() => {
@@ -190,7 +190,7 @@ const StaffBooking = () => {
         </div>
       </Card>
 
-      {/* ✅ Tabs */}
+      
       <Card
         style={{ marginBottom: 24, borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
         bodyStyle={{ padding: "8px 16px" }}>
@@ -212,7 +212,7 @@ const StaffBooking = () => {
         />
       </Card>
 
-      {/* Table */}
+      
       <BookingTable
         data={getFilteredData(data)}
         loading={loading}
@@ -220,7 +220,7 @@ const StaffBooking = () => {
         onShowQR={handleShowQR}
       />
 
-      {/* QR Modal */}
+      
       <Modal
         title={qrRecord ? `QR Check-in — ${qrRecord.code}` : "QR Check-in"}
         open={openQRModal}

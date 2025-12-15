@@ -1,4 +1,3 @@
-// src/pages/login/Login.jsx
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
@@ -30,7 +29,14 @@ export default function Login() {
 
     try {
       const res = await login(email, password);
-      console.log("Đăng nhập thành công:", res);
+      const responseData = res?.data;
+      const isDataString = typeof responseData === 'string';
+      const hasOtpMessage = isDataString && responseData.toUpperCase().includes('OTP');
+      const user = res?.accountResponse ? res : (res?.data || res);
+      
+      if (!hasOtpMessage && user?.accountResponse) {
+        toast.success("Đăng nhập thành công!");
+      }
 
       if (rememberMe) {
         localStorage.setItem("rememberedEmail", email);
@@ -38,8 +44,6 @@ export default function Login() {
         localStorage.removeItem("rememberedEmail");
       }
     } catch (error) {
-      console.error("Login error:", error);
-      // Bắt lỗi từ backend: error có thể là { message, data: { message } } hoặc error.response.data
       const errorMessage = 
         error?.response?.data?.message || 
         error?.data?.message || 

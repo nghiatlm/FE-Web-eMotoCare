@@ -44,7 +44,6 @@ export function StaffSidebar() {
   const isCollapsed = state === "collapsed";
   const location = useLocation();
 
-  // ✅ Kiểm tra xem có phải route booking không (bao gồm cả submenu)
   const isBookingActive = (item) => {
     if (item.subItems) {
       return item.subItems.some((sub) => location.pathname === sub.url);
@@ -104,7 +103,6 @@ export function StaffSidebar() {
                 {section.items.map((item) => {
                   const isActive = isBookingActive(item);
 
-                  // ✅ Nếu có subItems, render submenu
                   if (item.subItems) {
                     return (
                       <SidebarMenuItem key={item.title}>
@@ -166,7 +164,6 @@ export function StaffSidebar() {
                     );
                   }
 
-                  // ✅ Nếu không có subItems, render như bình thường
                   return (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton

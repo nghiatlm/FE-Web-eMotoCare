@@ -24,7 +24,6 @@ function ForgotPassword() {
 
   return (
     <AuthLayout title='Quên mật khẩu'>
-      {/* Nhập email */}
       <div className='space-y-5'>
         <div>
           <label className='font-medium block mb-1'>Email</label>
@@ -37,7 +36,6 @@ function ForgotPassword() {
           />
         </div>
 
-        {/* Nút gửi OTP */}
         <button
           onClick={handleSendOtp}
           className='w-full px-4 py-2 text-white font-medium bg-red-600 hover:bg-red-500 active:bg-red-700 rounded-lg duration-150'>
@@ -51,7 +49,6 @@ function ForgotPassword() {
         </p>
       </div>
 
-      {/* Popup nhập OTP + đặt lại mật khẩu */}
       <Modal
         title='Nhập mã OTP'
         open={isModalOpen}
@@ -63,7 +60,6 @@ function ForgotPassword() {
             Mã OTP đã được gửi đến email của bạn.
           </p>
 
-          {/* OTP */}
           <input
             type='text'
             value={otp}
@@ -73,7 +69,6 @@ function ForgotPassword() {
             className='w-full border px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-red-500 border-gray-300 text-center tracking-widest text-lg font-semibold'
           />
 
-          {/* Mật khẩu mới */}
           <input
             type='password'
             value={newPassword}
@@ -82,7 +77,6 @@ function ForgotPassword() {
             className='w-full border px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-red-500 border-gray-300'
           />
 
-          {/* Nút xác nhận */}
           <button
             onClick={handleConfirm}
             className='w-full bg-red-600 hover:bg-red-500 active:bg-red-700 text-white py-2 rounded-lg font-semibold transition duration-150'>

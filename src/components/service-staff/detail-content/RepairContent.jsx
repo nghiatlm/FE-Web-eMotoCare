@@ -7,7 +7,7 @@ export default function RepairContent({ booking, onUpdateItem }) {
   useEffect(() => {
     const details = (booking?.details || []).map((d) => ({
       issue: d.issue ?? d.item ?? "Không xác định",
-      part: d.part ?? "—",
+      part: d.part ?? "",
       price: d.price ?? 0,
       note: d.note ?? "",
       done: !!d.done,

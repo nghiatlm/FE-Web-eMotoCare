@@ -1,4 +1,3 @@
-// src/pages/service-staff/StaffVehicleRepairHistoryPage.jsx
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Table, Tag, Button, Card, Spin, Empty, Space, Typography } from "antd";
@@ -19,7 +18,7 @@ import CampaignModeEVCheck from "../../components/technician/detail-content/Camp
 
 const { Text } = Typography;
 
-// ✅ Hàm dịch màu sắc từ tiếng Anh sang tiếng Việt
+
 const translateColor = (color) => {
   if (!color) return "";
   const colorUpper = String(color).trim().toUpperCase();
@@ -54,7 +53,6 @@ export default function StaffVehicleRepairHistoryPage() {
   const [evCheckStatus, setEvCheckStatus] = useState(null);
   const [loadingEVCheck, setLoadingEVCheck] = useState(false);
 
-  // ================== LOAD APPOINTMENTS ==================
   const loadAppointments = async () => {
     if (!vehicleId) return;
 
@@ -65,7 +63,6 @@ export default function StaffVehicleRepairHistoryPage() {
         pageSize: 1000,
       });
 
-      // ✅ Parse response
       let appointmentsList = [];
       if (Array.isArray(response)) {
         appointmentsList = response;
@@ -81,31 +78,26 @@ export default function StaffVehicleRepairHistoryPage() {
         appointmentsList = response.data.data.rowDatas;
       }
 
-      // ✅ Filter appointments của xe này và đã hoàn thành
       const vehicleAppointments = appointmentsList.filter(
         (apt) =>
           apt.vehicle?.id === vehicleId &&
           (apt.status === "COMPLETED" || apt.status === "REPAIR_COMPLETED")
       );
 
-      // ✅ Sắp xếp theo ngày (mới nhất trước)
       vehicleAppointments.sort((a, b) => {
         const dateA = new Date(a.appointmentDate || a.createdAt);
         const dateB = new Date(b.appointmentDate || b.createdAt);
         return dateB - dateA;
       });
 
-      // ✅ Lấy thông tin xe và khách hàng từ appointment đầu tiên
       if (vehicleAppointments.length > 0) {
         setVehicleInfo({
           vehicle: vehicleAppointments[0].vehicle,
           customer: vehicleAppointments[0].customer,
         });
         
-        // ✅ Tự động load thông tin đầy đủ của appointment đầu tiên (bao gồm EVCheck)
         const firstAppointmentId = vehicleAppointments[0].id;
         if (firstAppointmentId) {
-          // ✅ Load booking detail và EVCheck của appointment đầu tiên
           try {
             setLoadingBooking(true);
             setLoadingEVCheck(true);
@@ -115,14 +107,12 @@ export default function StaffVehicleRepairHistoryPage() {
             if (bookingData) {
               setSelectedBooking(bookingData);
               
-              // ✅ Load EVCheck details
               try {
                 const evCheck = await fetchEVCheckByAppointmentService(bookingData.id);
                 if (evCheck) {
-                  // ✅ Handle response format
                   let evCheckData = null;
                   if (Array.isArray(evCheck)) {
-                    evCheckData = evCheck[evCheck.length - 1]; // Lấy cái mới nhất
+                    evCheckData = evCheck[evCheck.length - 1];
                   } else if (evCheck?.data?.rowDatas && Array.isArray(evCheck.data.rowDatas)) {
                     evCheckData = evCheck.data.rowDatas[evCheck.data.rowDatas.length - 1];
                   } else if (evCheck?.rowDatas && Array.isArray(evCheck.rowDatas)) {
@@ -137,13 +127,11 @@ export default function StaffVehicleRepairHistoryPage() {
                   }
                 }
               } catch (evErr) {
-                console.error("❌ Lỗi khi tự động load EVCheck đầu tiên:", evErr);
               } finally {
                 setLoadingEVCheck(false);
               }
             }
           } catch (err) {
-            console.error("❌ Lỗi khi tự động load booking đầu tiên:", err);
           } finally {
             setLoadingBooking(false);
           }
@@ -152,7 +140,6 @@ export default function StaffVehicleRepairHistoryPage() {
 
       setAppointments(vehicleAppointments);
     } catch (err) {
-      console.error("❌ Lỗi khi tải lịch sử sửa chữa:", err);
       toast.error(
         err?.response?.data?.message ||
           err?.message ||
@@ -167,9 +154,7 @@ export default function StaffVehicleRepairHistoryPage() {
     loadAppointments();
   }, [vehicleId]);
 
-  // ================== HANDLE VIEW DETAIL ==================
   const handleViewDetail = async (appointmentId) => {
-    // ✅ Nếu đang xem booking này rồi thì ẩn đi
     if (selectedBooking?.id === appointmentId) {
       setSelectedBooking(null);
       setCurrentEVCheckId(null);
@@ -181,19 +166,16 @@ export default function StaffVehicleRepairHistoryPage() {
     setLoadingEVCheck(true);
     try {
       const res = await getAppointmentById(appointmentId);
-      // ✅ Parse response giống như StaffBookingDetailPage
       const bookingData = res?.data?.data || res?.data || res;
       if (bookingData) {
         setSelectedBooking(bookingData);
         
-        // ✅ Load EVCheck details
         try {
           const evCheck = await fetchEVCheckByAppointmentService(bookingData.id);
           if (evCheck) {
-            // ✅ Handle response format
             let evCheckData = null;
             if (Array.isArray(evCheck)) {
-              evCheckData = evCheck[evCheck.length - 1]; // Lấy cái mới nhất
+              evCheckData = evCheck[evCheck.length - 1];
             } else if (evCheck?.data?.rowDatas && Array.isArray(evCheck.data.rowDatas)) {
               evCheckData = evCheck.data.rowDatas[evCheck.data.rowDatas.length - 1];
             } else if (evCheck?.rowDatas && Array.isArray(evCheck.rowDatas)) {
@@ -208,13 +190,11 @@ export default function StaffVehicleRepairHistoryPage() {
             }
           }
         } catch (evErr) {
-          console.error("❌ Lỗi khi tải EVCheck:", evErr);
         }
       } else {
         toast.error("Không tìm thấy thông tin booking");
       }
     } catch (err) {
-      console.error("❌ Lỗi khi tải thông tin booking:", err);
       toast.error("Không thể tải thông tin chi tiết");
     } finally {
       setLoadingBooking(false);
@@ -222,7 +202,6 @@ export default function StaffVehicleRepairHistoryPage() {
     }
   };
 
-  // ================== TABLE COLUMNS ==================
   const columns = [
     {
       title: "STT",
@@ -247,7 +226,7 @@ export default function StaffVehicleRepairHistoryPage() {
       width: 120,
       render: (_, record) => {
         const date = record.appointmentDate || record.createdAt;
-        return date ? dayjs(date).format("DD/MM/YYYY") : "—";
+        return date ? dayjs(date).format("DD/MM/YYYY") : "";
       },
     },
     {
@@ -256,7 +235,7 @@ export default function StaffVehicleRepairHistoryPage() {
       key: "slotTime",
       width: 100,
       render: (slot) => {
-        if (!slot) return "—";
+        if (!slot) return "";
         const [start, end] = slot.replace("H", "").split("_");
         return `${start}:00-${end}:00`;
       },
@@ -311,7 +290,7 @@ export default function StaffVehicleRepairHistoryPage() {
           borderRadius: 12,
           boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
         }}>
-        {/* Header */}
+        
         <div style={{ marginBottom: 24 }}>
           <Button
             icon={<ArrowLeft size={16} />}
@@ -347,10 +326,10 @@ export default function StaffVehicleRepairHistoryPage() {
             </div>
           </div>
 
-          {/* Thông tin khách hàng và xe - Cards */}
+          
           {vehicleInfo && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 24, marginBottom: 24 }}>
-              {/* Card Thông tin khách hàng */}
+              
               {vehicleInfo.customer && (
                 <Card
                   style={{ 
@@ -385,7 +364,7 @@ export default function StaffVehicleRepairHistoryPage() {
                         </Text>
                       </Space>
                       <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
-                        {vehicleInfo.customer.account?.phone || vehicleInfo.customer.phoneNumber || vehicleInfo.customer.phone || "—"}
+                        {vehicleInfo.customer.account?.phone || vehicleInfo.customer.phoneNumber || vehicleInfo.customer.phone || ""}
                       </Text>
                     </div>
                     
@@ -397,14 +376,14 @@ export default function StaffVehicleRepairHistoryPage() {
                         </Text>
                       </Space>
                       <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
-                        {vehicleInfo.customer.account?.email || vehicleInfo.customer.email || "—"}
+                        {vehicleInfo.customer.account?.email || vehicleInfo.customer.email || ""}
                       </Text>
                     </div>
                   </div>
                 </Card>
               )}
 
-              {/* Card Thông tin phương tiện */}
+              
               {vehicleInfo.vehicle && (
                 <Card
                   style={{ 
@@ -479,7 +458,7 @@ export default function StaffVehicleRepairHistoryPage() {
           )}
         </div>
 
-        {/* Table */}
+        
         {loading ? (
           <div style={{ textAlign: "center", padding: "40px 0" }}>
             <Spin size="large" />
@@ -503,7 +482,7 @@ export default function StaffVehicleRepairHistoryPage() {
           />
         )}
 
-        {/* ✅ Hiển thị bảng chi tiết hạng mục sửa chữa và thông tin thanh toán khi bấm Xem */}
+        
         {selectedBooking && (
           <div style={{ marginTop: 24 }}>
             {loadingBooking || loadingEVCheck ? (
@@ -512,7 +491,7 @@ export default function StaffVehicleRepairHistoryPage() {
               </div>
             ) : (
               <>
-                {/* ✅ Bảng phiếu sửa chữa (EVCheck) */}
+                
                 {currentEVCheckId && (
                   <Card
                     style={{
@@ -602,14 +581,11 @@ export default function StaffVehicleRepairHistoryPage() {
                   </Card>
                 )}
 
-                {/* ✅ Thông tin thanh toán */}
                 {currentEVCheckId && (
                   <div style={{ marginBottom: 24 }}>
                     {selectedBooking.status === "COMPLETED" ? (
-                      // ✅ Đã hoàn thành: Hiển thị lịch sử thanh toán
                       <PaymentHistory booking={selectedBooking} />
                     ) : (selectedBooking.status === "REPAIR_COMPLETED" || selectedBooking.status === "QUOTE_APPROVED") ? (
-                      // ✅ Chưa hoàn thành: Hiển thị thông tin thanh toán
                       <PaymentInfo booking={selectedBooking} />
                     ) : null}
                   </div>

@@ -8,7 +8,6 @@ export default function VerifyOTP() {
   const [email, setEmail] = useState("");
 
   useEffect(() => {
-    // Lấy email từ location state, query params, hoặc localStorage
     const emailFromState = location.state?.email;
     const emailFromQuery = new URLSearchParams(location.search).get("email");
     const emailFromStorage = localStorage.getItem("pendingEmail");
@@ -22,14 +21,12 @@ export default function VerifyOTP() {
     } else if (emailFromStorage) {
       setEmail(emailFromStorage);
     }
-    // Nếu không có email, vẫn hiển thị trang để người dùng có thể nhập email
   }, [location]);
 
 
   return (
     <AuthLayout title='Xác nhận email'>
       <div className='space-y-6'>
-        {/* Thông báo đã gửi email */}
         <div className='text-center space-y-4'>
           <div className='flex justify-center'>
             <div className='w-16 h-16 rounded-full bg-red-100 flex items-center justify-center'>
@@ -52,7 +49,6 @@ export default function VerifyOTP() {
           </div>
         </div>
 
-        {/* Link quay lại */}
         <div className='text-center pt-2'>
           <Link
             to='/login'
