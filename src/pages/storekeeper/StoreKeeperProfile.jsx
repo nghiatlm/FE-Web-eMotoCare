@@ -27,7 +27,6 @@ export default function StoreKeeperProfile() {
 
   // Profile edit states
   const [editingProfile, setEditingProfile] = useState(false);
-  const [profileEmail, setProfileEmail] = useState("");
   const [profileAddress, setProfileAddress] = useState("");
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
@@ -50,7 +49,6 @@ export default function StoreKeeperProfile() {
         const staffData = res?.data?.rowDatas?.[0];
         setStaff(staffData || null);
         // Set initial values for profile editing
-        setProfileEmail(staffData?.account?.email || account.email || "");
         setProfileAddress(staffData?.address || "");
         setAvatarPreview(staffData?.avatarUrl || null);
       } finally {
@@ -129,23 +127,6 @@ export default function StoreKeeperProfile() {
   };
 
   const handleUpdateProfile = async () => {
-    if (!profileEmail.trim()) {
-      toastify.error("Email không được để trống", {
-        position: "top-right",
-        autoClose: 4000,
-      });
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(profileEmail.trim())) {
-      toastify.error("Email không hợp lệ. Format: example@domain.com", {
-        position: "top-right",
-        autoClose: 4000,
-      });
-      return;
-    }
-
     try {
       setUpdatingProfile(true);
       setUploadingAvatar(!!avatarFile);
@@ -209,18 +190,20 @@ export default function StoreKeeperProfile() {
       // Update staff using PUT /api/v1/staffs/{id}
       const response = await updateStaff(staffId, payload);
 
-      // Update email separately if needed (email is in account, not staff)
-      // Note: Email update might need a separate API call to update account
-      if (profileEmail.trim() !== (staff?.account?.email || account.email)) {
-        // Email update might require account API, but for now we'll just update staff
-        console.log("Email change detected but staff API doesn't update email");
-      }
-
       if (response?.success !== false) {
         toastify.success(response.message || "Cập nhật thông tin thành công!", {
           position: "top-right",
           autoClose: 3000,
         });
+
+        // Nếu có avatar mới, bắn event để header thủ kho cập nhật ngay
+        if (avatarUrl) {
+          window.dispatchEvent(
+            new CustomEvent("storekeeper-avatar-updated", {
+              detail: { avatarUrl },
+            })
+          );
+        }
 
         // Refresh staff data
         const res = await getStaffByAccountId(account.id || account.accountId, { page: 1, pageSize: 10 });
@@ -330,7 +313,6 @@ export default function StoreKeeperProfile() {
                     size="sm"
                     onClick={() => {
                       setEditingProfile(true);
-                      setProfileEmail(staff?.account?.email || account.email || "");
                       setProfileAddress(staff?.address || "");
                       setAvatarPreview(staff?.avatarUrl || null);
                       setAvatarFile(null);
@@ -345,7 +327,6 @@ export default function StoreKeeperProfile() {
                       size="sm"
                       onClick={() => {
                         setEditingProfile(false);
-                        setProfileEmail(staff?.account?.email || account.email || "");
                         setProfileAddress(staff?.address || "");
                         setAvatarPreview(staff?.avatarUrl || null);
                         setAvatarFile(null);
@@ -368,21 +349,19 @@ export default function StoreKeeperProfile() {
             </CardHeader>
             <CardContent className="space-y-4">
               <InfoRow label="Họ tên" value={displayName} />
-              {editingProfile ? (
-                <div className="space-y-2">
-                  <Label>Email *</Label>
-                  <Input
-                    value={profileEmail}
-                    onChange={(e) => setProfileEmail(e.target.value)}
-                    placeholder="Nhập email"
-                    disabled={updatingProfile}
-                  />
-                </div>
-              ) : (
-                <InfoRow label="Email" value={staff?.account?.email || account.email} />
-              )}
+              {/* Email chỉ hiển thị, không cho chỉnh sửa */}
+              <InfoRow label="Email" value={staff?.account?.email || account.email} />
               <InfoRow label="Số điện thoại" value={staff?.account?.phone || account.phone} />
-              <InfoRow label="Vai trò" value="Thủ kho" />
+              {/* Căn cước công dân & ngày sinh */}
+              <InfoRow label="CCCD" value={staff?.citizenId} />
+              <InfoRow
+                label="Ngày sinh"
+                value={
+                  staff?.dateOfBirth
+                    ? new Date(staff.dateOfBirth).toLocaleDateString("vi-VN")
+                    : "—"
+                }
+              />
               <InfoRow label="Chức vụ" value={toVietnamesePosition(staff?.position)} />
               {editingProfile ? (
                 <div className="space-y-2">
@@ -397,7 +376,6 @@ export default function StoreKeeperProfile() {
               ) : (
                 <InfoRow label="Địa chỉ" value={staff?.address} />
               )}
-              <InfoRow label="Trạng thái" value={toVietnameseStatus(account.status || staff?.account?.status)} />
               {editingProfile && avatarFile && (
                 <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
                   <span className="text-sm text-slate-600">Ảnh mới đã chọn</span>

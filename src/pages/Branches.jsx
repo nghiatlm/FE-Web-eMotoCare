@@ -23,7 +23,7 @@ export default function Branches() {
   const [branchDetail, setBranchDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [geocodeLoading, setGeocodeLoading] = useState(false);
-  const DEFAULT_COORDS = { lat: 10.762622, lng: 106.660172 }; // TP.HCM center fallback
+  const DEFAULT_COORDS = { lat: 10.762622, lng: 106.660172 };
   const formRef = useRef(null);
   const geoTimeoutRef = useRef(null);
 

@@ -206,6 +206,33 @@ export default function InformationDetail() {
     { value: "H17_18", label: "17:00 - 18:00" },
   ];
 
+  // Kiểm tra slot đã qua giờ hiện tại chưa
+  const isPastSlot = (dateStr, slotTime) => {
+    if (!dateStr || !slotTime || !slotTime.startsWith("H")) return false;
+
+    const now = new Date();
+    const selectedDate = new Date(dateStr);
+
+    // Chuẩn hóa chỉ so sánh theo ngày
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const selected = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+
+    // Ngày trong tương lai -> chưa qua
+    if (selected > today) return false;
+    // Ngày trong quá khứ -> đã qua hết các slot
+    if (selected < today) return true;
+
+    // Cùng ngày hôm nay -> so sánh theo giờ bắt đầu
+    const parts = slotTime.replace("H", "").split("_");
+    const startHour = parseInt(parts[0], 10);
+    if (Number.isNaN(startHour)) return false;
+
+    const slotStart = new Date(selectedDate);
+    slotStart.setHours(startHour, 0, 0, 0);
+
+    return slotStart <= now;
+  };
+
   // Kiểm tra slot đã tồn tại chưa
   const isSlotExists = (date, slotTime) => {
     if (!date || !slotTime || !serviceCenter?.serviceCenterSlots) return false;
@@ -567,6 +594,13 @@ export default function InformationDetail() {
                         });
                         return;
                       }
+                      if (slotForm.date && isPastSlot(slotForm.date, value)) {
+                        toastify.error("Không thể chọn khung giờ đã qua thời gian hiện tại.", {
+                          position: "top-right",
+                          autoClose: 4000,
+                        });
+                        return;
+                      }
                       setSlotForm({ ...slotForm, slotTime: value });
                     }}
                     disabled={!slotForm.date}
@@ -577,18 +611,25 @@ export default function InformationDetail() {
                     <SelectContent>
                       {SLOT_TIME_OPTIONS.map((option) => {
                         const exists = slotForm.date ? isSlotExists(slotForm.date, option.value) : false;
+                        const past = slotForm.date ? isPastSlot(slotForm.date, option.value) : false;
+                        const disabled = exists || past;
                         return (
                           <SelectItem 
                             key={option.value} 
                             value={option.value}
-                            disabled={exists}
-                            className={exists ? "opacity-50 cursor-not-allowed" : ""}
+                            disabled={disabled}
+                            className={disabled ? "opacity-50 cursor-not-allowed" : ""}
                           >
                             <div className="flex items-center justify-between">
                               <span>{option.label}</span>
                               {exists && (
                                 <Badge variant="secondary" className="ml-2 text-xs">
                                   Đã có
+                                </Badge>
+                              )}
+                              {!exists && past && (
+                                <Badge variant="secondary" className="ml-2 text-xs">
+                                  Quá giờ
                                 </Badge>
                               )}
                             </div>
@@ -602,10 +643,10 @@ export default function InformationDetail() {
                       {getExistingSlotsForDate(slotForm.date).length > 0 ? (
                         <span>
                           Đã có {getExistingSlotsForDate(slotForm.date).length} slot cho ngày này. 
-                          Các slot đã tồn tại sẽ bị vô hiệu hóa.
+                          Các slot đã tồn tại hoặc đã qua thời gian hiện tại sẽ bị vô hiệu hóa.
                         </span>
                       ) : (
-                        <span>Tất cả các khung giờ đều có thể chọn.</span>
+                        <span>Các khung giờ đã qua thời gian hiện tại sẽ bị vô hiệu hóa, các khung giờ còn lại có thể chọn.</span>
                       )}
                     </p>
                   )}
@@ -619,9 +660,32 @@ export default function InformationDetail() {
                     type="number"
                     min="0"
                     value={slotForm.capacity}
-                    onChange={(e) =>
-                      setSlotForm({ ...slotForm, capacity: parseInt(e.target.value, 10) || 0 })
-                    }
+                    onFocus={(e) => {
+                      // Nếu đang là 0 thì xóa để user gõ số mới
+                      if (e.target.value === "0") {
+                        setSlotForm({ ...slotForm, capacity: "" });
+                      }
+                    }}
+                    onBlur={(e) => {
+                      // Nếu bỏ trống thì trả lại 0 để tránh gửi null
+                      const value = e.target.value.trim();
+                      setSlotForm({
+                        ...slotForm,
+                        capacity: value === "" ? 0 : parseInt(value, 10) || 0,
+                      });
+                    }}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Cho phép user xóa hết để gõ lại, không auto convert sang 0 ngay
+                      if (value === "") {
+                        setSlotForm({ ...slotForm, capacity: "" });
+                      } else {
+                        setSlotForm({
+                          ...slotForm,
+                          capacity: parseInt(value, 10) || 0,
+                        });
+                      }
+                    }}
                     placeholder="Nhập sức chứa"
                   />
                 </div>

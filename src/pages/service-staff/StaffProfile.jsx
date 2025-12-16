@@ -17,7 +17,7 @@ const InfoRow = ({ label, value }) => (
   </div>
 );
 
-export default function ManagerProfile() {
+export default function StaffProfile() {
   const { user } = useAuth();
   const account = user?.accountResponse || user?.user || user || {};
 
@@ -25,7 +25,6 @@ export default function ManagerProfile() {
   const [loading, setLoading] = useState(false);
   const [updatingProfile, setUpdatingProfile] = useState(false);
 
-  // Profile edit states
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileAddress, setProfileAddress] = useState("");
   const [avatarFile, setAvatarFile] = useState(null);
@@ -48,7 +47,6 @@ export default function ManagerProfile() {
         const res = await getStaffByAccountId(accountId, { page: 1, pageSize: 10 });
         const staffData = res?.data?.rowDatas?.[0];
         setStaff(staffData || null);
-        // Set initial values for profile editing
         setProfileAddress(staffData?.address || "");
         setAvatarPreview(staffData?.avatarUrl || null);
       } finally {
@@ -56,26 +54,23 @@ export default function ManagerProfile() {
       }
     };
     fetchStaff();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.id, account?.accountId]);
 
   const displayName = useMemo(() => {
     const name = `${staff?.firstName || ""} ${staff?.lastName || ""}`.trim();
     if (name) return name;
-    return "Quản lý";
+    return "Nhân viên dịch vụ";
   }, [staff]);
 
   const initials = useMemo(() => {
     const parts = displayName.split(" ").filter(Boolean);
     if (parts.length >= 2) return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-    return displayName.slice(0, 2).toUpperCase() || "QL";
+    return displayName.slice(0, 2).toUpperCase() || "NV";
   }, [displayName]);
 
   const toVietnamesePosition = (position) => {
     const pos = (position || "").toUpperCase();
-    if (pos === "MANAGER") return "Quản lý";
-    if (pos === "MANAGER_BRANCH") return "Quản lý chi nhánh";
-    if (pos === "STORE_KEEPER") return "Thủ kho";
+    if (pos === "SERVICE_STAFF") return "Nhân viên dịch vụ";
     return position || "—";
   };
 
@@ -164,13 +159,15 @@ export default function ManagerProfile() {
         lastName: staff?.lastName || "",
         address: profileAddress.trim(),
         citizenId: staff?.citizenId || "",
-        dateOfBirth: staff?.dateOfBirth ? (() => {
-          const date = new Date(staff.dateOfBirth);
-          date.setHours(0, 0, 0, 0);
-          return date.toISOString();
-        })() : null,
+        dateOfBirth: staff?.dateOfBirth
+          ? (() => {
+              const date = new Date(staff.dateOfBirth);
+              date.setHours(0, 0, 0, 0);
+              return date.toISOString();
+            })()
+          : null,
         gender: staff?.gender || "MALE",
-        position: staff?.position || "MANAGER_BRANCH",
+        position: staff?.position || "SERVICE_STAFF",
         serviceCenterId: staff?.serviceCenterId || undefined,
       };
 
@@ -191,17 +188,20 @@ export default function ManagerProfile() {
           autoClose: 3000,
         });
 
-        // Nếu có avatar mới, bắn event để header cập nhật ngay
+        // Nếu có avatar mới, bắn event để header staff cập nhật ngay
         if (avatarUrl) {
           window.dispatchEvent(
-            new CustomEvent("manager-avatar-updated", {
+            new CustomEvent("staff-avatar-updated", {
               detail: { avatarUrl },
             })
           );
         }
 
         // Refresh staff data
-        const res = await getStaffByAccountId(account.id || account.accountId, { page: 1, pageSize: 10 });
+        const res = await getStaffByAccountId(account.id || account.accountId, {
+          page: 1,
+          pageSize: 10,
+        });
         const staffData = res?.data?.rowDatas?.[0];
         setStaff(staffData || null);
         setAvatarPreview(staffData?.avatarUrl || null);
@@ -212,10 +212,13 @@ export default function ManagerProfile() {
       }
     } catch (error) {
       console.error("Error updating profile:", error);
-      toastify.error(error?.response?.data?.message || error?.message || "Không thể cập nhật thông tin. Vui lòng thử lại.", {
-        position: "top-right",
-        autoClose: 4000,
-      });
+      toastify.error(
+        error?.response?.data?.message || error?.message || "Không thể cập nhật thông tin. Vui lòng thử lại.",
+        {
+          position: "top-right",
+          autoClose: 4000,
+        }
+      );
     } finally {
       setUpdatingProfile(false);
     }
@@ -242,7 +245,9 @@ export default function ManagerProfile() {
       setNewPassword("");
       setConfirmPassword("");
     } catch (error) {
-      toastify.error(error?.data?.message || error?.message || "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại.");
+      toastify.error(
+        error?.data?.message || error?.message || "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại."
+      );
     } finally {
       setLoading(false);
     }
@@ -285,13 +290,17 @@ export default function ManagerProfile() {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-lg font-semibold text-slate-900 truncate">{displayName}</span>
                 <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-100">
-                  Quản lý
+                  Nhân viên dịch vụ
                 </span>
                 {statusBadge(account.status || staff?.account?.status)}
               </div>
               <div className="text-sm text-slate-600 flex flex-wrap gap-4 mt-1">
-                {(staff?.account?.email || account.email) && <span>Email: {staff?.account?.email || account.email}</span>}
-                {(staff?.account?.phone || account.phone) && <span>SĐT: {staff?.account?.phone || account.phone}</span>}
+                {(staff?.account?.email || account.email) && (
+                  <span>Email: {staff?.account?.email || account.email}</span>
+                )}
+                {(staff?.account?.phone || account.phone) && (
+                  <span>SĐT: {staff?.account?.phone || account.phone}</span>
+                )}
               </div>
             </div>
           </div>
@@ -347,8 +356,8 @@ export default function ManagerProfile() {
               {/* Email chỉ hiển thị, không cho chỉnh sửa */}
               <InfoRow label="Email" value={staff?.account?.email || account.email} />
               <InfoRow label="Số điện thoại" value={staff?.account?.phone || account.phone} />
-              {/* Căn cước công dân & ngày sinh */}
-              <InfoRow label="CCCD/CMND" value={staff?.citizenId} />
+              {/* CCCD & ngày sinh */}
+              <InfoRow label="CCCD" value={staff?.citizenId} />
               <InfoRow
                 label="Ngày sinh"
                 value={
@@ -457,7 +466,11 @@ export default function ManagerProfile() {
                 <span>{loading ? "..." : ""}</span>
               </div>
               <div className="flex justify-end">
-                <Button onClick={handleChangePassword} disabled={loading} className="bg-red-600 hover:bg-red-700 text-white">
+                <Button
+                  onClick={handleChangePassword}
+                  disabled={loading}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
                   {loading ? "Đang xử lý..." : "Đổi mật khẩu"}
                 </Button>
               </div>
@@ -468,4 +481,5 @@ export default function ManagerProfile() {
     </div>
   );
 }
+
 
