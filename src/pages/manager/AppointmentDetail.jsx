@@ -29,7 +29,6 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getAppointmentById, getAppointmentMissingParts } from "@/api/appointmentsApi";
 
-// Giữ nguyên STATUS_META nhưng tối ưu hóa màu sắc cho thiết kế phẳng và chuyên nghiệp hơn
 const STATUS_META = {
   PENDING: {
     label: "Chờ xử lý",

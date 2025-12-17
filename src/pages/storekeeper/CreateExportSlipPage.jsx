@@ -67,9 +67,7 @@ export default function CreateExportSlipPage() {
       }
     };
 
-    // Wrap trong try-catch để tránh unhandled promise rejection
     fetchServiceCenters().catch((error) => {
-      // Error đã được handle trong fetchServiceCenters, chỉ log thôi
       console.error("Unhandled error in fetchServiceCenters:", error);
     });
   }, []);
@@ -130,10 +128,8 @@ export default function CreateExportSlipPage() {
 
   useEffect(() => {
     if (serviceCenterId) {
-      // Wrap trong try-catch để tránh unhandled promise rejection
       fetchPartItems().catch((error) => {
         console.error("Error in fetchPartItems:", error);
-        // Error đã được handle trong fetchPartItems, chỉ log thôi
       });
     }
   }, [serviceCenterId, fetchPartItems]);

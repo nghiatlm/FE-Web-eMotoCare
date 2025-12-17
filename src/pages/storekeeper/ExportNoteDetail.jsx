@@ -119,7 +119,6 @@ export default function ExportNoteDetail() {
 
   const exportDetails = exportNote?.exportNoteDetails || [];
 
-  // Fetch part type names theo partTypeId của proposedReplacePart
   useEffect(() => {
     if (!exportDetails.length) return;
 
@@ -200,6 +199,7 @@ export default function ExportNoteDetail() {
     const statusMap = {
       "STOCK_NOT_FOUND": "Chưa tìm thấy trong kho",
       "STOCK_FOUND": "Đã tìm thấy trong kho",
+      "NOT_FOUND": "Không tìm thấy hàng",
       "COMPLETED": "Hoàn thành"
     };
     return statusMap[status] || status || "Chưa tìm thấy";

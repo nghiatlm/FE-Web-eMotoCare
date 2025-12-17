@@ -209,7 +209,6 @@ export default function WarrantyDetail() {
     fetchRmaDetail();
   }, [fetchRmaDetail]);
 
-  // Fetch parts list
   useEffect(() => {
     const fetchParts = async () => {
       try {
@@ -219,7 +218,6 @@ export default function WarrantyDetail() {
         const partsList = data?.rowDatas || data?.data || [];
         setParts(partsList);
       } catch (error) {
-        console.error("Error fetching parts:", error);
         setParts([]);
       } finally {
         setLoadingParts(false);
@@ -239,13 +237,10 @@ export default function WarrantyDetail() {
         const partItem = detail.evCheckDetail?.partItem;
         const replacePart = detail.evCheckDetail?.replacePart;
 
-        // Fetch part info for partItem
         if (partItem) {
-          // Check if part object exists
           if (partItem.part) {
             newPartInfoMap[partItem.part.id] = partItem.part;
           } else if (partItem.partId) {
-            // Fetch part info if not in map
             fetchPromises.push(
               getPartById(partItem.partId)
                 .then((response) => {
@@ -261,13 +256,10 @@ export default function WarrantyDetail() {
           }
         }
 
-        // Fetch part info for replacePart
         if (replacePart) {
-          // Check if part object exists
           if (replacePart.part) {
             newPartInfoMap[replacePart.part.id] = replacePart.part;
           } else if (replacePart.partId) {
-            // Fetch part info if not in map
             fetchPromises.push(
               getPartById(replacePart.partId)
                 .then((response) => {
@@ -284,12 +276,10 @@ export default function WarrantyDetail() {
         }
       });
 
-      // Update map with parts that are already available
       if (Object.keys(newPartInfoMap).length > 0) {
         setPartInfoMap((prevMap) => ({ ...prevMap, ...newPartInfoMap }));
       }
 
-      // Fetch missing parts and update map
       if (fetchPromises.length > 0) {
         await Promise.all(fetchPromises);
         setPartInfoMap((prevMap) => ({ ...prevMap, ...newPartInfoMap }));
@@ -297,10 +287,8 @@ export default function WarrantyDetail() {
     };
 
     fetchPartInfos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rma?.rmaDetails]);
 
-  // Tự động set replacePartId từ partItem.partId cho các detail APPROVED
   useEffect(() => {
     if (!rma?.rmaDetails) return;
     
@@ -313,10 +301,9 @@ export default function WarrantyDetail() {
         const currentReplacePartId = detailForms[detailId]?.replacePartId || detail.replacePart?.partId;
         const isDetailSaved = savedDetails.has(detailId);
         
-        // Tự động set replacePartId từ partItem nếu chưa có và chưa lưu
         if (partItemPartId && !currentReplacePartId && !isDetailSaved) {
           setDetailForms(prev => {
-            if (prev[detailId]?.replacePartId) return prev; // Đã set rồi thì không set lại
+            if (prev[detailId]?.replacePartId) return prev;
             return {
               ...prev,
               [detailId]: {
@@ -328,7 +315,6 @@ export default function WarrantyDetail() {
         }
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rma?.rmaDetails, savedDetails]);
 
   if (loading) {
@@ -753,43 +739,33 @@ export default function WarrantyDetail() {
         updatedForm.replacePartWarrantyStart = value;
       }
 
-      // Tự động tính ngày hết hạn RMA = ngày phát hành + 7 ngày
       if (field === "releaseDateRMA" && value) {
         const releaseDate = new Date(value);
         const expirationDate = new Date(releaseDate);
         expirationDate.setDate(expirationDate.getDate() + 7);
         const newExpirationDateISO = toUtcDateISOString(expirationDate);
         
-        // Kiểm tra xem expirationDateRMA hiện tại có phải là giá trị người dùng đã chỉnh sửa không
         const currentExpirationInForm = currentForm.expirationDateRMA;
         const oldReleaseDate = detail?.releaseDateRMA || currentForm.releaseDateRMA;
         
-        // Nếu chưa có expirationDateRMA trong form, tự động set
         if (!currentExpirationInForm) {
           updatedForm.expirationDateRMA = newExpirationDateISO;
         } else if (oldReleaseDate) {
-          // Nếu có releaseDateRMA cũ, kiểm tra xem expirationDateRMA hiện tại có = releaseDateRMA cũ + 7 ngày không
           const oldRelease = new Date(oldReleaseDate);
           const expectedOldExpiration = new Date(oldRelease);
           expectedOldExpiration.setDate(expectedOldExpiration.getDate() + 7);
           const currentExp = new Date(currentExpirationInForm);
           
-          // So sánh ngày (bỏ qua giờ phút giây)
           const currentExpDate = new Date(currentExp.getFullYear(), currentExp.getMonth(), currentExp.getDate());
           const expectedDate = new Date(expectedOldExpiration.getFullYear(), expectedOldExpiration.getMonth(), expectedOldExpiration.getDate());
           
-          // Nếu expirationDateRMA hiện tại = releaseDateRMA cũ + 7 ngày, thì tự động cập nhật
-          // (tức là nó vẫn là giá trị tự động tính, chưa được người dùng chỉnh sửa)
           if (currentExpDate.getTime() === expectedDate.getTime()) {
             updatedForm.expirationDateRMA = newExpirationDateISO;
           }
-          // Nếu không, giữ nguyên (người dùng đã chỉnh sửa)
         } else {
-          // Nếu không có releaseDateRMA cũ, tự động set
           updatedForm.expirationDateRMA = newExpirationDateISO;
         }
       } else if (field === "releaseDateRMA" && !value) {
-        // Chỉ xóa expirationDateRMA nếu nó được tự động tính
         const currentExpirationInForm = currentForm.expirationDateRMA;
         const oldReleaseDate = (detail || rma?.rmaDetails?.find(d => d.id === detailId))?.releaseDateRMA || currentForm.releaseDateRMA;
         
@@ -801,11 +777,9 @@ export default function WarrantyDetail() {
           expectedOldExpiration.setDate(expectedOldExpiration.getDate() + 7);
           const currentExp = new Date(currentExpirationInForm);
           
-          // So sánh ngày (bỏ qua giờ phút giây)
           const currentExpDate = new Date(currentExp.getFullYear(), currentExp.getMonth(), currentExp.getDate());
           const expectedDate = new Date(expectedOldExpiration.getFullYear(), expectedOldExpiration.getMonth(), expectedOldExpiration.getDate());
           
-          // Nếu expirationDateRMA = releaseDateRMA cũ + 7 ngày, thì xóa (vì là giá trị tự động)
           if (currentExpDate.getTime() === expectedDate.getTime()) {
             updatedForm.expirationDateRMA = null;
           }
@@ -855,7 +829,6 @@ export default function WarrantyDetail() {
         warrantyEndDate = formData.replacePartWarrantyEnd || detail.replacePart?.warantyEndDate || null;
       }
 
-      // Tự động tính expirationDateRMA nếu có releaseDateRMA
       let expirationDateRMA = formData.expirationDateRMA || detail.expirationDateRMA || null;
       const releaseDateRMA = formData.releaseDateRMA || detail.releaseDateRMA || null;
       if (releaseDateRMA && !expirationDateRMA) {
@@ -925,7 +898,6 @@ export default function WarrantyDetail() {
 
     setIsProcessing(true);
     try {
-      // Từ chối tất cả các rmaDetails có status PENDING
       const pendingDetails = rma.rmaDetails.filter((detail) => 
         detail.status?.toUpperCase() === "PENDING"
       );
@@ -938,7 +910,6 @@ export default function WarrantyDetail() {
         return;
       }
 
-      // Cập nhật status của tất cả rmaDetails sang REJECTED và thêm solution là lý do từ chối
       const updatePromises = pendingDetails.map((detail) =>
         updateRmaDetail(detail.id, { 
           status: "REJECTED",
@@ -955,7 +926,6 @@ export default function WarrantyDetail() {
 
       await Promise.all(updatePromises);
 
-      // Fetch lại dữ liệu để đảm bảo có data mới nhất trước khi đóng dialog
       await fetchRmaDetail();
 
       toastify.success(`Đã từ chối ${pendingDetails.length} chi tiết RMA`);
@@ -990,7 +960,6 @@ export default function WarrantyDetail() {
           Quay lại danh sách
         </Button>
 
-        {/* Hero Header */}
         <div className="relative mb-8 overflow-hidden rounded-3xl border border-border/60 bg-card shadow-xl">
           <div className={cn("absolute inset-0 bg-gradient-to-br opacity-90", statusInfo.gradient)} />
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjEpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-40" />
@@ -1028,7 +997,6 @@ export default function WarrantyDetail() {
                   </span>
                 )}
               </div>
-              {/* Action Buttons */}
               {rma?.rmaDetails && rma.rmaDetails.some((detail) => detail.status?.toUpperCase() === "PENDING") && (
                 <div className="flex flex-wrap items-center gap-3 mt-4">
                   <Button
@@ -1081,7 +1049,6 @@ export default function WarrantyDetail() {
 
         <div className="w-full">
           <div className="space-y-6">
-            {/* Thông tin yêu cầu */}
             <Card className="border-border/60 shadow-lg bg-card">
               <CardHeader className="bg-gradient-to-r from-primary/5 via-transparent to-transparent border-b border-border/60">
                 <div className="flex items-center gap-3">
@@ -1095,7 +1062,6 @@ export default function WarrantyDetail() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6 pt-6">
-                {/* Thông tin chung */}
                 <div className="rounded-lg border border-border/60 bg-card shadow-sm overflow-hidden">
                   <div className="bg-muted/30 border-b border-border/60 px-5 py-3">
                     <div className="flex items-center gap-2">
@@ -1286,7 +1252,6 @@ export default function WarrantyDetail() {
                   </div>
                 )}
 
-                {/* Chi tiết RMA */}
                 {rma.rmaDetails && rma.rmaDetails.length > 0 && (
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-foreground">Chi tiết RMA</h3>
@@ -1305,7 +1270,6 @@ export default function WarrantyDetail() {
                             const solution = detail.solution || "—";
                             const detailStatus = detail.status || "—";
                             
-                            // EvCheckDetail info
                             const remedies = evCheckDetail?.remedies || "—";
                             const unit = evCheckDetail?.unit || "—";
                             const evQuantity = evCheckDetail?.quantity || 0;
@@ -1314,13 +1278,11 @@ export default function WarrantyDetail() {
                             const totalAmount = evCheckDetail?.totalAmount || 0;
                             const evStatus = evCheckDetail?.status || "—";
                             
-                            // PartItem info
                             const partItemSerial = partItem?.serialNumber || "—";
                             const partItemPrice = formatCurrency(partItem?.price);
-                            const partItemWarrantyStart = formatDateOnly(partItem?.warantyStartDate);
-                            const partItemWarrantyEnd = formatDateOnly(partItem?.warantyEndDate);
+                            const partItemWarrantyStart = formatDateOnly(partItem?.warrantyStartDate);
+                            const partItemWarrantyEnd = formatDateOnly(partItem?.warrantyEndDate);
                             const partItemStatus = partItem?.status || "—";
-                            // Get part info for partItem - ưu tiên lấy từ partItem.part (có sẵn trong response)
                             const partItemPart = partItem?.part || (partItem?.partId ? partInfoMap[partItem.partId] : null);
                             const partItemName = partItemPart?.name || "—";
                             const partItemImage = partItemPart?.image || "";
@@ -1366,7 +1328,6 @@ export default function WarrantyDetail() {
 
                             return (
                               <div key={detailId} className="rounded-2xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md">
-                                {/* Header - Thông tin cơ bản */}
                                 <div 
                                   className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60 px-6 py-4 cursor-pointer hover:from-primary/10 transition-colors"
                                   onClick={toggleExpand}
@@ -1428,10 +1389,8 @@ export default function WarrantyDetail() {
                                   </div>
                                 </div>
                                 
-                                {/* Expanded Content */}
                                 {isExpanded && (
                                   <div className="p-6 space-y-6">
-                                    {/* Thông tin chi tiết RMA */}
                                     <div className="rounded-xl border border-border/60 bg-card shadow-sm overflow-hidden">
                                       <div className="bg-primary/5 border-b border-primary/20 px-5 py-3">
                                         <div className="flex items-center gap-2">
@@ -1503,7 +1462,6 @@ export default function WarrantyDetail() {
                                       </div>
                                     </div>
 
-                                    {/* Form nhập thông tin hãng - chỉ hiển thị khi status là APPROVED */}
                                     {detailStatus?.toUpperCase() === "APPROVED" && (
                                       <div className="rounded-xl border border-red-200/80 bg-red-50/70 shadow-sm overflow-hidden">
                                         <div className="bg-red-600/5 border-b border-red-200/80 px-5 py-3">
@@ -1756,19 +1714,16 @@ export default function WarrantyDetail() {
                                                       const today = new Date();
                                                       today.setHours(0, 0, 0, 0);
                                                       
-                                                      // Không cho chọn ngày trước hôm nay
                                                       if (date < today) {
                                                         return true;
                                                       }
                                                       
-                                                      // Không cho chọn ngày trước hoặc bằng ngày phát hành RMA (phải từ ngày sau)
                                                       const releaseDate = detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA;
                                                       if (releaseDate) {
                                                         const release = new Date(releaseDate);
                                                         release.setHours(0, 0, 0, 0);
                                                         const dateOnly = new Date(date);
                                                         dateOnly.setHours(0, 0, 0, 0);
-                                                        // Chặn ngày <= ngày phát hành (chỉ cho phép từ ngày sau)
                                                         return dateOnly <= release;
                                                       }
                                                       
@@ -1812,7 +1767,6 @@ export default function WarrantyDetail() {
                                                   const formValue = detailForms[detailId]?.solution;
                                                   if (formValue !== undefined) return formValue;
                                                   
-                                                  // Map các giá trị cũ sang giá trị mới
                                                   const detailSolution = detail.solution || "";
                                                   if (detailSolution === "WARRANTY" || detailSolution === "REPLACE") return "REPLACE";
                                                   if (detailSolution === "REPAIR") return "REPAIR";
@@ -2089,7 +2043,6 @@ export default function WarrantyDetail() {
                                       </div>
                                     )}
 
-                                    {/* EvCheckDetail */}
                                     {evCheckDetail && (
                                       <div className="rounded-lg border border-border/60 bg-card shadow-sm overflow-hidden">
                                         <div className="bg-muted/30 border-b border-border/60 px-5 py-3">

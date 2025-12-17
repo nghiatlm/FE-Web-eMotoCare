@@ -32,9 +32,7 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
       const response = await getExportNotes(params);
       
       if (response.success && response.data) {
-        // Transform API data to match UI format
         const transformedRows = response.data.rowDatas.map(item => {
-          // Tính tổng số lượng phụ tùng cần xuất từ exportNoteDetails
           const totalPartsQuantity = item.exportNoteDetails?.reduce((sum, detail) => {
             return sum + (detail.quantity || 0);
           }, 0) || item.totalQuantity || 0;
@@ -61,7 +59,6 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
     }
   };
 
-  // Fetch service centers để map ID sang tên
   useEffect(() => {
     const fetchServiceCenters = async () => {
       try {
@@ -100,7 +97,6 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
     };
   }, []);
 
-  // Tạo map từ ID sang tên để tra cứu nhanh - phải đặt trước early returns
   const centerMap = useMemo(() => {
     const map = new Map();
     serviceCenters.forEach(center => {
@@ -111,17 +107,14 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
     return map;
   }, [serviceCenters]);
 
-  // Map exportTo (ID) sang tên chi nhánh - phải đặt trước early returns
   const getServiceCenterName = (exportTo) => {
     if (!exportTo) return "N/A";
     
-    // Luôn tìm trong map trước (theo ID)
     const centerName = centerMap.get(String(exportTo));
     if (centerName) {
       return centerName;
     }
     
-    // Nếu không tìm thấy trong map, có thể đã là tên rồi, trả về giá trị gốc
     return exportTo;
   };
 
@@ -129,7 +122,7 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
     const q = search.trim().toLowerCase();
     let result = rows;
 
-    if (status && status !== "all") {
+    if (status && status !== "all" && status.trim() !== "") {
       result = result.filter((r) => r.status === status);
     }
 
@@ -171,7 +164,6 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
     return classMap[status] || "bg-muted text-muted-foreground border-border";
   };
 
-  // Loading state
   if (loading) {
     return (
       <div className="bg-white/95 backdrop-blur rounded-xl border border-rose-200/60 shadow-md overflow-hidden">
@@ -184,8 +176,6 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
       </div>
     );
   }
-
-  // Error state
   if (error) {
     return (
       <div className="bg-white/95 backdrop-blur rounded-xl border border-rose-200/60 shadow-md overflow-hidden">

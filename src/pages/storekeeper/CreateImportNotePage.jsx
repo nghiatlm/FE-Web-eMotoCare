@@ -191,9 +191,7 @@ export default function CreateImportNotePage() {
     [filteredParts, parts, selectedPartId],
   );
 
-  // Thêm phụ tùng vào danh sách
   const handleAddPartToList = () => {
-    // Validate
     if (!selectedPartTypeId) {
       toastify.error("Vui lòng chọn loại phụ tùng.", {
         position: "top-right",
@@ -223,7 +221,7 @@ export default function CreateImportNotePage() {
     const partImage = selectedPart?.image || "";
 
     const newPart = {
-      id: Date.now().toString(), // Temporary ID
+      id: Date.now().toString(),
       partTypeId: selectedPartTypeId,
       partId: partId,
       partName: partName,
@@ -234,12 +232,11 @@ export default function CreateImportNotePage() {
       warrantyPeriod: Number(form.warrantyPeriod) || 0,
       warrantyStartDate: form.warrantyStartDate,
       hasManufacturerWarranty: hasManufacturerWarranty,
-      selectedPart: selectedPart, // Lưu lại để hiển thị
+      selectedPart: selectedPart,
     };
 
     setAddedParts([...addedParts, newPart]);
 
-    // Reset form
     setSelectedPartId("");
     setSelectedPartTypeId("");
     setForm({
@@ -259,13 +256,11 @@ export default function CreateImportNotePage() {
     });
   };
 
-  // Xóa phụ tùng khỏi danh sách
   const handleRemovePart = (partId) => {
     setAddedParts(addedParts.filter((p) => p.id !== partId));
   };
 
   const handleSubmit = async () => {
-    // Kiểm tra danh sách phụ tùng đã thêm
     if (addedParts.length === 0) {
       toastify.error("Vui lòng thêm ít nhất một phụ tùng vào danh sách trước khi tạo phiếu nhập.", {
         position: "top-right",

@@ -44,7 +44,6 @@ export default function ImportSlipsPage() {
     serviceCenterId: ""
   });
 
-  // Create form state
   const [createFormData, setCreateFormData] = useState({
     importFrom: "",
     supplier: "",
@@ -57,7 +56,6 @@ export default function ImportSlipsPage() {
     note: ""
   });
 
-  // Part items state
   const [partItems, setPartItems] = useState([]);
   const [loadingPartItems, setLoadingPartItems] = useState(false);
   const [selectedPartItemIds, setSelectedPartItemIds] = useState([]);
@@ -168,15 +166,12 @@ export default function ImportSlipsPage() {
     }
   }, [serviceCenterId]);
 
-  // Fetch part items
   const fetchPartItems = useCallback(async () => {
     try {
       setLoadingPartItems(true);
 
-      // Call API lấy phụ tùng theo serviceCenterId
       const response = await getPartItemsByServiceCenter(serviceCenterId);
       
-      // Xử lý response - có thể là array hoặc object có data/rowDatas
       let items = [];
       let total = 0;
       
@@ -209,18 +204,15 @@ export default function ImportSlipsPage() {
     }
   }, [serviceCenterId, toast]);
 
-  // Fetch part items when create dialog opens
   useEffect(() => {
     if (isCreateDialogOpen && serviceCenterId) {
       fetchPartItems();
     } else {
-      // Reset when dialog closes
       setPartItems([]);
       setSelectedPartItemIds([]);
     }
   }, [isCreateDialogOpen, serviceCenterId, fetchPartItems]);
 
-  // Calculate total quantity and amount from selected part items
   const selectedPartItemsData = useMemo(() => {
     const selectedItems = partItems.filter(item => selectedPartItemIds.includes(item.id));
     const totalQty = selectedItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
@@ -228,7 +220,6 @@ export default function ImportSlipsPage() {
     return { totalQty, totalAmount, selectedItems };
   }, [partItems, selectedPartItemIds]);
 
-  // Update form data when selected items change
   useEffect(() => {
     setCreateFormData(prev => ({
       ...prev,
@@ -238,7 +229,6 @@ export default function ImportSlipsPage() {
     }));
   }, [selectedPartItemsData.totalQty, selectedPartItemsData.totalAmount, selectedPartItemIds]);
 
-  // Handle part item selection
   const handlePartItemToggle = (partItemId) => {
     setSelectedPartItemIds(prev => {
       if (prev.includes(partItemId)) {
@@ -249,7 +239,6 @@ export default function ImportSlipsPage() {
     });
   };
 
-  // Handle select all part items
   const handleSelectAllPartItems = () => {
     if (selectedPartItemIds.length === partItems.length) {
       setSelectedPartItemIds([]);
@@ -265,20 +254,17 @@ export default function ImportSlipsPage() {
     manager: "Dũng"
   };
 
-  // Setup window functions for table interactions
   useEffect(() => {
     window.openEditImportSlip = async (slip) => {
       setSelectedSlip(slip);
       setIsEditDialogOpen(true);
       
-      // Fetch detail and populate form
       if (slip?.rawData?.id) {
         try {
           setLoadingDetail(true);
           const response = await getImportNoteById(slip.rawData.id);
           if (response.success && response.data) {
             const data = response.data;
-            // Populate form
             setEditFormData({
               code: data.code || "",
               importDate: data.importDate ? new Date(data.importDate).toISOString().slice(0, 16) : "",
@@ -329,7 +315,6 @@ export default function ImportSlipsPage() {
             </Button>
           </div>
           
-          {/* Branch Info Card */}
           <div className="p-5 bg-white/95 backdrop-blur rounded-xl border border-rose-200/60 shadow-md">
             {branchLoading ? (
               <div className="flex items-center gap-3">
@@ -371,7 +356,6 @@ export default function ImportSlipsPage() {
           </div>
         </div>
 
-        {/* Search and Filter Section */}
         <div className="mb-6 p-4 bg-card rounded-lg border border-border">
           <div className="flex flex-wrap items-center gap-4">
             <div className="relative w-[350px]">
@@ -429,7 +413,6 @@ export default function ImportSlipsPage() {
         <ImportSlipsTable search={search} typeFilter={typeFilter} statusFilter={statusFilter} />
       </div>
 
-      {/* Edit Import Slip Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
         setIsEditDialogOpen(open);
         if (!open) {
@@ -577,7 +560,6 @@ export default function ImportSlipsPage() {
                   return;
                 }
 
-                // Validate required fields
                 if (!editFormData.code || !editFormData.importDate || !editFormData.importFrom || !editFormData.supplier) {
                   toast({
                     title: "Lỗi",
@@ -589,7 +571,6 @@ export default function ImportSlipsPage() {
 
                 try {
                   setSaving(true);
-                  // Convert datetime-local to ISO string
                   const importDateISO = new Date(editFormData.importDate).toISOString();
                   
                   const updateData = {
@@ -601,7 +582,6 @@ export default function ImportSlipsPage() {
                     totalAmout: editFormData.totalAmout
                   };
 
-                  // Only include optional fields if they have values
                   if (editFormData.importById) {
                     updateData.importById = editFormData.importById;
                   }
@@ -617,7 +597,6 @@ export default function ImportSlipsPage() {
                       description: "Cập nhật phiếu nhập thành công"
                     });
                     setIsEditDialogOpen(false);
-                    // Refresh table
                     if (window.refreshImportNotes) {
                       window.refreshImportNotes();
                     }
@@ -643,7 +622,6 @@ export default function ImportSlipsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Create Import Slip Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
         setIsCreateDialogOpen(open);
         if (!open) {
@@ -728,8 +706,6 @@ export default function ImportSlipsPage() {
                 <p className="text-xs text-muted-foreground">Tự động tính từ phụ tùng đã chọn</p>
               </div>
             </div>
-
-            {/* Part Items Selection */}
             <div className="space-y-2 border-t pt-4">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-semibold">Chọn phụ tùng *</Label>
@@ -776,7 +752,6 @@ export default function ImportSlipsPage() {
                               )}
                             </div>
                             
-                            {/* Hình ảnh phụ tùng */}
                             {partImage ? (
                               <img
                                 src={partImage}
@@ -847,7 +822,6 @@ export default function ImportSlipsPage() {
             </Button>
             <Button
               onClick={async () => {
-                // Validate part items
                 if (!createFormData.partItemId || createFormData.partItemId.length === 0) {
                   toast({
                     title: "Lỗi",
@@ -860,7 +834,6 @@ export default function ImportSlipsPage() {
                 try {
                   setCreating(true);
                   
-                  // Tính lại totalQuantity và totalAmount từ các phụ tùng đã chọn để đảm bảo chính xác
                   const selectedItems = partItems.filter(item => selectedPartItemIds.includes(item.id));
                   const calculatedTotalQuantity = selectedItems.reduce((sum, item) => {
                     return sum + (item.quantity || 1);
@@ -894,7 +867,6 @@ export default function ImportSlipsPage() {
                       description: "Tạo phiếu nhập mới thành công"
                     });
                     setIsCreateDialogOpen(false);
-                    // Reset form
                     setCreateFormData({
                       importFrom: "",
                       supplier: "",
@@ -907,7 +879,6 @@ export default function ImportSlipsPage() {
                       note: ""
                     });
                     setSelectedPartItemIds([]);
-                    // Refresh table
                     if (window.refreshImportNotes) {
                       window.refreshImportNotes();
                     }

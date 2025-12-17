@@ -35,7 +35,6 @@ export default function StaffDetail() {
     }
   }, [id]);
 
-  // Translate position to Vietnamese
   const translatePosition = (position) => {
     switch (position) {
       case "TECHNICIAN_STAFF":
@@ -51,7 +50,6 @@ export default function StaffDetail() {
     }
   };
 
-  // Translate gender to Vietnamese
   const translateGender = (gender) => {
     switch (gender) {
       case "MALE":
@@ -89,7 +87,6 @@ export default function StaffDetail() {
     );
   }
 
-  // Transform API data to UI format
   const transformedStaff = {
     id: staffDetail.staffCode || staffDetail.id,
     name: `${staffDetail.firstName || ""} ${staffDetail.lastName || ""}`.trim(),
@@ -158,9 +155,7 @@ export default function StaffDetail() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Basic Information */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -228,7 +223,6 @@ export default function StaffDetail() {
             </CardContent>
           </Card>
 
-          {/* Work Information */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -326,19 +320,6 @@ export default function StaffDetail() {
               </CardContent>
             </Card>
           )}
-
-          {/* Quick Actions */}
-          {/* <Card>
-            <CardHeader>
-              <CardTitle>Thao tác nhanh</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full justify-start">
-                <Edit className="h-4 w-4 mr-2" />
-                Chỉnh sửa thông tin
-              </Button>
-            </CardContent>
-          </Card> */}
         </div>
       </div>
     </div>

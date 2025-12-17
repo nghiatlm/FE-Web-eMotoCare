@@ -79,7 +79,6 @@ export default function CampaignDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // const campaign = mockCampaigns.find((c) => c.id === id);
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

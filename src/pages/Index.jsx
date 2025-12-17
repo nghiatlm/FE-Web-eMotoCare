@@ -40,7 +40,6 @@ const Index = () => {
         totalRevenueChange: 0,
         activeCampaigns: 0,
         activeCampaignsChange: 0,
-        // totalBranches: 0,
         totalBranchesChange: 0,
         totalWarranty: 0,
         totalWarrantyChange: 0,
@@ -95,7 +94,6 @@ const Index = () => {
                 const serviceCentersData = serviceCentersResponse?.data || serviceCentersResponse || {};
                 const centers = serviceCentersData?.rowDatas || serviceCentersData?.data?.rowDatas || [];
                 setServiceCenters(centers);
-                // const branchesCount = totalBranches > 0 ? totalBranches : (serviceCentersData?.total || centers.length);
                 try {
                     const overviewResponse = await getDashboardOverviewData(selectedYear);
                     const overviewData = overviewResponse?.data?.data?.data || 
@@ -189,7 +187,6 @@ const Index = () => {
                     totalRevenueChange: 0, 
                     activeCampaigns: finalTotalCampaign,
                     activeCampaignsChange: 0, 
-                    // totalBranches: branchesCount, 
                     totalBranchesChange: 0, 
                     totalWarranty: totalRMA || 0,
                     totalWarrantyChange: 0,
@@ -282,7 +279,6 @@ const Index = () => {
     return (
         <div className="min-h-screen bg-slate-50">
             <div className="p-8 max-w-[95%] mx-auto space-y-6">
-                {/* Header */}
                 <div className="mb-6">
                     <h1 className="text-3xl font-bold text-slate-900 mb-2 flex items-center gap-3">
                         <LayoutDashboard className="h-8 w-8 text-red-600"/>
@@ -324,7 +320,6 @@ const Index = () => {
                         </CardContent>
                     </Card>
 
-                    {/* Chiến dịch */}
                     <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow">
                         <div className="h-1 w-full bg-gradient-to-r from-blue-500 to-cyan-500" />
                         <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-4">
@@ -355,8 +350,6 @@ const Index = () => {
                             </p>
                         </CardContent>
                     </Card>
-
-                    {/* Tổng bảo hành */}
                     <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow">
                         <div className="h-1 w-full bg-gradient-to-r from-emerald-500 to-teal-500" />
                         <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-4">
@@ -388,7 +381,6 @@ const Index = () => {
                         </CardContent>
                     </Card>
 
-                    {/* Tổng lịch hẹn */}
                     <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow">
                         <div className="h-1 w-full bg-gradient-to-r from-orange-500 to-amber-500" />
                         <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-4">
@@ -509,7 +501,6 @@ const Index = () => {
                         </CardContent>
                     </Card>
 
-                    {/* Đăng ký khách hàng */}
                     <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
                         <CardHeader>
                             <div className="flex items-center justify-between">
@@ -580,9 +571,7 @@ const Index = () => {
                     </Card>
                 </div>
 
-                {/* Pie Chart and Recent List Section */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Phân bố trạng thái đơn hàng - Pie Chart */}
                     <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
                         <CardHeader>
                             <CardTitle className="text-lg font-semibold text-slate-900 flex items-center gap-2">
@@ -633,7 +622,6 @@ const Index = () => {
                                     <div className="w-full grid grid-cols-2 gap-4">
                                         {appointmentStatusData.map((entry, index) => {
                                             const total = appointmentStatusData.reduce((sum, item) => sum + item.value, 0);
-                                            // Xử lý trường hợp total = 0 để tránh NaN%
                                             const percentage = total > 0 ? ((entry.value / total) * 100).toFixed(1) : '0.0';
                                             return (
                                                 <div key={index} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 transition-colors">

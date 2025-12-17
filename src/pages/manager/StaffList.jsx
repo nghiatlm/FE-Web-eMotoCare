@@ -13,7 +13,6 @@ export default function StaffList() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [search, setSearch] = useState("");
-  // "" = không lọc, chỉ hiển thị placeholder "Trạng thái" / "Vai trò"
   const [statusFilter, setStatusFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [loading, setLoading] = useState(true);
@@ -24,14 +23,12 @@ export default function StaffList() {
   const [pageSize] = useState(10);
   const [total, setTotal] = useState(0);
 
-  // Get serviceCenterId from staff info
   useEffect(() => {
     const fetchStaffInfo = async () => {
       try {
         const accountId = user?.accountResponse?.id;
         if (!accountId) return;
 
-        // Lưu lại accountId của manager hiện tại để loại khỏi danh sách
         setCurrentAccountId(accountId);
 
         const staffResponse = await getStaffByAccountId(accountId);
@@ -50,7 +47,6 @@ export default function StaffList() {
     }
   }, [user]);
 
-  // Fetch staffs by serviceCenterId
   useEffect(() => {
     if (!serviceCenterId) return;
 
@@ -113,7 +109,6 @@ export default function StaffList() {
     }
   };
 
-  // Map position to role
   const getRoleFromPosition = (position) => {
     if (position?.includes("TECHNICIAN")) return "technician";
     if (position?.includes("SERVICE_STAFF") || position?.includes("STAFF")) return "staff";
@@ -122,7 +117,6 @@ export default function StaffList() {
     return "other";
   };
 
-  // Translate position to Vietnamese
   const translatePosition = (position) => {
     switch (position) {
       case "TECHNICIAN_STAFF":
@@ -351,7 +345,6 @@ export default function StaffList() {
           </div>
         </div>
 
-        {/* Pagination – giống style UserTable */}
         {total > 0 && (
           <div className="mt-4 pb-4 flex items-center justify-center text-sm text-slate-500">
             <Pagination>

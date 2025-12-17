@@ -43,7 +43,6 @@ export default function Dashboard() {
         
         const accountId = user?.accountResponse?.id;
         if (!accountId) {
-          console.error("Không tìm thấy accountId");
           return;
         }
 
@@ -51,7 +50,6 @@ export default function Dashboard() {
         const staffData = staffResponse?.data?.rowDatas?.[0];
         
         if (!staffData?.serviceCenterId) {
-          console.error("Không tìm thấy serviceCenterId");
           return;
         }
 
@@ -110,7 +108,6 @@ export default function Dashboard() {
             revenueChange: 0,
           });
         } catch (appointmentsError) {
-          console.error("Error fetching appointments:", appointmentsError);
           setStats({
             totalAppointments: dashboardData.totalAppointment || 0,
             todayAppointments: 0,
@@ -124,7 +121,6 @@ export default function Dashboard() {
           });
         }
       } catch (error) {
-        console.error("Error loading dashboard data:", error);
       } finally {
         setLoadingStats(false);
       }
@@ -156,7 +152,6 @@ export default function Dashboard() {
 
         setRecentAppointments(data.slice(0, 5));
       } catch (error) {
-        console.error("Error fetching recent appointments:", error);
         setRecentError("Không thể tải danh sách lịch hẹn gần đây.");
         setRecentAppointments([]);
       } finally {
@@ -177,7 +172,6 @@ export default function Dashboard() {
     }).format(amount);
   };
 
-  // Format slotTime từ "H17_18" thành "17:00 - 18:00" (giống trang danh sách lịch hẹn)
   const formatSlotTime = (slotTime) => {
     if (!slotTime) return "—";
     const match = slotTime.match(/H(\d+)_(\d+)/);
@@ -206,7 +200,6 @@ export default function Dashboard() {
     }
   };
 
-  // Trạng thái hiển thị giống trang danh sách lịch hẹn
   const getStatusBadge = (status) => {
     switch (status?.toUpperCase()) {
       case "PENDING":
@@ -337,7 +330,6 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Appointments Status */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card className="bg-white/95 border border-rose-100 shadow-md rounded-2xl backdrop-blur-sm">
           <CardHeader>

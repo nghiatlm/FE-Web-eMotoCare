@@ -237,8 +237,8 @@ export default function BranchDetail() {
     totalRevenue: dashboardData?.totalRevenue ?? 0,
     totalAppointments: dashboardData?.totalAppointment ?? 0,
     completedAppointments: dashboardData?.totalAppointment ?? 0,
-    totalStaff: branchDetail?.staffs?.length ?? 0,
-    activeStaff: branchDetail?.staffs?.filter((s) => s.status === "ACTIVE")?.length ?? 0,
+    totalStaff: branchDetail?.staffs?.filter((s) => s.position !== "MANAGER_BRANCH").length ?? 0,
+    activeStaff: branchDetail?.staffs?.filter((s) => s.status === "ACTIVE" && s.position !== "MANAGER_BRANCH").length ?? 0,
     totalWarrantyClaims: dashboardData?.totalRMA ?? 0,
     confirmedWarranty: dashboardData?.totalRMA ?? 0,
   };

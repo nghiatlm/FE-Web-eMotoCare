@@ -3,7 +3,6 @@ import { Search, Calendar as CalendarIcon, RefreshCw, Eye, X, FileText, Loader2,
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
@@ -31,7 +30,6 @@ export default function MissingPartsList() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 10 }, (_, i) => currentYear - i);
 
-  // Fetch missing parts requests
   const fetchMissingParts = useCallback(async () => {
     try {
       setLoading(true);
@@ -45,8 +43,6 @@ export default function MissingPartsList() {
       };
 
       const response = await getExportNotes(params);
-      
-      console.log("📋 Missing Parts Requests API Response:", response);
       
       const rowDatas = response?.data?.rowDatas || [];
       const transformed = rowDatas.map((note, idx) => {
@@ -79,7 +75,6 @@ export default function MissingPartsList() {
         };
       });
 
-      // Áp dụng lọc theo khoảng ngày ngay trên FE (theo requestedAt)
       let filtered = transformed;
       if (from) {
         const fromStart = new Date(from);
@@ -121,7 +116,6 @@ export default function MissingPartsList() {
     fetchMissingParts();
   }, [fetchMissingParts]);
 
-  // Format date from API response
   const formatDateTime = (dateString) => {
     if (!dateString) return "—";
     try {

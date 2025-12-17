@@ -25,7 +25,6 @@ export default function ManagerProfile() {
   const [loading, setLoading] = useState(false);
   const [updatingProfile, setUpdatingProfile] = useState(false);
 
-  // Profile edit states
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileAddress, setProfileAddress] = useState("");
   const [avatarFile, setAvatarFile] = useState(null);
@@ -48,7 +47,6 @@ export default function ManagerProfile() {
         const res = await getStaffByAccountId(accountId, { page: 1, pageSize: 10 });
         const staffData = res?.data?.rowDatas?.[0];
         setStaff(staffData || null);
-        // Set initial values for profile editing
         setProfileAddress(staffData?.address || "");
         setAvatarPreview(staffData?.avatarUrl || null);
       } finally {
@@ -56,7 +54,6 @@ export default function ManagerProfile() {
       }
     };
     fetchStaff();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.id, account?.accountId]);
 
   const displayName = useMemo(() => {
@@ -145,7 +142,6 @@ export default function ManagerProfile() {
         }
       }
 
-      // Get staff ID
       const staffId = staff?.id;
       if (!staffId) {
         toastify.error("Không tìm thấy thông tin nhân viên", {
@@ -156,7 +152,6 @@ export default function ManagerProfile() {
         return;
       }
 
-      // Build payload with all required staff fields (API PUT /api/v1/staffs/{id})
       const payload = {
         accountId: account.id || account.accountId,
         staffCode: staff?.staffCode || "",
@@ -177,12 +172,10 @@ export default function ManagerProfile() {
       if (avatarUrl) {
         payload.avatarUrl = avatarUrl;
       } else if (avatarFile && !avatarUrl) {
-        // If user selected a file but upload failed, don't update
         setUpdatingProfile(false);
         return;
       }
 
-      // Update staff using PUT /api/v1/staffs/{id}
       const response = await updateStaff(staffId, payload);
 
       if (response?.success !== false) {
@@ -191,7 +184,6 @@ export default function ManagerProfile() {
           autoClose: 3000,
         });
 
-        // Nếu có avatar mới, bắn event để header cập nhật ngay
         if (avatarUrl) {
           window.dispatchEvent(
             new CustomEvent("manager-avatar-updated", {
@@ -200,7 +192,6 @@ export default function ManagerProfile() {
           );
         }
 
-        // Refresh staff data
         const res = await getStaffByAccountId(account.id || account.accountId, { page: 1, pageSize: 10 });
         const staffData = res?.data?.rowDatas?.[0];
         setStaff(staffData || null);
@@ -343,11 +334,9 @@ export default function ManagerProfile() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <InfoRow label="Họ tên" value={displayName} />
-              {/* Email chỉ hiển thị, không cho chỉnh sửa */}
+              <InfoRow label="Họ tên" value={displayName} /> 
               <InfoRow label="Email" value={staff?.account?.email || account.email} />
               <InfoRow label="Số điện thoại" value={staff?.account?.phone || account.phone} />
-              {/* Căn cước công dân & ngày sinh */}
               <InfoRow label="CCCD/CMND" value={staff?.citizenId} />
               <InfoRow
                 label="Ngày sinh"

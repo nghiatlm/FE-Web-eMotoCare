@@ -140,7 +140,6 @@ export default function StaffProfile() {
         }
       }
 
-      // Get staff ID
       const staffId = staff?.id;
       if (!staffId) {
         toastify.error("Không tìm thấy thông tin nhân viên", {
@@ -151,7 +150,6 @@ export default function StaffProfile() {
         return;
       }
 
-      // Build payload with all required staff fields (API PUT /api/v1/staffs/{id})
       const payload = {
         accountId: account.id || account.accountId,
         staffCode: staff?.staffCode || "",
@@ -174,12 +172,10 @@ export default function StaffProfile() {
       if (avatarUrl) {
         payload.avatarUrl = avatarUrl;
       } else if (avatarFile && !avatarUrl) {
-        // If user selected a file but upload failed, don't update
         setUpdatingProfile(false);
         return;
       }
 
-      // Update staff using PUT /api/v1/staffs/{id}
       const response = await updateStaff(staffId, payload);
 
       if (response?.success !== false) {
@@ -188,7 +184,6 @@ export default function StaffProfile() {
           autoClose: 3000,
         });
 
-        // Nếu có avatar mới, bắn event để header staff cập nhật ngay
         if (avatarUrl) {
           window.dispatchEvent(
             new CustomEvent("staff-avatar-updated", {
@@ -197,7 +192,6 @@ export default function StaffProfile() {
           );
         }
 
-        // Refresh staff data
         const res = await getStaffByAccountId(account.id || account.accountId, {
           page: 1,
           pageSize: 10,
@@ -353,10 +347,8 @@ export default function StaffProfile() {
             </CardHeader>
             <CardContent className="space-y-4">
               <InfoRow label="Họ tên" value={displayName} />
-              {/* Email chỉ hiển thị, không cho chỉnh sửa */}
               <InfoRow label="Email" value={staff?.account?.email || account.email} />
               <InfoRow label="Số điện thoại" value={staff?.account?.phone || account.phone} />
-              {/* CCCD & ngày sinh */}
               <InfoRow label="CCCD" value={staff?.citizenId} />
               <InfoRow
                 label="Ngày sinh"

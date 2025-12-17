@@ -80,7 +80,6 @@ export default function CampaignDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // const campaign = mockCampaigns.find((c) => c.id === id);
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -108,14 +107,12 @@ export default function CampaignDetail() {
               const data = res?.data || res;
               return { id: pid, data };
             } catch (error) {
-              console.error("Fetch part error:", error);
               return { id: pid, data: null };
             }
           })
         );
         setPartDetails(results);
       } catch (error) {
-        console.error("Fetch parts error:", error);
         setPartDetails(recallPartIds.map((pid) => ({ id: pid, data: null })));
       } finally {
         setLoadingPart(false);
@@ -130,14 +127,12 @@ export default function CampaignDetail() {
       setLoading(true);
       setError("");
       const res = await getProgramDetails(id);
-      console.log("Campaign details:", res);
       if (res) {
         setCampaign(res);
       } else {
         setError("Không tìm thấy chiến dịch");
       }
     } catch (err) {
-      console.error("Fetch campaign error:", err);
       setError(err?.message || "Lỗi tải dữ liệu chiến dịch");
     } finally {
       setLoading(false);
