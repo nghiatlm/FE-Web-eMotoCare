@@ -9,9 +9,10 @@ import dayjs from "dayjs";
 
 import { getCustomersService } from "../../services/customerService";
 import { getServiceCentersService } from "../../services/serivceCenterService";
+import { getServiceCenterById } from "../../api/serviceCentersApi";
 import { getVehiclesByCustomerService } from "../../services/vehicleService";
 import { getVehicleStagesService } from "../../services/vehicleStageService";
-import { fetchServiceStaff } from "../../services/staffsService";
+import { getStaffByAccountId } from "../../api/staffsApi";
 import { getCampaignsService } from "../../services/campaignService";
 import { getVehicleInfoFromChassisService } from "../../services/appointmentService";
 
@@ -301,36 +302,63 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
   useEffect(() => {
     const fetchInit = async () => {
       try {
-
-            const user = JSON.parse(localStorage.getItem("user") || "{}");
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
+        const accountId = user?.accountResponse?.id;
+        
         let staffServiceCenterId = 
-              user?.accountResponse?.serviceCenterId || 
-              user?.serviceCenterId || 
+          user?.accountResponse?.serviceCenterId || 
+          user?.serviceCenterId || 
           user?.staff?.serviceCenterId ||
           user?.accountResponse?.staff?.serviceCenterId ||
-              null;
-        
+          null;
 
-        if (!staffServiceCenterId) {
+        // ✅ Lấy serviceCenterId từ staff của user hiện tại
+        if (!staffServiceCenterId && accountId) {
           try {
-            const staffInfo = await fetchServiceStaff(null);
-            const staffData = staffInfo?.data?.data || staffInfo?.data || staffInfo;
-            staffServiceCenterId = staffData?.serviceCenterId || null;
-        } catch (err) {
+            const staffResponse = await getStaffByAccountId(accountId);
+            const staffData = staffResponse?.data?.rowDatas?.[0] || 
+                              staffResponse?.data?.[0] ||
+                              staffResponse?.data?.data ||
+                              staffResponse?.data ||
+                              staffResponse;
+            staffServiceCenterId = staffData?.serviceCenterId || 
+                                   staffData?.serviceCenter?.id ||
+                                   null;
+          } catch (err) {
+            console.error("Error fetching staff service center:", err);
           }
         }
 
         setCurrentServiceCenterId(staffServiceCenterId);
 
-        const cenRes = await getServiceCentersService();
-        setCenters(Array.isArray(cenRes) ? cenRes : []);
-
+        // ✅ Load service center cụ thể của staff để lấy slots
+        if (staffServiceCenterId) {
+          try {
+            const centerRes = await getServiceCenterById(staffServiceCenterId);
+            const centerData = centerRes?.data?.data || centerRes?.data || centerRes;
+            if (centerData) {
+              setCenters([centerData]);
+            } else {
+              // Fallback: load tất cả centers và filter
+              const cenRes = await getServiceCentersService();
+              const allCenters = Array.isArray(cenRes) ? cenRes : [];
+              const filteredCenter = allCenters.find(c => c.id === staffServiceCenterId);
+              setCenters(filteredCenter ? [filteredCenter] : allCenters);
+            }
+          } catch (err) {
+            console.error("Error fetching service center:", err);
+            // Fallback: load tất cả centers
+            const cenRes = await getServiceCentersService();
+            setCenters(Array.isArray(cenRes) ? cenRes : []);
+          }
+        } else {
+          // Nếu không có serviceCenterId, load tất cả (fallback)
+          const cenRes = await getServiceCentersService();
+          setCenters(Array.isArray(cenRes) ? cenRes : []);
+        }
 
         await loadCustomers();
-
-
         await loadCampaigns();
-
 
         if (staffServiceCenterId) {
           form.setFieldsValue({ serviceCenterId: staffServiceCenterId });
@@ -339,15 +367,12 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
         if (initialValues) {
           form.setFieldsValue({
             ...initialValues,
-
             serviceCenterId: initialValues.serviceCenterId || staffServiceCenterId,
           });
-
 
           if (initialValues.customerId) {
             handleCustomerChange(initialValues.customerId, false);
           }
-
 
           const centerId = initialValues.serviceCenterId || staffServiceCenterId;
           const date = initialValues.appointmentDate;
@@ -355,18 +380,16 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
             buildSlots(centerId, date);
           }
 
-
-
           if (initialValues.vehicleId && initialValues.type === "MAINTENANCE_TYPE") {
             setTimeout(() => {
               loadVehicleStages(initialValues.vehicleId, initialValues.type);
             }, 500);
           }
         } else if (staffServiceCenterId) {
-
           form.setFieldsValue({ serviceCenterId: staffServiceCenterId });
         }
       } catch (err) {
+        console.error("Error in fetchInit:", err);
       }
     };
 
@@ -416,12 +439,36 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
       return;
     }
 
-
     const dateStr = dateObj.format("YYYY-MM-DD");
+    const now = dayjs();
+    const isToday = dateObj.isSame(now, "day");
 
-    const slots = center.serviceCenterSlots.filter(
+    // ✅ Filter slots: chỉ lấy slots active và đúng ngày
+    let slots = center.serviceCenterSlots.filter(
       (s) => s.isActive && s.date === dateStr
     );
+
+    // ✅ Nếu là ngày hôm nay, chỉ hiển thị các slot chưa qua
+    if (isToday) {
+      const currentHour = now.hour();
+      const currentMinute = now.minute();
+      const currentTimeInMinutes = currentHour * 60 + currentMinute;
+      
+      slots = slots.filter((slot) => {
+        // Parse slotTime (format: H07_08, H08_09, etc.)
+        const slotTime = slot.slotTime || "";
+        const match = slotTime.match(/H(\d{2})_(\d{2})/);
+        if (!match) return false; // Nếu không parse được, loại bỏ để an toàn
+        
+        const startHour = parseInt(match[1], 10);
+        const startTimeInMinutes = startHour * 60;
+        
+        // ✅ Chỉ hiển thị slot nếu giờ bắt đầu chưa qua (ít nhất 30 phút trước khi bắt đầu)
+        // Để đảm bảo có đủ thời gian để chuẩn bị
+        const bufferMinutes = 30; // Buffer 30 phút
+        return startTimeInMinutes > (currentTimeInMinutes + bufferMinutes);
+      });
+    }
 
     setAvailableSlots(slots);
     form.setFieldsValue({ slotTime: undefined });
@@ -433,15 +480,43 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
 
   const handleDateChange = (date) => {
     const centerId = form.getFieldValue("serviceCenterId") || currentServiceCenterId;
-    if (centerId) {
-    buildSlots(centerId, date);
+    if (centerId && date) {
+      buildSlots(centerId, date);
+    } else {
+      setAvailableSlots([]);
+      form.setFieldsValue({ slotTime: undefined });
     }
   };
 
+  // ✅ Tự động load slots khi centers đã load và đã có ngày được chọn
+  useEffect(() => {
+    const selectedDate = form.getFieldValue("appointmentDate");
+    const centerId = form.getFieldValue("serviceCenterId") || currentServiceCenterId;
+    
+    if (centers.length > 0 && centerId && selectedDate) {
+      buildSlots(centerId, selectedDate);
+    }
+  }, [centers, currentServiceCenterId]);
+
 
   const disabledDate = (current) => {
-
-    return current && current < dayjs().startOf("day");
+    if (!current) return false;
+    
+    const now = dayjs();
+    const today = now.startOf("day");
+    const currentHour = now.hour();
+    
+    // ✅ Disable các ngày trong quá khứ
+    if (current.isBefore(today, "day")) {
+      return true;
+    }
+    
+    // ✅ Sau 18h (6 PM), disable ngày hôm nay
+    if (current.isSame(today, "day") && currentHour >= 18) {
+      return true;
+    }
+    
+    return false;
   };
 
 

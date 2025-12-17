@@ -1862,8 +1862,7 @@ export default function StaffBookingDetailPage() {
                 Hủy lịch hẹn
               </Button>
             )}
-            {(status === "INSPECTION_COMPLETED" ||
-              status === "QUOTE_APPROVED") && (
+            {status === "INSPECTION_COMPLETED" && (
               <Button
                 danger
                 onClick={handleCancelClick}

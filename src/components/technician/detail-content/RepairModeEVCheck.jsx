@@ -90,6 +90,13 @@ export default function RepairModeEVCheck({
     return !!(row.rmaDetail || row.rmaDetailId || row.rmaDetail?.id);
   };
 
+  // ✅ Kiểm tra phụ tùng có vấn đề về kho (hết hàng, đang chờ xuất kho)
+  const hasStockIssue = (row) => {
+    const exportStatus = row?.exportNoteStatus || exportNoteStatusMap[row?.id];
+    const exportStatusUpper = (exportStatus || "").toUpperCase();
+    return exportStatusUpper === "STOCK_NOT_FOUND" || exportStatusUpper === "NOT_FOUND" || exportStatusUpper === "STOCK_FOUND";
+  };
+
   // ✅ Cho phép tạo RMA khi: còn bảo hành + có partItem + chưa có RMA
   const isRMAEligible = (row) => {
     return (
@@ -439,7 +446,8 @@ export default function RepairModeEVCheck({
     }
 
     try {
-      const cost = await getLaborCostByRemediesService(partTypeId, remedies);
+      // ✅ Lấy từ "price" thay vì "laborCost" (theo yêu cầu)
+      const cost = await getLaborCostByRemediesService(partTypeId, remedies, "price");
       updateRow(index, { priceService: Number(cost || 0) });
     } catch (e) {
       updateRow(index, { priceService: 0 });
@@ -741,7 +749,13 @@ export default function RepairModeEVCheck({
   const canEditFields =
     !readOnly &&
     evCheckStatus !== "INSPECTION_COMPLETED" &&
-    evCheckStatus !== "QUOTE_APPROVED";
+    evCheckStatus !== "QUOTE_APPROVED" &&
+    evCheckStatus !== "REPAIR_IN_PROGRESS" &&
+    evCheckStatus !== "REPAIR_COMPLETED" &&
+    evCheckStatus !== "COMPLETED";
+
+  // ✅ Cho phép edit status khi đang ở trạng thái REPAIR_IN_PROGRESS
+  const canEditStatus = !readOnly && evCheckStatus === "REPAIR_IN_PROGRESS";
 
   // ✅ Tự động lưu các hạng mục pin khi đã có đủ thông tin
   useEffect(() => {
@@ -807,6 +821,9 @@ export default function RepairModeEVCheck({
   const handleChange = (index, field, value) => {
     if (evCheckStatus === "INSPECTION_COMPLETED" && field !== "status") return;
     if (evCheckStatus === "QUOTE_APPROVED" && field !== "status") return;
+    if (evCheckStatus === "REPAIR_IN_PROGRESS" && field !== "status") return;
+    if (evCheckStatus === "REPAIR_COMPLETED" && field !== "status") return;
+    if (evCheckStatus === "COMPLETED" && field !== "status") return;
     if (!canEditFields && field !== "status") return;
 
     // ✅ Lấy row hiện tại trước khi update
@@ -830,6 +847,12 @@ export default function RepairModeEVCheck({
           pricePart: 0,
           proposedReplacePartId: "",
           replacePartName: "",
+        });
+      } else {
+        // ✅ Khi chọn "REPLACE", set pricePart = 0 (chưa hiển thị giá)
+        // ✅ Chỉ khi chọn "Phụ tùng thay thế" mới hiển thị giá
+        updateRow(index, {
+          pricePart: 0,
         });
       }
       // ✅ Truyền row data đã được update vào updatePriceService
@@ -1025,6 +1048,18 @@ export default function RepairModeEVCheck({
       return toast.info("Chưa có thay đổi trạng thái nào để lưu.");
     }
 
+    // ✅ Kiểm tra nếu có phụ tùng hết hàng hoặc đang chờ xuất kho thì không cho phép xác nhận
+    const itemsWithStockIssue = details.filter((item) => {
+      if (!item.id) return false;
+      // Chỉ kiểm tra các item có thay đổi status
+      if (!statusChanges[item.id]) return false;
+      return hasStockIssue(item);
+    });
+
+    if (itemsWithStockIssue.length > 0) {
+      return toast.error("Không thể xác nhận sửa chữa khi phụ tùng hết hàng hoặc đang chờ xuất kho.");
+    }
+
     try {
       setLoading(true);
       const loadingToast = toast.loading(
@@ -1074,19 +1109,10 @@ export default function RepairModeEVCheck({
         rawDetails.length > 0 &&
         rawDetails.every((d) => d.status === "COMPLETED");
 
-      console.log(
-        `🔍 Kiểm tra hoàn thành: ${rawDetails.length} details, allCompleted: ${allCompleted}`
-      );
-      console.log(
-        `🔍 Status của từng detail:`,
-        rawDetails.map((d) => ({ id: d.id, status: d.status }))
-      );
-
       if (allCompleted) {
         // Debug log removed`📤 Cập nhật EVCheck ${evCheckId} thành REPAIR_COMPLETED`);
         await updateEVCheckService(evCheckId, { status: "REPAIR_COMPLETED" });
         setEvCheckStatus("REPAIR_COMPLETED");
-        toast.success("Đã hoàn thành tất cả hạng mục sửa chữa!");
       }
 
       onRefresh?.();
@@ -1509,16 +1535,14 @@ export default function RepairModeEVCheck({
                 }
               }}
               onChange={(opt) => {
+                const currentRow = details[i];
+                
                 if (!opt) {
-                  // ✅ Khi xóa phụ tùng thay thế, giữ nguyên giá từ bộ phận có sẵn trên xe
-                  const currentRow = details[i];
-                  const partItemPrice = Number(
-                    currentRow?.partItem?.price || 0
-                  );
+                  // ✅ Khi xóa phụ tùng thay thế, set pricePart = 0 (không hiển thị giá)
                   updateRow(i, {
                     proposedReplacePartId: "",
                     replacePartName: "",
-                    pricePart: partItemPrice, // ✅ Giữ giá từ bộ phận có sẵn trên xe
+                    pricePart: 0,
                   });
                   return;
                 }
@@ -1531,14 +1555,13 @@ export default function RepairModeEVCheck({
                 // opt.label đã được format: "Tên (Serial)" hoặc "Tên"
                 const fullLabel = opt.label || selected?.name || "";
 
-                // ✅ Giữ nguyên giá từ bộ phận có sẵn trên xe, không lấy từ phụ tùng thay thế
-                const currentRow = details[i];
+                // ✅ Khi chọn "Phụ tùng thay thế", lấy giá từ bộ phận có sẵn trên xe (partItem.price)
                 const partItemPrice = Number(currentRow?.partItem?.price || 0);
 
                 updateRow(i, {
                   proposedReplacePartId: opt.value,
                   replacePartName: fullLabel, // ✅ Lưu label đầy đủ với code (Part template)
-                  pricePart: partItemPrice, // ✅ Luôn lấy giá từ bộ phận có sẵn trên xe
+                  pricePart: partItemPrice, // ✅ Hiển thị giá từ bộ phận có sẵn trên xe
                 });
               }}
               options={allSuggestedParts.map((p) => {
@@ -1624,15 +1647,16 @@ export default function RepairModeEVCheck({
         const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
         if (!status) return <span style={{ color: "#999" }}>—</span>;
 
-        // ✅ Format status với Tag và màu sắc
+        // ✅ Format status với Tag và màu sắc (giống MaintenanceModeEVCheck)
         const getStatusColor = (s) => {
           const statusUpper = (s || "").toUpperCase();
           if (statusUpper === "COMPLETED") return "success";
           if (statusUpper === "PENDING") return "processing";
           if (statusUpper === "REJECTED" || statusUpper === "CANCELLED")
             return "error";
-          if (statusUpper === "STOCK_NOT_FOUND") return "warning";
-          if (statusUpper === "STOCK_FOUND") return "success";
+          if (statusUpper === "STOCK_NOT_FOUND") return "danger";
+          if (statusUpper === "NOT_FOUND") return "danger";
+          if (statusUpper === "STOCK_FOUND") return "warning";
           return "default";
         };
 
@@ -1644,13 +1668,19 @@ export default function RepairModeEVCheck({
             REJECTED: "Từ chối",
             CANCELLED: "Hủy",
             STOCK_NOT_FOUND: "Hết hàng",
+            NOT_FOUND: "Không tìm thấy hàng",
             STOCK_FOUND: "Đợi xuất kho",
           };
           return statusMap[statusUpper] || s;
         };
 
+        const tagColor = getStatusColor(status);
+        const statusUpper = (status || "").toUpperCase();
+        // ✅ Dùng màu đỏ (#ff4d4f) cho "Hết hàng" giống MaintenanceModeEVCheck
+        const finalColor = (statusUpper === "STOCK_NOT_FOUND" || statusUpper === "NOT_FOUND") ? "#ff4d4f" : tagColor;
+
         return (
-          <Tag color={getStatusColor(status)}>{getStatusLabel(status)}</Tag>
+          <Tag color={finalColor}>{getStatusLabel(status)}</Tag>
         );
       },
     },
@@ -1660,30 +1690,34 @@ export default function RepairModeEVCheck({
   const statusColumn = {
     title: (
       <div className='flex items-center gap-2'>
-        {details.filter((d) => d.id).length > 0 && (
+        {details.filter((d) => d.id && !hasStockIssue(d)).length > 0 && (
           <Checkbox
-            checked={details.every((d) => d.status === "COMPLETED")}
+            checked={details.filter(d => !hasStockIssue(d)).every((d) => d.status === "COMPLETED")}
             indeterminate={
-              details.some((d) => d.status === "COMPLETED") &&
-              details.some((d) => d.status !== "COMPLETED")
+              details.filter(d => !hasStockIssue(d)).some((d) => d.status === "COMPLETED") &&
+              details.filter(d => !hasStockIssue(d)).some((d) => d.status !== "COMPLETED")
             }
             onChange={(e) => {
               const checked = e.target.checked;
-              const updated = details.map((item) => ({
-                ...item,
-                status: checked ? "COMPLETED" : "PENDING",
-              }));
+              const updated = details.map((item) => {
+                // Chỉ update các item không có vấn đề về kho
+                if (hasStockIssue(item)) return item;
+                return {
+                  ...item,
+                  status: checked ? "COMPLETED" : "PENDING",
+                };
+              });
               setDetails(updated);
 
               const changes = {};
               updated.forEach((item) => {
-                if (item.id && checked) {
+                if (item.id && checked && !hasStockIssue(item)) {
                   changes[item.id] = "COMPLETED";
                 }
               });
               setStatusChanges((prev) => ({ ...prev, ...changes }));
             }}
-            disabled={readOnly || !canEditFields}></Checkbox>
+            disabled={!canEditStatus}></Checkbox>
         )}
         <span>Trạng thái</span>
       </div>
@@ -1691,6 +1725,9 @@ export default function RepairModeEVCheck({
     width: 220,
     render: (_, r, i) => {
       const stat = REPAIR_STATUS[r.status] || REPAIR_STATUS.PENDING;
+
+      const isStockIssue = hasStockIssue(r);
+      const isDisabled = !canEditStatus || isStockIssue;
 
       return (
         <div className='flex items-center gap-2'>
@@ -1703,18 +1740,19 @@ export default function RepairModeEVCheck({
                 e.target.checked ? "COMPLETED" : "PENDING"
               );
             }}
-            disabled={readOnly || !canEditFields}
+            disabled={isDisabled}
           />
           <Tag
             color={stat.color}
             style={{
-              cursor: r.status !== "COMPLETED" ? "pointer" : "default",
+              cursor: !isDisabled && r.status !== "COMPLETED" ? "pointer" : "default",
               fontWeight: 500,
               borderRadius: 8,
               padding: "2px 8px",
+              opacity: isDisabled ? 0.6 : 1,
             }}
             onClick={() => {
-              if (r.status !== "COMPLETED" && !readOnly) {
+              if (r.status !== "COMPLETED" && !isDisabled) {
                 handleChange(i, "status", "COMPLETED");
               }
             }}>
@@ -1889,14 +1927,20 @@ export default function RepairModeEVCheck({
                 type='primary'
                 onClick={handleConfirmRepair}
                 loading={loading}
-                disabled={loading || Object.keys(statusChanges).length === 0}
+                disabled={
+                  loading || 
+                  Object.keys(statusChanges).length === 0 ||
+                  details.some((item) => item.id && statusChanges[item.id] && hasStockIssue(item))
+                }
                 style={{
                   backgroundColor:
-                    Object.keys(statusChanges).length > 0
+                    Object.keys(statusChanges).length > 0 &&
+                    !details.some((item) => item.id && statusChanges[item.id] && hasStockIssue(item))
                       ? "#52c41a"
                       : undefined,
                   borderColor:
-                    Object.keys(statusChanges).length > 0
+                    Object.keys(statusChanges).length > 0 &&
+                    !details.some((item) => item.id && statusChanges[item.id] && hasStockIssue(item))
                       ? "#52c41a"
                       : undefined,
                 }}>

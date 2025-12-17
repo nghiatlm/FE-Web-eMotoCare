@@ -3,7 +3,8 @@ import {
   fetchAppointments,
   createAppointmentService,
 } from "../services/appointmentService";
-import { fetchServiceStaff, fetchTechnicianByAccountId } from "../services/staffsService";
+import { fetchTechnicianByAccountId } from "../services/staffsService";
+import { getStaffByAccountId } from "../api/staffsApi";
 import useAppointmentHub from "./useAppointmentHub";
 
 export const useBookings = () => {
@@ -28,13 +29,38 @@ export const useBookings = () => {
 
   const getServiceCenterId = async () => {
     try {
-      const staff = await fetchServiceStaff();
-      const staffData = staff?.data?.data || staff?.data || staff;
-      return staffData?.serviceCenterId || null;
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const accountId = user?.accountResponse?.id;
+      
+      if (!accountId) {
+        return user?.staff?.serviceCenterId || 
+               user?.accountResponse?.staff?.serviceCenterId || 
+               user?.accountResponse?.serviceCenterId ||
+               user?.serviceCenterId ||
+               null;
+      }
+
+      // ✅ Lấy serviceCenterId từ staff của user hiện tại
+      const staffResponse = await getStaffByAccountId(accountId);
+      const staffData = staffResponse?.data?.rowDatas?.[0] || 
+                        staffResponse?.data?.[0] ||
+                        staffResponse?.data?.data ||
+                        staffResponse?.data ||
+                        staffResponse;
+      
+      return staffData?.serviceCenterId || 
+             staffData?.serviceCenter?.id ||
+             user?.staff?.serviceCenterId || 
+             user?.accountResponse?.staff?.serviceCenterId || 
+             user?.accountResponse?.serviceCenterId ||
+             user?.serviceCenterId ||
+             null;
     } catch (error) {
       const user = JSON.parse(localStorage.getItem("user") || "{}");
       return user?.staff?.serviceCenterId || 
              user?.accountResponse?.staff?.serviceCenterId || 
+             user?.accountResponse?.serviceCenterId ||
+             user?.serviceCenterId ||
              null;
     }
   };

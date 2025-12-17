@@ -367,8 +367,32 @@ export default function CampaignModeEVCheck({
       updateRow(index, { priceService: 0 });
       return;
     }
+    
+    // ✅ Lấy partTypeId từ row data
+    const currentRow = details[index];
+    if (!currentRow) {
+      updateRow(index, { priceService: 0 });
+      return;
+    }
+    
+    const partId = currentRow?.partItem?.part?.id || 
+                   vehiclePartOptions.find(vp => vp.partItemId === currentRow?.partItemId)?.partId || null;
+    
+    let partTypeId = null;
+    if (partId && partTypeIdCache[partId]) {
+      partTypeId = partTypeIdCache[partId];
+    } else if (currentRow?.partItem?.part?.partType?.id) {
+      partTypeId = currentRow.partItem.part.partType.id;
+    }
+    
+    if (!partTypeId) {
+      updateRow(index, { priceService: 0 });
+      return;
+    }
+    
     try {
-      const cost = await getLaborCostByRemediesService(remedies);
+      // ✅ Lấy từ "price" thay vì "laborCost" (theo yêu cầu)
+      const cost = await getLaborCostByRemediesService(partTypeId, remedies, "price");
       updateRow(index, { priceService: Number(cost || 0) });
     } catch (e) {
       updateRow(index, { priceService: 0 });
@@ -764,14 +788,23 @@ export default function CampaignModeEVCheck({
         updateRow(index, {
           pricePart: 0,
         });
+      } else {
+        // ✅ Khi chọn "REPLACE", nếu chưa có proposedReplacePartId thì set pricePart = 0
+        if (!currentRow?.proposedReplacePartId) {
+          updateRow(index, {
+            pricePart: 0,
+          });
+        }
       }
       
 
       if (partId && recallPartIds.includes(partId)) {
         const recallPartName = recallPartNameMap[partId] || currentRow?.replacePartName || "";
+        const partItemPrice = Number(currentRow?.partItem?.price || 0);
         updateRow(index, {
           proposedReplacePartId: partId,
           replacePartName: recallPartName,
+          pricePart: partItemPrice, // ✅ Khi có recallPartId, hiển thị giá từ bộ phận
         });
       }
       
@@ -931,7 +964,7 @@ export default function CampaignModeEVCheck({
       setEvCheckStatus("INSPECTION_COMPLETED");
       
       toast.dismiss(loadingToast);
-      toast.success("Gửi báo giá thành công!");
+      toast.success("Xác nhận báo giá thành công!");
 
 
       await loadRepairDetails();
@@ -940,7 +973,7 @@ export default function CampaignModeEVCheck({
       setEvCheckStatus("INSPECTION_COMPLETED");
     } catch (err) {
       toast.dismiss(loadingToast);
-      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể lưu hạng mục sửa chữa!"));
+      toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Lỗi khi gửi dữ liệu!"));
     } finally {
       setLoading(false);
     }
@@ -1001,7 +1034,7 @@ export default function CampaignModeEVCheck({
       if (allCompleted) {
         await updateEVCheckService(evCheckId, { status: "REPAIR_COMPLETED" });
         setEvCheckStatus("REPAIR_COMPLETED");
-        
+        toast.success("Đã hoàn thành tất cả hạng mục sửa chữa!");
 
         if (booking?.id) {
           try {
@@ -1022,8 +1055,7 @@ export default function CampaignModeEVCheck({
             return;
           }
         }
-        
-
+      } else {
         toast.success("Cập nhật trạng thái thành công!");
       }
 
@@ -1097,16 +1129,27 @@ export default function CampaignModeEVCheck({
             let proposedReplacePartId = "";
             let replacePartName = "";
             let finalDisplayName = sel?.label || "";
+            const currentRemedies = r.remedies || "NONE";
             
+            // ✅ Nếu có recallPartId và remedies = "REPLACE", lấy giá từ partItem
+            // ✅ Nếu không có recallPartId hoặc remedies khác "REPLACE", set pricePart = 0
+            let pricePart = 0;
             if (partId && recallPartIds.includes(partId)) {
               proposedReplacePartId = partId;
               replacePartName = recallPartNameMap[partId] || "";
               finalDisplayName = recallPartNameMap[partId] || sel?.label || "";
+              // ✅ Khi có recallPartId và remedies = "REPLACE", hiển thị giá từ bộ phận
+              if (currentRemedies === "REPLACE") {
+                pricePart = Number(sel?.price || partItem?.price || 0);
+              }
+            } else if (currentRemedies === "REPLACE") {
+              // ✅ Nếu remedies = "REPLACE" nhưng không có recallPartId, set pricePart = 0
+              pricePart = 0;
             }
 
             updateRow(i, {
               displayName: finalDisplayName,
-              pricePart: sel?.price || 0,
+              pricePart: pricePart,
               partItem,
               proposedReplacePartId: proposedReplacePartId || r.proposedReplacePartId || "",
               replacePartName: replacePartName || r.replacePartName || "",

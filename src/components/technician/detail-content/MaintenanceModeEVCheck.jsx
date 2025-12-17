@@ -184,12 +184,9 @@ export default function MaintenanceModeEVCheck({
 
 
         let finalRemedies = item.remedies || item.solution;
-        if (!finalRemedies || finalRemedies === "NONE" || finalRemedies === "TUNE") {
-
-
-          if (finalRemedies !== "REPLACE" && finalRemedies !== "REPAIR") {
-            finalRemedies = "CLEAN";
-          }
+        // ✅ Mặc định là "NONE" nếu không có giá trị
+        if (!finalRemedies || finalRemedies.trim() === "") {
+          finalRemedies = "NONE";
         }
 
         return {
@@ -368,7 +365,8 @@ export default function MaintenanceModeEVCheck({
       }
       
       
-      const labor = await getLaborCostByRemediesService(partTypeId, remedies);
+      // ✅ Lấy từ "price" thay vì "laborCost" (theo yêu cầu)
+      const labor = await getLaborCostByRemediesService(partTypeId, remedies, "price");
       
       setEvCheckDetails((prev) =>
         prev.map((row) => {
@@ -551,7 +549,13 @@ export default function MaintenanceModeEVCheck({
 
         if (field === "remedies") {
           updated.remedies = value;
-          if (value !== "REPLACE") updated.pricePart = 0;
+          if (value !== "REPLACE") {
+            updated.pricePart = 0;
+          } else {
+            // ✅ Khi chọn "REPLACE", set pricePart = 0 (chưa hiển thị giá)
+            // ✅ Chỉ khi chọn "Phụ tùng thay thế" mới hiển thị giá
+            updated.pricePart = 0;
+          }
           const validPricePart =
             value === "REPLACE" ? Number(updated.pricePart || 0) : 0;
           updated.totalAmount =
@@ -641,7 +645,7 @@ export default function MaintenanceModeEVCheck({
 
         const payload = {
           result: (item.result || "").trim(),
-          remedies: item.remedies ?? "CLEAN",
+          remedies: item.remedies || "NONE",
           warranty: item.warranty,
           unit: item.unit,
           priceService: Number(item.priceService) || null,
@@ -712,29 +716,63 @@ export default function MaintenanceModeEVCheck({
       }
 
       toast.dismiss(loadingToast);
-      toast.success("Cập nhật trạng thái thành công!");
       setStatusChanges({});
       await loadEVCheckDetails();
-      await updateEVCheckService(evCheckId, { status: "REPAIR_COMPLETED" });
       
-
-      if (booking?.id) {
-        try {
-
-          const { getAppointmentById } = await import("../../../api/appointmentsApi");
-          const appointmentRes = await getAppointmentById(booking.id);
-          const currentAppointment = appointmentRes?.data?.data || appointmentRes?.data || appointmentRes;
-          
-
-          await changeAppointmentStatusService(booking.id, "REPAIR_COMPLETED", {
-            note: currentAppointment?.note || booking?.note || "",
-            approveById: currentAppointment?.approveById || booking?.approveById || null,
-            code: currentAppointment?.code || booking?.code || "",
-            checkinQRCode: currentAppointment?.checkinQRCode || booking?.checkinQRCode || "",
-          });
-        } catch (err) {
-
+      // ✅ Kiểm tra xem tất cả detail đã COMPLETED chưa
+      const { getRepairDetailsList } = await import("../../../api/evcheck");
+      const res = await getRepairDetailsList(evCheckId);
+      let rawDetails = [];
+      
+      if (Array.isArray(res?.evCheckDetails)) {
+        rawDetails = res.evCheckDetails;
+      } else if (Array.isArray(res?.rowDatas) && res.rowDatas.length > 0) {
+        rawDetails = res.rowDatas[0].evCheckDetails || [];
+      } else if (res?.data) {
+        if (Array.isArray(res.data?.evCheckDetails)) {
+          rawDetails = res.data.evCheckDetails;
+        } else if (
+          Array.isArray(res.data?.rowDatas) &&
+          res.data.rowDatas.length > 0
+        ) {
+          rawDetails = res.data.rowDatas[0].evCheckDetails || [];
         }
+      } else if (Array.isArray(res)) {
+        rawDetails = res;
+      }
+
+      rawDetails = rawDetails.filter((item) => item != null);
+
+      const allCompleted =
+        rawDetails.length > 0 &&
+        rawDetails.every((d) => d.status === "COMPLETED");
+
+      if (allCompleted) {
+        await updateEVCheckService(evCheckId, { status: "REPAIR_COMPLETED" });
+        setEvCheckStatus("REPAIR_COMPLETED");
+        toast.success("Đã hoàn thành tất cả hạng mục sửa chữa!");
+
+        if (booking?.id) {
+          try {
+
+            const { getAppointmentById } = await import("../../../api/appointmentsApi");
+            const appointmentRes = await getAppointmentById(booking.id);
+            const currentAppointment = appointmentRes?.data?.data || appointmentRes?.data || appointmentRes;
+            
+
+            await changeAppointmentStatusService(booking.id, "REPAIR_COMPLETED", {
+              note: currentAppointment?.note || booking?.note || "",
+              approveById: currentAppointment?.approveById || booking?.approveById || null,
+              code: currentAppointment?.code || booking?.code || "",
+              checkinQRCode: currentAppointment?.checkinQRCode || booking?.checkinQRCode || "",
+            });
+          } catch (err) {
+
+          }
+        }
+      } else {
+        await updateEVCheckService(evCheckId, { status: "REPAIR_COMPLETED" });
+        toast.success("Cập nhật trạng thái thành công!");
       }
       
       onRefresh?.();
@@ -870,7 +908,7 @@ export default function MaintenanceModeEVCheck({
           return map[normalized] || "Không";
         };
 
-        const remediesValue = r.remedies || "CLEAN";
+        const remediesValue = r.remedies || "NONE";
         const remediesLabel = getRemediesLabel(remediesValue);
 
 
@@ -1072,12 +1110,12 @@ export default function MaintenanceModeEVCheck({
                 }
               }}
               onChange={(opt) => {
-
-                const partItemPrice = Number(r?.partItem?.price || r?.pricePart || 0);
+                const partItemPrice = Number(r?.partItem?.price || 0);
                 
                 if (!opt) {
+                  // ✅ Khi xóa phụ tùng thay thế, set pricePart = 0 (không hiển thị giá)
                   handleChange(r.id, "proposedReplacePart", null);
-                  handleChange(r.id, "pricePart", partItemPrice);
+                  handleChange(r.id, "pricePart", 0);
                   return;
                 }
                 
@@ -1089,7 +1127,7 @@ export default function MaintenanceModeEVCheck({
                 
                 const fullLabel = opt.label || selected?.name || "";
 
-
+                // ✅ Khi chọn "Phụ tùng thay thế", lấy giá từ bộ phận có sẵn trên xe (partItem.price)
                 handleChange(r.id, "proposedReplacePart", { value: partId, label: fullLabel });
                 handleChange(r.id, "replacePartName", fullLabel);
                 handleChange(r.id, "pricePart", partItemPrice);

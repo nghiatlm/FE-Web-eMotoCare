@@ -8,6 +8,7 @@ import { STATUS_COLORS, STATUS_MAP, UI_COLORS } from "../../utils/constants";
 
 import { fetchAppointments } from "../../services/appointmentService";
 import { getAppointmentById } from "../../api/appointmentsApi";
+import { getStaffByAccountId } from "../../api/staffsApi";
 import PaymentInfo from "../../components/service-staff/PaymentInfo";
 import PaymentHistory from "../../components/service-staff/PaymentHistory";
 import { fetchEVCheckByAppointmentService } from "../../services/evcheckService";
@@ -75,6 +76,45 @@ export default function StaffVehicleRepairHistoryPage() {
   const [currentEVCheckId, setCurrentEVCheckId] = useState(null);
   const [evCheckStatus, setEvCheckStatus] = useState(null);
   const [loadingEVCheck, setLoadingEVCheck] = useState(false);
+  const [serviceCenterId, setServiceCenterId] = useState(null);
+
+  useEffect(() => {
+    const loadServiceCenterId = async () => {
+      try {
+        const userStr = localStorage.getItem("user");
+        if (!userStr) return;
+
+        const user = JSON.parse(userStr);
+        const accountId = user?.accountResponse?.id || user?.id || user?.accountId;
+
+        if (accountId) {
+          const staffRes = await getStaffByAccountId(accountId);
+          
+          let staff = null;
+          if (staffRes?.data?.rowDatas && Array.isArray(staffRes.data.rowDatas) && staffRes.data.rowDatas.length > 0) {
+            staff = staffRes.data.rowDatas[0];
+          } else if (staffRes?.data && Array.isArray(staffRes.data) && staffRes.data.length > 0) {
+            staff = staffRes.data[0];
+          } else if (staffRes?.rowDatas && Array.isArray(staffRes.rowDatas) && staffRes.rowDatas.length > 0) {
+            staff = staffRes.rowDatas[0];
+          } else if (staffRes?.data && !Array.isArray(staffRes.data)) {
+            staff = staffRes.data;
+          } else if (staffRes && !Array.isArray(staffRes)) {
+            staff = staffRes;
+          }
+          
+          const serviceCenterId = staff?.serviceCenterId || staff?.serviceCenter?.id;
+          if (serviceCenterId) {
+            setServiceCenterId(serviceCenterId);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading service center ID:", err);
+      }
+    };
+
+    loadServiceCenterId();
+  }, []);
 
   const loadAppointments = async () => {
     if (!vehicleId) return;
@@ -84,6 +124,7 @@ export default function StaffVehicleRepairHistoryPage() {
       const response = await fetchAppointments({
         page: 1,
         pageSize: 1000,
+        serviceCenterId: serviceCenterId || undefined,
       });
 
       let appointmentsList = [];
@@ -174,8 +215,10 @@ export default function StaffVehicleRepairHistoryPage() {
   };
 
   useEffect(() => {
-    loadAppointments();
-  }, [vehicleId]);
+    if (serviceCenterId !== null) {
+      loadAppointments();
+    }
+  }, [vehicleId, serviceCenterId]);
 
   const handleViewDetail = async (appointmentId) => {
     if (selectedBooking?.id === appointmentId) {
