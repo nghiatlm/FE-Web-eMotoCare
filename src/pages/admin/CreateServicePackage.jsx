@@ -22,7 +22,7 @@ export default function CreateServicePackage() {
   const [partTypes, setPartTypes] = useState([]);
   const [loadingPartTypes, setLoadingPartTypes] = useState(false);
   const [errors, setErrors] = useState({});
-  const [isCollapsed, setIsCollapsed] = useState(true); // Thu gọn mặc định
+  const [isCollapsed, setIsCollapsed] = useState(true); 
 
   const { partTypeId: preSelectedPartTypeId, partTypeName: preSelectedPartTypeName } = location.state || {};
 
@@ -38,7 +38,6 @@ export default function CreateServicePackage() {
     description: "",
   });
 
-  // Validation functions
   const validateField = (name, value) => {
     const newErrors = { ...errors };
     
@@ -196,9 +195,7 @@ export default function CreateServicePackage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validate form
-    if (!validateForm()) {
+        if (!validateForm()) {
       toast.error("Lỗi validation: Vui lòng kiểm tra lại các trường đã nhập", {
         position: "top-right",
         autoClose: 4000,
@@ -229,14 +226,7 @@ export default function CreateServicePackage() {
       if (form.code && form.code.trim()) {
         payload.code = form.code.trim();
       }
-
-      console.log("📤 Creating price service with payload:", payload);
-
       const response = await createPriceService(payload);
-      
-      console.log("📥 Create price service response:", response);
-
-      // Handle response - API returns { statusCode, success, message, data }
       if (response?.success || response?.statusCode === 200) {
         toast.success(response?.message || "Tạo bảng giá dịch vụ thành công", {
           position: "top-right",
@@ -247,7 +237,6 @@ export default function CreateServicePackage() {
         throw new Error(response?.message || "Tạo thất bại");
       }
     } catch (error) {
-      console.error("❌ Error creating price service:", error);
       const errorMessage = error?.response?.data?.message || error?.message || error?.data?.message || "Không thể tạo bảng giá dịch vụ. Vui lòng thử lại.";
       toast.error(`Lỗi: ${errorMessage}`, {
         position: "top-right",
@@ -261,7 +250,6 @@ export default function CreateServicePackage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="p-6 sm:p-8 max-w-5xl mx-auto">
-        {/* Header with gradient */}
         <div className="mb-8">
           <Button 
             variant="ghost" 
@@ -292,7 +280,6 @@ export default function CreateServicePackage() {
           </div>
         </div>
 
-        {/* Form */}
         <Card className="border border-border/60 shadow-xl bg-card/95 backdrop-blur-sm">
           <CardHeader className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/60">
             <div className="flex items-center justify-between">
@@ -331,7 +318,6 @@ export default function CreateServicePackage() {
           {!isCollapsed && (
           <CardContent className="p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Loại phụ tùng */}
               <div className={cn(
                 "rounded-xl border bg-gradient-to-br from-background to-muted/20 p-5 space-y-3 shadow-sm",
                 errors.partTypeId ? "border-red-500/50 bg-red-50/50" : "border-border/60"
@@ -373,7 +359,6 @@ export default function CreateServicePackage() {
                 )}
               </div>
 
-              {/* Mã và Tên dịch vụ */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className={cn(
                   "rounded-xl border bg-gradient-to-br from-background to-muted/20 p-5 space-y-3 shadow-sm",
@@ -408,7 +393,6 @@ export default function CreateServicePackage() {
                 </div>
               </div>
 
-              {/* Mô tả */}
               <div className={cn(
                 "rounded-xl border bg-gradient-to-br from-background to-muted/20 p-5 space-y-3 shadow-sm",
                 errors.description ? "border-red-500/50 bg-red-50/50" : "border-border/60"
@@ -447,7 +431,6 @@ export default function CreateServicePackage() {
                 )}
               </div>
 
-              {/* Giá và Chi phí lao động */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className={cn(
                   "rounded-xl border bg-gradient-to-br p-5 space-y-3 shadow-md",
@@ -520,7 +503,6 @@ export default function CreateServicePackage() {
                 </div>
               </div>
 
-              {/* Loại dịch vụ và Ngày hiệu lực */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="rounded-xl border border-border/60 bg-gradient-to-br from-background to-muted/20 p-5 space-y-3 shadow-sm">
                   <div className="flex items-center gap-2">

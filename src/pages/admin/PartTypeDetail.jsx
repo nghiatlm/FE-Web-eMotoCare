@@ -58,7 +58,6 @@ export default function PartTypeDetail() {
     description: "",
   });
 
-  // Fetch Part Type detail
   useEffect(() => {
     const fetchPartType = async () => {
       try {
@@ -76,7 +75,6 @@ export default function PartTypeDetail() {
           navigate("/admin/service-packages");
         }
       } catch (error) {
-        console.error("Error fetching part type:", error);
         toast.error("Lỗi: Không thể tải thông tin loại phụ tùng", {
           position: "top-right",
           autoClose: 4000,
@@ -110,7 +108,6 @@ export default function PartTypeDetail() {
       const filtered = packages.filter(pkg => pkg.partTypeId === id);
       setServicePackages(filtered);
     } catch (error) {
-      console.error("Error fetching service packages:", error);
       toast.error("Lỗi: Không thể tải danh sách gói dịch vụ", {
         position: "top-right",
         autoClose: 4000,
@@ -332,7 +329,6 @@ export default function PartTypeDetail() {
         throw new Error(response?.message || "Tạo thất bại");
       }
     } catch (error) {
-      console.error("Error creating price service:", error);
       const errorMessage = error?.response?.data?.message || error?.message || error?.data?.message || "Không thể tạo bảng giá dịch vụ. Vui lòng thử lại.";
       toast.error(`Lỗi: ${errorMessage}`, {
         position: "top-right",
@@ -388,7 +384,6 @@ export default function PartTypeDetail() {
       });
       setEditErrors({});
     } catch (error) {
-      console.error("Error loading price service:", error);
       toast.error("Lỗi: Không thể tải thông tin bảng giá dịch vụ", {
         position: "top-right",
         autoClose: 4000,
@@ -458,8 +453,7 @@ export default function PartTypeDetail() {
       } else {
         throw new Error(response?.message || "Cập nhật thất bại");
       }
-    } catch (error) {
-      console.error("Error updating price service:", error);
+    } catch (error) { 
       const errorMessage = error?.response?.data?.message || error?.message || error?.data?.message || "Không thể cập nhật bảng giá dịch vụ. Vui lòng thử lại.";
       toast.error(`Lỗi: ${errorMessage}`, {
         position: "top-right",

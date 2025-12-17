@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getStaffByAccountId, updateStaff } from "@/api/staffsApi";
 import { authApi } from "@/api/authApi";
 import { uploadFile } from "@/utils/firebaseUpload";
-import { Eye, EyeOff, Upload, X, Camera } from "lucide-react";
+import { Eye, EyeOff, Camera, X } from "lucide-react";
 import { toast as toastify } from "react-toastify";
 
 const InfoRow = ({ label, value }) => (
@@ -17,7 +17,7 @@ const InfoRow = ({ label, value }) => (
   </div>
 );
 
-export default function StoreKeeperProfile() {
+export default function TechnicianProfile() {
   const { user } = useAuth();
   const account = user?.accountResponse || user?.user || user || {};
 
@@ -59,25 +59,18 @@ export default function StoreKeeperProfile() {
   const displayName = useMemo(() => {
     const name = `${staff?.firstName || ""} ${staff?.lastName || ""}`.trim();
     if (name) return name;
-    return "Thủ kho";
+    return "Kỹ thuật viên";
   }, [staff]);
 
   const initials = useMemo(() => {
     const parts = displayName.split(" ").filter(Boolean);
     if (parts.length >= 2) return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-    return displayName.slice(0, 2).toUpperCase() || "TK";
+    return displayName.slice(0, 2).toUpperCase() || "KT";
   }, [displayName]);
-
-  const toVietnameseStatus = (status) => {
-    const st = (status || "").toUpperCase();
-    if (st === "ACTIVE") return "Hoạt động";
-    if (st === "INACTIVE" || st === "IN_ACTIVE") return "Ngưng hoạt động";
-    return status || "Không rõ";
-  };
 
   const toVietnamesePosition = (position) => {
     const pos = (position || "").toUpperCase();
-    if (pos === "STORE_KEEPER") return "Thủ kho";
+    if (pos === "TECHNICIAN_STAFF") return "Kỹ thuật viên";
     return position || "—";
   };
 
@@ -89,7 +82,7 @@ export default function StoreKeeperProfile() {
       return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">Ngưng hoạt động</span>;
     return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">{status || "Không rõ"}</span>;
   };
-
+  
   const handleAvatarFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -164,13 +157,15 @@ export default function StoreKeeperProfile() {
         lastName: staff?.lastName || "",
         address: profileAddress.trim(),
         citizenId: staff?.citizenId || "",
-        dateOfBirth: staff?.dateOfBirth ? (() => {
-          const date = new Date(staff.dateOfBirth);
-          date.setHours(0, 0, 0, 0);
-          return date.toISOString();
-        })() : null,
+        dateOfBirth: staff?.dateOfBirth
+          ? (() => {
+              const date = new Date(staff.dateOfBirth);
+              date.setHours(0, 0, 0, 0);
+              return date.toISOString();
+            })()
+          : null,
         gender: staff?.gender || "MALE",
-        position: staff?.position || "STORE_KEEPER",
+        position: staff?.position || "TECHNICIAN_STAFF",
         serviceCenterId: staff?.serviceCenterId || undefined,
       };
 
@@ -191,13 +186,16 @@ export default function StoreKeeperProfile() {
 
         if (avatarUrl) {
           window.dispatchEvent(
-            new CustomEvent("storekeeper-avatar-updated", {
+            new CustomEvent("technician-avatar-updated", {
               detail: { avatarUrl },
             })
           );
         }
 
-        const res = await getStaffByAccountId(account.id || account.accountId, { page: 1, pageSize: 10 });
+        const res = await getStaffByAccountId(account.id || account.accountId, {
+          page: 1,
+          pageSize: 10,
+        });
         const staffData = res?.data?.rowDatas?.[0];
         setStaff(staffData || null);
         setAvatarPreview(staffData?.avatarUrl || null);
@@ -207,11 +205,13 @@ export default function StoreKeeperProfile() {
         throw new Error(response.message || "Cập nhật thông tin thất bại");
       }
     } catch (error) {
-      console.error("Error updating profile:", error);
-      toastify.error(error?.response?.data?.message || error?.message || "Không thể cập nhật thông tin. Vui lòng thử lại.", {
-        position: "top-right",
-        autoClose: 4000,
-      });
+      toastify.error(
+        error?.response?.data?.message || error?.message || "Không thể cập nhật thông tin. Vui lòng thử lại.",
+        {
+          position: "top-right",
+          autoClose: 4000,
+        }
+      );
     } finally {
       setUpdatingProfile(false);
     }
@@ -238,7 +238,9 @@ export default function StoreKeeperProfile() {
       setNewPassword("");
       setConfirmPassword("");
     } catch (error) {
-      toastify.error(error?.data?.message || error?.message || "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại.");
+      toastify.error(
+        error?.data?.message || error?.message || "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại."
+      );
     } finally {
       setLoading(false);
     }
@@ -249,10 +251,10 @@ export default function StoreKeeperProfile() {
       <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 2xl:px-16 py-6 space-y-4">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900">Hồ sơ thủ kho</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Hồ sơ cá nhân</h1>
             <span className="h-[2px] flex-1 bg-gradient-to-r from-red-400/60 via-rose-300/40 to-transparent rounded-full" />
           </div>
-          <p className="text-slate-600 text-sm">Thông tin tài khoản và đổi mật khẩu</p>
+          <p className="text-slate-600 text-sm">Thông tin tài khoản</p>
           <div className="flex items-center gap-3 p-4 bg-white/90 backdrop-blur border border-rose-100 rounded-2xl shadow-md">
             <div className="relative">
               {avatarPreview ? (
@@ -281,13 +283,17 @@ export default function StoreKeeperProfile() {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-lg font-semibold text-slate-900 truncate">{displayName}</span>
                 <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-100">
-                  Thủ kho
+                  Kỹ thuật viên
                 </span>
                 {statusBadge(account.status || staff?.account?.status)}
               </div>
               <div className="text-sm text-slate-600 flex flex-wrap gap-4 mt-1">
-                {(staff?.account?.email || account.email) && <span>Email: {staff?.account?.email || account.email}</span>}
-                {(staff?.account?.phone || account.phone) && <span>SĐT: {staff?.account?.phone || account.phone}</span>}
+                {(staff?.account?.email || account.email) && (
+                  <span>Email: {staff?.account?.email || account.email}</span>
+                )}
+                {(staff?.account?.phone || account.phone) && (
+                  <span>SĐT: {staff?.account?.phone || account.phone}</span>
+                )}
               </div>
             </div>
           </div>
@@ -339,7 +345,7 @@ export default function StoreKeeperProfile() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <InfoRow label="Họ tên" value={displayName} /> 
+              <InfoRow label="Họ tên" value={displayName} />
               <InfoRow label="Email" value={staff?.account?.email || account.email} />
               <InfoRow label="Số điện thoại" value={staff?.account?.phone || account.phone} />
               <InfoRow label="CCCD" value={staff?.citizenId} />
@@ -451,7 +457,11 @@ export default function StoreKeeperProfile() {
                 <span>{loading ? "..." : ""}</span>
               </div>
               <div className="flex justify-end">
-                <Button onClick={handleChangePassword} disabled={loading} className="bg-red-600 hover:bg-red-700 text-white">
+                <Button
+                  onClick={handleChangePassword}
+                  disabled={loading}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
                   {loading ? "Đang xử lý..." : "Đổi mật khẩu"}
                 </Button>
               </div>
@@ -462,4 +472,5 @@ export default function StoreKeeperProfile() {
     </div>
   );
 }
+
 

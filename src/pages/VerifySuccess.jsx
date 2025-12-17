@@ -11,7 +11,7 @@ export default function VerifySuccess() {
   const [mounted, setMounted] = useState(false);
 
   const email = searchParams.get("email");
-  const type = searchParams.get("type") || "email"; // email, otp, account
+  const type = searchParams.get("type") || "email";
   const redirectPath = searchParams.get("redirect");
   const [countdown, setCountdown] = useState(3);
 
@@ -19,7 +19,6 @@ export default function VerifySuccess() {
     setMounted(true);
   }, []);
 
-  // Countdown timer và tự động redirect sau 3 giây nếu có redirectPath (cho OTP verification)
   useEffect(() => {
     if (redirectPath && type === "otp") {
       const timer = setInterval(() => {
@@ -31,7 +30,6 @@ export default function VerifySuccess() {
         });
       }, 1000);
 
-      // Redirect sau 3 giây
       const redirectTimer = setTimeout(() => {
         navigate(redirectPath, { replace: true });
       }, 3000);
@@ -111,7 +109,6 @@ export default function VerifySuccess() {
           <div className="h-px w-20 bg-gradient-to-l from-transparent via-emerald-400 to-emerald-400"></div>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
           <Button
             onClick={() => {
@@ -138,14 +135,12 @@ export default function VerifySuccess() {
           </Button>
         </div>
         
-        {/* Countdown timer cho OTP verification */}
         {redirectPath && type === "otp" && (
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
             Đang chuyển hướng tự động sau <span className="font-bold text-emerald-600 dark:text-emerald-400">{countdown}</span> giây...
           </p>
         )}
 
-        {/* Additional Info with Decorative Box */}
         <div className="mt-8 relative">
           <div className="inline-block bg-gradient-to-r from-blue-50/80 via-purple-50/80 to-pink-50/80 dark:from-blue-950/40 dark:via-purple-950/40 dark:to-pink-950/40 backdrop-blur-sm border border-blue-200/50 dark:border-blue-800/50 rounded-2xl px-6 py-4 shadow-lg">
             <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300">

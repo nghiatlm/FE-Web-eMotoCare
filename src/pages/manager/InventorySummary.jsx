@@ -4,19 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { getServiceCenterInventories } from "@/api/serviceCenterInventoriesApi";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStaffByAccountId } from "@/api/staffsApi";
 
-// Calculate distance between two coordinates using Haversine formula
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
   
-  const R = 6371; // Radius of the Earth in km
+  const R = 6371;
   const dLat = (parseFloat(lat2) - parseFloat(lat1)) * Math.PI / 180;
   const dLon = (parseFloat(lon2) - parseFloat(lon1)) * Math.PI / 180;
   const a = 
@@ -24,7 +21,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
     Math.cos(parseFloat(lat1) * Math.PI / 180) * Math.cos(parseFloat(lat2) * Math.PI / 180) *
     Math.sin(dLon/2) * Math.sin(dLon/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c; // Distance in km
+  return R * c;
 };
 
 export default function InventorySummary() {
@@ -32,8 +29,6 @@ export default function InventorySummary() {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
   const [expandedId, setExpandedId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [inventories, setInventories] = useState([]);
@@ -42,7 +37,6 @@ export default function InventorySummary() {
   const [tablePageSize, setTablePageSize] = useState(10);
   const [currentWarehouse, setCurrentWarehouse] = useState(null);
 
-  // Get current warehouse info from staff
   useEffect(() => {
     const fetchCurrentWarehouse = async () => {
       try {
@@ -69,7 +63,6 @@ export default function InventorySummary() {
     }
   }, [user]);
 
-  // Fetch data from API
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -101,11 +94,9 @@ export default function InventorySummary() {
     fetchData();
   }, [pagination.page, pagination.pageSize, search, status]);
 
-  // Transform API data to UI format - Group by part code across all branches
   const rows = useMemo(() => {
     const partCodeMap = new Map();
 
-    // First pass: collect all part items from all inventories
     inventories.forEach((inventory) => {
       const serviceCenter = inventory.serviceCenter || {};
       const storeKeeper = serviceCenter.staffs?.find((s) => s.position === "STORE_KEEPER");
@@ -137,7 +128,6 @@ export default function InventorySummary() {
 
         const partEntry = partCodeMap.get(partCode);
         
-        // Find or create branch entry
         let branchEntry = partEntry.branches.find((b) => b.inventoryId === inventory.id);
         if (!branchEntry) {
           branchEntry = {
@@ -153,7 +143,6 @@ export default function InventorySummary() {
           partEntry.branches.push(branchEntry);
         }
 
-        // Add item to branch
         branchEntry.items.push({
           id: serialNumber || item.id,
           serialNumber,
@@ -182,12 +171,10 @@ export default function InventorySummary() {
       });
     });
 
-    // Convert map to array and find nearest warehouse for each part
     const transformedRows = Array.from(partCodeMap.values()).map((partData) => {
       let nearestBranch = null;
       let minDistance = Infinity;
 
-      // Find the nearest branch if we have current warehouse info
       if (currentWarehouse?.latitude && currentWarehouse?.longitude) {
         partData.branches.forEach((branch) => {
           const lat = branch.latitude;
@@ -209,7 +196,6 @@ export default function InventorySummary() {
         });
       }
 
-      // If no nearest found, use first branch
       if (!nearestBranch && partData.branches.length > 0) {
         nearestBranch = partData.branches[0];
       }

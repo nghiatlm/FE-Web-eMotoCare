@@ -25,9 +25,8 @@ const aggregatePartItems = (partItems, branchInfo) => {
   (partItems || []).forEach((item) => {
     if (!item) return;
     const part = item.part || {};
-    // Dùng part.id làm key để đảm bảo mỗi part được hiển thị riêng biệt
     const partId = part.id;
-    if (!partId) return; // Bỏ qua nếu không có part.id
+    if (!partId) return;
     
     if (!map.has(partId)) {
       const partCode = part.code || normalizePartCode(item);
@@ -46,9 +45,6 @@ const aggregatePartItems = (partItems, branchInfo) => {
       });
     }
     const entry = map.get(partId);
-    // QUAN TRỌNG: Lấy quantity từ item (partItem) ở ngoài, KHÔNG phải từ part.quantity ở trong
-    // item.quantity là số lượng thực tế của partItem trong kho
-    // part.quantity là số lượng tổng của part (không dùng ở đây)
     entry.totalQty += item.quantity || 0;
     if (!entry.partImage && part.image) {
       entry.partImage = part.image;
@@ -181,7 +177,6 @@ export default function StorekeeperInventory() {
             const centerRes = await getServiceCenterById(resolvedServiceCenterId);
             serviceCenter = centerRes?.data || centerRes;
           } catch (centerErr) {
-            // Silent error handling
           }
         }
 
@@ -255,20 +250,19 @@ export default function StorekeeperInventory() {
                 partId: part.id,
                 serviceCenterId,
                 page: 1,
-                pageSize: 1000, // Lấy tất cả partItems của part này
+                pageSize: 1000,
               });
 
               const partItemsData = partItemsResponse?.data || partItemsResponse;
               const partItemsList = partItemsData?.rowDatas || partItemsData?.data || [];
 
               if (partItemsList.length > 0) {
-                // Thêm part info vào mỗi partItem để aggregatePartItems có thể sử dụng
                 partItemsList.forEach((partItem) => {
                   allPartItems.push({
                     ...partItem,
                     part: {
                       ...part,
-                      ...partItem.part, // Ưu tiên part từ partItem nếu có
+                      ...partItem.part,
                     },
                   });
                 });

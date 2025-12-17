@@ -53,7 +53,8 @@ export default function ExportSlipsPage() {
 
   const getStatusLabel = (status) => {
     const statusMap = {
-      PENDING: "Chờ xử lý",
+      PENDING: "Chờ duyệt",
+      PROCESSING: "Đang xử lý",
       APPROVED: "Đã duyệt",
       EXPORTING: "Đang xuất",
       COMPLETED: "Hoàn thành",
@@ -166,7 +167,6 @@ export default function ExportSlipsPage() {
       setSelectedSlip(slip);
       setIsEditDialogOpen(true);
       
-      // Fetch detail and populate form
       if (slip?.rawData?.id) {
         try {
           setLoadingDetail(true);
@@ -211,17 +211,13 @@ export default function ExportSlipsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 via-red-50 to-rose-100">
       <div className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-6">
-        {/* Header Section */}
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="space-y-2">
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
-                  <FileUp className="h-6 w-6 text-white" />
-                </div>
                 <div>
                   <h1 className="text-3xl font-bold text-foreground">Phiếu xuất</h1>
-                  <p className="text-sm text-muted-foreground mt-1">Quản lý các phiếu xuất hàng cho appointments</p>
+                  <p className="text-sm text-muted-foreground mt-1">Quản lý các phiếu xuất hàng cho lịch hẹn</p>
                 </div>
               </div>
             </div>
@@ -232,9 +228,7 @@ export default function ExportSlipsPage() {
               <Plus className="h-4 w-4" />
               Tạo phiếu xuất
             </Button>
-          </div>
-          <p className="text-muted-foreground mb-4">Quản lý các phiếu xuất hàng cho appointments</p>
-          
+          </div>          
           <div className="p-4 bg-card rounded-lg border border-border">
             {branchLoading ? (
               <div className="flex items-center gap-3">
@@ -286,16 +280,18 @@ export default function ExportSlipsPage() {
               />
             </div>
 
-            <Select value={status} onValueChange={setStatus}>
+            <Select value={status || "all"} onValueChange={(value) => setStatus(value === "all" ? "" : value)}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="completed">Đã xuất</SelectItem>
-                <SelectItem value="pending">Chờ duyệt</SelectItem>
-                <SelectItem value="approved">Đã duyệt</SelectItem>
-                <SelectItem value="cancelled">Đã hủy</SelectItem>
+                <SelectItem value="PENDING">Chờ duyệt</SelectItem>
+                <SelectItem value="PROCESSING">Đang xử lý</SelectItem>
+                <SelectItem value="APPROVED">Đã duyệt</SelectItem>
+                <SelectItem value="EXPORTING">Đang xuất</SelectItem>
+                <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
+                <SelectItem value="CANCELLED">Đã hủy</SelectItem>
               </SelectContent>
             </Select>
 
@@ -318,7 +314,6 @@ export default function ExportSlipsPage() {
         <ExportSlipsTable search={search} status={status} />
       </div>
 
-      {/* View Export Slip Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={(open) => {
         setIsViewDialogOpen(open);
         if (!open) {
@@ -343,7 +338,6 @@ export default function ExportSlipsPage() {
             </div>
           ) : exportNoteDetail ? (
             <div className="space-y-6 py-4">
-              {/* Header Info */}
               <div className="grid grid-cols-2 gap-4 p-4 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/20">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Mã phiếu</p>
@@ -367,7 +361,6 @@ export default function ExportSlipsPage() {
                 </div>
               </div>
 
-              {/* Export By & Service Center */}
               {(exportNoteDetail.exportBy || exportNoteDetail.serviceCenter) && (
                 <div className="grid grid-cols-2 gap-4">
                   {exportNoteDetail.exportBy && (
@@ -423,7 +416,6 @@ export default function ExportSlipsPage() {
                 </div>
               )}
 
-              {/* Summary */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-card rounded-lg border border-border">
                   <p className="text-sm text-muted-foreground mb-1">Tổng số lượng</p>
@@ -437,7 +429,6 @@ export default function ExportSlipsPage() {
                 </div>
               </div>
 
-              {/* Status */}
               <div className="p-4 bg-card rounded-lg border border-border">
                 <p className="text-sm text-muted-foreground mb-1">Trạng thái</p>
                 <p className="text-lg font-semibold text-foreground">
@@ -445,7 +436,6 @@ export default function ExportSlipsPage() {
                 </p>
               </div>
 
-              {/* Note */}
               {exportNoteDetail.note && (
                 <div className="p-4 bg-muted/30 rounded-lg border border-border">
                   <p className="text-sm font-semibold text-foreground mb-2">Ghi chú</p>
@@ -453,7 +443,6 @@ export default function ExportSlipsPage() {
                 </div>
               )}
 
-              {/* Additional Info */}
               <div className="p-4 bg-muted/30 rounded-lg border border-border">
                 <p className="text-sm font-semibold text-foreground mb-2">Thông tin bổ sung</p>
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -480,7 +469,6 @@ export default function ExportSlipsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Export Slip Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
         setIsEditDialogOpen(open);
         if (!open) {
@@ -622,7 +610,10 @@ export default function ExportSlipsPage() {
                       <SelectValue placeholder="Chọn trạng thái" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="PENDING">Chờ xử lý</SelectItem>
+                      <SelectItem value="PENDING">Chờ duyệt</SelectItem>
+                      <SelectItem value="PROCESSING">Đang xử lý</SelectItem>
+                      <SelectItem value="APPROVED">Đã duyệt</SelectItem>
+                      <SelectItem value="EXPORTING">Đang xuất</SelectItem>
                       <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
                       <SelectItem value="CANCELLED">Đã hủy</SelectItem>
                     </SelectContent>
@@ -662,7 +653,6 @@ export default function ExportSlipsPage() {
                   return;
                 }
 
-                // Validate required fields
                 if (!editFormData.code || !editFormData.exportDate || !editFormData.exportTo) {
                   toast({
                     title: "Lỗi",
@@ -674,7 +664,6 @@ export default function ExportSlipsPage() {
 
                 try {
                   setSaving(true);
-                  // Convert datetime-local to ISO string
                   const exportDateISO = new Date(editFormData.exportDate).toISOString();
                   
                   const updateData = {
@@ -687,7 +676,6 @@ export default function ExportSlipsPage() {
                     exportNoteStatus: editFormData.exportNoteStatus
                   };
 
-                  // Only include optional fields if they have values
                   if (editFormData.note) {
                     updateData.note = editFormData.note;
                   }
@@ -706,7 +694,6 @@ export default function ExportSlipsPage() {
                       description: "Cập nhật phiếu xuất thành công"
                     });
                     setIsEditDialogOpen(false);
-                    // Refresh table
                     if (window.refreshExportNotes) {
                       window.refreshExportNotes();
                     }

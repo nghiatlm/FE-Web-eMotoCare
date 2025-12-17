@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, Filter, Calendar, Clock, User, Phone, MapPin, Eye, CheckCircle2, XCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Search, Calendar as CalendarIcon, Eye, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { useNavigate } from "react-router-dom";
 import { getAppointments } from "@/api/appointmentsApi";
 import { toast } from "react-toastify";
@@ -14,8 +15,9 @@ import { format } from "date-fns";
 export default function AppointmentsList() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [dateFilter, setDateFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+  const [selectedDate, setSelectedDate] = useState(null);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -23,7 +25,6 @@ export default function AppointmentsList() {
   const [pageSize] = useState(10);
   const [total, setTotal] = useState(0);
 
-  // Format slotTime from "H17_18" to "17:00 - 18:00"
   const formatSlotTime = (slotTime) => {
     if (!slotTime) return "—";
     const match = slotTime.match(/H(\d+)_(\d+)/);
@@ -35,7 +36,6 @@ export default function AppointmentsList() {
     return slotTime;
   };
 
-  // Format appointment type
   const formatAppointmentType = (type) => {
     switch (type) {
       case "WARRANTY_TYPE":
@@ -53,7 +53,6 @@ export default function AppointmentsList() {
     }
   };
 
-  // Get status badge
   const getStatusBadge = (status) => {
     switch (status?.toUpperCase()) {
       case "PENDING":
@@ -72,7 +71,6 @@ export default function AppointmentsList() {
         return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Thanh toán thất bại</Badge>;
       case "COMPLETED":
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Hoàn thành</Badge>;
-      case "CANCELLED":
       case "CANCELED":
         return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Đã hủy</Badge>;
       default:
@@ -88,7 +86,7 @@ export default function AppointmentsList() {
         page,
         pageSize,
         search: search || undefined,
-        status: statusFilter,
+        status: statusFilter || undefined,
       });
       
       
@@ -125,22 +123,16 @@ export default function AppointmentsList() {
       serviceType.toLowerCase().includes(searchLower) ||
       appointment.code?.toLowerCase().includes(searchLower);
     
-    const matchesStatus = statusFilter === "all" || appointment.status?.toUpperCase() === statusFilter.toUpperCase();
+    const matchesStatus = !statusFilter || appointment.status?.toUpperCase() === statusFilter.toUpperCase();
     
     let matchesDate = true;
-    if (dateFilter !== "all" && appointment.appointmentDate) {
+    if (dateFilter && appointment.appointmentDate) {
       const appointmentDate = format(new Date(appointment.appointmentDate), "yyyy-MM-dd");
       matchesDate = appointmentDate === dateFilter;
     }
     
     return matchesSearch && matchesStatus && matchesDate;
   });
-
-  const uniqueDates = [...new Set(
-    appointments
-      .map((a) => (a.appointmentDate ? format(new Date(a.appointmentDate), "yyyy-MM-dd") : null))
-      .filter(Boolean)
-  )];
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -157,7 +149,7 @@ export default function AppointmentsList() {
 
         <div className="mb-2 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="relative flex-1 min-w-[260px] md:min-w-[320px]">
+            <div className="relative w-full md:flex-1 md:min-w-[260px] md:max-w-[520px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Tìm theo mã lịch hẹn, tên, số điện thoại, dịch vụ..."
@@ -169,12 +161,17 @@ export default function AppointmentsList() {
                 className="pl-9 bg-slate-50 border-slate-200 focus-visible:ring-red-500/70"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => {
+                setPage(1);
+                setStatusFilter(value);
+              }}
+            >
               <SelectTrigger className="w-[150px] md:w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
                 <SelectItem value="PENDING">Chờ xử lý</SelectItem>
                 <SelectItem value="APPROVED">Đã duyệt</SelectItem>
                 <SelectItem value="CHECKED_IN">Đã check-in</SelectItem>
@@ -183,30 +180,37 @@ export default function AppointmentsList() {
                 <SelectItem value="WAITING_FOR_PAYMENT">Chờ thanh toán</SelectItem>
                 <SelectItem value="PAYMENT_FAILED">Thanh toán thất bại</SelectItem>
                 <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
-                <SelectItem value="CANCELLED">Đã hủy</SelectItem>
                 <SelectItem value="CANCELED">Đã hủy</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={dateFilter} onValueChange={setDateFilter}>
-              <SelectTrigger className="w-[150px] md:w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
-                <SelectValue placeholder="Ngày" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả ngày</SelectItem>
-                {uniqueDates.map((date) => (
-                  <SelectItem key={date} value={date}>
-                    {new Date(date).toLocaleDateString("vi-VN")}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              className="border-transparent text-slate-600 hover:text-red-600 hover:bg-red-50"
-            >
-              <Filter className="h-4 w-4 mr-2" />
-              Lọc
-            </Button>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-[150px] md:w-[180px] justify-start bg-slate-50 border-slate-200 text-left font-normal text-slate-700 hover:bg-slate-100"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4 text-slate-500" />
+                  {selectedDate ? format(selectedDate, "dd/MM/yyyy") : "Tất cả ngày"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => {
+                    setPage(1);
+                    setSelectedDate(date);
+                    if (date) {
+                      setDateFilter(format(date, "yyyy-MM-dd"));
+                    } else {
+                      setDateFilter("");
+                    }
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 

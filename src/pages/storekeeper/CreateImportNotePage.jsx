@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStaffByAccountId } from "@/api/staffsApi";
-import { getParts, getPartTypes } from "@/api/partsApi";
+import { getParts, getPartTypesLabels } from "@/api/partsApi";
 import { getPartItems } from "@/api/partitemsApi";
 import { createImportNote } from "@/api/importNotesApi";
 import { toast as toastify } from "react-toastify";
@@ -59,8 +59,6 @@ export default function CreateImportNotePage() {
     warrantyPeriod: 0, 
     warrantyStartDate: null,
     type: "SUPPLIER",
-    newPartName: "",
-    newPartImage: "",
   });
   const [hasManufacturerWarranty, setHasManufacturerWarranty] = useState(false);
   const [warrantyDateError, setWarrantyDateError] = useState("");
@@ -162,9 +160,8 @@ export default function CreateImportNotePage() {
   useEffect(() => {
     const fetchPartTypesData = async () => {
       try {
-        const res = await getPartTypes(1, 100);
-        const payload = res?.data || res;
-        const list = payload?.rowDatas || payload?.data || payload || [];
+        const res = await getPartTypesLabels();
+        const list = res?.data || [];
         setPartTypes(list);
       } catch (error) {
         console.error("Lỗi khi tải danh sách Part Type:", error);
@@ -194,9 +191,7 @@ export default function CreateImportNotePage() {
     [filteredParts, parts, selectedPartId],
   );
 
-  // Thêm phụ tùng vào danh sách
   const handleAddPartToList = () => {
-    // Validate
     if (!selectedPartTypeId) {
       toastify.error("Vui lòng chọn loại phụ tùng.", {
         position: "top-right",
@@ -205,8 +200,8 @@ export default function CreateImportNotePage() {
       return;
     }
 
-    if (!selectedPartId && !form.newPartName?.trim()) {
-      toastify.error("Vui lòng chọn phụ tùng có sẵn hoặc nhập tên phụ tùng mới.", {
+    if (!selectedPartId) {
+      toastify.error("Vui lòng chọn phụ tùng có sẵn.", {
         position: "top-right",
         autoClose: 4000,
       });
@@ -221,12 +216,12 @@ export default function CreateImportNotePage() {
       return;
     }
 
-    const partId = selectedPartId || null;
-    const partName = selectedPart?.name || form.newPartName?.trim() || "";
-    const partImage = selectedPart?.image || form.newPartImage?.trim() || "";
+    const partId = selectedPartId;
+    const partName = selectedPart?.name || "";
+    const partImage = selectedPart?.image || "";
 
     const newPart = {
-      id: Date.now().toString(), // Temporary ID
+      id: Date.now().toString(),
       partTypeId: selectedPartTypeId,
       partId: partId,
       partName: partName,
@@ -237,12 +232,11 @@ export default function CreateImportNotePage() {
       warrantyPeriod: Number(form.warrantyPeriod) || 0,
       warrantyStartDate: form.warrantyStartDate,
       hasManufacturerWarranty: hasManufacturerWarranty,
-      selectedPart: selectedPart, // Lưu lại để hiển thị
+      selectedPart: selectedPart,
     };
 
     setAddedParts([...addedParts, newPart]);
 
-    // Reset form
     setSelectedPartId("");
     setSelectedPartTypeId("");
     setForm({
@@ -252,8 +246,6 @@ export default function CreateImportNotePage() {
       price: 0,
       warrantyPeriod: 0,
       warrantyStartDate: null,
-      newPartName: "",
-      newPartImage: "",
     });
     setHasManufacturerWarranty(false);
     setWarrantyDateError("");
@@ -264,13 +256,11 @@ export default function CreateImportNotePage() {
     });
   };
 
-  // Xóa phụ tùng khỏi danh sách
   const handleRemovePart = (partId) => {
     setAddedParts(addedParts.filter((p) => p.id !== partId));
   };
 
   const handleSubmit = async () => {
-    // Kiểm tra danh sách phụ tùng đã thêm
     if (addedParts.length === 0) {
       toastify.error("Vui lòng thêm ít nhất một phụ tùng vào danh sách trước khi tạo phiếu nhập.", {
         position: "top-right",
@@ -541,8 +531,6 @@ export default function CreateImportNotePage() {
                       >
                         {selectedPart
                           ? selectedPart.name || "Phụ tùng"
-                          : selectedPartId === "" && selectedPartTypeId
-                          ? "Tạo phụ tùng mới"
                           : loadingParts
                             ? "Đang tải danh sách phụ tùng..."
                             : filteredParts.length === 0
@@ -556,27 +544,6 @@ export default function CreateImportNotePage() {
                         <CommandList>
                           <CommandEmpty>Không tìm thấy phụ tùng.</CommandEmpty>
                           <CommandGroup>
-                            <CommandItem
-                              value="new-part"
-                              onSelect={() => {
-                                setSelectedPartId("");
-                                setOpenPartPopover(false);
-                              }}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="h-9 w-9 rounded-md border border-dashed border-primary/60 flex items-center justify-center bg-primary/5 text-primary flex-shrink-0 text-[10px]">
-                                  +
-                                </div>
-                                <div className="flex flex-col text-left">
-                                  <span className="font-medium text-sm text-primary">
-                                    Tạo phụ tùng mới
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">
-                                    Phụ tùng chưa có trong hệ thống
-                                  </span>
-                                </div>
-                              </div>
-                            </CommandItem>
                             {filteredParts.map((part) => (
                               <CommandItem
                                 key={part.id}
@@ -616,35 +583,6 @@ export default function CreateImportNotePage() {
                   </Popover>
                 </div>
               </div>
-
-              {!selectedPartId && selectedPartTypeId && (
-                <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-primary" />
-                    <Label className="text-sm font-semibold text-primary">
-                      Thông tin phụ tùng mới
-                    </Label>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="newPartName">Tên phụ tùng *</Label>
-                    <Input
-                      id="newPartName"
-                      value={form.newPartName}
-                      onChange={(e) => handleChange("newPartName", e.target.value)}
-                      placeholder="Nhập tên phụ tùng mới"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="newPartImage">Hình ảnh (URL)</Label>
-                    <Input
-                      id="newPartImage"
-                      value={form.newPartImage}
-                      onChange={(e) => handleChange("newPartImage", e.target.value)}
-                      placeholder="Nhập URL hình ảnh (tùy chọn)"
-                    />
-                  </div>
-                </div>
-              )}
 
               <div className="space-y-2">
                 <div className="flex items-start gap-2">

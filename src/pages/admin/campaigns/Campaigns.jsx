@@ -78,7 +78,6 @@ export default function Campaigns() {
     }
     try {
       const res = await getPrograms(params);
-      console.log("Fetched campaigns:", res);
 
       let rows = [];
       if (Array.isArray(res)) rows = res;
@@ -96,7 +95,6 @@ export default function Campaigns() {
       setCampaigns(rows);
       setPagination((p) => ({ ...p, current: page, pageSize, total: Number(total || rows.length) }));
     } catch (err) {
-      console.error("Error fetching campaigns:", err);
       setError(err?.message || String(err));
       setCampaigns([]);
       setPagination((p) => ({ ...p, total: 0 }));
@@ -239,7 +237,6 @@ export default function Campaigns() {
         setSyncStatus("success");
         setLastSync(new Date().toISOString());
         toast.success("Đồng bộ chiến dịch thành công");
-        // refresh list after sync
         fetchCampaigns(pagination.current, pagination.pageSize);
       } else {
         setSyncStatus("error");
@@ -264,8 +261,6 @@ export default function Campaigns() {
           <p className="text-base md:text-lg font-medium text-slate-700">Quản lý các chiến dịch khuyến mãi và ưu đãi</p>
           <div className="mt-3 h-1.5 w-28 rounded-full bg-red-500 shadow-[0_4px_16px_-6px_rgba(239,68,68,0.65)]" />
         </div>
-
-        {/* Sync card */}
         <Card className="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
           <CardContent className="p-4 md:p-5">
             <div className="flex flex-col md:flex-row md:items-center gap-4">

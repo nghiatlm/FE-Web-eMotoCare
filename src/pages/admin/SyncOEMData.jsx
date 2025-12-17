@@ -43,7 +43,7 @@ const DATA_TYPES = [
   {
     id: "maintenance-plans",
     label: "Lịch bảo dưỡng",
-    description: "Đồng bộ dữ liệu lịch bảo dưỡng và các giai đoạn bảo dưỡng từ hệ thống OEM",
+    description: "Đồng bộ dữ liệu lịch bảo dưỡng từ hệ thống OEM",
     icon: Server,
     buttonBg: "bg-red-600 dark:bg-red-700",
     buttonHover: "hover:bg-red-700 dark:hover:bg-red-800",

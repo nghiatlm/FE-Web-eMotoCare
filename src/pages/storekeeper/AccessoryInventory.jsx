@@ -15,7 +15,6 @@ import { Plus } from "lucide-react";
 import * as ProgressPrimitive from "@radix-ui/react-progress";
 import { cn } from "@/lib/utils";
 
-// Custom Progress component với màu động
 const ColoredProgress = ({ value, colorClass, className, ...props }) => {
   return (
     <ProgressPrimitive.Root 
@@ -82,12 +81,10 @@ export default function AccessoryInventory() {
     const fetchParts = async () => {
       try {
         setLoading(true);
-        // Note: API doesn't filter by alert status, so we filter client-side for alert
         const res = await getParts({ 
           page, 
           pageSize,
           search: search || undefined,
-          // status filter is for backend status (ACTIVE/INACTIVE), not alert
         });
         const payload = res?.data || res;
         const list = payload?.rowDatas || [];
@@ -122,7 +119,6 @@ export default function AccessoryInventory() {
     fetchParts();
   }, [page, pageSize, search, status]);
 
-  // Fetch part types when create or edit dialog opens
   useEffect(() => {
     const fetchPartTypes = async () => {
       if (isCreateDialogOpen || isEditDialogOpen) {
@@ -134,18 +130,15 @@ export default function AccessoryInventory() {
           console.error("Lỗi lấy danh sách loại phụ tùng:", e);
         }
       } else {
-        // Reset when dialogs close
         setPartTypes([]);
       }
     };
     fetchPartTypes();
   }, [isCreateDialogOpen, isEditDialogOpen]);
 
-  // Fetch part detail when edit dialog opens and partTypes are loaded
   useEffect(() => {
     const fetchPartDetail = async () => {
       if (isEditDialogOpen && selectedPartId) {
-        // Wait for partTypes to be loaded first
         if (partTypes.length === 0) {
           return;
         }
@@ -154,11 +147,9 @@ export default function AccessoryInventory() {
           setLoadingEditDetail(true);
           const response = await getPartById(selectedPartId);
           
-          // Handle different response structures
           const data = response?.data || response;
           
           if (data) {
-            // Get partTypeId - handle both nested and direct structure
             let partTypeId = "";
             if (data.partType?.id) {
               partTypeId = data.partType.id;
@@ -246,23 +237,18 @@ export default function AccessoryInventory() {
     }
   };
 
-  // Tính toán màu progress bar dựa trên tồn kho (giống AccessoryDetail)
   const getProgressColor = (stock, minStock) => {
     const ratio = stock / minStock;
 
-    // Nếu hết hoặc thiếu nhiều (ít hơn 50% minStock) -> đỏ
     if (stock === 0 || ratio < 0.5) {
       return "bg-red-500";
     }
-    // Nếu vừa (từ 50% đến 110% minStock) -> vàng
     if (ratio >= 0.5 && ratio <= 1.1) {
       return "bg-yellow-500";
     }
-    // Nếu dư nhiều (nhiều hơn 110% minStock) -> xanh lá
     return "bg-green-500";
   };
 
-  // Filter by alert status (sufficient/low/out) client-side since API doesn't support it
   const filteredAccessories = accessories.filter(item => {
     if (status && status !== "all") {
       return item.alert === status;
@@ -280,7 +266,6 @@ export default function AccessoryInventory() {
           </div>
           <p className="text-muted-foreground mb-4">Quản lý tồn kho phụ tùng tại chi nhánh</p>
           
-          {/* Chi nhánh hiện tại */}
           <div className="p-4 bg-card rounded-lg border border-border">
             <div className="flex items-center justify-between">
               <div className="flex items-start gap-3">
@@ -305,7 +290,6 @@ export default function AccessoryInventory() {
           </div>
         </div>
 
-        {/* Search and Filter Bar */}
         <div className="p-4 bg-card rounded-lg border border-border mb-6">
           <div className="flex flex-wrap items-center gap-4">
             <div className="relative w-[350px]">
@@ -336,7 +320,6 @@ export default function AccessoryInventory() {
               className="gap-2"
               onClick={() => {
                 setPage(1);
-                // Trigger refetch by changing a dependency
               }}
             >
               <RotateCcw className="h-4 w-4" />
@@ -703,7 +686,6 @@ export default function AccessoryInventory() {
                     image: ""
                   });
 
-                  // Refresh the list
                   const res = await getParts({ page, pageSize, search: search || undefined });
                   const payload = res?.data || res;
                   const list = payload?.rowDatas || [];
@@ -932,7 +914,6 @@ export default function AccessoryInventory() {
                         status: "ACTIVE"
                       });
 
-                      // Refresh the list
                       const res = await getParts({ page, pageSize, search: search || undefined });
                       const payload = res?.data || res;
                       const list = payload?.rowDatas || [];
@@ -1112,7 +1093,6 @@ export default function AccessoryInventory() {
             <Button 
               className="gap-2 bg-orange-600 hover:bg-orange-700"
               onClick={() => {
-                // Handle send request
                 console.log("Sending transfer request:", selectedItems, requestNote);
                 setIsRequestDialogOpen(false);
                 setIsSelectMode(false);
