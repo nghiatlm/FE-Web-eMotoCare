@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Megaphone, Calendar as CalendarIcon, FileText, Tag, Car, Package, DollarSign, Percent, Plus, X, Upload, Image as ImageIcon, Sparkles } from "lucide-react";
+import { X, Upload, Image as ImageIcon, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,23 +25,45 @@ export default function CreateCampaign() {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   
-  // Loading states
   const [loadingModels, setLoadingModels] = useState(false);
   const [loadingParts, setLoadingParts] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   
-  // Data states
   const [models, setModels] = useState([]);
   const [parts, setParts] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
   const [attachmentName, setAttachmentName] = useState("");
   const [programItems, setProgramItems] = useState([
-    { modelId: "", partIds: [], parts: [], loading: false, error: "" },
+    { modelId: "", partIds: [], parts: [], partDetails: {}, loading: false, error: "", partPopoverOpen: false, partSearch: "", detailsCollapsed: false },
   ]);
 
+  const partTriggerRefs = useRef([]);
+  const partPopoverRefs = useRef([]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      setProgramItems((prev) =>
+        prev.map((p, idx) => {
+          const triggerEl = partTriggerRefs.current[idx];
+          const popoverEl = partPopoverRefs.current[idx];
+          if (!p.partPopoverOpen) return p;
+          const target = event.target;
+          const insideTrigger = triggerEl && triggerEl.contains(target);
+          const insidePopover = popoverEl && popoverEl.contains(target);
+          if (insideTrigger || insidePopover) return p;
+          return { ...p, partPopoverOpen: false };
+        })
+      );
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [partTriggerRefs, partPopoverRefs]);
+
   const [form, setForm] = useState({
-    type: "RECALL", // Theo API documentation
+    type: "RECALL",
     title: "",
     description: "",
     startDate: null,
@@ -52,7 +74,6 @@ export default function CreateCampaign() {
     recallAction: "",
   });
 
-  // Load models on mount
   useEffect(() => {
     const fetchModels = async () => {
       try {
@@ -74,7 +95,6 @@ export default function CreateCampaign() {
     fetchModels();
   }, []);
 
-  // Load parts on mount
   useEffect(() => {
     const fetchParts = async () => {
       try {
@@ -110,12 +130,10 @@ export default function CreateCampaign() {
     }
   };
 
-  // Handle file selection (image or other attachment)
   const handleImageSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Lỗi: Kích thước file không được vượt quá 5MB", {
         position: "top-right",
@@ -127,7 +145,6 @@ export default function CreateCampaign() {
     setSelectedImage(file);
     setAttachmentName(file.name || "");
     
-    // Create preview if file is image
     if (file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -139,7 +156,6 @@ export default function CreateCampaign() {
     }
   };
 
-  // Handle image remove
   const handleImageRemove = () => {
     setSelectedImage(null);
     setImagePreview("");
@@ -147,7 +163,6 @@ export default function CreateCampaign() {
     handleChange("attachmentUrl", "");
   };
 
-  // Helper function to compare dates without time component
   const compareDatesOnly = (date1, date2) => {
     const d1 = new Date(date1);
     const d2 = new Date(date2);
@@ -156,7 +171,6 @@ export default function CreateCampaign() {
     return d1.getTime() - d2.getTime();
   };
 
-  // Helper function to get today's date without time
   const getTodayDateOnly = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -172,16 +186,9 @@ export default function CreateCampaign() {
       newErrors.title = "Tiêu đề phải có ít nhất 3 ký tự";
     }
     
-    if (!form.description || form.description.trim() === "") {
-      newErrors.description = "Vui lòng nhập mô tả campaign";
-    } else if (form.description.trim().length < 10) {
-      newErrors.description = "Mô tả phải có ít nhất 10 ký tự";
-    }
-    
     if (!form.startDate) {
       newErrors.startDate = "Vui lòng chọn ngày bắt đầu";
     } else {
-      // Validate startDate must be today or future (compare dates only, no time)
       const today = getTodayDateOnly();
       const startDateOnly = new Date(form.startDate);
       startDateOnly.setHours(0, 0, 0, 0);
@@ -194,7 +201,6 @@ export default function CreateCampaign() {
     if (!form.endDate) {
       newErrors.endDate = "Vui lòng chọn ngày kết thúc";
     } else if (form.startDate) {
-      // Compare dates without time component
       const diff = compareDatesOnly(form.endDate, form.startDate);
       if (diff < 0) {
       newErrors.endDate = "Ngày kết thúc phải sau ngày bắt đầu";
@@ -215,7 +221,6 @@ export default function CreateCampaign() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate form
     if (!validateForm()) {
       toast.error("Lỗi validation: Vui lòng kiểm tra lại các trường đã nhập", {
         position: "top-right",
@@ -227,7 +232,6 @@ export default function CreateCampaign() {
     try {
       setSaving(true);
       
-      // Get current user
       const user = authService.getCurrentUser();
       const userId = user?.accountResponse?.id || user?.id;
       
@@ -239,7 +243,6 @@ export default function CreateCampaign() {
         return;
       }
       
-      // Upload file to Firebase if selected
       let attachmentUrl = form.attachmentUrl;
       if (selectedImage) {
         try {
@@ -275,6 +278,11 @@ export default function CreateCampaign() {
       const startDateISO = formatDateToISO(form.startDate);
       const endDateISO = formatDateToISO(form.endDate);
 
+      const getServiceTypeFromProgramType = (programType) => {
+        if (programType === "RECALL") return "RECALL_TYPE";
+        return "CAMPAIGN_TYPE";
+      };
+
       const payload = {
         type: form.type,
         title: form.title.trim(),
@@ -289,12 +297,13 @@ export default function CreateCampaign() {
         ).map((id) => ({ vehicleModelId: id })),
         programDetails: programItems.reduce((arr, item) => {
           (item.partIds || []).forEach((pid) => {
+            const detail = item.partDetails?.[pid] || {};
             arr.push({
               recallPartId: pid,
-              serviceType: "CAMPAIGN_TYPE",
-              discountPercent: Number(form.discountPercent) || 0,
-              bonusAmount: Number(form.bonusAmount) || 0,
-              recallAction: form.recallAction || (form.type === "RECALL" ? "Thu hồi" : ""),
+              serviceType: getServiceTypeFromProgramType(form.type),
+              discountPercent: Number(detail.discountPercent) || 0,
+              bonusAmount: 0,
+              recallAction: detail.recallAction || form.recallAction || (form.type === "RECALL" ? "Thu hồi" : ""),
             });
           });
           return arr;
@@ -323,52 +332,45 @@ export default function CreateCampaign() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <div className="w-full px-3 sm:px-6 lg:px-10 max-w-[1600px] mx-auto">
-        {/* Header - Compact & Friendly */}
-        <div className="mb-6">
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-pink-50/70 to-amber-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <div className="w-full px-3 sm:px-6 lg:px-10 max-w-[1600px] mx-auto pb-10">
+        <div className="mb-6 pt-4">
           <Button 
             variant="ghost" 
             size="sm"
             onClick={() => navigate("/admin/campaigns")}
-            className="mb-3 hover:bg-primary/5 text-muted-foreground hover:text-foreground transition-colors"
+            className="mb-3 hover:bg-rose-50 text-rose-500 hover:text-rose-600 transition-colors"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
             Quay lại
           </Button>
           
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-primary/10 shadow-sm backdrop-blur-sm">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 text-primary">
-              <Megaphone className="h-6 w-6" />
-            </div>
+          <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/90 dark:bg-slate-900/60 border border-rose-100 shadow-sm backdrop-blur-sm shadow-rose-100/60">
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                 Tạo chiến dịch mới
               </h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Điền thông tin để tạo chiến dịch khuyến mãi mới
+              <p className="text-sm text-slate-500 mt-0.5">
+                Tạo chiến dịch mới cho hệ thống
               </p>
             </div>
           </div>
         </div>
 
-        {/* Form - Compact & Clean */}
         <form onSubmit={handleSubmit}>
-          <Card className="border border-slate-200/80 dark:border-slate-800 shadow-sm bg-white/90 dark:bg-slate-900/50 backdrop-blur-sm">
-            <CardHeader className="pb-4 border-b border-slate-200/60 dark:border-slate-800 bg-gradient-to-r from-primary/5 to-transparent">
+          <Card className="border border-rose-100/80 dark:border-slate-800 shadow-sm bg-white/95 dark:bg-slate-900/50 backdrop-blur-sm rounded-2xl">
+            <CardHeader className="pb-4 border-b border-rose-100/70 dark:border-slate-800 bg-gradient-to-r from-rose-50 via-pink-50/60 to-transparent">
               <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-primary/70" />
-                <CardTitle className="text-lg font-semibold">Thông tin chiến dịch</CardTitle>
+                <CardTitle className="text-lg font-semibold text-slate-900">
+                  Thông tin chiến dịch
+                </CardTitle>
               </div>
               <CardDescription className="text-xs mt-1.5">
                 Các trường có dấu <span className="text-red-500 font-medium">*</span> là bắt buộc
               </CardDescription>
             </CardHeader>
             <CardContent className="p-5 space-y-4">
-              {/* Loại chiến dịch */}
               <div className="space-y-2">
                 <Label htmlFor="type" className="flex items-center gap-1.5 text-sm font-medium">
-                  <Tag className="h-3.5 w-3.5 text-primary/70" />
                   Loại chiến dịch <span className="text-red-500">*</span>
                 </Label>
                 <Select
@@ -385,10 +387,8 @@ export default function CreateCampaign() {
                 </Select>
               </div>
 
-              {/* Tiêu đề */}
               <div className="space-y-2">
                 <Label htmlFor="title" className="flex items-center gap-1.5 text-sm font-medium">
-                  <Tag className="h-3.5 w-3.5 text-primary/70" />
                   Tiêu đề chiến dịch <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -411,18 +411,11 @@ export default function CreateCampaign() {
                 )}
               </div>
 
-              {/* Mô tả */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="description" className="flex items-center gap-1.5 text-sm font-medium">
-                    <FileText className="h-3.5 w-3.5 text-primary/70" />
-                    Mô tả <span className="text-red-500">*</span>
+                    Mô tả
                 </Label>
-                  {form.description && (
-                    <span className="text-xs text-muted-foreground">
-                      {form.description.length} ký tự
-                    </span>
-                  )}
                 </div>
                 <Textarea
                   id="description"
@@ -446,10 +439,15 @@ export default function CreateCampaign() {
               </div>
 
               {/* Ngày bắt đầu và kết thúc */}
+              <div className="pt-2 border-t border-dashed border-rose-100 mt-2" />
+              <div className="flex items-center justify-between mb-1 mt-3">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-slate-800">Thời gian áp dụng</p>
+                </div>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="startDate" className="flex items-center gap-1.5 text-sm font-medium">
-                    <CalendarIcon className="h-3.5 w-3.5 text-primary/70" />
                     Ngày bắt đầu <span className="text-red-500">*</span>
                   </Label>
                   <Popover>
@@ -464,7 +462,6 @@ export default function CreateCampaign() {
                             : "border-slate-200 dark:border-slate-700 hover:border-primary/40 focus:border-primary focus:ring-primary/20"
                         )}
                       >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
                         {form.startDate ? (
                           format(form.startDate, "PPP", { locale: vi })
                         ) : (
@@ -497,7 +494,6 @@ export default function CreateCampaign() {
 
                 <div className="space-y-2">
                   <Label htmlFor="endDate" className="flex items-center gap-1.5 text-sm font-medium">
-                    <CalendarIcon className="h-3.5 w-3.5 text-primary/70" />
                     Ngày kết thúc <span className="text-red-500">*</span>
                   </Label>
                   <Popover>
@@ -512,7 +508,6 @@ export default function CreateCampaign() {
                             : "border-slate-200 dark:border-slate-700 hover:border-primary/40 focus:border-primary focus:ring-primary/20"
                         )}
                       >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
                         {form.endDate ? (
                           format(form.endDate, "PPP", { locale: vi })
                         ) : (
@@ -530,7 +525,6 @@ export default function CreateCampaign() {
                           const today = getTodayDateOnly();
                           const dateOnly = new Date(date);
                           dateOnly.setHours(0, 0, 0, 0);
-                          // Disable past dates and dates before startDate
                           if (dateOnly < today) return true;
                           if (form.startDate) {
                             const startDateOnly = new Date(form.startDate);
@@ -553,20 +547,25 @@ export default function CreateCampaign() {
                 <div className="hidden md:block" />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                 <div className="space-y-2 md:col-span-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
-                      <Car className="h-4 w-4 text-primary/70" />
-                      <p className="text-sm font-semibold">Model & phụ tùng</p>
+                      <p className="text-sm font-semibold text-slate-800">Model & phụ tùng</p>
                     </div>
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       onClick={() =>
-                    setProgramItems((prev) => [...prev, { modelId: "", partIds: [], parts: [], loading: false, error: "" }])
+                        setProgramItems((prev) => [
+                          ...prev,
+                          { modelId: "", partIds: [], parts: [], partDetails: {}, loading: false, error: "", partPopoverOpen: false, partSearch: "", detailsCollapsed: false },
+                        ])
                       }
+                      className="border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300"
                     >
                       Thêm model/phụ tùng
                     </Button>
@@ -593,6 +592,21 @@ export default function CreateCampaign() {
                               Xóa
                             </Button>
                           )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setProgramItems((prev) =>
+                                prev.map((p, i) =>
+                                  i === idx ? { ...p, detailsCollapsed: !p.detailsCollapsed } : p
+                                )
+                              )
+                            }
+                            className="text-primary hover:text-primary"
+                          >
+                            {item.detailsCollapsed ? "Mở chi tiết" : "Thu gọn"}
+                          </Button>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -603,7 +617,7 @@ export default function CreateCampaign() {
                               onValueChange={async (val) => {
                                 setProgramItems((prev) =>
                                   prev.map((p, i) =>
-                                    i === idx ? { ...p, modelId: val, partIds: [], parts: [], loading: true } : p
+                                    i === idx ? { ...p, modelId: val, partIds: [], parts: [], partDetails: {}, loading: true, partPopoverOpen: false, partSearch: "" } : p
                                   )
                                 );
                                 try {
@@ -629,11 +643,18 @@ export default function CreateCampaign() {
                                 <SelectValue placeholder={loadingModels ? "Đang tải..." : "Chọn model"} />
                               </SelectTrigger>
                               <SelectContent>
-                                {models.map((model) => (
-                                  <SelectItem key={model.id} value={model.id}>
-                                    {model.name || model.code || model.id}
-                                  </SelectItem>
-                                ))}
+                                {(models || [])
+                                  .filter((model) => {
+                                    const selected = programItems
+                                      .map((p, i) => (i === idx ? null : p.modelId))
+                                      .filter(Boolean);
+                                    return model.id === item.modelId || !selected.includes(model.id);
+                                  })
+                                  .map((model) => (
+                                    <SelectItem key={model.id} value={model.id}>
+                                      {model.name || model.code || model.id}
+                                    </SelectItem>
+                                  ))}
                               </SelectContent>
                             </Select>
                             {errors[`program_model_${idx}`] && (
@@ -646,43 +667,121 @@ export default function CreateCampaign() {
 
                           <div className="space-y-2">
                             <Label className="text-sm font-medium">Phụ tùng (nhiều)</Label>
-                            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-900/40 p-3 space-y-2 max-h-56 overflow-auto">
-                              {item.loading ? (
-                                <p className="text-xs text-muted-foreground">Đang tải...</p>
-                              ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pr-1">
-                                  {(item.parts || []).map((part) => (
-                                    <label
-                                      key={part.partId || part.id}
-                                      className={cn(
-                                        "flex items-center gap-2 text-sm rounded-lg border px-3 py-2 transition-all cursor-pointer",
-                                        item.partIds?.includes(part.partId || part.id)
-                                          ? "bg-primary/5 border-primary/40 text-primary font-semibold"
-                                          : "bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-700 hover:border-primary/50 text-slate-700 dark:text-slate-200"
-                                      )}
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/30"
-                                        checked={item.partIds?.includes(part.partId || part.id)}
-                                        onChange={() =>
-                                          setProgramItems((prev) =>
-                                            prev.map((p, i) =>
-                                              i === idx
-                                                ? {
-                                                    ...p,
-                                                    partIds: p.partIds?.includes(part.partId || part.id)
-                                                      ? p.partIds.filter((x) => x !== (part.partId || part.id))
-                                                      : [...(p.partIds || []), part.partId || part.id],
-                                                  }
-                                                : p
-                                            )
+                            <div className="relative">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full h-10 justify-between text-sm border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 hover:border-primary/40 focus:border-primary focus:ring-primary/20 rounded-md px-3"
+                                onClick={() =>
+                                  setProgramItems((prev) =>
+                                    prev.map((p, i) =>
+                                      i === idx ? { ...p, partPopoverOpen: !p.partPopoverOpen } : p
+                                    )
+                                  )
+                                }
+                                disabled={item.loading}
+                                ref={(el) => {
+                                  partTriggerRefs.current[idx] = el;
+                                }}
+                              >
+                                <span className="truncate text-left">
+                                  {item.partIds?.length
+                                    ? `${item.partIds.length} phụ tùng đã chọn`
+                                    : item.loading
+                                    ? "Đang tải..."
+                                    : "Chọn phụ tùng"}
+                                </span>
+                                <ChevronDown className="h-4 w-4 text-muted-foreground ml-2" />
+                              </Button>
+                              {item.partPopoverOpen && (
+                                <div
+                                  className="absolute z-20 mt-2 w-full max-h-80 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg"
+                                  ref={(el) => {
+                                    partPopoverRefs.current[idx] = el;
+                                  }}
+                                >
+                                  <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/70">
+                                    <Input
+                                      autoFocus
+                                      value={item.partSearch || ""}
+                                      onChange={(e) =>
+                                        setProgramItems((prev) =>
+                                          prev.map((p, i) =>
+                                            i === idx ? { ...p, partSearch: e.target.value } : p
                                           )
-                                        }
-                                      />
-                                      <span>{part.partName || part.name || part.partId || part.id}</span>
-                                    </label>
-                                  ))}
+                                        )
+                                      }
+                                      placeholder="Tìm phụ tùng..."
+                                      className="h-9 text-sm bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus-visible:ring-0 focus-visible:border-primary/40 focus:border-primary/40"
+                                    />
+                                  </div>
+                                  <div className="max-h-64 overflow-auto p-2 space-y-1">
+                                    {item.loading ? (
+                                      <p className="text-xs text-muted-foreground px-2 py-1">Đang tải...</p>
+                                    ) : (item.parts || []).length === 0 ? (
+                                      <p className="text-xs text-muted-foreground px-2 py-1">Chưa có phụ tùng</p>
+                                    ) : (
+                                      ((item.parts || []).filter((part) => {
+                                        const pid = part.partId || part.id;
+                                        const label = (part.partName || part.name || pid || "").toLowerCase();
+                                        const keyword = (item.partSearch || "").toLowerCase().trim();
+                                        return !keyword || label.includes(keyword);
+                                      }) || []).map((part) => {
+                                        const pid = part.partId || part.id;
+                                        const isSelected = item.partIds?.includes(pid);
+                                        return (
+                                          <button
+                                            type="button"
+                                            key={pid}
+                                            className={cn(
+                                              "w-full flex items-center gap-2 text-sm rounded-md px-2 py-2 text-left transition-colors",
+                                              isSelected
+                                                ? "bg-primary/5 text-primary font-semibold"
+                                                : "hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                                            )}
+                                            onClick={() =>
+                                              setProgramItems((prev) =>
+                                                prev.map((p, i) =>
+                                                  i === idx
+                                                    ? {
+                                                        ...p,
+                                                        partIds: isSelected
+                                                          ? p.partIds.filter((x) => x !== pid)
+                                                          : [...(p.partIds || []), pid],
+                                                        partDetails: (() => {
+                                                          const details = { ...(p.partDetails || {}) };
+                                                          if (isSelected) {
+                                                            delete details[pid];
+                                                          } else {
+                                                            details[pid] = {
+                                                              discountPercent: 0,
+                                                              recallAction: "",
+                                                            };
+                                                          }
+                                                          return details;
+                                                        })(),
+                                                      }
+                                                    : p
+                                                )
+                                              )
+                                            }
+                                          >
+                                            <span
+                                              className={cn(
+                                                "inline-flex h-4 w-4 items-center justify-center rounded border text-[10px]",
+                                                isSelected
+                                                  ? "border-primary bg-primary text-white"
+                                                  : "border-slate-300 bg-white text-transparent"
+                                              )}
+                                            >
+                                              ✓
+                                            </span>
+                                            <span className="truncate">{part.partName || part.name || pid}</span>
+                                          </button>
+                                        );
+                                      })
+                                    )}
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -694,68 +793,124 @@ export default function CreateCampaign() {
                             )}
                           </div>
                         </div>
+
+                        {item.partIds && item.partIds.length > 0 && !item.detailsCollapsed && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Thông tin phụ tùng đã chọn</p>
+                            <div className="space-y-2">
+                              {item.partIds.map((pid) => {
+                                const partObj = item.parts?.find((p) => (p.partId || p.id) === pid);
+                                const partLabel = partObj?.partName || partObj?.name || pid;
+                                const partThumb =
+                                  partObj?.imageUrl ||
+                                  partObj?.image ||
+                                  partObj?.thumbnail ||
+                                  partObj?.photoUrl ||
+                                  partObj?.imagePath ||
+                                  "";
+                                const detail = item.partDetails?.[pid] || {};
+                                return (
+                                  <div
+                                    key={pid}
+                                    className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 px-3 py-3 space-y-2"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-3 min-w-0">
+                                        <div className="h-10 w-10 rounded border border-slate-200 bg-slate-50 overflow-hidden flex-shrink-0">
+                                          {partThumb ? (
+                                            <img src={partThumb} alt={partLabel} className="h-full w-full object-cover" />
+                                          ) : (
+                                            <div className="h-full w-full flex items-center justify-center text-xs text-slate-500 bg-slate-100">
+                                              PT
+                                            </div>
+                                          )}
+                                        </div>
+                                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                                          {partLabel}
+                                        </span>
+                                      </div>
+                                      <span
+                                        className={cn(
+                                          "px-2 py-0.5 rounded-full text-[11px] font-semibold border",
+                                          form.type === "RECALL"
+                                            ? "bg-rose-50 border-rose-200 text-rose-700"
+                                            : "bg-blue-50 border-blue-200 text-blue-700"
+                                        )}
+                                      >
+                                        {form.type === "RECALL" ? "Thu hồi" : "Chiến dịch"}
+                                      </span>
+                                    </div>
+                                    {form.type === "CAMPAIGN" && (
+                                      <div className="space-y-1.5">
+                                        <Label className="text-xs font-medium text-slate-600">Giảm giá (%)</Label>
+                                        <Input
+                                          type="number"
+                                          min="0"
+                                          max="100"
+                                          value={detail.discountPercent ?? 0}
+                                          onChange={(e) =>
+                                            setProgramItems((prev) =>
+                                              prev.map((p, i) =>
+                                                i === idx
+                                                  ? {
+                                                      ...p,
+                                                      partDetails: {
+                                                        ...(p.partDetails || {}),
+                                                        [pid]: {
+                                                          ...(p.partDetails?.[pid] || {}),
+                                                          discountPercent: Number(e.target.value) || 0,
+                                                        },
+                                                      },
+                                                    }
+                                                  : p
+                                              )
+                                            )
+                                          }
+                                          placeholder="0"
+                                          className="h-9 text-sm"
+                                        />
+                                      </div>
+                                    )}
+                                    {form.type === "RECALL" && (
+                                      <div className="space-y-1.5">
+                                        <Label className="text-xs font-medium text-slate-600">Hành động thu hồi</Label>
+                                        <Input
+                                          value={detail.recallAction || ""}
+                                          onChange={(e) =>
+                                            setProgramItems((prev) =>
+                                              prev.map((p, i) =>
+                                                i === idx
+                                                  ? {
+                                                      ...p,
+                                                      partDetails: {
+                                                        ...(p.partDetails || {}),
+                                                        [pid]: {
+                                                          ...(p.partDetails?.[pid] || {}),
+                                                          recallAction: e.target.value,
+                                                        },
+                                                      },
+                                                    }
+                                                  : p
+                                              )
+                                            )
+                                          }
+                                          placeholder="Nhập hành động cho phụ tùng này"
+                                          className="h-9 text-sm"
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 </div>
               
-                <div className="space-y-2">
-                  <Label htmlFor="serviceType" className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-                    <Tag className="h-3.5 w-3.5 text-muted-foreground/70" />
-                    Loại dịch vụ
-                  </Label>
-                  <Input
-                    id="serviceType"
-                    value={SERVICE_TYPE_MAP.CAMPAIGN_TYPE || "Chiến dịch"}
-                    disabled
-                    className="h-10 text-sm bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
-                  />
-                </div>
               </div>
-
-              {/* Discount và Bonus */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="discountPercent" className="flex items-center gap-1.5 text-sm font-medium">
-                    <Percent className="h-3.5 w-3.5 text-primary/70" />
-                    Giảm giá (%)
-                  </Label>
-                  <Input
-                    id="discountPercent"
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={form.discountPercent}
-                    onChange={(e) => handleChange("discountPercent", parseInt(e.target.value) || 0)}
-                    placeholder="0"
-                    className="h-10 text-sm border-slate-200 dark:border-slate-700 hover:border-primary/40 focus:border-primary focus:ring-primary/20 transition-all"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bonusAmount" className="flex items-center gap-1.5 text-sm font-medium">
-                    Số tiền thưởng (VND)
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="bonusAmount"
-                      type="number"
-                      min="0"
-                      value={form.bonusAmount}
-                      onChange={(e) => handleChange("bonusAmount", parseInt(e.target.value) || 0)}
-                      placeholder="0"
-                      className="h-10 text-sm pr-14 border-slate-200 dark:border-slate-700 hover:border-primary/40 focus:border-primary focus:ring-primary/20 transition-all"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-emerald-600 dark:text-emerald-400 pointer-events-none">
-                      VND
-                    </span>
-                  </div>
-                </div>
-
-                <div className="hidden md:block" />
-              </div>
-
-              {/* Upload tệp đính kèm */}
               <div className="space-y-2">
                 <Label htmlFor="attachment" className="flex items-center gap-1.5 text-sm font-medium">
                   <ImageIcon className="h-3.5 w-3.5 text-primary/70" />
@@ -840,22 +995,7 @@ export default function CreateCampaign() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="recallAction" className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-                  <FileText className="h-3.5 w-3.5 text-muted-foreground/70" />
-                  Hành động
-                </Label>
-                <Textarea
-                  id="recallAction"
-                  value={form.recallAction}
-                  onChange={(e) => handleChange("recallAction", e.target.value)}
-                  placeholder="Nhập mô tả hành động"
-                  rows={2}
-                  className="text-sm border-slate-200 dark:border-slate-700 hover:border-primary/40 focus:border-primary focus:ring-primary/20 transition-all resize-none"
-                />
-              </div>
-
-              {/* Action Buttons */}
+            
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
                 <Button
                   type="button"
@@ -877,10 +1017,7 @@ export default function CreateCampaign() {
                       <div className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     </>
                   ) : (
-                    <>
-                      <Megaphone className="mr-2 h-3.5 w-3.5" />
-                      Tạo chiến dịch
-                    </>
+                    <>Tạo chiến dịch</>
                   )}
                 </Button>
               </div>

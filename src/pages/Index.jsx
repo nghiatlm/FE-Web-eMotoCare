@@ -27,8 +27,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getServiceCenters } from "@/api/serviceCentersApi";
-import { getDashboardOverview } from "@/api/dashboardApi";
+import { getDashboardOverview, getDashboardOverviewData } from "@/api/dashboardApi";
 import { Store, MapPin, Phone, Mail, Megaphone, ShieldCheck } from "lucide-react";
 
 const Index = () => {
@@ -38,7 +39,7 @@ const Index = () => {
         totalRevenueChange: 0,
         activeCampaigns: 0,
         activeCampaignsChange: 0,
-        totalBranches: 0,
+        // totalBranches: 0,
         totalBranchesChange: 0,
         totalWarranty: 0,
         totalWarrantyChange: 0,
@@ -50,12 +51,15 @@ const Index = () => {
     const [loading, setLoading] = useState(true);
     const [serviceCenters, setServiceCenters] = useState([]);
     const [appointmentStatusData, setAppointmentStatusData] = useState([
-        { name: 'Chờ xử lý', value: 25, color: '#f59e0b' },
-        { name: 'Đã duyệt', value: 30, color: '#3b82f6' },
-        { name: 'Đã hoàn thành', value: 35, color: '#10b981' },
-        { name: 'Đã hủy', value: 10, color: '#ef4444' },
+        { name: 'Đã check-in', value: 0, color: '#3b82f6' },
+        { name: 'Đã hoàn thành', value: 0, color: '#10b981' },
+        { name: 'Chờ thanh toán', value: 0, color: '#f59e0b' },
     ]);
     const [monthlySalesData, setMonthlySalesData] = useState([]);
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: 7 }, (_, i) => currentYear - 5 + i);
 
     const displayedCenters = serviceCenters.slice(0, 4);
 
@@ -75,7 +79,6 @@ const Index = () => {
                 
                 const dashboardResponse = await getDashboardOverview();
                 const dashboardData = dashboardResponse?.data || dashboardResponse || {};
-                
                 const {
                     totalRevenue = 0,
                     totalCampaign = 0,
@@ -83,37 +86,111 @@ const Index = () => {
                     totalAppointment = 0,
                     totalEVCheckInProgress = 0,
                     totalRecall = 0,
-                    appointmentTypeStats = []
                 } = dashboardData;
-
+                console.log("Dashboard Data:", dashboardData);
                 const serviceCentersResponse = await getServiceCenters({ page: 1, pageSize: 100 });
                 const serviceCentersData = serviceCentersResponse?.data || serviceCentersResponse || {};
                 const centers = serviceCentersData?.rowDatas || serviceCentersData?.data?.rowDatas || [];
                 setServiceCenters(centers);
-                
-                const branchesCount = totalBranches > 0 ? totalBranches : (serviceCentersData?.total || centers.length);
-
-                if (Array.isArray(appointmentTypeStats) && appointmentTypeStats.length > 0) {
-                    const mapped = appointmentTypeStats.map((item) => ({
-                        month: `Tháng ${item.month}`,
-                        sales: item.repair || 0,
-                        services: item.maintenance || 0,
+                // const branchesCount = totalBranches > 0 ? totalBranches : (serviceCentersData?.total || centers.length);
+                try {
+                    const overviewResponse = await getDashboardOverviewData(selectedYear);
+                    const overviewData = overviewResponse?.data?.data?.data || 
+                                        overviewResponse?.data?.data || 
+                                        overviewResponse?.data || 
+                                        [];
+                    console.log("Overview Data:", overviewData);
+                    if (Array.isArray(overviewData) && overviewData.length > 0) {
+                        const mapped = overviewData.map((item) => ({
+                            month: `Tháng ${item.month}`,
+                            maintenance: Number(item.maintenance) || 0,
+                            repair: Number(item.repair) || 0,
+                            warranty: Number(item.warranty) || 0,
+                        }));
+                        setMonthlySalesData(mapped);
+                        const currentMonth = new Date().getMonth() + 1;
+                        const currentMonthData = overviewData.find((item) => item.month === currentMonth);
+                        if (currentMonthData) {
+                            const statusData = [
+                                { 
+                                    name: 'Đã check-in', 
+                                    value: Number(currentMonthData.checkedIn) || 0, 
+                                    color: '#3b82f6' 
+                                },
+                                { 
+                                    name: 'Đã hoàn thành', 
+                                    value: Number(currentMonthData.completed) || 0, 
+                                    color: '#10b981' 
+                                },
+                                { 
+                                    name: 'Chờ thanh toán', 
+                                    value: Number(currentMonthData.waitingForPayment) || 0, 
+                                    color: '#f59e0b' 
+                                },
+                            ];
+                            setAppointmentStatusData(statusData);
+                        } else {
+                            setAppointmentStatusData([
+                                { name: 'Đã check-in', value: 0, color: '#3b82f6' },
+                                { name: 'Đã hoàn thành', value: 0, color: '#10b981' },
+                                { name: 'Chờ thanh toán', value: 0, color: '#f59e0b' },
+                            ]);
+                        }
+                    } else {
+                        const defaultData = Array.from({ length: 12 }, (_, i) => ({
+                            month: `Tháng ${i + 1}`,
+                            maintenance: 0,
+                            repair: 0,
+                            warranty: 0,
+                        }));
+                        setMonthlySalesData(defaultData);
+                        setAppointmentStatusData([
+                            { name: 'Đã check-in', value: 0, color: '#3b82f6' },
+                            { name: 'Đã hoàn thành', value: 0, color: '#10b981' },
+                            { name: 'Chờ thanh toán', value: 0, color: '#f59e0b' },
+                        ]);
+                    }
+                } catch (overviewError) {
+                    const defaultData = Array.from({ length: 12 }, (_, i) => ({
+                        month: `Tháng ${i + 1}`,
+                        maintenance: 0,
+                        repair: 0,
+                        warranty: 0,
                     }));
-                    setMonthlySalesData(mapped);
-                } else {
-                    setMonthlySalesData([]);
+                    setMonthlySalesData(defaultData);
+                    setAppointmentStatusData([
+                        { name: 'Đã check-in', value: 0, color: '#3b82f6' },
+                        { name: 'Đã hoàn thành', value: 0, color: '#10b981' },
+                        { name: 'Chờ thanh toán', value: 0, color: '#f59e0b' },
+                    ]);
+                }
+
+                let finalTotalCampaign = totalCampaign || 0;
+                let finalTotalAppointments = totalAppointment || 0;
+                try {
+                    const overviewResponseForStats = await getDashboardOverviewData(selectedYear);
+                    const overviewDataForStats = overviewResponseForStats?.data?.data?.data || 
+                                                 overviewResponseForStats?.data?.data || 
+                                                 overviewResponseForStats?.data || 
+                                                 [];
+                    if (Array.isArray(overviewDataForStats) && overviewDataForStats.length > 0) {
+                        finalTotalCampaign = overviewDataForStats.reduce((sum, item) => sum + (Number(item.campaign) || 0), 0);
+                        finalTotalAppointments = overviewDataForStats.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
+                    }
+                } catch (error) {
+                    console.error("Error calculating total campaigns and appointments:", error);
                 }
 
                 setStats({
                     totalRevenue: totalRevenue || 0,
                     totalRevenueChange: 0, 
-                    activeCampaigns: totalCampaign || 0,
+                    activeCampaigns: finalTotalCampaign,
                     activeCampaignsChange: 0, 
-                    totalBranches: branchesCount, 
+                    // totalBranches: branchesCount, 
                     totalBranchesChange: 0, 
                     totalWarranty: totalRMA || 0,
                     totalWarrantyChange: 0,
-                    totalAppointments: totalAppointment || 0,
+                    totalAppointments: finalTotalAppointments,
                     totalRecall: totalRecall || 0,
                     totalEVCheckInProgress: totalEVCheckInProgress || 0,
                 });
@@ -136,7 +213,7 @@ const Index = () => {
         };
 
         fetchStats();
-    }, []);
+    }, [selectedYear]);
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('vi-VN', {
@@ -282,34 +359,58 @@ const Index = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
                         <CardHeader>
-                            <CardTitle className="text-lg font-semibold text-slate-900">Lịch hẹn sửa chữa và bảo dưỡng (6 tháng)</CardTitle>
-                            <p className="text-sm text-slate-500 mt-1">Lịch hẹn sửa chữa và bảo dưỡng trong 6 tháng gần nhất</p>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-lg font-semibold text-slate-900">Số lượng loại lịch hẹn</CardTitle>
+                                    <p className="text-sm text-slate-500 mt-1">Số lượng loại lịch hẹn theo từng tháng trong năm</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <label className="text-sm text-slate-600 whitespace-nowrap">Năm:</label>
+                                    <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+                                        <SelectTrigger className="w-[100px]">
+                                            <SelectValue placeholder="Chọn năm" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {years.map((year) => (
+                                                <SelectItem key={year} value={year.toString()}>
+                                                    {year}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <AreaChart data={monthlySalesData.length ? monthlySalesData : [
-                                    { month: 'Tháng 1', sales: 0, services: 0 },
-                                    { month: 'Tháng 2', sales: 0, services: 0 },
-                                    { month: 'Tháng 3', sales: 0, services: 0 },
-                                    { month: 'Tháng 4', sales: 0, services: 0 },
-                                    { month: 'Tháng 5', sales: 0, services: 0 },
-                                    { month: 'Tháng 6', sales: 0, services: 0 },
-                                ]}>
+                            <ResponsiveContainer width="100%" height={400}>
+                                <AreaChart data={monthlySalesData.length ? monthlySalesData : Array.from({ length: 12 }, (_, i) => ({
+                                    month: `Tháng ${i + 1}`,
+                                    maintenance: 0,
+                                    repair: 0,
+                                    warranty: 0,
+                                }))} margin={{ top: 0, right: 0, left: 0, bottom: 10 }}>
                                     <defs>
-                                        <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                                        <linearGradient id="colorMaintenance" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                                        </linearGradient>
+                                        <linearGradient id="colorRepair" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#f97316" stopOpacity={0.8}/>
                                             <stop offset="95%" stopColor="#f97316" stopOpacity={0.1}/>
                                         </linearGradient>
-                                        <linearGradient id="colorServices" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.8}/>
-                                            <stop offset="95%" stopColor="#14b8a6" stopOpacity={0.1}/>
+                                        <linearGradient id="colorWarranty" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                                     <XAxis 
                                         dataKey="month" 
                                         stroke="#64748b"
-                                        style={{ fontSize: '12px' }}
+                                        style={{ fontSize: '11px' }}
+                                        angle={-45}
+                                        textAnchor="end"
+                                        height={60}
                                     />
                                     <YAxis 
                                         stroke="#64748b"
@@ -325,19 +426,27 @@ const Index = () => {
                                     <Legend />
                                     <Area 
                                         type="monotone" 
-                                        dataKey="sales" 
-                                        stroke="#f97316" 
+                                        dataKey="maintenance" 
+                                        stroke="#3b82f6" 
                                         fillOpacity={1} 
-                                        fill="url(#colorSales)" 
-                                        name="Doanh số"
+                                        fill="url(#colorMaintenance)" 
+                                        name="Bảo dưỡng"
                                     />
                                     <Area 
                                         type="monotone" 
-                                        dataKey="services" 
-                                        stroke="#14b8a6" 
+                                        dataKey="repair" 
+                                        stroke="#f97316" 
                                         fillOpacity={1} 
-                                        fill="url(#colorServices)" 
-                                        name="Dịch vụ"
+                                        fill="url(#colorRepair)" 
+                                        name="Sửa chữa"
+                                    />
+                                    <Area 
+                                        type="monotone" 
+                                        dataKey="warranty" 
+                                        stroke="#10b981" 
+                                        fillOpacity={1} 
+                                        fill="url(#colorWarranty)" 
+                                        name="Bảo hành"
                                     />
                                 </AreaChart>
                             </ResponsiveContainer>
@@ -451,7 +560,8 @@ const Index = () => {
                                     <div className="w-full grid grid-cols-2 gap-4">
                                         {appointmentStatusData.map((entry, index) => {
                                             const total = appointmentStatusData.reduce((sum, item) => sum + item.value, 0);
-                                            const percentage = ((entry.value / total) * 100).toFixed(1);
+                                            // Xử lý trường hợp total = 0 để tránh NaN%
+                                            const percentage = total > 0 ? ((entry.value / total) * 100).toFixed(1) : '0.0';
                                             return (
                                                 <div key={index} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 transition-colors">
                                                     <div 

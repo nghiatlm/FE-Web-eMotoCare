@@ -19,8 +19,6 @@ import {
   Bike as ScooterIcon,
   ChevronDown,
   ChevronUp,
-  Check,
-  ChevronsUpDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,10 +29,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useState, useEffect, useCallback } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast as toastify } from "react-toastify";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getRmaById, updateRmaDetail } from "@/api/rmasApi";
@@ -134,7 +131,6 @@ const STATUS_META = {
 export default function WarrantyDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -145,21 +141,18 @@ export default function WarrantyDetail() {
   const [error, setError] = useState(null);
   const [expandedDetails, setExpandedDetails] = useState(new Set());
   const [detailForms, setDetailForms] = useState({}); 
-  // State để quản lý month cho các date picker (key: `${detailId}-${fieldName}`)
   const [datePickerMonths, setDatePickerMonths] = useState({});
   const [parts, setParts] = useState([]);
   const [loadingParts, setLoadingParts] = useState(false);
   const [openPartPopovers, setOpenPartPopovers] = useState({});
-  const [partInfoMap, setPartInfoMap] = useState({}); // Map partId -> part info
-  const [savedDetails, setSavedDetails] = useState(new Set()); // Track các detail đã lưu thông tin
+  const [partInfoMap, setPartInfoMap] = useState({});
+  const [savedDetails, setSavedDetails] = useState(new Set()); 
 
-  // Helper function để generate years
   const generateYears = () => {
     const currentYear = new Date().getFullYear();
     return Array.from({ length: 20 }, (_, i) => currentYear - 10 + i);
   };
 
-  // Helper function để get/set month cho date picker
   const getDatePickerMonth = (detailId, fieldName, defaultDate = null) => {
     const key = `${detailId}-${fieldName}`;
     if (datePickerMonths[key]) {
@@ -179,7 +172,6 @@ export default function WarrantyDetail() {
     }));
   };
 
-  // Chuẩn hóa ngày về nửa đêm UTC để không bị lệch múi giờ khi gửi lên server
   const toUtcDateISOString = (value) => {
     if (!value) return null;
     const dateObj = value instanceof Date ? value : new Date(value);
@@ -195,7 +187,6 @@ export default function WarrantyDetail() {
       const data = response?.data || response;
       setRma(data);
       
-      // Đánh dấu các detail đã có replacePart là đã lưu
       if (data?.rmaDetails) {
         const savedDetailIds = new Set();
         data.rmaDetails.forEach((detail) => {
@@ -208,15 +199,11 @@ export default function WarrantyDetail() {
     } catch (err) {
       console.error("Error fetching RMA detail:", err);
       setError("Không thể tải thông tin RMA. Vui lòng thử lại sau.");
-      toast({
-        title: "Lỗi",
-        description: "Không thể tải thông tin RMA",
-        variant: "destructive",
-      });
+      toastify.error("Không thể tải thông tin RMA");
     } finally {
       setLoading(false);
     }
-  }, [id, toast]);
+  }, [id]);
 
   useEffect(() => {
     fetchRmaDetail();
@@ -241,7 +228,6 @@ export default function WarrantyDetail() {
     fetchParts();
   }, []);
 
-  // Fetch part info for partItems and replaceParts
   useEffect(() => {
     if (!rma?.rmaDetails) return;
 
@@ -561,7 +547,7 @@ export default function WarrantyDetail() {
     }
   };
 
-  const formatDateTime = (value) => safeFormat(value, "dd/MM/yyyy HH:mm");
+  const formatDateTime = (value) => safeFormat(value, "dd/MM/yyyy");
   const formatDateOnly = (value) => safeFormat(value, "dd/MM/yyyy");
 
   const formatCurrency = (value) => {
@@ -588,16 +574,12 @@ export default function WarrantyDetail() {
         .toUpperCase()
     : "NV";
   const staffPositionLabel = translatePosition(rma.staff?.position);
-  const staffGenderLabel = translateGender(rma.staff?.gender);
   const staffPhone = rma.staff?.phone;
   const staffEmail = rma.staff?.email;
-  const staffAddress = rma.staff?.address;
-  const staffCitizenId = rma.staff?.citizenId;
 
   const totalSerials = rma.rmaDetails?.reduce((sum, detail) => sum + (detail.quantity || 0), 0) || 0;
   const partCount = rma.rmaDetails?.length || 0;
   
-  // Kiểm tra xem có rmaDetails nào đang PENDING không
   const hasPendingDetails = rma.rmaDetails?.some((detail) => 
     detail.status?.toUpperCase() === "PENDING"
   ) || false;
@@ -699,26 +681,18 @@ export default function WarrantyDetail() {
 
   const handleConfirm = async () => {
     if (!rma?.rmaDetails || rma.rmaDetails.length === 0) {
-      toast({
-        title: "Lỗi",
-        description: "Không có chi tiết RMA nào để duyệt",
-        variant: "destructive",
-      });
+      toastify.error("Không có chi tiết RMA nào để duyệt");
       return;
     }
 
     setIsProcessing(true);
     try {
-      // Duyệt tất cả các rmaDetails có status PENDING
       const pendingDetails = rma.rmaDetails.filter((detail) => 
         detail.status?.toUpperCase() === "PENDING"
       );
 
       if (pendingDetails.length === 0) {
-        toast({
-          title: "Thông báo",
-          description: "Không có chi tiết RMA nào đang chờ duyệt",
-        });
+        toastify.info("Không có chi tiết RMA nào đang chờ duyệt");
         setIsConfirmDialogOpen(false);
         setIsProcessing(false);
         return;
@@ -727,14 +701,6 @@ export default function WarrantyDetail() {
       const updatePromises = pendingDetails.map((detail) =>
         updateRmaDetail(detail.id, { 
           status: "APPROVED",
-          // quantity: detail.quantity,
-          // reason: detail.reason,
-          // rmaNumber: detail.rmaNumber,
-          // releaseDateRMA: detail.releaseDateRMA,
-          // expirationDateRMA: detail.expirationDateRMA,
-          // inspector: detail.inspector || "",
-          // result: detail.result || "",
-          // solution: detail.solution || "",
         })
       );
 
@@ -742,18 +708,11 @@ export default function WarrantyDetail() {
 
       await fetchRmaDetail();
 
-      toast({
-        title: "Thành công",
-        description: `Đã duyệt ${pendingDetails.length} chi tiết RMA`,
-      });
+      toastify.success(`Đã duyệt ${pendingDetails.length} chi tiết RMA`);
       setIsConfirmDialogOpen(false);
     } catch (error) {
       console.error("Error approving RMA details:", error);
-      toast({
-        title: "Lỗi",
-        description: error?.response?.data?.message || "Không thể duyệt chi tiết RMA",
-        variant: "destructive",
-      });
+      toastify.error(error?.response?.data?.message || "Không thể duyệt chi tiết RMA");
     } finally {
       setIsProcessing(false);
     }
@@ -767,31 +726,14 @@ export default function WarrantyDetail() {
     try {
       await updateRmaDetail(detailId, { 
         status: "APPROVED",
-        // quantity: detail.quantity,
-        // reason: detail.reason,
-        // rmaNumber: detail.rmaNumber,
-        // releaseDateRMA: detail.releaseDateRMA,
-        // expirationDateRMA: detail.expirationDateRMA,
-        // inspector: detail.inspector || "",
-        // result: detail.result || "",
-        // solution: detail.solution || "",
-        // evCheckDetailId: detail.evCheckDetailId || detail.evCheckDetail?.id,
-        // rmaId: detail.rmaId || rma?.id,
       });
 
       await fetchRmaDetail();
 
-      toast({
-        title: "Thành công",
-        description: "Đã cập nhật hãng thành công",
-      });
+      toastify.success("Đã cập nhật hãng thành công");
     } catch (error) {
       console.error("Error approving RMA detail:", error);
-      toast({
-        title: "Lỗi",
-        description: error?.response?.data?.message || "Không thể cập nhật hãng",
-        variant: "destructive",
-      });
+      toastify.error(error?.response?.data?.message || "Không thể cập nhật hãng");
     } finally {
       setIsProcessing(false);
       setUpdatingDetailId(null);
@@ -801,17 +743,75 @@ export default function WarrantyDetail() {
   const handleFormChange = (detailId, field, value) => {
     setDetailForms(prev => {
       const currentForm = prev[detailId] || {};
+      const detail = rma?.rmaDetails?.find(d => d.id === detailId);
       const updatedForm = {
         ...currentForm,
         [field]: value,
       };
 
-      // Tự động set warantyStartDate từ releaseDateRMA khi releaseDateRMA thay đổi
       if (field === "releaseDateRMA" && value && !currentForm.replacePartWarrantyStart) {
         updatedForm.replacePartWarrantyStart = value;
       }
 
-      // Tự động tính warantyEndDate khi warrantyPeriod hoặc warantyStartDate thay đổi
+      // Tự động tính ngày hết hạn RMA = ngày phát hành + 7 ngày
+      if (field === "releaseDateRMA" && value) {
+        const releaseDate = new Date(value);
+        const expirationDate = new Date(releaseDate);
+        expirationDate.setDate(expirationDate.getDate() + 7);
+        const newExpirationDateISO = toUtcDateISOString(expirationDate);
+        
+        // Kiểm tra xem expirationDateRMA hiện tại có phải là giá trị người dùng đã chỉnh sửa không
+        const currentExpirationInForm = currentForm.expirationDateRMA;
+        const oldReleaseDate = detail?.releaseDateRMA || currentForm.releaseDateRMA;
+        
+        // Nếu chưa có expirationDateRMA trong form, tự động set
+        if (!currentExpirationInForm) {
+          updatedForm.expirationDateRMA = newExpirationDateISO;
+        } else if (oldReleaseDate) {
+          // Nếu có releaseDateRMA cũ, kiểm tra xem expirationDateRMA hiện tại có = releaseDateRMA cũ + 7 ngày không
+          const oldRelease = new Date(oldReleaseDate);
+          const expectedOldExpiration = new Date(oldRelease);
+          expectedOldExpiration.setDate(expectedOldExpiration.getDate() + 7);
+          const currentExp = new Date(currentExpirationInForm);
+          
+          // So sánh ngày (bỏ qua giờ phút giây)
+          const currentExpDate = new Date(currentExp.getFullYear(), currentExp.getMonth(), currentExp.getDate());
+          const expectedDate = new Date(expectedOldExpiration.getFullYear(), expectedOldExpiration.getMonth(), expectedOldExpiration.getDate());
+          
+          // Nếu expirationDateRMA hiện tại = releaseDateRMA cũ + 7 ngày, thì tự động cập nhật
+          // (tức là nó vẫn là giá trị tự động tính, chưa được người dùng chỉnh sửa)
+          if (currentExpDate.getTime() === expectedDate.getTime()) {
+            updatedForm.expirationDateRMA = newExpirationDateISO;
+          }
+          // Nếu không, giữ nguyên (người dùng đã chỉnh sửa)
+        } else {
+          // Nếu không có releaseDateRMA cũ, tự động set
+          updatedForm.expirationDateRMA = newExpirationDateISO;
+        }
+      } else if (field === "releaseDateRMA" && !value) {
+        // Chỉ xóa expirationDateRMA nếu nó được tự động tính
+        const currentExpirationInForm = currentForm.expirationDateRMA;
+        const oldReleaseDate = (detail || rma?.rmaDetails?.find(d => d.id === detailId))?.releaseDateRMA || currentForm.releaseDateRMA;
+        
+        if (!currentExpirationInForm) {
+          updatedForm.expirationDateRMA = null;
+        } else if (oldReleaseDate) {
+          const oldRelease = new Date(oldReleaseDate);
+          const expectedOldExpiration = new Date(oldRelease);
+          expectedOldExpiration.setDate(expectedOldExpiration.getDate() + 7);
+          const currentExp = new Date(currentExpirationInForm);
+          
+          // So sánh ngày (bỏ qua giờ phút giây)
+          const currentExpDate = new Date(currentExp.getFullYear(), currentExp.getMonth(), currentExp.getDate());
+          const expectedDate = new Date(expectedOldExpiration.getFullYear(), expectedOldExpiration.getMonth(), expectedOldExpiration.getDate());
+          
+          // Nếu expirationDateRMA = releaseDateRMA cũ + 7 ngày, thì xóa (vì là giá trị tự động)
+          if (currentExpDate.getTime() === expectedDate.getTime()) {
+            updatedForm.expirationDateRMA = null;
+          }
+        }
+      }
+
       if (field === "replacePartWarrantyPeriod" || field === "replacePartWarrantyStart" || field === "releaseDateRMA") {
         const warrantyPeriod = updatedForm.replacePartWarrantyPeriod || currentForm.replacePartWarrantyPeriod || 0;
         const warrantyStart = updatedForm.replacePartWarrantyStart || currentForm.replacePartWarrantyStart || (field === "releaseDateRMA" ? value : null);
@@ -841,11 +841,9 @@ export default function WarrantyDetail() {
     setIsProcessing(true);
     setUpdatingDetailId(detailId);
     try {
-      // Tính toán warantyStartDate từ releaseDateRMA hoặc ngày hiện tại
       const releaseDate = formData.releaseDateRMA || detail.releaseDateRMA || toUtcDateISOString(new Date());
       const warrantyStartDate = formData.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || releaseDate;
       
-      // Tính toán warantyEndDate từ warrantyStartDate + warrantyPeriod
       let warrantyEndDate = null;
       const warrantyPeriod = formData.replacePartWarrantyPeriod || detail.replacePart?.warrantyPeriod || 0;
       if (warrantyStartDate && warrantyPeriod > 0) {
@@ -857,13 +855,23 @@ export default function WarrantyDetail() {
         warrantyEndDate = formData.replacePartWarrantyEnd || detail.replacePart?.warantyEndDate || null;
       }
 
+      // Tự động tính expirationDateRMA nếu có releaseDateRMA
+      let expirationDateRMA = formData.expirationDateRMA || detail.expirationDateRMA || null;
+      const releaseDateRMA = formData.releaseDateRMA || detail.releaseDateRMA || null;
+      if (releaseDateRMA && !expirationDateRMA) {
+        const releaseDate = new Date(releaseDateRMA);
+        const expirationDate = new Date(releaseDate);
+        expirationDate.setDate(expirationDate.getDate() + 7);
+        expirationDateRMA = toUtcDateISOString(expirationDate);
+      }
+
       const payload = {
         status: "APPROVED", 
         quantity: detail.quantity,
         reason: detail.reason,
         rmaNumber: formData.rmaNumber || detail.rmaNumber || "",
-        releaseDateRMA: formData.releaseDateRMA || detail.releaseDateRMA || null,
-        expirationDateRMA: formData.expirationDateRMA || detail.expirationDateRMA || null,
+        releaseDateRMA: releaseDateRMA,
+        expirationDateRMA: expirationDateRMA,
         inspector: formData.inspector || detail.inspector || "",
         result: formData.result || detail.result || "",
         solution: formData.solution || detail.solution || "",
@@ -872,7 +880,6 @@ export default function WarrantyDetail() {
         isManufacturerWarranty: true,
       };
 
-      // Thêm replacePart nếu có partId được chọn
       if (formData.replacePartId || detail.replacePart?.partId) {
         payload.replacePart = {
           partId: formData.replacePartId || detail.replacePart?.partId || null,
@@ -885,28 +892,20 @@ export default function WarrantyDetail() {
           warantyStartDate: warrantyStartDate,
           warantyEndDate: warrantyEndDate,
           serviceCenterInventoryId: null,
+          isManufacturerWarranty: true,
         };
       }
 
       await updateRmaDetail(detailId, payload);
 
-      // Fetch lại dữ liệu để đảm bảo có data mới nhất
       await fetchRmaDetail();
 
-      // Đánh dấu detail này đã được lưu
       setSavedDetails(prev => new Set([...prev, detailId]));
 
-      toast({
-        title: "Thành công",
-        description: "Đã cập nhật thông tin hãng thành công",
-      });
+      toastify.success("Đã cập nhật thông tin hãng thành công");
     } catch (error) {
       console.error("Error updating hang info:", error);
-      toast({
-        title: "Lỗi",
-        description: error?.response?.data?.message || "Không thể cập nhật thông tin hãng",
-        variant: "destructive",
-      });
+      toastify.error(error?.response?.data?.message || "Không thể cập nhật thông tin hãng");
     } finally {
       setIsProcessing(false);
       setUpdatingDetailId(null);
@@ -915,20 +914,12 @@ export default function WarrantyDetail() {
 
   const handleReject = async () => {
     if (!rejectionReason.trim()) {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng nhập lý do từ chối",
-        variant: "destructive",
-      });
+      toastify.error("Vui lòng nhập lý do từ chối");
       return;
     }
 
     if (!rma?.rmaDetails || rma.rmaDetails.length === 0) {
-      toast({
-        title: "Lỗi",
-        description: "Không có chi tiết RMA nào để từ chối",
-        variant: "destructive",
-      });
+      toastify.error("Không có chi tiết RMA nào để từ chối");
       return;
     }
 
@@ -940,10 +931,7 @@ export default function WarrantyDetail() {
       );
 
       if (pendingDetails.length === 0) {
-        toast({
-          title: "Thông báo",
-          description: "Không có chi tiết RMA nào đang chờ duyệt",
-        });
+        toastify.info("Không có chi tiết RMA nào đang chờ duyệt");
         setIsRejectDialogOpen(false);
         setRejectionReason("");
         setIsProcessing(false);
@@ -970,19 +958,12 @@ export default function WarrantyDetail() {
       // Fetch lại dữ liệu để đảm bảo có data mới nhất trước khi đóng dialog
       await fetchRmaDetail();
 
-      toast({
-        title: "Thành công",
-        description: `Đã từ chối ${pendingDetails.length} chi tiết RMA`,
-      });
+      toastify.success(`Đã từ chối ${pendingDetails.length} chi tiết RMA`);
       setIsRejectDialogOpen(false);
       setRejectionReason("");
     } catch (error) {
       console.error("Error rejecting RMA details:", error);
-      toast({
-        title: "Lỗi",
-        description: error?.response?.data?.message || "Không thể từ chối chi tiết RMA",
-        variant: "destructive",
-      });
+      toastify.error(error?.response?.data?.message || "Không thể từ chối chi tiết RMA");
     } finally {
       setIsProcessing(false);
     }
@@ -1003,7 +984,7 @@ export default function WarrantyDetail() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100">
-      <div className="px-4 py-6 sm:px-6 lg:px-10 max-w-7xl mx-auto">
+      <div className="px-4 py-6 sm:px-6 lg:px-8 w-full">
         <Button variant="ghost" onClick={() => navigate("/manager/warranty")} className="mb-6 hover:bg-muted/50">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Quay lại danh sách
@@ -1014,7 +995,7 @@ export default function WarrantyDetail() {
           <div className={cn("absolute inset-0 bg-gradient-to-br opacity-90", statusInfo.gradient)} />
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjEpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-40" />
           <div className="relative flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between md:p-10">
-            <div className="max-w-2xl space-y-6">
+            <div className="flex-1 space-y-6">
               <div className="flex items-center gap-4">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-white/90 bg-white/95 shadow-lg backdrop-blur-sm">
                   <StatusHeroIcon className="h-7 w-7 text-primary" />
@@ -1070,7 +1051,7 @@ export default function WarrantyDetail() {
                 </div>
               )}
             </div>
-            <div className="grid w-full max-w-md grid-cols-2 gap-4">
+            <div className="grid w-full md:w-auto md:min-w-[300px] grid-cols-2 gap-4">
               <div className="rounded-2xl border-2 border-white/80 bg-white/90 backdrop-blur-sm px-5 py-5 text-foreground shadow-lg hover:shadow-xl transition-shadow">
                 <div className="flex items-center gap-2 mb-2">
                   <Package className="h-4 w-4 text-primary" />
@@ -1098,7 +1079,7 @@ export default function WarrantyDetail() {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto">
+        <div className="w-full">
           <div className="space-y-6">
             {/* Thông tin yêu cầu */}
             <Card className="border-border/60 shadow-lg bg-card">
@@ -1344,17 +1325,14 @@ export default function WarrantyDetail() {
                             const partItemName = partItemPart?.name || "—";
                             const partItemImage = partItemPart?.image || "";
                             
-                            // ReplacePart info
                             const replacePartSerial = replacePart?.serialNumber || "—";
                             const replacePartPrice = formatCurrency(replacePart?.price);
                             const replacePartWarrantyStart = formatDateOnly(replacePart?.warantyStartDate);
                             const replacePartWarrantyEnd = formatDateOnly(replacePart?.warantyEndDate);
                             const replacePartStatus = replacePart?.status || "—";
-                            // Get part info for replacePart - ưu tiên lấy từ replacePart.part (có sẵn trong response)
                             const replacePartPart = replacePart?.part || (replacePart?.partId ? partInfoMap[replacePart.partId] : null);
                             const replacePartName = replacePartPart?.name || "—";
                             const replacePartImage = replacePartPart?.image || "";
-
                             const getStatusBadgeForDetail = (status) => {
                               const statusUpper = (status || "").toUpperCase();
                               switch (statusUpper) {
@@ -1587,9 +1565,9 @@ export default function WarrantyDetail() {
                                                   >
                                                     <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
                                                     {detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA ? (
-                                                      format(new Date(detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA), "MM/dd/yyyy")
+                                                      format(new Date(detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA), "dd/MM/yyyy")
                                                     ) : (
-                                                      <span>mm/dd/yyyy</span>
+                                                      <span>Ngày tháng</span>
                                                     )}
                                                   </Button>
                                                 </PopoverTrigger>
@@ -1639,6 +1617,11 @@ export default function WarrantyDetail() {
                                                     }}
                                                     month={getDatePickerMonth(detailId, "releaseDateRMA", detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA)}
                                                     onMonthChange={(month) => setDatePickerMonth(detailId, "releaseDateRMA", month)}
+                                                    disabled={(date) => {
+                                                      const today = new Date();
+                                                      today.setHours(0, 0, 0, 0);
+                                                      return date < today;
+                                                    }}
                                                     initialFocus
                                                   />
                                                 </PopoverContent>
@@ -1657,24 +1640,60 @@ export default function WarrantyDetail() {
                                                     variant="outline"
                                                     className={cn(
                                                       "w-full justify-start text-left font-normal",
-                                                      !(detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA) && "text-muted-foreground"
+                                                      !(detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA || (() => {
+                                                        const releaseDate = detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA;
+                                                        if (releaseDate) {
+                                                          const release = new Date(releaseDate);
+                                                          const expiration = new Date(release);
+                                                          expiration.setDate(expiration.getDate() + 7);
+                                                          return expiration;
+                                                        }
+                                                        return null;
+                                                      })()) && "text-muted-foreground"
                                                     )}
                                                     disabled={isSaved}
                                                   >
                                                     <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                                                    {detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA ? (
-                                                      format(new Date(detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA), "MM/dd/yyyy")
-                                                    ) : (
-                                                      <span>mm/dd/yyyy</span>
-                                                    )}
+                                                    {(() => {
+                                                      const expirationDate = detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA;
+                                                      if (expirationDate) {
+                                                        return format(new Date(expirationDate), "dd/MM/yyyy");
+                                                      }
+                                                      const releaseDate = detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA;
+                                                      if (releaseDate) {
+                                                        const release = new Date(releaseDate);
+                                                        const expiration = new Date(release);
+                                                        expiration.setDate(expiration.getDate() + 7);
+                                                        return format(expiration, "dd/MM/yyyy");
+                                                      }
+                                                      return "Ngày tháng";
+                                                    })()}
                                                   </Button>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-auto p-0" align="start">
                                                   <div className="p-3 border-b flex items-center gap-2">
                                                     <Select
-                                                      value={getDatePickerMonth(detailId, "expirationDateRMA", detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA).getFullYear().toString()}
+                                                      value={getDatePickerMonth(detailId, "expirationDateRMA", detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA || (() => {
+                                                        const releaseDate = detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA;
+                                                        if (releaseDate) {
+                                                          const release = new Date(releaseDate);
+                                                          const expiration = new Date(release);
+                                                          expiration.setDate(expiration.getDate() + 7);
+                                                          return expiration;
+                                                        }
+                                                        return new Date();
+                                                      })()).getFullYear().toString()}
                                                       onValueChange={(year) => {
-                                                        const currentMonth = getDatePickerMonth(detailId, "expirationDateRMA", detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA);
+                                                        const currentMonth = getDatePickerMonth(detailId, "expirationDateRMA", detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA || (() => {
+                                                          const releaseDate = detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA;
+                                                          if (releaseDate) {
+                                                            const release = new Date(releaseDate);
+                                                            const expiration = new Date(release);
+                                                            expiration.setDate(expiration.getDate() + 7);
+                                                            return expiration;
+                                                          }
+                                                          return new Date();
+                                                        })());
                                                         const newDate = new Date(currentMonth);
                                                         newDate.setFullYear(parseInt(year));
                                                         setDatePickerMonth(detailId, "expirationDateRMA", newDate);
@@ -1705,16 +1724,56 @@ export default function WarrantyDetail() {
                                                     selected={
                                                       detailForms[detailId]?.expirationDateRMA 
                                                         ? new Date(detailForms[detailId].expirationDateRMA)
-                                                  : detail.expirationDateRMA 
+                                                        : detail.expirationDateRMA 
                                                           ? new Date(detail.expirationDateRMA)
-                                                          : undefined
+                                                          : (() => {
+                                                            const releaseDate = detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA;
+                                                            if (releaseDate) {
+                                                              const release = new Date(releaseDate);
+                                                              const expiration = new Date(release);
+                                                              expiration.setDate(expiration.getDate() + 7);
+                                                              return expiration;
+                                                            }
+                                                            return undefined;
+                                                          })()
                                                     }
                                                     onSelect={(date) => {
                                                       const dateISO = toUtcDateISOString(date);
                                                       handleFormChange(detailId, "expirationDateRMA", dateISO);
                                                     }}
-                                                    month={getDatePickerMonth(detailId, "expirationDateRMA", detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA)}
+                                                    month={getDatePickerMonth(detailId, "expirationDateRMA", detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA || (() => {
+                                                      const releaseDate = detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA;
+                                                      if (releaseDate) {
+                                                        const release = new Date(releaseDate);
+                                                        const expiration = new Date(release);
+                                                        expiration.setDate(expiration.getDate() + 7);
+                                                        return expiration;
+                                                      }
+                                                      return new Date();
+                                                    })())}
                                                     onMonthChange={(month) => setDatePickerMonth(detailId, "expirationDateRMA", month)}
+                                                    disabled={(date) => {
+                                                      const today = new Date();
+                                                      today.setHours(0, 0, 0, 0);
+                                                      
+                                                      // Không cho chọn ngày trước hôm nay
+                                                      if (date < today) {
+                                                        return true;
+                                                      }
+                                                      
+                                                      // Không cho chọn ngày trước hoặc bằng ngày phát hành RMA (phải từ ngày sau)
+                                                      const releaseDate = detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA;
+                                                      if (releaseDate) {
+                                                        const release = new Date(releaseDate);
+                                                        release.setHours(0, 0, 0, 0);
+                                                        const dateOnly = new Date(date);
+                                                        dateOnly.setHours(0, 0, 0, 0);
+                                                        // Chặn ngày <= ngày phát hành (chỉ cho phép từ ngày sau)
+                                                        return dateOnly <= release;
+                                                      }
+                                                      
+                                                      return false;
+                                                    }}
                                                     initialFocus
                                                   />
                                                 </PopoverContent>
@@ -1902,9 +1961,9 @@ export default function WarrantyDetail() {
                                                       >
                                                         <Calendar className="mr-2 h-4 w-4" />
                                                         {detailForms[detailId]?.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA ? (
-                                                          format(new Date(detailForms[detailId]?.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA), "MM/dd/yyyy")
+                                                          format(new Date(detailForms[detailId]?.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA), "dd/MM/yyyy")
                                                         ) : (
-                                                          <span>mm/dd/yyyy</span>
+                                                          <span>dd/mm/yyyy</span>
                                                         )}
                                                       </Button>
                                                     </PopoverTrigger>
@@ -1958,6 +2017,11 @@ export default function WarrantyDetail() {
                                                         }}
                                                         month={getDatePickerMonth(detailId, "replacePartWarrantyStart", detailForms[detailId]?.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA)}
                                                         onMonthChange={(month) => setDatePickerMonth(detailId, "replacePartWarrantyStart", month)}
+                                                        disabled={(date) => {
+                                                          const today = new Date();
+                                                          today.setHours(0, 0, 0, 0);
+                                                          return date < today;
+                                                        }}
                                                         initialFocus
                                                       />
                                                     </PopoverContent>
@@ -1970,7 +2034,7 @@ export default function WarrantyDetail() {
                                                     readOnly
                                                     value={
                                                       detailForms[detailId]?.replacePartWarrantyEnd || detail.replacePart?.warantyEndDate
-                                                        ? format(new Date(detailForms[detailId]?.replacePartWarrantyEnd || detail.replacePart.warantyEndDate), "MM/dd/yyyy")
+                                                        ? format(new Date(detailForms[detailId]?.replacePartWarrantyEnd || detail.replacePart.warantyEndDate), "dd/MM/yyyy")
                                                         : ""
                                                     }
                                                     placeholder="Tự động tính từ ngày bắt đầu + số tháng"
@@ -2074,7 +2138,6 @@ export default function WarrantyDetail() {
                                       </div>
                                     )}
 
-                                    {/* PartItem */}
                                     {partItem && (
                                       <div className="rounded-xl border-2 border-border/60 bg-gradient-to-br from-card to-muted/20 shadow-lg overflow-hidden">
                                         <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-border/60 px-6 py-4">
@@ -2084,7 +2147,6 @@ export default function WarrantyDetail() {
                                           </div>
                                         </div>
                                         <div className="px-6 py-5 space-y-5">
-                                          {/* Part Image and Name - Highlighted Section */}
                                           {(partItemImage || partItemName !== "—") && (
                                             <div className="flex items-start gap-5 p-4 rounded-xl bg-gradient-to-br from-primary/5 via-primary/3 to-transparent border border-primary/20 shadow-sm">
                                               {partItemImage && (
@@ -2111,7 +2173,6 @@ export default function WarrantyDetail() {
                                             </div>
                                           )}
                                           
-                                          {/* Details Grid */}
                                           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                                             {(partItemSerial && partItemSerial !== "—") && (
                                               <div className="rounded-lg border border-border/60 bg-card/50 p-4 shadow-sm hover:shadow-md transition-shadow">
@@ -2163,7 +2224,6 @@ export default function WarrantyDetail() {
                                       </div>
                                     )}
 
-                                    {/* ReplacePart */}
                                     {replacePart && (
                                       <div className="rounded-xl border-2 border-border/60 bg-gradient-to-br from-card to-muted/20 shadow-lg overflow-hidden">
                                         <div className="bg-gradient-to-r from-green-500/10 via-green-500/5 to-transparent border-b border-border/60 px-6 py-4">
@@ -2173,7 +2233,6 @@ export default function WarrantyDetail() {
                                           </div>
                                         </div>
                                         <div className="px-6 py-5 space-y-5">
-                                          {/* Part Image and Name - Highlighted Section */}
                                           {(replacePartImage || replacePartName !== "—") && (
                                             <div className="flex items-start gap-5 p-4 rounded-xl bg-gradient-to-br from-green-500/5 via-green-500/3 to-transparent border border-green-500/20 shadow-sm">
                                               {replacePartImage && (
@@ -2200,7 +2259,6 @@ export default function WarrantyDetail() {
                                             </div>
                                           )}
                                           
-                                          {/* Details Grid */}
                                           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                                             {(replacePartSerial && replacePartSerial !== "—") && (
                                               <div className="rounded-lg border border-border/60 bg-card/50 p-4 shadow-sm hover:shadow-md transition-shadow">
@@ -2263,7 +2321,6 @@ export default function WarrantyDetail() {
               </CardContent>
             </Card>
 
-            {/* Nhân viên phụ trách */}
             <Card className="border-border/60 shadow-lg bg-card">
               <CardHeader className="bg-gradient-to-r from-primary/5 via-transparent to-transparent border-b border-border/60 px-5 py-4">
                 <div className="flex items-center gap-2">

@@ -53,7 +53,7 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
                         ? `${user.staff.firstName} ${user.staff.lastName}`
                         : "N/A",
                     role: transformRoleName(user.roleName),
-                    status: user.stattus === "ACTIVE" ? "active" : "blocked",
+                    status: user.status === "ACTIVE" ? "active" : "blocked",
                     avatar: user.customer?.avatarUrl || user.staff?.avatarUrl || "",
                     rawData: user
                 }));
@@ -345,7 +345,7 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
                             setUsers(prevUsers =>
                               prevUsers.map(u =>
                                 u.id === user.id
-                                  ? { ...u, status: "blocked", rawData: { ...u.rawData, stattus: "IN_ACTIVE" } }
+                                  ? { ...u, status: "blocked", rawData: { ...u.rawData, status: "IN_ACTIVE" } }
                                   : u
                               )
                             );
@@ -390,7 +390,7 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
                             setUsers(prevUsers =>
                               prevUsers.map(u =>
                                 u.id === user.id
-                                  ? { ...u, status: "active", rawData: { ...u.rawData, stattus: "ACTIVE" } }
+                                  ? { ...u, status: "active", rawData: { ...u.rawData, status: "ACTIVE" } }
                                   : u
                               )
                             );

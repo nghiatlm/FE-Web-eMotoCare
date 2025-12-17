@@ -84,7 +84,7 @@ export default function CampaignDetail() {
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [partDetail, setPartDetail] = useState(null);
+  const [partDetails, setPartDetails] = useState([]);
   const [loadingPart, setLoadingPart] = useState(false);
 
   useEffect(() => {
@@ -92,25 +92,37 @@ export default function CampaignDetail() {
   }, [id])
 
   useEffect(() => {
-    const recallPartId = campaign?.programDetails?.[0]?.recallPartId;
-    if (!recallPartId) {
-      setPartDetail(null);
+    const recallPartIds = campaign?.programDetails?.map((pd) => pd?.recallPartId).filter(Boolean) || [];
+    if (recallPartIds.length === 0) {
+      setPartDetails([]);
       return;
     }
-    const fetchPart = async () => {
+
+    const fetchParts = async () => {
       try {
         setLoadingPart(true);
-        const res = await getPartById(recallPartId);
-        if (res?.data) {
-          setPartDetail(res.data);
-        }
-      } catch (err) {
-        console.error("Fetch part error:", err);
+        const results = await Promise.all(
+          recallPartIds.map(async (pid) => {
+            try {
+              const res = await getPartById(pid);
+              const data = res?.data || res;
+              return { id: pid, data };
+            } catch (error) {
+              console.error("Fetch part error:", error);
+              return { id: pid, data: null };
+            }
+          })
+        );
+        setPartDetails(results);
+      } catch (error) {
+        console.error("Fetch parts error:", error);
+        setPartDetails(recallPartIds.map((pid) => ({ id: pid, data: null })));
       } finally {
         setLoadingPart(false);
       }
     };
-    fetchPart();
+
+    fetchParts();
   }, [campaign]);
 
   const fetchCampaign = async (id) => {
@@ -163,7 +175,7 @@ export default function CampaignDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-pink-50">
+    <div className="min-h-screen bg-slate-50">
       <div className="w-full p-4 sm:p-6 md:p-8 space-y-5">
         <div className="flex items-center justify-between">
           <Button variant="ghost" size="sm" onClick={() => navigate("/admin/campaigns")} className="gap-2">
@@ -172,12 +184,12 @@ export default function CampaignDetail() {
           </Button>
         </div>
 
-        <Card className="rounded-2xl border border-slate-200/80 bg-white shadow-xl overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-primary/5 via-sky-50 to-white border-b border-slate-200/80 pb-4">
+        <Card className="rounded-2xl border border-slate-200 bg-white shadow-md overflow-hidden">
+          <CardHeader className="bg-white border-b border-slate-200 pb-4">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="flex items-start gap-3">
-                <div className="p-3 rounded-xl bg-primary/10">
-                  <Megaphone className="h-6 w-6 text-primary" />
+                <div className="p-3 rounded-xl bg-rose-50">
+                  <Megaphone className="h-6 w-6 text-rose-500" />
                 </div>
                 <div className="space-y-1">
                   <CardTitle className="text-2xl font-bold text-slate-900">{campaign.title || campaign.name}</CardTitle>
@@ -198,22 +210,22 @@ export default function CampaignDetail() {
           </CardHeader>
           <CardContent className="p-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="p-4 rounded-xl border border-rose-100 bg-white shadow-sm space-y-1">
-                <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Ngày bắt đầu</p>
+              <div className="p-4 rounded-xl border border-emerald-100 bg-emerald-50/80 shadow-sm space-y-1">
+                <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Ngày bắt đầu</p>
                 <p className="text-lg font-bold text-slate-900">{formatDate(campaign.startDate)}</p>
               </div>
-              <div className="p-4 rounded-xl border border-rose-100 bg-white shadow-sm space-y-1">
-                <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Ngày kết thúc</p>
+              <div className="p-4 rounded-xl border border-sky-100 bg-sky-50/80 shadow-sm space-y-1">
+                <p className="text-xs font-semibold text-sky-700 uppercase tracking-wide">Ngày kết thúc</p>
                 <p className="text-lg font-bold text-slate-900">{formatDate(campaign.endDate)}</p>
               </div>
-              <div className="p-4 rounded-xl border border-rose-100 bg-white shadow-sm space-y-1">
-                <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Loại</p>
+              <div className="p-4 rounded-xl border border-amber-100 bg-amber-50/80 shadow-sm space-y-1">
+                <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Loại</p>
                 <p className="text-lg font-bold text-slate-900">{campaign.type === "RECALL" ? "Thu hồi" : campaign.type || "—"}</p>
               </div>
               {campaign.attachmentUrl && (
-                <div className="p-4 rounded-xl border border-rose-100 bg-white shadow-sm space-y-1 sm:col-span-2 lg:col-span-3">
-                  <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Tài liệu đính kèm</p>
-                  <a href={campaign.attachmentUrl} target="_blank" rel="noreferrer" className="text-sm text-primary underline">
+                <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-sm space-y-1 sm:col-span-2 lg:col-span-3">
+                  <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Tài liệu đính kèm</p>
+                  <a href={campaign.attachmentUrl} target="_blank" rel="noreferrer" className="text-sm text-blue-600 underline">
                     Xem tài liệu
                   </a>
                 </div>
@@ -222,112 +234,116 @@ export default function CampaignDetail() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-xl border border-rose-100 bg-white/95 shadow-lg">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-100 rounded-full">
-                Chi tiết chương trình
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {campaign.programDetails && campaign.programDetails.length > 0 ? (
-              campaign.programDetails.map((pd) => (
-                <div key={pd.id} className="rounded-lg border border-rose-100 bg-rose-50/60 p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  {pd.serviceType && (
-                    <div>
-                      <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Loại dịch vụ</p>
-                      <p className="text-sm font-semibold text-slate-900">
-                        {pd.serviceType === "CAMPAIGN_TYPE" ? "Chiến dịch" : pd.serviceType}
-                      </p>
-                    </div>
-                  )}
-                  {typeof pd.discountPercent !== "undefined" && (
-                    <div>
-                      <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Giảm giá</p>
-                      <p className="text-sm font-semibold text-slate-900">{pd.discountPercent}%</p>
-                    </div>
-                  )}
-                  {typeof pd.bonusAmount !== "undefined" && (
-                    <div>
-                      <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Thưởng</p>
-                      <p className="text-sm font-semibold text-slate-900">{pd.bonusAmount}</p>
-                    </div>
-                  )}
-                  {pd.recallAction && (
-                    <div>
-                      <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Hành động</p>
-                      <p className="text-sm font-semibold text-slate-900">
-                        {pd.recallAction === "Triệu hồi" ? "Thu hồi" : pd.recallAction}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-slate-600">Không có chi tiết chương trình.</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border border-slate-200 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">Phụ tùng liên quan</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {loadingPart && <p className="text-sm text-slate-600">Đang tải phụ tùng...</p>}
-            {!loadingPart && partDetail && (
-              <div className="rounded-xl border border-rose-100 bg-white/95 shadow-lg p-4 md:p-5 space-y-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="px-3 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-100 rounded-full">
-                    Phụ tùng chính
-                  </span>
-                  <span className="px-3 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full">
-                    {partDetail.status === "ACTIVE" ? "Hoạt động" : partDetail.status}
-                  </span>
-                </div>
-                <div className="flex flex-col md:flex-row md:items-start gap-4 md:gap-6">
-                  <div className="shrink-0">
-                    {partDetail.image ? (
-                      <img
-                        src={partDetail.image}
-                        alt={partDetail.name}
-                        className="h-28 w-28 object-cover rounded-lg border border-rose-100 shadow-sm"
-                      />
-                    ) : (
-                      <div className="h-28 w-28 rounded-lg border border-dashed border-rose-200 bg-rose-50 flex items-center justify-center text-xs text-rose-500">
-                        Không có ảnh
+        {campaign.type !== "RECALL" && (
+          <Card className="rounded-xl border border-rose-100 bg-white/95 shadow-lg">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-100 rounded-full">
+                  Chi tiết chương trình
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {campaign.programDetails && campaign.programDetails.length > 0 ? (
+                campaign.programDetails.map((pd) => (
+                  <div key={pd.id} className="rounded-lg border border-rose-100 bg-rose-50/60 p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {pd.serviceType && (
+                      <div>
+                        <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Loại dịch vụ</p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {pd.serviceType === "CAMPAIGN_TYPE" ? "Chiến dịch" : pd.serviceType}
+                        </p>
+                      </div>
+                    )}
+                    {typeof pd.discountPercent !== "undefined" && (
+                      <div>
+                        <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Giảm giá</p>
+                        <p className="text-sm font-semibold text-slate-900">{pd.discountPercent}%</p>
+                      </div>
+                    )}
+                    {typeof pd.bonusAmount !== "undefined" && (
+                      <div>
+                        <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Thưởng</p>
+                        <p className="text-sm font-semibold text-slate-900">{pd.bonusAmount}</p>
+                      </div>
+                    )}
+                    {pd.recallAction && (
+                      <div>
+                        <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Hành động</p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {pd.recallAction === "Triệu hồi" ? "Thu hồi" : pd.recallAction}
+                        </p>
                       </div>
                     )}
                   </div>
-                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 bg-rose-50/60 border border-rose-100 rounded-lg p-3">
-                    <div>
-                      <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Mã</p>
-                      <p className="text-sm font-semibold text-slate-900 break-all">{partDetail.code}</p>
+                ))
+              ) : (
+                <p className="text-sm text-slate-600">Không có chi tiết chương trình.</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        <Card className="border border-rose-100 shadow-sm bg-white rounded-2xl">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold text-slate-900">Phụ tùng liên quan</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {loadingPart && <p className="text-sm text-slate-600">Đang tải phụ tùng...</p>}
+            {!loadingPart && (partDetails?.length || 0) > 0 && (
+              <div className="grid grid-cols-1 gap-3">
+                {partDetails.map((part) => {
+                  const data = part.data;
+                  const name = data?.name || data?.partName || part.id;
+                  const code = data?.code || data?.partCode;
+                  const img = data?.image || data?.imageUrl;
+                  const detail = campaign.programDetails?.find((pd) => pd.recallPartId === part.id);
+                  return (
+                    <div
+                      key={part.id}
+                      className="rounded-2xl border border-rose-100 bg-white shadow-sm p-4 space-y-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="h-14 w-14 rounded-xl border border-rose-100 overflow-hidden bg-rose-50 flex items-center justify-center text-xs font-semibold text-rose-500">
+                          {img ? (
+                            <img src={img} alt={name} className="h-full w-full object-cover" />
+                          ) : (
+                            "Không có ảnh"
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-slate-900 truncate">{name}</p>
+                            {code && (
+                              <span className="px-2 py-0.5 text-[11px] font-semibold text-slate-700 bg-slate-100 rounded-full border border-slate-200">
+                                {code}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-700">
+                        <div className="p-3 rounded-xl bg-rose-50 border border-rose-100">
+                          <p className="text-[11px] font-semibold text-rose-600 uppercase tracking-wide">Hành động</p>
+                          <p className="mt-1 font-semibold text-slate-900">
+                            {detail?.recallAction || (campaign.type === "RECALL" ? "Thu hồi" : "—")}
+                          </p>
+                        </div>
+                        {campaign.type === "CAMPAIGN" && (
+                          <div className="p-3 rounded-xl bg-rose-50 border border-rose-100">
+                            <p className="text-[11px] font-semibold text-rose-600 uppercase tracking-wide">Giảm giá</p>
+                            <p className="mt-1 font-semibold text-slate-900">{detail?.discountPercent ?? 0}%</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Tên</p>
-                      <p className="text-sm font-semibold text-slate-900">{partDetail.name}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Loại phụ tùng</p>
-                      <p className="text-sm font-semibold text-slate-900">{partDetail.partType?.name}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Số lượng</p>
-                      <p className="text-sm font-semibold text-slate-900">{partDetail.quantity}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Trạng thái</p>
-                      <p className="text-sm font-semibold text-slate-900">
-                        {partDetail.status === "ACTIVE" ? "Hoạt động" : partDetail.status}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                  );
+                })}
               </div>
             )}
-            {!loadingPart && !partDetail && <p className="text-sm text-slate-600">Không có phụ tùng liên quan.</p>}
+            {!loadingPart && (!partDetails || partDetails.length === 0) && (
+              <p className="text-sm text-slate-600">Không có phụ tùng liên quan.</p>
+            )}
           </CardContent>
         </Card>
       </div>
