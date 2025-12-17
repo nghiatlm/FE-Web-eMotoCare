@@ -55,6 +55,29 @@ const translateColor = (color) => {
   return colorMap[colorUpper] || color;
 };
 
+// Hàm chuyển tên màu thành mã hex để hiển thị màu thực tế
+const getColorHex = (color) => {
+  if (!color) return "#999999"; // Màu xám mặc định
+  const colorUpper = String(color).trim().toUpperCase();
+  const colorHexMap = {
+    BLUE: "#1890ff",
+    RED: "#ff4d4f",
+    GREEN: "#52c41a",
+    YELLOW: "#fadb14",
+    BLACK: "#000000",
+    WHITE: "#ffffff",
+    GRAY: "#8c8c8c",
+    GREY: "#8c8c8c",
+    SILVER: "#c0c0c0",
+    GOLD: "#ffd700",
+    ORANGE: "#fa8c16",
+    PURPLE: "#722ed1",
+    PINK: "#eb2f96",
+    BROWN: "#8b4513",
+  };
+  return colorHexMap[colorUpper] || color; // Nếu không tìm thấy, trả về giá trị gốc (có thể đã là hex)
+};
+
 const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipChassisNumber = false }) => {
   const [form] = Form.useForm();
   const [customers, setCustomers] = useState([]);
@@ -236,6 +259,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
       const errorMessage = error?.response?.data?.message || error?.data?.message || error?.message || "Không tìm thấy thông tin từ số khung. Vui lòng kiểm tra lại!";
       toast.error(errorMessage);
     } finally {
+      setIsSearchingChassis(false);
       setIsSearchingChassis(false);
     }
   };
@@ -685,6 +709,8 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                         icon={<Search size={16} />}
                         size="large"
                         danger
+                        loading={isSearchingChassis}
+                        disabled={isSearchingChassis}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -931,13 +957,14 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                                 <Text type="secondary" style={{ fontSize: 14, fontWeight: 600 }}>Màu sắc</Text>
                                 </Space>
                               <Tag 
-                                color="red" 
                                 style={{ 
                                   borderRadius: 6, 
                                   padding: "4px 12px",
                                   fontSize: 13,
                                   fontWeight: 500,
                                   border: "none",
+                                  backgroundColor: getColorHex(vehicleInfo.vehicle.color),
+                                  color: vehicleInfo.vehicle.color?.toUpperCase() === "WHITE" || vehicleInfo.vehicle.color?.toUpperCase() === "YELLOW" || vehicleInfo.vehicle.color?.toUpperCase() === "GOLD" ? "#000000" : "#ffffff",
                                 }}
                               >
                                 {translateColor(vehicleInfo.vehicle.color)}

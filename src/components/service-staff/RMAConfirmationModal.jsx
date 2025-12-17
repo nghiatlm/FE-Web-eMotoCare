@@ -67,7 +67,6 @@ export default function RMAConfirmationModal({
       }
 
       toast.dismiss(loadingToast);
-      toast.success("Tạo yêu cầu RMA thành công!");
       onRMASuccess?.();
       onClose();
     } catch (err) {

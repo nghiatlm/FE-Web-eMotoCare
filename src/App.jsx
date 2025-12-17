@@ -39,7 +39,7 @@ import AdminProfile from "./pages/admin/AdminProfile";
 import NotFound from "./pages/NotFound";
 
 // service staff
-import { StaffSidebar } from "./components/service-staff/StaffSidebar";
+import { StaffSidebar, StaffTopHeader } from "./components/service-staff/StaffSidebar";
 import StaffDashboard from "./pages/service-staff/StaffDashboard";
 import StaffBooking from "./pages/service-staff/StaffBooking";
 import CreateBooking from "./pages/service-staff/CreateBooking";
@@ -194,9 +194,9 @@ const App = () => (
               <SidebarProvider>
                 <div className="flex min-h-screen w-full">
                   <StaffSidebar />
-                  <div className="flex-1 flex flex-col">
-                    <StoreKeeperTopHeader />
-                    <main className="flex-1">
+                  <div className="flex-1 flex flex-col overflow-hidden">
+                    <StaffTopHeader />
+                    <main className="flex-1 overflow-y-auto overflow-x-hidden">
                       <Routes>
                         <Route
                           path=""
@@ -251,9 +251,9 @@ const App = () => (
               <SidebarProvider>
                 <div className="flex min-h-screen w-full">
                   <TechnicianSidebar />
-                  <div className="flex-1 flex flex-col">
+                  <div className="flex-1 flex flex-col overflow-hidden">
                     <ManagerTopHeader />
-                    <main className="flex-1">
+                    <main className="flex-1 overflow-y-auto overflow-x-hidden">
                       <Routes>
                         <Route
                           path=""

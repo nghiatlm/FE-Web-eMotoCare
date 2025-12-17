@@ -1,5 +1,5 @@
 import { CalendarCheck, LogOut, Plus, List, LayoutDashboard, BookOpen, Car } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
@@ -11,10 +11,14 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
+  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { authService } from "@/services/authService";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { useState, useEffect } from "react";
+import { getStaffByAccountId } from "@/api/staffsApi";
 
 const sections = [
   {
@@ -216,5 +220,110 @@ export function StaffSidebar() {
         </SidebarFooter>
       </Sidebar>
     </>
+  );
+}
+
+// Header component for staff layout
+export function StaffTopHeader() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [displayName, setDisplayName] = useState("STAFF Service");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [initials, setInitials] = useState("ST");
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const account = user?.accountResponse || user || storedUser || {};
+      const accountId = account.id || account.accountId;
+      try {
+        if (accountId) {
+          const res = await getStaffByAccountId(accountId, { page: 1, pageSize: 10 });
+          const staff = res?.data?.rowDatas?.[0];
+          if (staff) {
+            const name =
+              `${staff.firstName || ""} ${staff.lastName || ""}`.trim() ||
+              staff.account?.phone ||
+              "STAFF Service";
+            const avatar = staff.avatarUrl || staff.account?.avatarUrl || "";
+            const init =
+              name
+                .split(" ")
+                .filter(Boolean)
+                .map((p) => p[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase() || "ST";
+            setDisplayName(name);
+            setAvatarUrl(avatar);
+            setInitials(init);
+            return;
+          }
+        }
+        const fallbackName =
+          `${account.firstName || ""} ${account.lastName || ""}`.trim() ||
+          account.phone ||
+          account.email ||
+          "STAFF Service";
+        const fallbackInit =
+          fallbackName
+            .split(" ")
+            .filter(Boolean)
+            .map((p) => p[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase() || "ST";
+        setDisplayName(fallbackName);
+        setInitials(fallbackInit);
+        setAvatarUrl(account.avatarUrl || "");
+      } catch (error) {
+        const account = user?.accountResponse || user || storedUser || {};
+        const fallbackName =
+          `${account.firstName || ""} ${account.lastName || ""}`.trim() ||
+          account.phone ||
+          account.email ||
+          "STAFF Service";
+        const fallbackInit =
+          fallbackName
+            .split(" ")
+            .filter(Boolean)
+            .map((p) => p[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase() || "ST";
+        setDisplayName(fallbackName);
+        setInitials(fallbackInit);
+        setAvatarUrl(account.avatarUrl || "");
+      }
+    };
+    loadProfile();
+  }, [user]);
+
+  return (
+    <header className="h-14 bg-white border-b border-red-100 flex items-center justify-between px-4 pr-6 sticky top-0 z-10 text-red-600">
+      <SidebarTrigger className="text-red-600" />
+      <button
+        type="button"
+        onClick={() => navigate("/staff/profile")}
+        className="flex items-center gap-3 hover:bg-red-50 px-2 py-1 rounded-lg transition-colors"
+        aria-label="Xem hồ sơ nhân viên"
+      >
+        <div className="flex flex-col items-end leading-tight">
+          <span className="text-sm font-semibold text-red-700">{displayName}</span>
+          <span className="text-[11px] text-red-400">STAFF Service</span>
+        </div>
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={displayName}
+            className="h-9 w-9 rounded-full object-cover border border-red-100"
+          />
+        ) : (
+          <div className="h-9 w-9 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold uppercase">
+            {initials}
+          </div>
+        )}
+      </button>
+    </header>
   );
 }

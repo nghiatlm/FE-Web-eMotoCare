@@ -609,6 +609,17 @@ export default function MaintenanceModeEVCheck({
           );
         }
 
+        // ✅ Validate: Nếu biện pháp là "Thay thế" thì phải chọn phụ tùng thay thế
+        if (item.remedies === "REPLACE") {
+          const proposedReplacePartIdValue =
+            item.proposedReplacePartId ||
+            item.proposedReplacePart?.id ||
+            null;
+          if (!proposedReplacePartIdValue?.trim()) {
+            toast.dismiss(loadingToast);
+            return toast.error("Vui lòng chọn Phụ tùng thay thế!");
+          }
+        }
 
         if (item.remedies === "WARRANTY" && !checkWarrantyStatus(item.partItem)) {
           toast.dismiss(loadingToast);
@@ -644,11 +655,8 @@ export default function MaintenanceModeEVCheck({
           payload.quantity = Number(item.quantity || 1);
           payload.pricePart = Number(item.pricePart || 0);
         } else {
-
           payload.quantity = null;
           payload.pricePart = null;
-          if (item.remedies === "REPLACE" && !proposedReplacePartIdValue) {
-          }
         }
 
         await updateEVCheckDetailService(item.id, payload);

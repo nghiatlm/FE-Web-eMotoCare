@@ -41,6 +41,29 @@ const translateColor = (color) => {
   return colorMap[colorUpper] || color;
 };
 
+// Hàm chuyển tên màu thành mã hex để hiển thị màu thực tế
+const getColorHex = (color) => {
+  if (!color) return "#999999"; // Màu xám mặc định
+  const colorUpper = String(color).trim().toUpperCase();
+  const colorHexMap = {
+    BLUE: "#1890ff",
+    RED: "#ff4d4f",
+    GREEN: "#52c41a",
+    YELLOW: "#fadb14",
+    BLACK: "#000000",
+    WHITE: "#ffffff",
+    GRAY: "#8c8c8c",
+    GREY: "#8c8c8c",
+    SILVER: "#c0c0c0",
+    GOLD: "#ffd700",
+    ORANGE: "#fa8c16",
+    PURPLE: "#722ed1",
+    PINK: "#eb2f96",
+    BROWN: "#8b4513",
+  };
+  return colorHexMap[colorUpper] || color; // Nếu không tìm thấy, trả về giá trị gốc (có thể đã là hex)
+};
+
 export default function StaffVehicleRepairHistoryPage() {
   const { vehicleId } = useParams();
   const navigate = useNavigate();
@@ -446,7 +469,13 @@ export default function StaffVehicleRepairHistoryPage() {
                             Màu sắc:
                           </Text>
                         </Space>
-                        <Tag color="red" style={{ borderRadius: 6, fontSize: 12 }}>
+                        <Tag 
+                          style={{ 
+                            borderRadius: 6, 
+                            fontSize: 12,
+                            backgroundColor: getColorHex(vehicleInfo.vehicle.color),
+                            color: vehicleInfo.vehicle.color?.toUpperCase() === "WHITE" || vehicleInfo.vehicle.color?.toUpperCase() === "YELLOW" || vehicleInfo.vehicle.color?.toUpperCase() === "GOLD" ? "#000000" : "#ffffff",
+                          }}>
                           {translateColor(vehicleInfo.vehicle.color)}
                         </Tag>
                       </div>

@@ -227,7 +227,6 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
       const res = await createPaymentLinkService(payload);
       
       if (paymentMethod === "CASH") {
-        toast.success("Đã xác nhận thanh toán tiền mặt!");
         onPaymentSuccess?.({ method: "CASH", amount: totalAmount });
         onClose();
       } else {
