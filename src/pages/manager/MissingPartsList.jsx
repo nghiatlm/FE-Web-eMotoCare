@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, Calendar as CalendarIcon, RefreshCw, Eye, X, FileText, Loader2, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Calendar as CalendarIcon, RefreshCw, Eye, X, FileText, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,7 +27,6 @@ export default function MissingPartsList() {
   const [requests, setRequests] = useState([]);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState(null);
-  const [expandedItems, setExpandedItems] = useState(new Set());
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 10 }, (_, i) => currentYear - i);
@@ -37,11 +36,12 @@ export default function MissingPartsList() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const params = {
         page,
         pageSize,
         outOfStock: true,
+        ...(search && { code: search.trim() }),
       };
 
       const response = await getExportNotes(params);
@@ -78,8 +78,30 @@ export default function MissingPartsList() {
           details,
         };
       });
-      setRequests(transformed);
-      setTotal(response?.data?.total ?? transformed.length);
+
+      // Áp dụng lọc theo khoảng ngày ngay trên FE (theo requestedAt)
+      let filtered = transformed;
+      if (from) {
+        const fromStart = new Date(from);
+        fromStart.setHours(0, 0, 0, 0);
+        filtered = filtered.filter((item) => {
+          if (!item.requestedAt) return false;
+          const d = new Date(item.requestedAt);
+          return d >= fromStart;
+        });
+      }
+      if (to) {
+        const toEnd = new Date(to);
+        toEnd.setHours(23, 59, 59, 999);
+        filtered = filtered.filter((item) => {
+          if (!item.requestedAt) return false;
+          const d = new Date(item.requestedAt);
+          return d <= toEnd;
+        });
+      }
+
+      setRequests(filtered);
+      setTotal(filtered.length);
     } catch (err) {
       console.error("Error fetching missing parts requests:", err);
       setError("Không thể tải danh sách yêu cầu phụ tùng thiếu. Vui lòng thử lại sau.");
@@ -93,7 +115,7 @@ export default function MissingPartsList() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, toast]);
+  }, [page, pageSize, search, from, to, toast]);
 
   useEffect(() => {
     fetchMissingParts();
@@ -110,33 +132,6 @@ export default function MissingPartsList() {
   };
 
 
-  // Get stock status badge
-  const getStockStatusBadge = (stockStatus) => {
-    switch (stockStatus) {
-      case "Có thể điều chuyển":
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Có thể điều chuyển</Badge>;
-      case "Hết hàng":
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Hết hàng</Badge>;
-      default:
-        return <Badge variant="secondary">{stockStatus || "—"}</Badge>;
-    }
-  };
-
-  // Toggle expand/collapse
-  const toggleExpand = (appointmentId) => {
-    setExpandedItems((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(appointmentId)) {
-        newSet.delete(appointmentId);
-      } else {
-        newSet.add(appointmentId);
-      }
-      return newSet;
-    });
-  };
-
-  const isExpanded = (appointmentId) => expandedItems.has(appointmentId);
-
   const totalPages = Math.ceil(total / pageSize);
 
   return (
@@ -144,10 +139,13 @@ export default function MissingPartsList() {
       <div className="p-6 md:p-8">
         <div className="mb-6 md:mb-8">
           <div className="flex items-center gap-3 mb-1">
-            <FileText className="h-7 w-7 text-primary" />
-            <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Danh sách phụ tùng thiếu</h1>
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground">
+              Danh sách phụ tùng thiếu
+            </h1>
           </div>
-          <p className="text-muted-foreground">Quản lý các yêu cầu phụ tùng thiếu</p>
+          <p className="text-sm md:text-base text-muted-foreground">
+            Quản lý các yêu cầu phụ tùng thiếu
+          </p>
         </div>
 
         <div className="mb-6 p-4 bg-card rounded-lg border border-border">
@@ -318,18 +316,27 @@ export default function MissingPartsList() {
         </div>
 
         <div className="rounded-2xl border border-border bg-card/80 shadow-lg backdrop-blur-sm overflow-x-auto">
-          <table className="w-full text-sm border-separate border-spacing-y-2">
-            <thead className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 z-10 bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
               <tr>
-                <th className="text-left px-5 py-3 w-12 font-semibold text-foreground"></th>
-                <th className="text-left px-5 py-3 w-16 font-semibold text-foreground">STT</th>
-                <th className="text-left px-5 py-3 font-semibold text-foreground">Mã yêu cầu</th>
-                <th className="text-left px-5 py-3 font-semibold text-foreground">Ngày yêu cầu</th>
-                <th className="text-left px-5 py-3 font-semibold text-foreground">Người tạo</th>
-                <th className="text-left px-5 py-3 font-semibold text-foreground">Trung tâm dịch vụ</th>
-                <th className="text-left px-5 py-3 font-semibold text-foreground">Số lượng phụ tùng</th>
-                <th className="text-left px-5 py-3 font-semibold text-foreground">Ghi chú</th>
-                <th className="text-left px-5 py-3 w-40 font-semibold text-foreground">Hành động</th>
+                <th className="text-center px-5 py-3 w-16 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  STT
+                </th>
+                <th className="text-left px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  Mã yêu cầu
+                </th>
+                <th className="text-left px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                  Ngày yêu cầu
+                </th>
+                <th className="text-left px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                  Trung tâm dịch vụ
+                </th>
+                <th className="text-left px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  Ghi chú
+                </th>
+                <th className="text-center px-5 py-3 w-40 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                  Hành động
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -344,7 +351,7 @@ export default function MissingPartsList() {
                 </tr>
               ) : error ? (
                 <tr>
-                  <td className="px-6 py-12 text-center text-muted-foreground" colSpan={9}>
+                  <td className="px-6 py-12 text-center text-muted-foreground" colSpan={8}>
                     <div className="flex flex-col items-center gap-2">
                       <AlertCircle className="h-8 w-8 text-destructive" />
                       <p className="text-destructive">{error}</p>
@@ -356,139 +363,59 @@ export default function MissingPartsList() {
                 </tr>
               ) : requests.length === 0 ? (
                 <tr>
-                  <td className="px-6 py-12 text-center text-muted-foreground" colSpan={9}>
+                  <td className="px-6 py-12 text-center text-muted-foreground" colSpan={8}>
                     Không có dữ liệu phù hợp
                   </td>
                 </tr>
               ) : (
                 requests.map((request, idx) => {
                   const requestId = request.id || request.appointmentId || idx;
-                  const isExpandedItem = isExpanded(requestId);
                   const partsCount = request.details?.length || 0;
 
                   return (
-                    <>
-                      <tr
-                        key={requestId}
-                        className="bg-card border border-border/60 hover:border-primary/40 hover:shadow-md transition-all duration-200"
-                      >
-                        <td className="px-5 py-4 align-top">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={() => toggleExpand(requestId)}
-                          >
-                            {isExpandedItem ? (
-                              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </Button>
-                        </td>
-                        <td className="px-5 py-4 align-top text-sm font-medium text-muted-foreground">
-                          {(page - 1) * pageSize + idx + 1}
-                        </td>
-                        <td className="px-5 py-4 align-top">
-                          <span className="text-primary font-semibold tracking-wide">
-                            {request.requestCode || "—"}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 align-top">
-                          <span className="text-foreground">{formatDateTime(request.requestedAt)}</span>
-                        </td>
-                        <td className="px-5 py-4 align-top">
-                          <span className="text-foreground">{request.createdByName || "—"}</span>
-                        </td>
-                        <td className="px-5 py-4 align-top">
-                          <span className="text-foreground">{request.serviceCenterName || "—"}</span>
-                        </td>
-                        <td className="px-5 py-4 align-top">
-                          <Badge variant="outline">{partsCount} mục</Badge>
-                        </td>
-                        <td className="px-5 py-4 align-top">
-                          <p className="text-sm text-muted-foreground leading-relaxed max-w-md">
-                            {request.note || "—"}
-                          </p>
-                        </td>
-                        <td className="px-5 py-4 align-top">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="gap-1 rounded-full px-3"
-                            onClick={() => navigate(`/manager/missing-parts/${request.id}`)}
-                          >
-                            <Eye className="h-4 w-4" />
-                            Xem chi tiết
-                          </Button>
-                        </td>
-                      </tr>
-                      {isExpandedItem && request.details && request.details.length > 0 && (
-                        <tr key={`${requestId}-details`}>
-                          <td colSpan={9} className="px-5 py-4 bg-muted/20">
-                            <div className="space-y-3">
-                              <h4 className="text-sm font-semibold text-foreground mb-3">
-                                Danh sách phụ tùng ({partsCount} mục)
-                              </h4>
-                              <div className="overflow-x-auto">
-                                <table className="w-full text-sm border-separate border-spacing-y-2 table-fixed">
-                                  <thead>
-                                    <tr className="bg-muted/50">
-                                      <th className="text-center px-4 py-2 font-semibold text-foreground w-[150px]">Hình ảnh</th>
-                                      <th className="text-center px-4 py-2 font-semibold text-foreground w-[150px]">Mã phụ tùng</th>
-                                      <th className="text-center px-4 py-2 font-semibold text-foreground w-[200px]">Tên phụ tùng</th>
-                                      <th className="text-center px-4 py-2 font-semibold text-foreground w-[110px]">Số lượng yêu cầu</th>
-                                      <th className="text-center px-4 py-2 font-semibold text-foreground w-[200px]">Trung tâm đề xuất</th>
-                                      <th className="text-center px-4 py-2 font-semibold text-foreground w-[150px]">Tình trạng kho</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {request.details.map((part, partIdx) => (
-                                      <tr
-                                        key={part.index || partIdx}
-                                        className="bg-background border border-border/60 hover:bg-muted/30 transition-colors"
-                                      >
-                                        <td className="px-4 py-3 align-middle text-center">
-                                          {part.image ? (
-                                            <img
-                                              src={part.image}
-                                              alt={part.name}
-                                              className="w-20 h-20 object-cover rounded-lg border border-border mx-auto"
-                                              onError={(e) => {
-                                                e.target.style.display = "none";
-                                              }}
-                                            />
-                                          ) : (
-                                            <div className="w-20 h-20 rounded-lg border border-border bg-muted flex items-center justify-center mx-auto">
-                                              <span className="text-xs text-muted-foreground">No image</span>
-                                            </div>
-                                          )}
-                                        </td>
-                                        <td className="px-4 py-3 align-middle text-center">
-                                          <span className="font-semibold text-foreground">{part.code || "—"}</span>
-                                        </td>
-                                        <td className="px-4 py-3 align-middle text-center">
-                                          <span className="text-foreground break-words">{part.name || "—"}</span>
-                                        </td>
-                                        <td className="px-4 py-3 align-middle text-center">
-                                          <span className="font-medium text-foreground">{part.requestedQty || 0}</span>
-                                        </td>
-                                        <td className="px-4 py-3 align-middle text-center">
-                                          <span className="text-sm text-foreground break-words">{part.suggestCenter || "—"}</span>
-                                        </td>
-                                        <td className="px-4 py-3 align-middle">
-                                          {getStockStatusBadge(part.stockStatus)}
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </>
+                    <tr
+                      key={requestId}
+                      className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+                        idx % 2 === 0 ? "bg-white" : "bg-slate-50/60"
+                      }`}
+                    >
+                      <td className="px-5 py-4 align-top text-sm text-slate-600 text-center whitespace-nowrap">
+                        {(page - 1) * pageSize + idx + 1}
+                      </td>
+                      <td className="px-5 py-4 align-top whitespace-nowrap align-middle">
+                        <span className="text-primary font-semibold tracking-wide">
+                          {request.requestCode || "—"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 align-top whitespace-nowrap align-middle">
+                        <span className="text-foreground">
+                          {formatDateTime(request.requestedAt)}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 align-top whitespace-nowrap align-middle">
+                        <span className="text-foreground">
+                          {request.serviceCenterName || "—"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 align-top align-middle">
+                        <p className="text-sm text-muted-foreground leading-relaxed max-w-md line-clamp-2">
+                          {request.note || "—"}
+                        </p>
+                      </td>
+                      <td className="px-5 py-4 align-top text-center align-middle whitespace-nowrap">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 rounded-full px-3"
+                          onClick={() =>
+                            navigate(`/manager/missing-parts/${request.id}`)
+                          }
+                        >
+                          <Eye className="h-4 w-4" />
+                          Xem chi tiết
+                        </Button>
+                      </td>
+                    </tr>
                   );
                 })
               )}

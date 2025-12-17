@@ -93,8 +93,8 @@ export default function StaffDetail() {
   const transformedStaff = {
     id: staffDetail.staffCode || staffDetail.id,
     name: `${staffDetail.firstName || ""} ${staffDetail.lastName || ""}`.trim(),
-    phone: staffDetail.phone || "",
-    email: staffDetail.email || "",
+    phone: staffDetail.account.phone || "",
+    email: staffDetail.account.email || "",
     role: staffDetail.position?.includes("TECHNICIAN") ? "technician" :
           staffDetail.position?.includes("SERVICE_STAFF") ? "staff" :
           staffDetail.position?.includes("STORE_KEEPER") ? "storekeeper" :

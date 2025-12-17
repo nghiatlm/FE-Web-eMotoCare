@@ -167,7 +167,7 @@ export default function MaintenancePlans() {
                 <div>
                   <h3 className="text-lg font-semibold text-slate-900">Lịch và giai đoạn bảo dưỡng</h3>
                   <p className="text-sm text-slate-600">
-                    Đồng bộ dữ liệu lịch bảo dưỡng và các giai đoạn bảo dưỡng từ hệ thống OEM
+                    Đồng bộ dữ liệu lịch bảo dưỡng từ hệ thống OEM
                   </p>
                   <div className="mt-2 flex items-center gap-2">
                     {syncStatus === "success" && (

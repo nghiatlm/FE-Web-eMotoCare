@@ -329,9 +329,6 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
 
       {total > 0 && (
       <div className="flex items-center justify-between p-5 bg-gradient-to-r from-rose-50/50 via-pink-50/30 to-rose-50/50 border-t border-rose-200/50">
-        <div className="text-sm font-medium text-foreground/80">
-          Hiển thị <span className="font-semibold text-foreground">{filtered.length}</span> / <span className="font-semibold text-foreground">{total}</span> phiếu
-        </div>
           <Pagination>
             <PaginationContent className="gap-1">
               <PaginationItem>

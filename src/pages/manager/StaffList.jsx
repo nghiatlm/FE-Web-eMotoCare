@@ -13,8 +13,9 @@ export default function StaffList() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [roleFilter, setRoleFilter] = useState("all");
+  // "" = không lọc, chỉ hiển thị placeholder "Trạng thái" / "Vai trò"
+  const [statusFilter, setStatusFilter] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [staffs, setStaffs] = useState([]);
   const [serviceCenterId, setServiceCenterId] = useState(null);
@@ -163,8 +164,8 @@ export default function StaffList() {
         staff.phone.includes(search) ||
         staff.email.toLowerCase().includes(search.toLowerCase()) ||
         staff.staffCode.toLowerCase().includes(search.toLowerCase());
-      const matchesStatus = statusFilter === "all" || staff.status === statusFilter;
-      const matchesRole = roleFilter === "all" || staff.role === roleFilter;
+      const matchesStatus = !statusFilter || staff.status === statusFilter;
+      const matchesRole = !roleFilter || staff.role === roleFilter;
       return matchesSearch && matchesStatus && matchesRole;
     });
 
@@ -198,7 +199,6 @@ export default function StaffList() {
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
                 <SelectItem value="active">Đang làm việc</SelectItem>
                 <SelectItem value="inactive">Nghỉ việc</SelectItem>
               </SelectContent>
@@ -209,21 +209,20 @@ export default function StaffList() {
                 <SelectValue placeholder="Vai trò" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
                 <SelectItem value="technician">Kỹ thuật viên</SelectItem>
                 <SelectItem value="staff">Nhân viên dịch vụ</SelectItem>
                 <SelectItem value="storekeeper">Thủ kho</SelectItem>
               </SelectContent>
             </Select>
 
-            {(search || statusFilter !== "all" || roleFilter !== "all") && (
+            {(search || statusFilter || roleFilter) && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
                   setSearch("");
-                  setStatusFilter("all");
-                  setRoleFilter("all");
+                  setStatusFilter("");
+                  setRoleFilter("");
                 }}
                 className="border-transparent text-slate-600 hover:text-red-600 hover:bg-red-50"
               >
@@ -234,7 +233,7 @@ export default function StaffList() {
         </div>
 
         <p className="text-sm text-slate-600">
-          {search || statusFilter !== "all" || roleFilter !== "all"
+          {search || statusFilter || roleFilter
             ? `Hiển thị ${filteredStaff.length} / ${staffs.length} nhân viên (đã lọc)`
             : `Hiển thị ${staffs.length} / ${total} nhân viên`}
         </p>

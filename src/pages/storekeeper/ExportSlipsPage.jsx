@@ -211,17 +211,13 @@ export default function ExportSlipsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 via-red-50 to-rose-100">
       <div className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-6">
-        {/* Header Section */}
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="space-y-2">
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
-                  <FileUp className="h-6 w-6 text-white" />
-                </div>
                 <div>
                   <h1 className="text-3xl font-bold text-foreground">Phiếu xuất</h1>
-                  <p className="text-sm text-muted-foreground mt-1">Quản lý các phiếu xuất hàng cho appointments</p>
+                  <p className="text-sm text-muted-foreground mt-1">Quản lý các phiếu xuất hàng cho lịch hẹn</p>
                 </div>
               </div>
             </div>
@@ -232,9 +228,7 @@ export default function ExportSlipsPage() {
               <Plus className="h-4 w-4" />
               Tạo phiếu xuất
             </Button>
-          </div>
-          <p className="text-muted-foreground mb-4">Quản lý các phiếu xuất hàng cho appointments</p>
-          
+          </div>          
           <div className="p-4 bg-card rounded-lg border border-border">
             {branchLoading ? (
               <div className="flex items-center gap-3">

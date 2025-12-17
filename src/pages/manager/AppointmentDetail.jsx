@@ -422,10 +422,17 @@ export default function AppointmentDetail() {
             </div>
             
             <div className="w-full md:w-auto flex-shrink-0">
-                <div className="rounded-xl border border-primary/20 bg-primary-50/50 p-4 text-center">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-primary-600">Loại dịch vụ</p>
-                    <p className="mt-1 text-xl font-bold text-primary-800">{appointmentType}</p>
+              <div className="relative rounded-2xl border border-red-200 bg-gradient-to-b from-rose-50 via-white to-rose-100 px-6 py-4 text-center shadow-[0_10px_30px_rgba(248,113,113,0.2)]">
+                <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-600 shadow-inner">
+                  <Wrench className="h-4 w-4" />
                 </div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-500">
+                  Loại dịch vụ
+                </p>
+                <p className="mt-1 text-xl font-extrabold text-red-700 tracking-tight">
+                  {appointmentType}
+                </p>
+              </div>
             </div>
           </div>
           

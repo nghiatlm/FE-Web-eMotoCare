@@ -30,6 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getServiceCenters } from "@/api/serviceCentersApi";
 import { getDashboardOverview, getDashboardOverviewData } from "@/api/dashboardApi";
+import { getUsers } from "@/api/usersApi";
 import { Store, MapPin, Phone, Mail, Megaphone, ShieldCheck } from "lucide-react";
 
 const Index = () => {
@@ -56,21 +57,23 @@ const Index = () => {
         { name: 'Chờ thanh toán', value: 0, color: '#f59e0b' },
     ]);
     const [monthlySalesData, setMonthlySalesData] = useState([]);
+    const [customerRegistrations, setCustomerRegistrations] = useState(
+        Array.from({ length: 12 }, (_, i) => ({
+            monthIndex: i,
+            monthLabel: `Tháng ${i + 1}`,
+            value: 0,
+        }))
+    );
+    const [customerRegistrationsSummary, setCustomerRegistrationsSummary] = useState({
+        total: 0,
+        changePercent: 0,
+    });
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 7 }, (_, i) => currentYear - 5 + i);
 
     const displayedCenters = serviceCenters.slice(0, 4);
-
-    const subscriptionsData = [
-        { period: 'Tuần 1', value: 450, color: '#f97316' },
-        { period: 'Tuần 2', value: 520, color: '#14b8a6' },
-        { period: 'Tuần 3', value: 480, color: '#f97316' },
-        { period: 'Tuần 4', value: 600, color: '#14b8a6' },
-        { period: 'Tuần 5', value: 550, color: '#f97316' },
-        { period: 'Tuần 6', value: 680, color: '#14b8a6' },
-    ];
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -212,7 +215,60 @@ const Index = () => {
             }
         };
 
+        const fetchCustomerRegistrations = async () => {
+            try {
+                const response = await getUsers(1, 1000);
+                const data =
+                    response?.data?.rowDatas ||
+                    response?.data?.data?.rowDatas ||
+                    response?.rowDatas ||
+                    [];
+
+                const customers = data.filter(
+                    (u) => u.roleName === "ROLE_CUSTOMER" && u.customer?.createdAt
+                );
+
+                const now = new Date();
+                const currentYearForCustomers = now.getFullYear();
+
+                const monthlyCounts = Array.from({ length: 12 }, (_, i) => ({
+                    monthIndex: i,
+                    monthLabel: `Tháng ${i + 1}`,
+                    value: 0,
+                }));
+
+                customers.forEach((user) => {
+                    const createdAt = new Date(user.customer.createdAt);
+                    if (createdAt.getFullYear() !== currentYearForCustomers) return;
+                    const monthIdx = createdAt.getMonth();
+                    if (monthIdx >= 0 && monthIdx < 12) {
+                        monthlyCounts[monthIdx].value += 1;
+                    }
+                });
+
+                const totalThisYear = monthlyCounts.reduce((sum, m) => sum + m.value, 0);
+                const firstHalf = monthlyCounts.slice(0, 6).reduce((s, m) => s + m.value, 0);
+                const secondHalf = monthlyCounts.slice(6).reduce((s, m) => s + m.value, 0);
+
+                let changePercent = 0;
+                if (firstHalf > 0) {
+                    changePercent = ((secondHalf - firstHalf) / firstHalf) * 100;
+                }
+
+                setCustomerRegistrations(monthlyCounts);
+                setCustomerRegistrationsSummary({
+                    total: totalThisYear,
+                    changePercent: Number.isFinite(changePercent)
+                        ? Math.round(changePercent * 10) / 10
+                        : 0,
+                });
+            } catch (error) {
+                console.error("Error fetching customer registrations:", error);
+            }
+        };
+
         fetchStats();
+        fetchCustomerRegistrations();
     }, [selectedYear]);
 
     const formatCurrency = (amount) => {
@@ -453,51 +509,68 @@ const Index = () => {
                         </CardContent>
                     </Card>
 
-                    {/* Đăng ký */}
+                    {/* Đăng ký khách hàng */}
                     <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>
                                     <CardTitle className="text-lg font-semibold text-slate-900">Đăng ký</CardTitle>
-                                    <p className="text-sm text-slate-500 mt-1">Xu hướng đăng ký theo tuần</p>
+                                    <p className="text-sm text-slate-500 mt-1">
+                                        Số lượng khách hàng đăng ký theo tháng (năm hiện tại)
+                                    </p>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-2xl font-bold text-slate-900">+2,350</div>
-                                    <p className="text-xs text-emerald-600 flex items-center gap-1">
-                                        <TrendingUp className="h-3 w-3" />
-                                        +180.1% từ tháng trước
+                                    <div className="text-2xl font-bold text-slate-900">
+                                        +{customerRegistrationsSummary.total}
+                                    </div>
+                                    <p className="text-xs flex items-center gap-1">
+                                        <TrendingUp
+                                            className={`h-3 w-3 ${
+                                                customerRegistrationsSummary.changePercent >= 0
+                                                    ? "text-emerald-600"
+                                                    : "text-red-500"
+                                            }`}
+                                        />
+                                        <span
+                                            className={
+                                                customerRegistrationsSummary.changePercent >= 0
+                                                    ? "text-emerald-600"
+                                                    : "text-red-500"
+                                            }
+                                        >
+                                            {customerRegistrationsSummary.changePercent >= 0 ? "+" : ""}
+                                            {customerRegistrationsSummary.changePercent}% so với 6 tháng đầu năm
+                                        </span>
                                     </p>
                                 </div>
                             </div>
                         </CardHeader>
                         <CardContent>
                             <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={subscriptionsData}>
+                                <BarChart data={customerRegistrations}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                                    <XAxis 
-                                        dataKey="period" 
+                                    <XAxis
+                                        dataKey="monthLabel"
                                         stroke="#64748b"
-                                        style={{ fontSize: '12px' }}
+                                        style={{ fontSize: "12px" }}
                                     />
-                                    <YAxis 
+                                    <YAxis
                                         stroke="#64748b"
-                                        style={{ fontSize: '12px' }}
+                                        style={{ fontSize: "12px" }}
+                                        allowDecimals={false}
                                     />
-                                    <Tooltip 
-                                        contentStyle={{ 
-                                            backgroundColor: '#fff', 
-                                            border: '1px solid #e2e8f0',
-                                            borderRadius: '8px'
+                                    <Tooltip
+                                        contentStyle={{
+                                            backgroundColor: "#fff",
+                                            border: "1px solid #e2e8f0",
+                                            borderRadius: "8px",
                                         }}
                                     />
-                                    <Bar 
-                                        dataKey="value" 
-                                        radius={[8, 8, 0, 0]}
-                                    >
-                                        {subscriptionsData.map((entry, index) => (
-                                            <Cell 
+                                    <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                                        {customerRegistrations.map((entry, index) => (
+                                            <Cell
                                                 key={`cell-${index}`}
-                                                fill={entry.color}
+                                                fill={entry.value > 0 ? "#14b8a6" : "#e5e7eb"}
                                             />
                                         ))}
                                     </Bar>

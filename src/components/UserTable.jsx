@@ -40,7 +40,7 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
         try {
             setLoading(true);
             setError(null);
-            const response = await getUsers(page, pageSize);
+      const response = await getUsers(page, pageSize);
             
             if (response.success && response.data) {
                 const transformedUsers = response.data.rowDatas.map(user => ({
