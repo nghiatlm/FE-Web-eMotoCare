@@ -644,7 +644,8 @@ export default function RepairModeEVCheck({
             replacePartName: replacePartName || "",
             result: item.result ?? "",
           remedies: item.remedies || "NONE",
-          pricePart: pricePart,
+          // ✅ Chỉ hiển thị giá PT khi đã chọn phụ tùng thay thế
+          pricePart: replacePartId ? pricePart : 0,
           priceService: initialPriceService,
           totalAmount: Number(item.totalAmount || 0),
           quantity: Number(item.quantity || 1),
@@ -1381,9 +1382,7 @@ export default function RepairModeEVCheck({
             const isWarranty = checkWarrantyStatus(partItem);
 
 
-            const partPrice = Number(partItem?.price || 0);
-
-
+            // Không load giá PT khi chọn bộ phận, chỉ load khi chọn phụ tùng thay thế
             const enrichedPartItem = partItem ? {
               ...partItem,
               part: part || partItem.part || null
@@ -1391,13 +1390,13 @@ export default function RepairModeEVCheck({
 
             const updatedRow = {
               displayName: sel?.label || "",
-              pricePart: partPrice,
+              pricePart: 0, // Giá PT = 0, chờ chọn phụ tùng thay thế mới load giá
               partItem: enrichedPartItem,
               ...(isWarranty
                 ? {
                     replacePartId: "",
                     replacePartName: "",
-                    pricePart: partPrice,
+                    pricePart: 0,
                   }
                 : {}),
             };
@@ -1721,13 +1720,11 @@ export default function RepairModeEVCheck({
               }}
             onChange={(opt) => {
               if (!opt) {
-
-                const currentRow = details[i];
-                const partItemPrice = Number(currentRow?.partItem?.price || 0);
+                // Khi xóa phụ tùng thay thế → giá PT = 0
                 updateRow(i, {
                   proposedReplacePartId: "",
                   replacePartName: "",
-                  pricePart: partItemPrice,
+                  pricePart: 0,
                 });
                 return;
               }
@@ -1739,6 +1736,7 @@ export default function RepairModeEVCheck({
                 const fullLabel = opt.label || selected?.name || "";
 
 
+                // Khi chọn phụ tùng thay thế → load giá từ bộ phận gốc
                 const currentRow = details[i];
                 const partItemPrice = Number(currentRow?.partItem?.price || 0);
 

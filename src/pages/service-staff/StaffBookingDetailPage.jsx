@@ -150,6 +150,7 @@ export default function StaffBookingDetailPage() {
   const [availableSlots, setAvailableSlots] = useState([]);
   const [selectedSlotForCheckIn, setSelectedSlotForCheckIn] = useState(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [loadingCheckIn, setLoadingCheckIn] = useState(false);
 
   const loadBookingDetailRef = useRef(null);
 
@@ -628,7 +629,27 @@ export default function StaffBookingDetailPage() {
     }
   };
 
-  // ✅ Load tất cả các slot available để user chọn
+  // ✅ Kiểm tra slot đã qua chưa theo thời gian thực (LUÔN check theo giờ hiện tại)
+  const isSlotPassed = (slotTime) => {
+    const now = dayjs();
+    
+    // Lấy giờ của slot (ví dụ H13_14 -> startHour=13, endHour=14)
+    const match = slotTime?.match(/H(\d{2})_(\d{2})/);
+    if (!match) return false;
+    
+    const slotEndHour = parseInt(match[2], 10);
+    const currentHour = now.hour();
+    
+    // Slot đã qua nếu giờ hiện tại >= giờ kết thúc của slot (hết 1 tiếng mới chuyển)
+    // Ví dụ: slot 13:00-14:00 chỉ bị ẩn khi đã 14:00 trở đi
+    if (currentHour >= slotEndHour) {
+      return true;
+    }
+    
+    return false;
+  };
+
+  // ✅ Load tất cả các slot available để user chọn (LUÔN lấy slot của NGÀY HÔM NAY)
   const loadAvailableSlots = async (serviceCenterId, appointmentDate, currentSlotTime) => {
     try {
       setLoadingSlots(true);
@@ -639,9 +660,10 @@ export default function StaffBookingDetailPage() {
         return;
       }
 
-      const dateStr = dayjs(appointmentDate).format("YYYY-MM-DD");
+      // ✅ LUÔN lấy slot của NGÀY HÔM NAY (vì khách đang ở đây check-in)
+      const today = dayjs().format("YYYY-MM-DD");
       const allSlots = center.serviceCenterSlots
-        .filter((s) => s.date === dateStr && s.isActive)
+        .filter((s) => s.date === today && s.isActive)
         .sort((a, b) => {
           const getHour = (slotTime) => {
             const match = slotTime?.match(/H(\d{2})_(\d{2})/);
@@ -650,10 +672,16 @@ export default function StaffBookingDetailPage() {
           return getHour(a.slotTime) - getHour(b.slotTime);
         });
 
-      // Kiểm tra availability cho từng slot
+      // Kiểm tra availability cho từng slot và lọc bỏ slot đã qua
       const availableSlotsList = [];
       for (const slot of allSlots) {
-        const isAvailable = await checkSlotAvailability(serviceCenterId, appointmentDate, slot.slotTime);
+        // ✅ Lọc bỏ các slot đã qua theo thời gian thực
+        if (isSlotPassed(slot.slotTime)) {
+          continue;
+        }
+        
+        // ✅ Check availability với ngày HÔM NAY
+        const isAvailable = await checkSlotAvailability(serviceCenterId, today, slot.slotTime);
         if (isAvailable) {
           availableSlotsList.push({
             slotTime: slot.slotTime,
@@ -665,18 +693,25 @@ export default function StaffBookingDetailPage() {
 
       setAvailableSlots(availableSlotsList);
       
-      // Tự động chọn slot hiện tại (lịch đặt) nếu còn available, nếu không chọn slot đầu tiên
+      // Tự động chọn slot hiện tại (lịch đặt) nếu còn available và chưa qua, nếu không chọn slot đầu tiên
       if (availableSlotsList.length > 0) {
         const currentSlotExists = availableSlotsList.find(s => s.slotTime === currentSlotTime);
         setSelectedSlotForCheckIn(currentSlotExists ? currentSlotTime : availableSlotsList[0].slotTime);
       } else {
-        // Nếu không còn slot nào, vẫn cho phép check-in với slot hiện tại
-        setSelectedSlotForCheckIn(currentSlotTime);
-        setAvailableSlots([{
-          slotTime: currentSlotTime,
-          label: SLOT_LABEL_MAP[currentSlotTime] || currentSlotTime,
-          capacity: 0,
-        }]);
+        // Nếu không còn slot nào khả dụng, kiểm tra slot lịch đặt có qua chưa
+        if (!isSlotPassed(currentSlotTime)) {
+          // Slot lịch đặt chưa qua, vẫn cho phép check-in
+          setSelectedSlotForCheckIn(currentSlotTime);
+          setAvailableSlots([{
+            slotTime: currentSlotTime,
+            label: SLOT_LABEL_MAP[currentSlotTime] || currentSlotTime,
+            capacity: 0,
+          }]);
+        } else {
+          // Tất cả slot đã qua
+          setSelectedSlotForCheckIn(null);
+          setAvailableSlots([]);
+        }
       }
     } catch (error) {
       console.error("Error loading available slots:", error);
@@ -729,11 +764,11 @@ export default function StaffBookingDetailPage() {
     }
 
     try {
+      setLoadingCheckIn(true);
       const serviceCenterId = booking?.serviceCenterId || booking?.serviceCenter?.id;
-      const appointmentDate = booking?.appointmentDate;
       const currentSlotTime = booking?.slotTime;
 
-      if (!serviceCenterId || !appointmentDate || !currentSlotTime) {
+      if (!serviceCenterId || !currentSlotTime) {
         // Nếu thiếu thông tin, check-in bình thường
         await changeAppointmentStatusService(booking.id, "CHECKED_IN", {
           code: booking.code,
@@ -745,36 +780,10 @@ export default function StaffBookingDetailPage() {
         return;
       }
 
-      // ✅ Kiểm tra slot hiện tại còn trống không
-      const isSlotAvailable = await checkSlotAvailability(
-        serviceCenterId,
-        appointmentDate,
-        currentSlotTime
-      );
-
-      if (!isSlotAvailable) {
-        // ✅ Slot hiện tại đã đầy, hiển thị modal để chọn slot khác
-        await loadAvailableSlots(serviceCenterId, appointmentDate, currentSlotTime);
-        setIsSlotSelectionModalOpen(true);
-        return; // Dừng lại để đợi user chọn slot
-      }
-
-      // ✅ Kiểm tra xem có slot sớm hơn còn trống không (để cho phép khách đến sớm chọn slot sớm hơn)
-      const hasEarlierAvailableSlots = await checkForEarlierAvailableSlots(
-        serviceCenterId,
-        appointmentDate,
-        currentSlotTime
-      );
-
-      if (hasEarlierAvailableSlots) {
-        // ✅ Có slot sớm hơn còn trống, hiển thị modal để user chọn (có thể chọn slot sớm hơn hoặc giữ nguyên)
-        await loadAvailableSlots(serviceCenterId, appointmentDate, currentSlotTime);
-        setIsSlotSelectionModalOpen(true);
-        return; // Dừng lại để đợi user chọn slot
-      }
-
-      // ✅ Slot hiện tại còn trống và không có slot sớm hơn, check-in trực tiếp với slot đã đặt
-      await performCheckIn(currentSlotTime);
+      // ✅ LUÔN hiển thị modal chọn slot với các slot của NGÀY HÔM NAY
+      // (đã lọc theo thời gian thực trong loadAvailableSlots)
+      await loadAvailableSlots(serviceCenterId, dayjs().format("YYYY-MM-DD"), currentSlotTime);
+      setIsSlotSelectionModalOpen(true);
     } catch (error) {
       toast.error(
         error?.response?.data?.message ||
@@ -782,6 +791,8 @@ export default function StaffBookingDetailPage() {
           error?.message ||
           "Check-in thất bại!"
       );
+    } finally {
+      setLoadingCheckIn(false);
     }
   };
 
@@ -1636,6 +1647,7 @@ export default function StaffBookingDetailPage() {
                   danger
                   onClick={handleManualCheckIn}
                   disabled={!checkinCodeInput || checkinCodeInput.trim() === ""}
+                  loading={loadingCheckIn}
                   style={{ minWidth: 200 }}>
                   Check-in
                 </Button>
@@ -1755,119 +1767,124 @@ export default function StaffBookingDetailPage() {
                 </div>
               </div>
 
-              {booking.cancellationFee > 0 ? (
-                <div
-                  style={{
-                    marginTop: 16,
-                    padding: 16,
-                    backgroundColor: "#fff7e6",
-                    borderRadius: 8,
-                    border: "1px solid #ffd591",
-                  }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}>
-                    <div>
-                      <p
-                        style={{
-                          margin: 0,
-                          fontSize: 14,
-                          color: "#d46b08",
-                          fontWeight: 600,
-                        }}>
-                        Phí hủy lịch hẹn:
-                      </p>
-                      <p
-                        style={{
-                          margin: "8px 0 0 0",
-                          fontSize: 20,
-                          color: "#d46b08",
-                          fontWeight: 700,
-                        }}>
-                        {booking.cancellationFee.toLocaleString("vi-VN")} VNĐ
-                      </p>
-                    </div>
-                    <Button
-                      type='primary'
-                      danger
-                      size='large'
-                      onClick={() => {
-                        setCancellationFee(booking.cancellationFee);
-                        setIsPendingCancel(false);
-                        setIsPaymentModalOpen(true);
+              {/* Chỉ hiện phí hủy khi NHÂN VIÊN hủy (STAFF/WEB), không hiện khi KHÁCH tự hủy (CUSTOMER/MOBILE) */}
+              {(booking.cancelledBy === "STAFF" || booking.cancelledBy === "WEB") && (
+                <>
+                  {booking.cancellationFee > 0 ? (
+                    <div
+                      style={{
+                        marginTop: 16,
+                        padding: 16,
+                        backgroundColor: "#fff7e6",
+                        borderRadius: 8,
+                        border: "1px solid #ffd591",
                       }}>
-                      Thanh toán phí hủy
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div
-                  style={{
-                    marginTop: 16,
-                    padding: 16,
-                    backgroundColor: "#f0f0f0",
-                    borderRadius: 8,
-                    border: "1px solid #d9d9d9",
-                  }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}>
-                    <div>
-                      <p
+                      <div
                         style={{
-                          margin: 0,
-                          fontSize: 14,
-                          color: "#595959",
-                          fontWeight: 600,
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
                         }}>
-                        Chưa tính phí hủy lịch hẹn
-                      </p>
-                      <p
-                        style={{
-                          margin: "4px 0 0 0",
-                          fontSize: 12,
-                          color: "#8c8c8c",
-                        }}>
-                        Vui lòng tính phí hủy dựa trên các hạng mục đã kiểm tra
-                      </p>
-                    </div>
-                    <Button
-                      type='primary'
-                      danger
-                      size='large'
-                      loading={isCalculatingFee}
-                      onClick={async () => {
-                        setIsCalculatingFee(true);
-                        try {
-                          const fee = await calculateCancellationFee();
-                          if (fee > 0) {
-                            setCancellationFee(fee);
+                        <div>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: 14,
+                              color: "#d46b08",
+                              fontWeight: 600,
+                            }}>
+                            Phí hủy lịch hẹn:
+                          </p>
+                          <p
+                            style={{
+                              margin: "8px 0 0 0",
+                              fontSize: 20,
+                              color: "#d46b08",
+                              fontWeight: 700,
+                            }}>
+                            {booking.cancellationFee.toLocaleString("vi-VN")} VNĐ
+                          </p>
+                        </div>
+                        <Button
+                          type='primary'
+                          danger
+                          size='large'
+                          onClick={() => {
+                            setCancellationFee(booking.cancellationFee);
                             setIsPendingCancel(false);
                             setIsPaymentModalOpen(true);
-                          } else {
-                            toast.info("Không có phí hủy cho lịch hẹn này.");
-                          }
-                        } catch (error) {
-                          toast.error(
-                            error?.response?.data?.message ||
-                              error?.data?.message ||
-                              error?.message ||
-                              "Không thể tính phí hủy. Vui lòng thử lại!"
-                          );
-                        } finally {
-                          setIsCalculatingFee(false);
-                        }
+                          }}>
+                          Thanh toán phí hủy
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        marginTop: 16,
+                        padding: 16,
+                        backgroundColor: "#f0f0f0",
+                        borderRadius: 8,
+                        border: "1px solid #d9d9d9",
                       }}>
-                      Thanh toán phí hủy
-                    </Button>
-                  </div>
-                </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}>
+                        <div>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: 14,
+                              color: "#595959",
+                              fontWeight: 600,
+                            }}>
+                            Chưa tính phí hủy lịch hẹn
+                          </p>
+                          <p
+                            style={{
+                              margin: "4px 0 0 0",
+                              fontSize: 12,
+                              color: "#8c8c8c",
+                            }}>
+                            Vui lòng tính phí hủy dựa trên các hạng mục đã kiểm tra
+                          </p>
+                        </div>
+                        <Button
+                          type='primary'
+                          danger
+                          size='large'
+                          loading={isCalculatingFee}
+                          onClick={async () => {
+                            setIsCalculatingFee(true);
+                            try {
+                              const fee = await calculateCancellationFee();
+                              if (fee > 0) {
+                                setCancellationFee(fee);
+                                setIsPendingCancel(false);
+                                setIsPaymentModalOpen(true);
+                              } else {
+                                toast.info("Không có phí hủy cho lịch hẹn này.");
+                              }
+                            } catch (error) {
+                              toast.error(
+                                error?.response?.data?.message ||
+                                  error?.data?.message ||
+                                  error?.message ||
+                                  "Không thể tính phí hủy. Vui lòng thử lại!"
+                              );
+                            } finally {
+                              setIsCalculatingFee(false);
+                            }
+                          }}>
+                          Thanh toán phí hủy
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </Card>
           )}
@@ -2209,11 +2226,15 @@ export default function StaffBookingDetailPage() {
           style: { backgroundColor: "#ff4d4f", borderColor: "#ff4d4f" }
         }}>
         <div style={{ padding: "16px 0" }}>
-          <p style={{ fontSize: 14, marginBottom: 16, color: "#595959" }}>
-            Lịch đặt: <strong>{SLOT_LABEL_MAP[booking?.slotTime] || booking?.slotTime}</strong>
+          <p style={{ fontSize: 14, marginBottom: 8, color: "#595959" }}>
+            Lịch đặt: <strong>{SLOT_LABEL_MAP[booking?.slotTime] || booking?.slotTime}</strong> 
+            {" - "}{dayjs(booking?.appointmentDate).format("DD/MM/YYYY")}
+          </p>
+          <p style={{ fontSize: 14, marginBottom: 16, color: "#1890ff", fontWeight: 500 }}>
+            Check-in hôm nay: <strong>{dayjs().format("DD/MM/YYYY")}</strong>
           </p>
           <p style={{ fontSize: 14, marginBottom: 16, color: "#595959" }}>
-            Vui lòng chọn khung giờ để check-in (có thể chọn slot khác nếu có):
+            Vui lòng chọn khung giờ để check-in (chỉ hiển thị slot còn trống hôm nay):
           </p>
           
           {loadingSlots ? (
@@ -2223,7 +2244,12 @@ export default function StaffBookingDetailPage() {
             </div>
           ) : availableSlots.length === 0 ? (
             <div style={{ textAlign: "center", padding: "20px 0" }}>
-              <p style={{ color: "#ff4d4f" }}>Không còn slot trống nào trong ngày này.</p>
+              <p style={{ color: "#ff4d4f", fontWeight: 500 }}>
+                Không còn khung giờ nào khả dụng trong ngày hôm nay.
+              </p>
+              <p style={{ color: "#8c8c8c", fontSize: 13, marginTop: 8 }}>
+                Tất cả các khung giờ đã qua hoặc đã đầy. Vui lòng liên hệ nhân viên để được hỗ trợ.
+              </p>
             </div>
           ) : (
             <Select
@@ -2238,7 +2264,6 @@ export default function StaffBookingDetailPage() {
                   <Select.Option key={slot.slotTime} value={slot.slotTime}>
                     {slot.label} 
                     {isCurrentSlot && " (Lịch đặt)"}
-                    {slot.capacity > 1 && !isCurrentSlot && ` (Còn ${slot.capacity} chỗ)`}
                   </Select.Option>
                 );
               })}
