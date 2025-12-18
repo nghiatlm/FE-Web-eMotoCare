@@ -25,9 +25,7 @@ export default function ManagerProfile() {
   const [loading, setLoading] = useState(false);
   const [updatingProfile, setUpdatingProfile] = useState(false);
 
-  // Profile edit states
   const [editingProfile, setEditingProfile] = useState(false);
-  const [profileEmail, setProfileEmail] = useState("");
   const [profileAddress, setProfileAddress] = useState("");
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
@@ -49,8 +47,6 @@ export default function ManagerProfile() {
         const res = await getStaffByAccountId(accountId, { page: 1, pageSize: 10 });
         const staffData = res?.data?.rowDatas?.[0];
         setStaff(staffData || null);
-        // Set initial values for profile editing
-        setProfileEmail(staffData?.account?.email || account.email || "");
         setProfileAddress(staffData?.address || "");
         setAvatarPreview(staffData?.avatarUrl || null);
       } finally {
@@ -58,7 +54,6 @@ export default function ManagerProfile() {
       }
     };
     fetchStaff();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.id, account?.accountId]);
 
   const displayName = useMemo(() => {
@@ -72,13 +67,6 @@ export default function ManagerProfile() {
     if (parts.length >= 2) return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
     return displayName.slice(0, 2).toUpperCase() || "QL";
   }, [displayName]);
-
-  const toVietnameseStatus = (status) => {
-    const st = (status || "").toUpperCase();
-    if (st === "ACTIVE") return "Hoạt động";
-    if (st === "INACTIVE" || st === "IN_ACTIVE") return "Ngưng hoạt động";
-    return status || "Không rõ";
-  };
 
   const toVietnamesePosition = (position) => {
     const pos = (position || "").toUpperCase();
@@ -131,23 +119,6 @@ export default function ManagerProfile() {
   };
 
   const handleUpdateProfile = async () => {
-    if (!profileEmail.trim()) {
-      toastify.error("Email không được để trống", {
-        position: "top-right",
-        autoClose: 4000,
-      });
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(profileEmail.trim())) {
-      toastify.error("Email không hợp lệ. Format: example@domain.com", {
-        position: "top-right",
-        autoClose: 4000,
-      });
-      return;
-    }
-
     try {
       setUpdatingProfile(true);
       setUploadingAvatar(!!avatarFile);
@@ -171,7 +142,6 @@ export default function ManagerProfile() {
         }
       }
 
-      // Get staff ID
       const staffId = staff?.id;
       if (!staffId) {
         toastify.error("Không tìm thấy thông tin nhân viên", {
@@ -182,7 +152,6 @@ export default function ManagerProfile() {
         return;
       }
 
-      // Build payload with all required staff fields (API PUT /api/v1/staffs/{id})
       const payload = {
         accountId: account.id || account.accountId,
         staffCode: staff?.staffCode || "",
@@ -203,20 +172,11 @@ export default function ManagerProfile() {
       if (avatarUrl) {
         payload.avatarUrl = avatarUrl;
       } else if (avatarFile && !avatarUrl) {
-        // If user selected a file but upload failed, don't update
         setUpdatingProfile(false);
         return;
       }
 
-      // Update staff using PUT /api/v1/staffs/{id}
       const response = await updateStaff(staffId, payload);
-
-      // Update email separately if needed (email is in account, not staff)
-      // Note: Email update might need a separate API call to update account
-      if (profileEmail.trim() !== (staff?.account?.email || account.email)) {
-        // Email update might require account API, but for now we'll just update staff
-        console.log("Email change detected but staff API doesn't update email");
-      }
 
       if (response?.success !== false) {
         toastify.success(response.message || "Cập nhật thông tin thành công!", {
@@ -224,7 +184,14 @@ export default function ManagerProfile() {
           autoClose: 3000,
         });
 
-        // Refresh staff data
+        if (avatarUrl) {
+          window.dispatchEvent(
+            new CustomEvent("manager-avatar-updated", {
+              detail: { avatarUrl },
+            })
+          );
+        }
+
         const res = await getStaffByAccountId(account.id || account.accountId, { page: 1, pageSize: 10 });
         const staffData = res?.data?.rowDatas?.[0];
         setStaff(staffData || null);
@@ -277,10 +244,10 @@ export default function ManagerProfile() {
       <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 2xl:px-16 py-6 space-y-4">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900">Hồ sơ quản lý</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Hồ sơ cá nhân</h1>
             <span className="h-[2px] flex-1 bg-gradient-to-r from-red-400/60 via-rose-300/40 to-transparent rounded-full" />
           </div>
-          <p className="text-slate-600 text-sm">Thông tin tài khoản và đổi mật khẩu</p>
+          <p className="text-slate-600 text-sm">Thông tin tài khoản</p>
           <div className="flex items-center gap-3 p-4 bg-white/90 backdrop-blur border border-rose-100 rounded-2xl shadow-md">
             <div className="relative">
               {avatarPreview ? (
@@ -332,7 +299,6 @@ export default function ManagerProfile() {
                     size="sm"
                     onClick={() => {
                       setEditingProfile(true);
-                      setProfileEmail(staff?.account?.email || account.email || "");
                       setProfileAddress(staff?.address || "");
                       setAvatarPreview(staff?.avatarUrl || null);
                       setAvatarFile(null);
@@ -347,7 +313,6 @@ export default function ManagerProfile() {
                       size="sm"
                       onClick={() => {
                         setEditingProfile(false);
-                        setProfileEmail(staff?.account?.email || account.email || "");
                         setProfileAddress(staff?.address || "");
                         setAvatarPreview(staff?.avatarUrl || null);
                         setAvatarFile(null);
@@ -369,22 +334,18 @@ export default function ManagerProfile() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <InfoRow label="Họ tên" value={displayName} />
-              {editingProfile ? (
-                <div className="space-y-2">
-                  <Label>Email *</Label>
-                  <Input
-                    value={profileEmail}
-                    onChange={(e) => setProfileEmail(e.target.value)}
-                    placeholder="Nhập email"
-                    disabled={updatingProfile}
-                  />
-                </div>
-              ) : (
-                <InfoRow label="Email" value={staff?.account?.email || account.email} />
-              )}
+              <InfoRow label="Họ tên" value={displayName} /> 
+              <InfoRow label="Email" value={staff?.account?.email || account.email} />
               <InfoRow label="Số điện thoại" value={staff?.account?.phone || account.phone} />
-              <InfoRow label="Vai trò" value="Quản lý" />
+              <InfoRow label="CCCD/CMND" value={staff?.citizenId} />
+              <InfoRow
+                label="Ngày sinh"
+                value={
+                  staff?.dateOfBirth
+                    ? new Date(staff.dateOfBirth).toLocaleDateString("vi-VN")
+                    : "—"
+                }
+              />
               <InfoRow label="Chức vụ" value={toVietnamesePosition(staff?.position)} />
               {editingProfile ? (
                 <div className="space-y-2">
@@ -399,7 +360,6 @@ export default function ManagerProfile() {
               ) : (
                 <InfoRow label="Địa chỉ" value={staff?.address} />
               )}
-              <InfoRow label="Trạng thái" value={toVietnameseStatus(account.status || staff?.account?.status)} />
               {editingProfile && avatarFile && (
                 <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
                   <span className="text-sm text-slate-600">Ảnh mới đã chọn</span>

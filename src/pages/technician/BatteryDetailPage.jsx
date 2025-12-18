@@ -1,4 +1,3 @@
-// src/pages/technician/BatteryDetailPage.jsx
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -28,6 +27,7 @@ import {
 } from "lucide-react";
 
 import ReactECharts from "echarts-for-react";
+import BatteryDetailContent from "../../components/technician/BatteryDetailContent";
 
 const { Title, Paragraph } = Typography;
 
@@ -52,11 +52,9 @@ export default function BatteryDetailPage() {
       try {
         const parsedData = JSON.parse(savedData);
         if (parsedData && (parsedData.id || parsedData.sampleCount !== undefined)) {
-          console.log("🔋 Loaded battery data from localStorage:", parsedData);
           setBatteryData(parsedData);
         }
       } catch (error) {
-        console.error("🔋 Error parsing saved battery data:", error);
       }
     }
     setLoading(false);
@@ -113,189 +111,152 @@ export default function BatteryDetailPage() {
   }
 
   const {
-    sampleCount,
-    minVoltage,
-    maxVoltage,
-    avgVoltage,
-    minCurrent,
-    maxCurrent,
-    avgCurrent,
-    minTemp,
-    maxTemp,
-    avgTemp,
-    minSOC,
-    maxSOC,
-    avgSOC,
-    minSOH,
-    maxSOH,
-    avgSOH,
-    conclusion,
+    time = [],
+    voltage = [],
+    current: currentFromData = [],
+    power = [],
+    temp = [],
+    soc = [],
+    soh = [],
+    sampleCount = 0,
+    conclusion = {},
   } = batteryData;
 
-  // ====== Helper format data cho chart ======
-  const voltageCurrentData = [
-    {
-      name: "Min",
-      voltage: minVoltage || 0,
-      current: minCurrent || 0,
-    },
-    {
-      name: "Trung bình",
-      voltage: avgVoltage || 0,
-      current: avgCurrent || 0,
-    },
-    {
-      name: "Max",
-      voltage: maxVoltage || 0,
-      current: maxCurrent || 0,
-    },
-  ];
+  const currentArray = (power && power.length > 0) ? power : (currentFromData && currentFromData.length > 0 ? currentFromData : []);
 
-  const tempData = [
-    { name: "Min", value: minTemp || 0 },
-    { name: "Trung bình", value: avgTemp || 0 },
-    { name: "Max", value: maxTemp || 0 },
-  ];
+  const calculateStats = (arr) => {
+    if (!arr || !Array.isArray(arr) || arr.length === 0) return { min: 0, max: 0, avg: 0 };
+    const validValues = arr.filter(v => v !== null && v !== undefined && !isNaN(v)).map(v => Number(v));
+    if (validValues.length === 0) return { min: 0, max: 0, avg: 0 };
+    const min = Math.min(...validValues);
+    const max = Math.max(...validValues);
+    const avg = validValues.reduce((sum, val) => sum + val, 0) / validValues.length;
+    return { min, max, avg };
+  };
 
-  const socSohData = [
-    {
-      name: "Min",
-      soc: minSOC || 0,
-      soh: minSOH || 0,
-    },
-    {
-      name: "Trung bình",
-      soc: avgSOC || 0,
-      soh: avgSOH || 0,
-    },
-    {
-      name: "Max",
-      soc: maxSOC || 0,
-      soh: maxSOH || 0,
-    },
-  ];
-
-  // ====== ECharts options ======
+  const voltageStats = calculateStats(voltage);
+  const currentStats = calculateStats(currentArray);
+  const tempStats = calculateStats(temp);
+  const socStats = calculateStats(soc);
+  const sohStats = calculateStats(soh);
 
   const getVoltageCurrentOption = () => ({
+    title: {
+      text: "V",
+      left: "center",
+      textStyle: { fontSize: 14, fontWeight: 600 },
+    },
     tooltip: {
       trigger: "axis",
-      axisPointer: { type: "shadow" },
-      backgroundColor: "#ffffff",
-      borderColor: "#f0f0f0",
-      borderWidth: 1,
-      textStyle: { color: "#595959", fontSize: 11 },
+      axisPointer: { type: "cross" },
     },
     legend: {
       data: ["Điện áp (V)", "Dòng điện (A)"],
-      top: 5,
-      textStyle: { fontSize: 10, color: "#595959" },
+      bottom: 8,
+      textStyle: { fontSize: 11 },
+      itemGap: 20,
     },
-    grid: { top: 35, left: 35, right: 20, bottom: 25 },
-    xAxis: [
-      {
-        type: "category",
-        data: voltageCurrentData.map((d) => d.name),
-        axisTick: { alignWithLabel: true },
-        axisLine: { lineStyle: { color: "#d9d9d9" } },
-        axisLabel: { fontSize: 10 },
-      },
-    ],
+    grid: {
+      left: "10%",
+      right: "10%",
+      top: "15%",
+      bottom: "25%",
+    },
+    xAxis: {
+      type: "value",
+      name: "Thời gian (s)",
+      nameLocation: "middle",
+      nameGap: 35,
+      nameTextStyle: { fontSize: 10 },
+      axisLabel: { fontSize: 9 },
+    },
     yAxis: [
       {
         type: "value",
-        name: "V",
+        name: "Điện áp (V)",
         position: "left",
         nameTextStyle: { fontSize: 10 },
-        axisLine: { lineStyle: { color: "#1890ff" } },
-        splitLine: { lineStyle: { type: "dashed", color: "#f0f0f0" } },
         axisLabel: { fontSize: 9 },
       },
       {
         type: "value",
-        name: "A",
+        name: "Dòng điện (A)",
         position: "right",
         nameTextStyle: { fontSize: 10 },
-        axisLine: { lineStyle: { color: "#52c41a" } },
-        splitLine: { show: false },
         axisLabel: { fontSize: 9 },
       },
     ],
     series: [
       {
         name: "Điện áp (V)",
-        type: "bar",
+        type: "line",
+        smooth: true,
+        symbolSize: 4,
+        data: time.map((t, idx) => [t, voltage[idx] || 0]),
+        lineStyle: { width: 2, color: "#5470c6" },
+        itemStyle: { color: "#5470c6" },
         yAxisIndex: 0,
-        data: voltageCurrentData.map((d) => d.voltage),
-        barWidth: 18,
-        itemStyle: {
-          borderRadius: [4, 4, 0, 0],
-          color: "#1890ff",
-        },
       },
       {
         name: "Dòng điện (A)",
-        type: "bar",
+        type: "line",
+        smooth: true,
+        symbolSize: 4,
+        data: time.map((t, idx) => [t, currentArray[idx] || 0]),
+        lineStyle: { width: 2, color: "#91cc75" },
+        itemStyle: { color: "#91cc75" },
         yAxisIndex: 1,
-        data: voltageCurrentData.map((d) => d.current),
-        barWidth: 18,
-        itemStyle: {
-          borderRadius: [4, 4, 0, 0],
-          color: "#52c41a",
-        },
       },
     ],
   });
 
   const getTempOption = () => ({
+    title: {
+      text: "°C",
+      left: "center",
+      textStyle: { fontSize: 14, fontWeight: 600 },
+    },
     tooltip: {
       trigger: "axis",
-      backgroundColor: "#ffffff",
-      borderColor: "#f0f0f0",
-      borderWidth: 1,
-      textStyle: { color: "#595959", fontSize: 11 },
+      axisPointer: { type: "cross" },
     },
-    grid: { top: 25, left: 35, right: 20, bottom: 25 },
+    grid: {
+      left: "10%",
+      right: "10%",
+      top: "15%",
+      bottom: "18%",
+    },
     xAxis: {
-      type: "category",
-      data: tempData.map((d) => d.name),
-      axisLine: { lineStyle: { color: "#d9d9d9" } },
-      axisLabel: { fontSize: 10 },
+      type: "value",
+      name: "Thời gian (s)",
+      nameLocation: "middle",
+      nameGap: 30,
+      nameTextStyle: { fontSize: 10 },
+      axisLabel: { fontSize: 9 },
     },
     yAxis: {
       type: "value",
-      name: "°C",
+      name: "Nhiệt độ (°C)",
       nameTextStyle: { fontSize: 10 },
-      axisLine: { lineStyle: { color: "#fa8c16" } },
-      splitLine: { lineStyle: { type: "dashed", color: "#f0f0f0" } },
       axisLabel: { fontSize: 9 },
     },
     series: [
       {
+        name: "Nhiệt độ",
         type: "line",
         smooth: true,
         symbolSize: 6,
-        data: tempData.map((d) => d.value),
-        lineStyle: {
-          width: 2.5,
-          color: "#fa8c16",
-        },
-        itemStyle: {
-          color: "#fa8c16",
-          borderWidth: 2,
-          borderColor: "#fff",
-        },
+        data: time.map((t, idx) => [t, temp[idx] || 0]),
+        lineStyle: { width: 2.5, color: "#fac858" },
+        itemStyle: { color: "#fac858", borderWidth: 2, borderColor: "#fff" },
         areaStyle: {
-          opacity: 0.3,
+          opacity: 0.2,
           color: {
             type: "linear",
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
+            x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: "rgba(250,140,22,0.4)" },
-              { offset: 1, color: "rgba(250,140,22,0)" },
+              { offset: 0, color: "rgba(250,200,88,0.3)" },
+              { offset: 1, color: "rgba(250,200,88,0)" },
             ],
           },
         },
@@ -304,32 +265,41 @@ export default function BatteryDetailPage() {
   });
 
   const getSocSohOption = () => ({
+    title: {
+      text: "SOC & SOH",
+      left: "center",
+      textStyle: { fontSize: 14, fontWeight: 600 },
+    },
     tooltip: {
       trigger: "axis",
-      backgroundColor: "#ffffff",
-      borderColor: "#f0f0f0",
-      borderWidth: 1,
-      textStyle: { color: "#595959", fontSize: 11 },
+      axisPointer: { type: "cross" },
     },
     legend: {
       data: ["SOC (%)", "SOH (%)"],
-      top: 5,
-      textStyle: { fontSize: 10, color: "#595959" },
+      bottom: 8,
+      textStyle: { fontSize: 11 },
+      itemGap: 20,
     },
-    grid: { top: 35, left: 35, right: 20, bottom: 25 },
+    grid: {
+      left: "10%",
+      right: "10%",
+      top: "15%",
+      bottom: "25%",
+    },
     xAxis: {
-      type: "category",
-      data: socSohData.map((d) => d.name),
-      axisLine: { lineStyle: { color: "#d9d9d9" } },
-      axisLabel: { fontSize: 10 },
+      type: "value",
+      name: "Thời gian (s)",
+      nameLocation: "middle",
+      nameGap: 35,
+      nameTextStyle: { fontSize: 10 },
+      axisLabel: { fontSize: 9 },
     },
     yAxis: {
       type: "value",
+      name: "Phần trăm (%)",
       min: 0,
       max: 110,
       nameTextStyle: { fontSize: 10 },
-      axisLine: { lineStyle: { color: "#bfbfbf" } },
-      splitLine: { lineStyle: { type: "dashed", color: "#f0f0f0" } },
       axisLabel: { fontSize: 9 },
     },
     series: [
@@ -338,7 +308,7 @@ export default function BatteryDetailPage() {
         type: "line",
         smooth: true,
         symbolSize: 6,
-        data: socSohData.map((d) => d.soc),
+        data: time.map((t, idx) => [t, soc[idx] || 0]),
         lineStyle: { width: 2.5, color: "#722ed1" },
         itemStyle: {
           color: "#722ed1",
@@ -349,10 +319,7 @@ export default function BatteryDetailPage() {
           opacity: 0.2,
           color: {
             type: "linear",
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
+            x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
               { offset: 0, color: "rgba(114,46,209,0.3)" },
               { offset: 1, color: "rgba(114,46,209,0)" },
@@ -365,7 +332,7 @@ export default function BatteryDetailPage() {
         type: "line",
         smooth: true,
         symbolSize: 6,
-        data: socSohData.map((d) => d.soh),
+        data: time.map((t, idx) => [t, soh[idx] || 0]),
         lineStyle: { width: 2.5, color: "#eb2f96" },
         itemStyle: {
           color: "#eb2f96",
@@ -376,10 +343,7 @@ export default function BatteryDetailPage() {
           opacity: 0.15,
           color: {
             type: "linear",
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
+            x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
               { offset: 0, color: "rgba(235,47,150,0.25)" },
               { offset: 1, color: "rgba(235,47,150,0)" },
@@ -392,7 +356,7 @@ export default function BatteryDetailPage() {
 
   return (
     <div className="p-6" style={{ maxWidth: "1400px", margin: "0 auto" }}>
-      {/* Header */}
+      
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Button icon={<ArrowLeft className="h-4 w-4" />} onClick={() => navigate(-1)}>
@@ -408,7 +372,7 @@ export default function BatteryDetailPage() {
       </div>
 
       <div className="space-y-6">
-        {/* Tóm tắt nhanh */}
+        
         <div>
           <h4 className="text-sm font-semibold mb-3" style={{ color: "#ff4d4f" }}>
             Tóm tắt nhanh
@@ -418,12 +382,12 @@ export default function BatteryDetailPage() {
               <Card size="small" className="text-center">
                 <Statistic
                   title="Điện áp (V)"
-                  value={avgVoltage?.toFixed(2)}
+                  value={voltageStats.avg.toFixed(2)}
                   prefix={<Zap className="h-3 w-3" />}
                   valueStyle={{ fontSize: "14px", color: "#1890ff" }}
                 />
                 <div className="text-xs text-gray-500 mt-1">
-                  {minVoltage?.toFixed(1)} - {maxVoltage?.toFixed(1)}
+                  {voltageStats.min.toFixed(1)} - {voltageStats.max.toFixed(1)}
                 </div>
               </Card>
             </Col>
@@ -431,12 +395,12 @@ export default function BatteryDetailPage() {
               <Card size="small" className="text-center">
                 <Statistic
                   title="Dòng điện (A)"
-                  value={avgCurrent?.toFixed(2)}
+                  value={currentStats.avg.toFixed(2)}
                   prefix={<Activity className="h-3 w-3" />}
                   valueStyle={{ fontSize: "14px", color: "#52c41a" }}
                 />
                 <div className="text-xs text-gray-500 mt-1">
-                  {minCurrent?.toFixed(1)} - {maxCurrent?.toFixed(1)}
+                  {currentStats.min.toFixed(1)} - {currentStats.max.toFixed(1)}
                 </div>
               </Card>
             </Col>
@@ -444,12 +408,12 @@ export default function BatteryDetailPage() {
               <Card size="small" className="text-center">
                 <Statistic
                   title="Nhiệt độ (°C)"
-                  value={avgTemp?.toFixed(1)}
+                  value={tempStats.avg.toFixed(1)}
                   prefix={<Thermometer className="h-3 w-3" />}
                   valueStyle={{ fontSize: "14px", color: "#fa8c16" }}
                 />
                 <div className="text-xs text-gray-500 mt-1">
-                  {minTemp?.toFixed(1)} - {maxTemp?.toFixed(1)}
+                  {tempStats.min.toFixed(1)} - {tempStats.max.toFixed(1)}
                 </div>
               </Card>
             </Col>
@@ -457,12 +421,12 @@ export default function BatteryDetailPage() {
               <Card size="small" className="text-center">
                 <Statistic
                   title="SOC (%)"
-                  value={avgSOC?.toFixed(1)}
+                  value={socStats.avg.toFixed(1)}
                   prefix={<TrendingUp className="h-3 w-3" />}
                   valueStyle={{ fontSize: "14px", color: "#722ed1" }}
                 />
                 <div className="text-xs text-gray-500 mt-1">
-                  {minSOC} - {maxSOC}
+                  {socStats.min.toFixed(0)} - {socStats.max.toFixed(0)}
                 </div>
               </Card>
             </Col>
@@ -471,15 +435,15 @@ export default function BatteryDetailPage() {
 
         <Divider />
 
-        {/* Biểu đồ dữ liệu */}
+        
         <div className="space-y-6">
           <h4 className="text-sm font-semibold mb-3" style={{ color: "#ff4d4f" }}>
             Biểu đồ dữ liệu Pin
           </h4>
 
-          {/* 3 biểu đồ trên 1 hàng */}
+          
           <Row gutter={[16, 16]}>
-            {/* Voltage + Current */}
+            
             <Col span={8}>
               <Card title="Điện áp - Dòng điện" size="small">
                 <ReactECharts
@@ -491,7 +455,7 @@ export default function BatteryDetailPage() {
               </Card>
             </Col>
 
-            {/* Temperature */}
+            
             <Col span={8}>
               <Card title="Nhiệt độ" size="small">
                 <ReactECharts
@@ -503,7 +467,7 @@ export default function BatteryDetailPage() {
               </Card>
             </Col>
 
-            {/* SOC & SOH */}
+            
             <Col span={8}>
               <Card title="SOC - SOH" size="small">
                 <ReactECharts
@@ -516,7 +480,7 @@ export default function BatteryDetailPage() {
             </Col>
           </Row>
 
-          {/* Bảng tóm tắt số liệu */}
+          
           <Row gutter={[16, 16]}>
             <Col span={24}>
               <Card title="Bảng tóm tắt số liệu" size="small">
@@ -534,54 +498,54 @@ export default function BatteryDetailPage() {
                       <tr className="border-b">
                         <td className="p-2 font-medium">Điện áp (V)</td>
                         <td className="text-right p-2 text-red-600">
-                          {minVoltage?.toFixed(2)}
+                          {voltageStats.min.toFixed(2)}
                         </td>
                         <td className="text-right p-2 font-semibold">
-                          {avgVoltage?.toFixed(2)}
+                          {voltageStats.avg.toFixed(2)}
                         </td>
                         <td className="text-right p-2 text-green-600">
-                          {maxVoltage?.toFixed(2)}
+                          {voltageStats.max.toFixed(2)}
                         </td>
                       </tr>
                       <tr className="border-b">
                         <td className="p-2 font-medium">Dòng điện (A)</td>
                         <td className="text-right p-2 text-red-600">
-                          {minCurrent?.toFixed(2)}
+                          {currentStats.min.toFixed(2)}
                         </td>
                         <td className="text-right p-2 font-semibold">
-                          {avgCurrent?.toFixed(2)}
+                          {currentStats.avg.toFixed(2)}
                         </td>
                         <td className="text-right p-2 text-green-600">
-                          {maxCurrent?.toFixed(2)}
+                          {currentStats.max.toFixed(2)}
                         </td>
                       </tr>
                       <tr className="border-b">
                         <td className="p-2 font-medium">Nhiệt độ (°C)</td>
                         <td className="text-right p-2 text-blue-600">
-                          {minTemp?.toFixed(1)}
+                          {tempStats.min.toFixed(1)}
                         </td>
                         <td className="text-right p-2 font-semibold">
-                          {avgTemp?.toFixed(1)}
+                          {tempStats.avg.toFixed(1)}
                         </td>
                         <td className="text-right p-2 text-orange-600">
-                          {maxTemp?.toFixed(1)}
+                          {tempStats.max.toFixed(1)}
                         </td>
                       </tr>
                       <tr className="border-b">
                         <td className="p-2 font-medium">SOC (%)</td>
-                        <td className="text-right p-2 text-red-600">{minSOC}</td>
+                        <td className="text-right p-2 text-red-600">{socStats.min.toFixed(0)}</td>
                         <td className="text-right p-2 font-semibold">
-                          {avgSOC?.toFixed(1)}
+                          {socStats.avg.toFixed(1)}
                         </td>
-                        <td className="text-right p-2 text-green-600">{maxSOC}</td>
+                        <td className="text-right p-2 text-green-600">{socStats.max.toFixed(0)}</td>
                       </tr>
                       <tr>
                         <td className="p-2 font-medium">SOH (%)</td>
-                        <td className="text-right p-2 text-red-600">{minSOH}</td>
+                        <td className="text-right p-2 text-red-600">{sohStats.min.toFixed(0)}</td>
                         <td className="text-right p-2 font-semibold">
-                          {avgSOH?.toFixed(1)}
+                          {sohStats.avg.toFixed(1)}
                         </td>
-                        <td className="text-right p-2 text-green-600">{maxSOH}</td>
+                        <td className="text-right p-2 text-green-600">{sohStats.max.toFixed(0)}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -594,7 +558,7 @@ export default function BatteryDetailPage() {
           </Row>
         </div>
 
-        {/* Kết luận */}
+        
         {conclusion && (
           <div className="mt-6">
             <Divider orientation="left" style={{ marginTop: 0 }}>
@@ -608,14 +572,10 @@ export default function BatteryDetailPage() {
                 {(() => {
                   let conclusionObj = null;
 
-                  console.log("🔍 Conclusion type:", typeof conclusion);
-                  console.log("🔍 Conclusion value:", conclusion);
 
                   if (typeof conclusion === "string") {
                     try {
-                      // ✅ Thử parse toàn bộ string trước
                       const parsed = JSON.parse(conclusion);
-                      console.log("🔍 Parsed conclusion:", parsed);
                       if (
                         typeof parsed === "object" &&
                         parsed !== null &&
@@ -623,15 +583,10 @@ export default function BatteryDetailPage() {
                       ) {
                         conclusionObj = parsed;
                       } else if (Array.isArray(parsed)) {
-                        // ✅ Nếu là array, merge các objects lại
                         conclusionObj = parsed.reduce((acc, item) => ({ ...acc, ...item }), {});
                       }
                     } catch (e) {
-                      console.log("🔍 Failed to parse as single JSON, trying to parse multiple JSON objects...");
-                      // ✅ Nếu parse toàn bộ thất bại, thử parse từng JSON object riêng biệt
                       try {
-                        // ✅ Tìm tất cả các JSON objects trong string (có thể có nhiều objects)
-                        // Sử dụng regex để tìm các JSON objects (cân bằng ngoặc nhọn)
                         const jsonMatches = [];
                         let depth = 0;
                         let start = -1;
@@ -671,30 +626,22 @@ export default function BatteryDetailPage() {
                           }
                         }
                         
-                        console.log("🔍 Found JSON matches:", jsonMatches.length);
-                        console.log("🔍 JSON matches:", jsonMatches);
                         
                         if (jsonMatches && jsonMatches.length > 0) {
                           conclusionObj = {};
                           jsonMatches.forEach((match, idx) => {
                             try {
                               const parsed = JSON.parse(match.trim());
-                              console.log(`🔍 Parsed JSON match ${idx}:`, parsed);
                               if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-                                // ✅ Merge các keys vào conclusionObj
                                 Object.keys(parsed).forEach(key => {
                                   conclusionObj[key] = parsed[key];
                                 });
                               }
                             } catch (err) {
-                              console.warn(`Failed to parse JSON match ${idx}:`, err);
-                              console.warn(`Match content:`, match.substring(0, 100));
                             }
                           });
-                          console.log("🔍 Final merged conclusionObj:", conclusionObj);
                         }
                       } catch (e2) {
-                        console.error("Failed to parse conclusion:", e2);
                       conclusionObj = null;
                       }
                     }
@@ -705,11 +652,9 @@ export default function BatteryDetailPage() {
                   ) {
                     conclusionObj = conclusion;
                   } else if (Array.isArray(conclusion)) {
-                    // ✅ Nếu là array, merge các objects lại
                     conclusionObj = conclusion.reduce((acc, item) => ({ ...acc, ...item }), {});
                   }
 
-                  // ✅ Hiển thị UI mới nếu có bất kỳ dữ liệu nào trong conclusionObj
                   if (conclusionObj && Object.keys(conclusionObj).length > 0) {
                     const sections = [
                       {
@@ -759,14 +704,11 @@ export default function BatteryDetailPage() {
                       },
                     ];
 
-                    // ✅ Hiển thị solution riêng biệt và nổi bật hơn (key mới trong cấu trúc mới)
-                    const hasSolution = conclusionObj.solution || conclusionObj.conclusion;
-
                     return (
                       <div className="space-y-6">
-                        {/* ✅ Các section phân tích - Layout 3-2 (3 trên, 2 dưới) */}
+                        
                         <div>
-                          {/* Hàng đầu: 3 cards */}
+                          
                           <Row gutter={[20, 20]} justify="start">
                             {sections.slice(0, 3).map((section) => {
                           const content = conclusionObj[section.key];
@@ -837,7 +779,7 @@ export default function BatteryDetailPage() {
                         })}
                           </Row>
                           
-                          {/* Hàng dưới: 2 cards - tổng chiều rộng bằng 3 cards trên */}
+                          
                           {sections.slice(3).length > 0 && (
                             <Row gutter={[20, 20]} justify="start" style={{ marginTop: 20 }}>
                               {sections.slice(3).map((section) => {
@@ -849,13 +791,13 @@ export default function BatteryDetailPage() {
                                     xs={24} 
                                     sm={24} 
                                     md={12}
-                                    key={section.key}
+                              key={section.key}
                                   >
                                     <Card
-                                      size="small"
-                                      style={{
-                                        backgroundColor: section.bgColor,
-                                        border: `1px solid ${section.borderColor}`,
+                              size="small"
+                              style={{
+                                backgroundColor: section.bgColor,
+                                border: `1px solid ${section.borderColor}`,
                                         borderLeft: section.borderLeft,
                                         borderRadius: "10px",
                                         height: "100%",
@@ -879,7 +821,7 @@ export default function BatteryDetailPage() {
                                               backgroundColor: `${section.color}15`,
                                             }}
                                           >
-                                            {section.icon}
+                                  {section.icon}
                                           </div>
                                           <Title 
                                             level={5} 
@@ -891,123 +833,34 @@ export default function BatteryDetailPage() {
                                               lineHeight: "1.5",
                                             }}
                                           >
-                                            {section.title}
-                                          </Title>
-                                        </div>
-                                        <Paragraph
-                                          className="mb-0"
-                                          style={{
-                                            whiteSpace: "pre-wrap",
+                                    {section.title}
+                                  </Title>
+                                </div>
+                                <Paragraph
+                                  className="mb-0"
+                                  style={{
+                                    whiteSpace: "pre-wrap",
                                             lineHeight: 1.75,
                                             color: "#262626",
-                                            fontSize: "14px",
+                                    fontSize: "14px",
                                             margin: 0,
                                             textAlign: "justify",
-                                          }}
-                                        >
-                                          {content}
-                                        </Paragraph>
-                                      </Space>
-                                    </Card>
+                                  }}
+                                >
+                                  {content}
+                                </Paragraph>
+                              </Space>
+                            </Card>
                                   </Col>
-                                );
-                              })}
+                          );
+                        })}
                             </Row>
                           )}
                         </div>
-
-                        {/* ✅ Kết luận cuối cùng - nổi bật và chiếm full width */}
-                        {hasSolution && (
-                          <Card
-                            style={{
-                              backgroundColor: (conclusionObj.solution || conclusionObj.conclusion || "").includes("Bảo Hành") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("Thay Thế")
-                                ? "#fff1f0"
-                                : (conclusionObj.solution || conclusionObj.conclusion || "").includes("tốt") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("bình thường")
-                                ? "#f6ffed"
-                                : "#fffbe6",
-                              border: (conclusionObj.solution || conclusionObj.conclusion || "").includes("Bảo Hành") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("Thay Thế")
-                                ? "2px solid #ff4d4f"
-                                : (conclusionObj.solution || conclusionObj.conclusion || "").includes("tốt") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("bình thường")
-                                ? "2px solid #52c41a"
-                                : "2px solid #faad14",
-                              borderRadius: "12px",
-                              boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
-                              marginTop: "8px",
-                            }}
-                            bodyStyle={{ padding: "28px" }}
-                          >
-                            <Space direction="vertical" size={16} style={{ width: "100%" }}>
-                              <div className="flex items-center gap-3">
-                                <div
-                                  style={{
-                                    color: (conclusionObj.solution || conclusionObj.conclusion || "").includes("Bảo Hành") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("Thay Thế")
-                                      ? "#ff4d4f"
-                                      : (conclusionObj.solution || conclusionObj.conclusion || "").includes("tốt") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("bình thường")
-                                      ? "#52c41a"
-                                      : "#faad14",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    width: "40px",
-                                    height: "40px",
-                                    borderRadius: "10px",
-                                    backgroundColor: (conclusionObj.solution || conclusionObj.conclusion || "").includes("Bảo Hành") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("Thay Thế")
-                                      ? "#ff4d4f20"
-                                      : (conclusionObj.solution || conclusionObj.conclusion || "").includes("tốt") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("bình thường")
-                                      ? "#52c41a20"
-                                      : "#faad1420",
-                                  }}
-                                >
-                                  <FileText className="h-5 w-5" />
-                                </div>
-                                <Title 
-                                  level={4} 
-                                  style={{ 
-                                    margin: 0,
-                                    color: (conclusionObj.solution || conclusionObj.conclusion || "").includes("Bảo Hành") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("Thay Thế")
-                                      ? "#ff4d4f"
-                                      : (conclusionObj.solution || conclusionObj.conclusion || "").includes("tốt") || (conclusionObj.solution || conclusionObj.conclusion || "").includes("bình thường")
-                                      ? "#52c41a"
-                                      : "#faad14",
-                                    fontWeight: 700,
-                                    fontSize: "18px",
-                                  }}
-                                >
-                                  Giải pháp
-                                </Title>
-                              </div>
-                              <div
-                                style={{
-                                  whiteSpace: "pre-wrap",
-                                  lineHeight: 1.85,
-                                  color: "#262626",
-                                  fontSize: "15px",
-                                  fontWeight: 500,
-                                  marginTop: "4px",
-                                  textAlign: "justify",
-                                }}
-                              >
-                                {(conclusionObj.solution || conclusionObj.conclusion || "").split(/(\*\*.*?\*\*)/g).map((part, index) => {
-                                  if (part.startsWith("**") && part.endsWith("**")) {
-                                    const text = part.replace(/\*\*/g, "");
-                                    return (
-                                      <span key={index} style={{ color: "#ff4d4f", fontWeight: 700 }}>
-                                        {text}
-                                      </span>
-                                    );
-                                  }
-                                  return <span key={index}>{part}</span>;
-                                })}
-                              </div>
-                            </Space>
-                          </Card>
-                        )}
                       </div>
                     );
                   }
 
-                  // ✅ Nếu không parse được, vẫn thử hiển thị UI mới với dữ liệu thô
-                  // Hoặc hiển thị thông báo lỗi parse
                   return (
                     <Card
                       style={{

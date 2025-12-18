@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "react-toastify";
 import { getExportNoteOutOfStockById, updateExportNoteDetail } from "@/api/exportNotesApi";
 import { getServiceCenterInventories } from "@/api/serviceCenterInventoriesApi";
 
@@ -67,7 +67,6 @@ const getTypeLabel = (type) => {
 export default function MissingPartDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [exportNote, setExportNote] = useState(null);
@@ -89,10 +88,9 @@ export default function MissingPartDetail() {
         }
       } catch (error) {
         console.error("Error fetching missing part detail:", error);
-        toast({
-          title: "Lỗi",
-          description: error.message || "Không thể tải chi tiết phiếu.",
-          variant: "destructive",
+        toast.error(error.message || "Không thể tải chi tiết phiếu.", {
+          position: "top-right",
+          autoClose: 4000,
         });
         navigate(-1);
       } finally {
@@ -103,29 +101,29 @@ export default function MissingPartDetail() {
     if (id) {
       fetchDetail();
     }
-  }, [id, toast, navigate]);
+  }, [id, navigate]);
 
   const proposedParts = useMemo(() => {
     if (!exportNote?.exportNoteDetails) return [];
     return exportNote.exportNoteDetails
       .map((detail) => ({
-        id: detail.id, // This is the detailId (export note detail ID)
+        id: detail.id,
         code: detail.proposedReplacePart?.code || "—",
         name: detail.proposedReplacePart?.name || "—",
         description: detail.proposedReplacePart?.description || "—",
         quantity: detail.quantity || 0,
         status: detail.status || "OUT_OF_STOCK",
         partId: detail.proposedReplacePartId || detail.proposedReplacePart?.id,
-        detailId: detail.id, // Explicitly save detailId for API calls
+        detailId: detail.id,
       }))
       .filter((item) => item.code !== "—" || item.name !== "—");
   }, [exportNote]);
 
   const handleSearchAvailability = async (part) => {
     if (!part?.partId && !part?.code) {
-      toast({
-        title: "Thông báo",
-        description: "Không tìm thấy mã phụ tùng để tra cứu.",
+      toast.warning("Không tìm thấy mã phụ tùng để tra cứu.", {
+        position: "top-right",
+        autoClose: 3000,
       });
       return;
     }
@@ -185,10 +183,9 @@ export default function MissingPartDetail() {
       }));
     } catch (error) {
       console.error("Error fetching branch availability:", error);
-      toast({
-        title: "Lỗi",
-        description: error.message || "Không thể lấy dữ liệu kho tổng.",
-        variant: "destructive",
+      toast.error(error.message || "Không thể lấy dữ liệu kho tổng.", {
+        position: "top-right",
+        autoClose: 4000,
       });
       setAvailabilityData((prev) => ({
         ...prev,
@@ -216,10 +213,9 @@ export default function MissingPartDetail() {
 
   const handleStatusChange = async (detailId, newStatus) => {
     if (!detailId) {
-      toast({
-        title: "Lỗi",
-        description: "Không tìm thấy ID chi tiết phiếu xuất.",
-        variant: "destructive",
+      toast.error("Không tìm thấy ID chi tiết phiếu xuất.", {
+        position: "top-right",
+        autoClose: 4000,
       });
       return;
     }
@@ -234,12 +230,10 @@ export default function MissingPartDetail() {
       const response = await updateExportNoteDetail(detailId, updateData);
 
       if (response?.success || response?.statusCode === 200) {
-        toast({
-          title: "Thành công",
-          description: "Đã cập nhật trạng thái phụ tùng thành công.",
+        toast.success("Đã cập nhật trạng thái phụ tùng thành công.", {
+          position: "top-right",
+          autoClose: 3000,
         });
-
-        // Cập nhật lại trạng thái trong state hiện tại
         setExportNote((prev) => {
           if (!prev) return prev;
 
@@ -257,10 +251,9 @@ export default function MissingPartDetail() {
       }
     } catch (error) {
       console.error("Error updating status:", error);
-      toast({
-        title: "Lỗi",
-        description: error?.response?.data?.message || error?.message || "Không thể cập nhật trạng thái. Vui lòng thử lại.",
-        variant: "destructive",
+      toast.error(error?.response?.data?.message || error?.message || "Không thể cập nhật trạng thái. Vui lòng thử lại.", {
+        position: "top-right",
+        autoClose: 4000,
       });
     } finally {
       setUpdatingStatus((prev) => ({ ...prev, [detailId]: false }));

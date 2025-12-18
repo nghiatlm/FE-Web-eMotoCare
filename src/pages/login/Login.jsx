@@ -1,9 +1,9 @@
-// src/pages/login/Login.jsx
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import AuthLayout from "../../components/authlayout/AuthLayout";
 import { Eye, EyeOff } from "lucide-react";
+import { toast } from "react-toastify";
 
 export default function Login() {
   const { login, loading } = useAuth();
@@ -11,7 +11,6 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     const savedEmail = localStorage.getItem("rememberedEmail");
@@ -23,15 +22,21 @@ export default function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError("");
     if (!email || !password) {
-      setError("Vui lòng nhập đầy đủ thông tin");
+      toast.error("Vui lòng nhập đầy đủ thông tin");
       return;
     }
 
     try {
       const res = await login(email, password);
-      console.log("Đăng nhập thành công:", res);
+      const responseData = res?.data;
+      const isDataString = typeof responseData === 'string';
+      const hasOtpMessage = isDataString && responseData.toUpperCase().includes('OTP');
+      const user = res?.accountResponse ? res : (res?.data || res);
+      
+      if (!hasOtpMessage && user?.accountResponse) {
+        toast.success("Đăng nhập thành công!");
+      }
 
       if (rememberMe) {
         localStorage.setItem("rememberedEmail", email);
@@ -39,14 +44,12 @@ export default function Login() {
         localStorage.removeItem("rememberedEmail");
       }
     } catch (error) {
-      console.error("Login error:", error);
-      // Bắt lỗi từ backend: error có thể là { message, data: { message } } hoặc error.response.data
       const errorMessage = 
         error?.response?.data?.message || 
         error?.data?.message || 
         error?.message || 
         "Sai email hoặc mật khẩu";
-      setError(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -87,8 +90,6 @@ export default function Login() {
             </button>
           </div>
         </div>
-
-        {error && <p className='text-red-600 text-sm'>{error}</p>}
 
         <div className='flex items-center justify-between text-sm'>
           <label className='flex items-center gap-x-2 cursor-pointer select-none'>

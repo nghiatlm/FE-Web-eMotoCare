@@ -15,7 +15,6 @@ const CreateBooking = () => {
   const handleSubmit = async (values) => {
     try {
       setLoading(true);
-      // ✅ 1. Tạo appointment
       const newAppointment = await createAppointmentService(values);
       const appointmentId = newAppointment?.id || newAppointment?.data?.id;
       
@@ -23,32 +22,26 @@ const CreateBooking = () => {
         throw new Error("Không nhận được ID của lịch hẹn sau khi tạo");
       }
 
-      // ✅ 2. FE phải gọi approve để tạo QR code
       try {
         await approveAppointmentService(appointmentId);
         
-        // ✅ 3. Sau khi approve thành công, lấy thông tin appointment để checkin
         const appointmentRes = await getAppointmentById(appointmentId);
         const appointment = appointmentRes?.data || appointmentRes;
         const code = appointment?.code || appointment?.checkinCode;
         const checkinQRCode = appointment?.checkinQRCode;
         
         if (code && checkinQRCode) {
-          // ✅ 4. Tự động checkin ngay sau khi approve
           await checkinAppointmentService(appointmentId, code, checkinQRCode);
           toast.success("Tạo lịch hẹn và check-in thành công!");
         } else {
           toast.success("Tạo lịch hẹn và mã QR check-in thành công!");
         }
       } catch (approveError) {
-        console.error("Lỗi approve/checkin appointment:", approveError);
         toast.warning("Tạo lịch hẹn thành công nhưng chưa tạo được QR code. Vui lòng duyệt lại sau.");
       }
 
-      // ✅ Reset form sau khi tạo lịch thành công
       setResetKey(prev => prev + 1);
       
-      // ✅ Redirect đến detail page để xem QR code ngay
       if (appointmentId) {
         setTimeout(() => {
           navigate(`/staff/booking/${appointmentId}`);
@@ -59,7 +52,6 @@ const CreateBooking = () => {
         }, 1000);
       }
     } catch (error) {
-      console.error("Lỗi tạo lịch hẹn:", error);
       toast.error((error?.response?.data?.message || error?.data?.message || error?.message || "Tạo lịch hẹn thất bại!"));
     } finally {
       setLoading(false);

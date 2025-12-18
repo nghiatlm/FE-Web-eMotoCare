@@ -11,7 +11,6 @@ export default function BranchReport() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [timeRange, setTimeRange] = useState("month");
-  const [reportType, setReportType] = useState("all");
   const [branchDetail, setBranchDetail] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -89,9 +88,7 @@ export default function BranchReport() {
   };
 
   const handleExport = (type) => {
-    // Mock export function
     console.log(`Exporting ${type} report`);
-    // In real app, this would generate and download a PDF/Excel file
   };
 
   if (loading) {
@@ -137,7 +134,6 @@ export default function BranchReport() {
         </div>
       </div>
 
-      {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -193,7 +189,6 @@ export default function BranchReport() {
         </Card>
       </div>
 
-      {/* Revenue Chart */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -224,7 +219,6 @@ export default function BranchReport() {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Service Type Distribution */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -256,7 +250,6 @@ export default function BranchReport() {
           </CardContent>
         </Card>
 
-        {/* Warranty Claims */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -282,7 +275,6 @@ export default function BranchReport() {
         </Card>
       </div>
 
-      {/* Staff Performance */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -330,7 +322,6 @@ export default function BranchReport() {
         </CardContent>
       </Card>
 
-      {/* Detailed Statistics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>

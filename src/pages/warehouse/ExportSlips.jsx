@@ -12,7 +12,6 @@ export default function ExportSlips() {
     const [woCode, setWoCode] = useState("");
 
     const handleRefresh = () => {
-        // TODO: Implement refresh functionality
         console.log("Refreshing data...");
     };
 
@@ -24,14 +23,12 @@ export default function ExportSlips() {
     };
 
     const handleCreateExportSlip = () => {
-        // TODO: Implement create export slip functionality
         console.log("Creating new export slip...");
     };
 
     return (
         <div className="min-h-screen bg-background">
             <div className="p-8">
-                {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-foreground mb-2">
                         Danh sách Phiếu xuất kho
@@ -41,9 +38,7 @@ export default function ExportSlips() {
                     </p>
                 </div>
 
-                {/* Actions Bar */}
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                    {/* Search */}
                     <div className="relative flex-1 max-w-md">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
@@ -80,15 +75,18 @@ export default function ExportSlips() {
                         <span className="text-sm font-medium text-foreground">Bộ lọc:</span>
                     </div>
                     
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <Select value={statusFilter || "all"} onValueChange={(value) => setStatusFilter(value === "all" ? "" : value)}>
                         <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Trạng thái" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                            <SelectItem value="Đã xuất">Đã xuất</SelectItem>
-                            <SelectItem value="Chờ duyệt">Chờ duyệt</SelectItem>
-                            <SelectItem value="Đã duyệt">Đã duyệt</SelectItem>
+                            <SelectItem value="PENDING">Chờ duyệt</SelectItem>
+                            <SelectItem value="PROCESSING">Đang xử lý</SelectItem>
+                            <SelectItem value="APPROVED">Đã duyệt</SelectItem>
+                            <SelectItem value="EXPORTING">Đang xuất</SelectItem>
+                            <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
+                            <SelectItem value="CANCELLED">Đã hủy</SelectItem>
                         </SelectContent>
                     </Select>
 

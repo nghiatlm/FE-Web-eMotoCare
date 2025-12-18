@@ -1,9 +1,8 @@
 import { getVehiclePartItems } from "../api/vehiclePartItemApi";
 
-export const fetchVehiclePartItems = async (params, config) => {
+export const fetchVehiclePartItems = async (params) => {
   try {
-    // ✅ Axios interceptor đã trả về response.data, nên response ở đây đã là data rồi
-    const response = await getVehiclePartItems(params, config);
+    const response = await getVehiclePartItems(params);
     
     // ✅ Debug: Log toàn bộ response để kiểm tra structure
     console.log("🔍 fetchVehiclePartItems - Full response (đã là data):", response);

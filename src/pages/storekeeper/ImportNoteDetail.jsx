@@ -53,7 +53,7 @@ export default function ImportNoteDetail() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [importNote, setImportNote] = useState(null);
-  const [partItemsDetails, setPartItemsDetails] = useState({}); // Lưu chi tiết partItem theo partItemId
+  const [partItemsDetails, setPartItemsDetails] = useState({});
   const [loadingPartItems, setLoadingPartItems] = useState(false);
 
   useEffect(() => {
@@ -92,7 +92,6 @@ export default function ImportNoteDetail() {
     };
   }, [id]);
 
-  // Fetch partItem details cho mỗi detail
   useEffect(() => {
     const fetchPartItemsDetails = async () => {
       if (!importNote?.importNoteDetails?.length) return;
@@ -107,7 +106,6 @@ export default function ImportNoteDetail() {
         setLoadingPartItems(true);
         const partItemsMap = {};
 
-        // Fetch từng partItem
         await Promise.all(
           partItemIds.map(async (partItemId) => {
             try {
@@ -314,20 +312,16 @@ export default function ImportNoteDetail() {
                       </tr>
                     ) : (
                       details.map((detail, idx) => {
-                        // Lấy partItem từ partItemsDetails đã fetch hoặc từ detail
                         const partItemDetail = detail.partItemId 
                           ? (partItemsDetails[detail.partItemId] || detail.partItem)
                           : detail.partItem;
                         
-                        // Lấy part từ partItem
                         const part = partItemDetail?.part || detail.partItem?.part;
                         const code = part?.code || detail.partItem?.code || "—";
                         const name = part?.name || detail.partItem?.name || "N/A";
                         
-                        // Lấy hình ảnh từ part
                         const image = part?.image || null;
                         
-                        // Lấy serial number từ partItem
                         const serial = partItemDetail?.serialNumber || detail.partItem?.serialNumber || detail.partItemId || "—";
                         
                         const qty = detail.quantity || 0;

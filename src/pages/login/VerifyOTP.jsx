@@ -1,200 +1,62 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { useLocation, Link } from "react-router-dom";
 import AuthLayout from "../../components/authlayout/AuthLayout";
-import { authService } from "@/services/authService";
-import { toast } from "react-toastify";
+import { Mail } from "lucide-react";
 
 export default function VerifyOTP() {
-  const navigate = useNavigate();
   const location = useLocation();
-  const [otp, setOtp] = useState("");
   const [email, setEmail] = useState("");
-  const [emailFromExternal, setEmailFromExternal] = useState(false); // Track nếu email được set từ bên ngoài
-  const [loading, setLoading] = useState(false);
-  const [countdown, setCountdown] = useState(0);
-  const [error, setError] = useState("");
 
   useEffect(() => {
-    // Lấy email từ location state, query params, hoặc localStorage
     const emailFromState = location.state?.email;
     const emailFromQuery = new URLSearchParams(location.search).get("email");
     const emailFromStorage = localStorage.getItem("pendingEmail");
     
     if (emailFromState) {
       setEmail(emailFromState);
-      setEmailFromExternal(true);
       localStorage.setItem("pendingEmail", emailFromState);
     } else if (emailFromQuery) {
       setEmail(emailFromQuery);
-      setEmailFromExternal(true);
       localStorage.setItem("pendingEmail", emailFromQuery);
     } else if (emailFromStorage) {
       setEmail(emailFromStorage);
-      setEmailFromExternal(true);
     }
-    // Nếu không có email, vẫn hiển thị trang để người dùng có thể nhập email
   }, [location]);
 
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [countdown]);
-
-  const handleVerify = async (e) => {
-    e.preventDefault();
-    setError("");
-
-    if (!otp || otp.length !== 6) {
-      setError("Vui lòng nhập đầy đủ mã OTP (6 số)");
-      return;
-    }
-
-    if (!email) {
-      setError("Không tìm thấy email. Vui lòng đăng nhập lại.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const user = await authService.verifyOtp(otp, email);
-      console.log("Verify OTP thành công:", user);
-
-      // Xóa email tạm
-      localStorage.removeItem("pendingEmail");
-
-      // Lưu role để redirect sau khi hiển thị VerifySuccess
-      const roleName = user.accountResponse?.roleName;
-      const redirectPath = 
-        roleName === "ROLE_ADMIN" ? "/admin" :
-        roleName === "ROLE_MANAGER" ? "/manager" :
-        roleName === "ROLE_STAFF" ? "/staff" :
-        roleName === "ROLE_TECHNICIAN" ? "/technician" :
-        roleName === "ROLE_STOREKEEPER" ? "/storekeeper" :
-        "/";
-
-      // Redirect đến trang VerifySuccess với các thông tin cần thiết
-      navigate(`/verify-success?type=otp&email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(redirectPath)}`, {
-        replace: true
-      });
-
-      toast.success("Xác thực OTP thành công!");
-    } catch (error) {
-      console.error("Verify OTP failed:", error);
-      // Bắt lỗi từ backend
-      const errorMessage = 
-        error?.response?.data?.message || 
-        error?.data?.message || 
-        error?.message || 
-        "Mã OTP không đúng. Vui lòng thử lại.";
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    if (countdown > 0) return;
-
-    try {
-      // Gọi lại API login để gửi OTP mới (hoặc có API riêng để resend OTP)
-      // Tạm thời chỉ reset countdown
-      setCountdown(60);
-      toast.info("Đã gửi lại mã OTP. Vui lòng kiểm tra email.");
-    } catch (error) {
-      const errorMessage = 
-        error?.response?.data?.message || 
-        error?.data?.message || 
-        error?.message || 
-        "Không thể gửi lại mã OTP. Vui lòng thử lại.";
-      toast.error(errorMessage);
-    }
-  };
 
   return (
-    <AuthLayout title='Xác thực OTP'>
-      <form onSubmit={handleVerify} className='space-y-6'>
-        {emailFromExternal ? (
-          <div className='text-center'>
-            <p className='text-gray-600 text-sm mb-2'>
-              Mã OTP đã được gửi đến email:
-            </p>
-            <p className='text-gray-800 font-semibold'>{email}</p>
-            <button
-              type='button'
-              onClick={() => setEmailFromExternal(false)}
-              className='text-xs text-red-600 hover:text-red-500 mt-2 underline'>
-              Thay đổi email
-            </button>
+    <AuthLayout title='Xác nhận email'>
+      <div className='space-y-6'>
+        <div className='text-center space-y-4'>
+          <div className='flex justify-center'>
+            <div className='w-16 h-16 rounded-full bg-red-100 flex items-center justify-center'>
+              <Mail size={32} className='text-red-600' />
+            </div>
           </div>
-        ) : (
+          
           <div>
-            <label className='font-medium block mb-1'>Email</label>
-            <input
-              type='email'
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className='w-full mt-2 px-3 py-2 text-gray-700 bg-transparent outline-none border rounded-lg shadow-sm focus:border-red-600 border-gray-200'
-              placeholder='Nhập email của bạn'
-              required
-            />
-          </div>
-        )}
-
-        <div className='flex flex-col items-center space-y-4'>
-          <label className='font-medium text-sm text-gray-700'>
-            Nhập mã OTP (6 số)
-          </label>
-          <InputOTP
-            maxLength={6}
-            value={otp}
-            onChange={setOtp}
-            disabled={loading}>
-            <InputOTPGroup>
-              <InputOTPSlot index={0} />
-              <InputOTPSlot index={1} />
-              <InputOTPSlot index={2} />
-              <InputOTPSlot index={3} />
-              <InputOTPSlot index={4} />
-              <InputOTPSlot index={5} />
-            </InputOTPGroup>
-          </InputOTP>
-        </div>
-
-        {error && (
-          <p className='text-red-600 text-sm text-center'>{error}</p>
-        )}
-
-        <button
-          type='submit'
-          disabled={loading || otp.length !== 6}
-          className='w-full px-4 py-2 text-white font-medium bg-red-600 hover:bg-red-500 active:bg-red-700 rounded-lg duration-150 disabled:opacity-70 disabled:cursor-not-allowed'>
-          {loading ? "Đang xác thực..." : "Xác thực OTP"}
-        </button>
-
-        <div className='text-center space-y-2'>
-          <button
-            type='button'
-            onClick={handleResendOtp}
-            disabled={countdown > 0}
-            className='text-sm text-red-600 hover:text-red-500 disabled:text-gray-400 disabled:cursor-not-allowed'>
-            {countdown > 0
-              ? `Gửi lại mã OTP (${countdown}s)`
-              : "Gửi lại mã OTP"}
-          </button>
-
-          <div className='pt-2'>
-            <Link
-              to='/login'
-              className='text-sm text-gray-600 hover:text-gray-800'>
-              Quay lại đăng nhập
-            </Link>
+            <h3 className='text-lg font-semibold text-gray-800 mb-2'>
+              Đã gửi email xác nhận
+            </h3>
+            <p className='text-gray-600 text-sm mb-4'>
+              Chúng tôi đã gửi email xác nhận đến:
+            </p>
+            {email && (
+              <p className='text-red-600 font-semibold text-base mb-4'>
+                {email}
+              </p>
+            )}
           </div>
         </div>
-      </form>
+
+        <div className='text-center pt-2'>
+          <Link
+            to='/login'
+            className='text-sm text-red-600 hover:text-red-500'>
+            Quay lại đăng nhập
+          </Link>
+        </div>
+      </div>
     </AuthLayout>
   );
 }

@@ -71,14 +71,12 @@ export default function ModelDetail() {
         try {
           setLoading(true);
           const response = await getModelById(id);
-          // Response structure: { statusCode, success, message, data }
           if (response?.data) {
             setModelDetail(response.data);
           } else if (response) {
             setModelDetail(response);
           }
-        } catch (error) {
-          console.error("Error fetching model detail:", error);
+        } catch (error) { 
         } finally {
           setLoading(false);
         }
@@ -120,7 +118,6 @@ export default function ModelDetail() {
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="p-8 max-w-[95%] mx-auto space-y-6">
-        {/* Header */}
         <div className="mb-2">
           <Button
             variant="ghost"
@@ -145,7 +142,6 @@ export default function ModelDetail() {
         </div>
 
         <div className="space-y-6">
-          {/* Thông tin model */}
           <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
             <CardHeader className="border-b border-slate-100 pb-3 bg-red-50/40">
               <div className="flex items-center gap-3">
@@ -195,7 +191,6 @@ export default function ModelDetail() {
             </CardContent>
           </Card>
 
-          {/* Kế hoạch bảo dưỡng */}
           {modelDetail.maintenancePlan && (
             <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
               <CardHeader className="border-b border-slate-100 pb-3 bg-sky-50/40">
@@ -278,7 +273,6 @@ export default function ModelDetail() {
             </Card>
           )}
 
-          {/* Danh sách xe */}
           <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
             <CardHeader className="border-b border-slate-100 pb-3 bg-emerald-50/40">
               <div className="flex items-center gap-3">

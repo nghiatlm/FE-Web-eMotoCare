@@ -1,4 +1,3 @@
-// src/pages/service-staff/StaffRMADetailPage.jsx
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Spin, Button } from "antd";
@@ -28,7 +27,6 @@ export default function StaffRMADetailPage() {
   const loadRMAData = async () => {
     setLoading(true);
     try {
-      // ✅ Load RMA info từ API mới: /api/v1/rmas/{rmaId}
       const response = await getRmaById(rmaId);
       const rmaData = response?.data?.data || response?.data || response;
       
@@ -38,22 +36,18 @@ export default function StaffRMADetailPage() {
         return;
       }
 
-      // ✅ Lấy rmaDetails từ response (response có rmaDetails array)
       const detailsList = rmaData?.rmaDetails || [];
       
-      // ✅ Load customer for RMA (nếu cần)
       let rmaWithCustomer = rmaData;
       try {
         const customer = await getCustomerByRMAService(rmaId);
         rmaWithCustomer = { ...rmaData, customer };
       } catch (e) {
-        console.error("Không load được customer cho RMA", e);
       }
 
       setRma(rmaWithCustomer);
       setRmaDetails(Array.isArray(detailsList) ? detailsList : []);
     } catch (err) {
-      console.error("❌ Lỗi khi tải dữ liệu RMA:", err);
       toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tải dữ liệu RMA"));
     } finally {
       setLoading(false);

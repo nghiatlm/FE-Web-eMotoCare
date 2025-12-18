@@ -15,11 +15,11 @@ export const getPartItems = (params = {}) => {
   return api.get(BASE_URL, { params: queryParams });
 };
 
-export const getPartItemById = (id, config) =>
-  api.get(`${BASE_URL}/${id}`, config);
+export const getPartItemById = (id) =>
+  api.get(`${BASE_URL}/${id}`);
 
-export const getSuggestedPartItems = (evCheckDetailId, config) =>
-  api.get(`${BASE_URL}/ev-check-detail/${evCheckDetailId}`, config);
+export const getSuggestedPartItems = (evCheckDetailId) =>
+  api.get(`${BASE_URL}/ev-check-detail/${evCheckDetailId}`);
 
-export const getPartItemsByServiceCenter = (serviceCenterId, config) =>
-  api.get(`${BASE_URL}/service-center/${serviceCenterId}`, config);
+export const getPartItemsByServiceCenter = (serviceCenterId) =>
+  api.get(`${BASE_URL}/service-center/${serviceCenterId}`);

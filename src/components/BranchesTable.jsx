@@ -33,6 +33,8 @@ export function BranchesTable({ search = "", status = "" }) {
   const [branchToDelete, setBranchToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  const [reloadFlag, setReloadFlag] = useState(0);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -82,7 +84,7 @@ export function BranchesTable({ search = "", status = "" }) {
     };
 
     fetchData();
-  }, [search, status, page, pageSize]);
+  }, [search, status, page, pageSize, reloadFlag]);
 
   useEffect(() => {
     const applyAdd = (branch) => {
@@ -99,12 +101,18 @@ export function BranchesTable({ search = "", status = "" }) {
       );
     };
 
+    const reloadBranches = () => {
+      setReloadFlag((prev) => prev + 1);
+    };
+
     window.applyAddBranch = applyAdd;
     window.applyEditBranch = applyEdit;
+    window.reloadBranches = reloadBranches;
 
     return () => {
       if (window.applyAddBranch === applyAdd) delete window.applyAddBranch;
       if (window.applyEditBranch === applyEdit) delete window.applyEditBranch;
+      if (window.reloadBranches === reloadBranches) delete window.reloadBranches;
     };
   }, []);
 

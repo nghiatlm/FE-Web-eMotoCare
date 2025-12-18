@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as signalR from "@microsoft/signalr";
 
-export default function useEVCheckHub(evCheckId, onUpdate) {
+export default function useRMAHub(onUpdate) {
   const connectionRef = useRef(null);
   const onUpdateRef = useRef(onUpdate);
 
@@ -10,15 +10,12 @@ export default function useEVCheckHub(evCheckId, onUpdate) {
   }, [onUpdate]);
 
   useEffect(() => {
-    if (!evCheckId) return;
-
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     const token = user?.token;
 
     let API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://bemodernestate.site/api";
     const baseUrl = API_BASE_URL.replace(/\/api\/?$/, "");
-    const hubUrl = `${baseUrl}/hubs/notify`;
-
+    const hubUrl = `${baseUrl}/hubs/notifyrma`;
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(hubUrl, {
         accessTokenFactory: token ? () => token : undefined,
@@ -31,52 +28,47 @@ export default function useEVCheckHub(evCheckId, onUpdate) {
     connectionRef.current = connection;
 
     const handleReceiveCreate = (entity, data) => {
-      if (entity === "EVCheck" && data?.id === evCheckId) {
-        if (onUpdateRef.current) {
-          try {
-            if (onUpdateRef.current.length > 0) {
-              onUpdateRef.current(entity, data);
-            } else {
-              onUpdateRef.current();
-            }
-          } catch (error) {
+      if (onUpdateRef.current) {
+        try {
+          if (onUpdateRef.current.length > 0) {
+            onUpdateRef.current(entity, data);
+          } else {
+            onUpdateRef.current();
           }
+        } catch (error) {
         }
+      } else {
       }
     };
 
     const handleReceiveUpdate = (entity, data) => {
-      if (entity === "EVCheck" && data?.id === evCheckId) {
-        if (onUpdateRef.current) {
-          try {
-            if (onUpdateRef.current.length > 0) {
-              onUpdateRef.current(entity, data);
-            } else {
-              onUpdateRef.current();
-            }
-          } catch (error) {
+      if (onUpdateRef.current) {
+        try {
+          if (onUpdateRef.current.length > 0) {
+            onUpdateRef.current(entity, data);
+          } else {
+            onUpdateRef.current();
           }
+        } catch (error) {
         }
+      } else {
       }
     };
 
     connection.on("ReceiveCreate", handleReceiveCreate);
     connection.on("ReceiveUpdate", handleReceiveUpdate);
     connection.on("ReceiveDelete", (entity, data) => {
-      if (entity === "EVCheck" && data?.id === evCheckId) {
-        if (onUpdateRef.current) {
-          try {
-            if (onUpdateRef.current.length > 0) {
-              onUpdateRef.current(entity, data);
-            } else {
-              onUpdateRef.current();
-            }
-          } catch (error) {
+      if (onUpdateRef.current) {
+        try {
+          if (onUpdateRef.current.length > 0) {
+            onUpdateRef.current(entity, data);
+          } else {
+            onUpdateRef.current();
           }
+        } catch (error) {
         }
       }
     });
-
     const startConnection = async () => {
       try {
         await connection.start();
@@ -91,6 +83,7 @@ export default function useEVCheckHub(evCheckId, onUpdate) {
         if (err.message?.includes("404") || err.statusCode === 404) {
           return;
         }
+        
       }
     };
 
@@ -98,6 +91,7 @@ export default function useEVCheckHub(evCheckId, onUpdate) {
 
     return () => {
       if (connectionRef.current) {
+        
         const currentConnection = connectionRef.current;
         connectionRef.current = null;
         
@@ -120,8 +114,7 @@ export default function useEVCheckHub(evCheckId, onUpdate) {
         }
       }
     };
-  }, [evCheckId]);
+  }, []);
 
   return connectionRef.current;
 }
-

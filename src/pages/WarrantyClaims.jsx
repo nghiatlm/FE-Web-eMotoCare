@@ -11,7 +11,6 @@ export default function WarrantyClaims() {
     const [isEditClaimOpen, setIsEditClaimOpen] = useState(false);
     const [selectedClaim, setSelectedClaim] = useState(null);
 
-    // Setup global functions for WarrantyClaimsTable communication
     useEffect(() => {
         window.openEditWarrantyDialog = (claim) => {
             setSelectedClaim(claim);
@@ -22,7 +21,6 @@ export default function WarrantyClaims() {
     return (
         <div className="min-h-screen bg-background">
             <div className="p-8">
-                {/* Header */}
                 <div className="mb-8">
                     <div className="flex items-center gap-2 mb-2">
                         <FileText className="h-6 w-6 text-primary" />
@@ -31,7 +29,6 @@ export default function WarrantyClaims() {
                     <p className="text-muted-foreground">Quản lý khiếu nại bảo hành</p>
                 </div>
 
-                {/* Filters */}
                 <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-card rounded-lg border border-border">
                     <div className="flex items-center gap-2">
                         <Filter className="h-4 w-4 text-muted-foreground" />
@@ -78,19 +75,16 @@ export default function WarrantyClaims() {
                     )}
                 </div>
 
-                {/* Warranty Claims Table */}
                 <WarrantyClaimsTable 
                     deviceModelFilter={deviceModelFilter}
                     claimStatusFilter={claimStatusFilter}
                 />
 
-                {/* Edit Warranty Claim Dialog */}
                 <EditWarrantyClaimForm 
                     open={isEditClaimOpen}
                     onOpenChange={setIsEditClaimOpen}
                     claim={selectedClaim}
                     onClaimUpdated={() => {
-                        // WarrantyClaimsTable will handle the update
                     }}
                 />
             </div>

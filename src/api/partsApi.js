@@ -28,6 +28,10 @@ export const getPartTypes = (page = 1, pageSize = 100) => {
   return api.get(PART_TYPES_BASE_URL, { params });
 };
 
+export const getPartTypesLabels = () => {
+  return api.get(`${PART_TYPES_BASE_URL}/labels`);
+};
+
 export const createPart = (partData) => {
   return api.post(BASE_URL, partData);
 };

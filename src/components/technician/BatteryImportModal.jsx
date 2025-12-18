@@ -15,7 +15,7 @@ export default function BatteryImportModal({
   const [loading, setLoading] = useState(false);
 
   const handleUpload = async () => {
-    // ✅ Kiểm tra nếu là temp ID thì không cho import
+
     if (!evCheckDetailId || evCheckDetailId.startsWith("temp_")) {
       toast.error("Vui lòng lưu bộ phận trước khi import dữ liệu pin");
       return;
@@ -35,19 +35,17 @@ export default function BatteryImportModal({
     setLoading(true);
     try {
       const result = await importBatteryDataService(evCheckDetailId, file);
-      console.log("🔋 Import result:", result);
       
-      // ✅ Lấy dữ liệu từ response
+
       const batteryData = result?.data || result;
       
       toast.success("Import dữ liệu pin thành công!");
       setFileList([]);
       
-      // ✅ Truyền dữ liệu từ response vào onSuccess
+
       onSuccess?.(batteryData);
       onClose();
     } catch (error) {
-      console.error("Lỗi import:", error);
       toast.error((error?.response?.data?.message || error?.data?.message || error?.message || "Import dữ liệu pin thất bại!"));
     } finally {
       setLoading(false);
@@ -56,7 +54,7 @@ export default function BatteryImportModal({
 
   const uploadProps = {
     beforeUpload: (file) => {
-      // Chỉ cho phép file Excel hoặc CSV
+
       const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
                      file.type === 'application/vnd.ms-excel';
       const isCSV = file.type === 'text/csv' || file.name.endsWith('.csv');
@@ -73,7 +71,7 @@ export default function BatteryImportModal({
       }
 
       setFileList([file]);
-      return false; // Ngăn tự động upload
+      return false;
     },
     fileList,
     onRemove: () => {

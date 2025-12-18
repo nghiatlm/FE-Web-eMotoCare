@@ -1,4 +1,3 @@
-// src/components/service-staff/RMAConfirmationModal.jsx
 import { Modal, Button, List, Typography, Card, Space, Tag, Divider } from "antd";
 import { toast } from "react-toastify";
 import { useState } from "react";
@@ -32,7 +31,6 @@ export default function RMAConfirmationModal({
       setIsSubmitting(true);
       const loadingToast = toast.loading("Đang tạo yêu cầu RMA...");
 
-      // 1. Lấy Service Staff
       const staffInfo = await fetchServiceStaff();
       const staffData = staffInfo?.data?.data || staffInfo?.data || staffInfo;
       const staffId = staffData?.id;
@@ -40,28 +38,19 @@ export default function RMAConfirmationModal({
         throw new Error("Không tìm thấy Service Staff.");
       }
 
-      // 2. Tạo RMA header (1 RMA cho tất cả phụ tùng)
       const rmaPayload = {
         returnAddress: booking.garageAddress || "Địa chỉ kho eMotoCare",
         note: `Yêu cầu RMA cho booking ${booking.code}`,
         createById: staffId,
       };
 
-      console.log("📤 [RMAConfirmationModal] Create RMA payload:", rmaPayload);
 
       const rma = await createRMAService(rmaPayload);
-      console.log("✅ [RMAConfirmationModal] RMA response:", rma);
 
-      // ➜ Với response BE: { statusCode, success, message, data: { id } }
-      const rmaId = rma?.id; // <<< CHỈ SỬA DÒNG NÀY
+      const rmaId = rma?.id;
       if (!rmaId) {
-        console.error("❌ Không lấy được rmaId từ response:", rma);
         throw new Error("Không tạo được RMA (thiếu rmaId).");
       }
-
-      // 3. Tạo RMA detail cho từng EVCheckDetail
-      // const now = new Date();
-      // const expiration = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // +30 ngày
 
       for (const item of partsForRMA) {
         const detailPayload = {
@@ -69,19 +58,12 @@ export default function RMAConfirmationModal({
           evCheckDetailId: item.id,
           quantity: item.quantity || 1,
           reason: item.NoiDung || item.result || "Lỗi kỹ thuật / hư hỏng",
-          // releaseDateRMA: now.toISOString(),
-          // expirationDateRMA: expiration.toISOString(),
           inspector: staffData?.fullName || staffData?.name || "",
           result: "",
           solution: item.remedies || "",
         };
 
-        console.log(
-          "📤 [RMAConfirmationModal] Tạo RMADetail payload:",
-          detailPayload
-        );
         const detailRes = await createRMADetailService(detailPayload);
-        console.log("✅ [RMAConfirmationModal] RMADetail response:", detailRes);
       }
 
       toast.dismiss(loadingToast);
@@ -90,7 +72,6 @@ export default function RMAConfirmationModal({
       onClose();
     } catch (err) {
       toast.dismiss(loadingToast);
-      console.error("❌ Lỗi tạo RMA:", err);
       toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tạo RMA."));
     } finally {
       setIsSubmitting(false);
@@ -134,7 +115,6 @@ export default function RMAConfirmationModal({
         </Button>,
       ]}>
       <div style={{ padding: "8px 0" }}>
-        {/* ✅ Thông báo */}
         <Card
           style={{
             marginBottom: 24,
@@ -155,7 +135,6 @@ export default function RMAConfirmationModal({
           </Space>
         </Card>
 
-        {/* ✅ Danh sách phụ tùng */}
         <Card
           title={
             <Space>

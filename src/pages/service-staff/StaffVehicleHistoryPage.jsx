@@ -1,4 +1,3 @@
-// src/pages/service-staff/StaffVehicleHistoryPage.jsx
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Table, Tag, Button, Input, Card, Spin, Empty, Select, DatePicker, Space } from "antd";
@@ -10,7 +9,6 @@ const { RangePicker } = DatePicker;
 import { fetchAppointments } from "../../services/appointmentService";
 import { getStaffByAccountId } from "../../api/staffsApi";
 
-// ✅ Hàm dịch màu sắc từ tiếng Anh sang tiếng Việt
 const translateColor = (color) => {
   if (!color) return "";
   const colorUpper = String(color).trim().toUpperCase();
@@ -42,30 +40,21 @@ export default function StaffVehicleHistoryPage() {
   const [selectedModel, setSelectedModel] = useState(null);
   const [dateRange, setDateRange] = useState(null);
 
-  // ================== LOAD SERVICE CENTER ID ==================
   useEffect(() => {
     const loadServiceCenterId = async () => {
       try {
         const userStr = localStorage.getItem("user");
         if (!userStr) {
-          console.warn("⚠️ Không tìm thấy user trong localStorage");
           return;
         }
 
         const user = JSON.parse(userStr);
-        console.log("🔍 User from localStorage:", user);
         
-        // ✅ Thử nhiều cách lấy accountId
         const accountId = user?.accountResponse?.id || user?.id || user?.accountId;
-        console.log("🔍 AccountId:", accountId);
 
         if (accountId) {
           const staffRes = await getStaffByAccountId(accountId);
-          console.log("🔍 Staff response:", staffRes);
-          console.log("🔍 Staff response.data:", staffRes?.data);
           
-          // ✅ Parse staff data từ response (axios đã unwrap response.data)
-          // getStaffByAccountId trả về: { data: { rowDatas: [...] } } hoặc { data: [...] }
           let staff = null;
           if (staffRes?.data?.rowDatas && Array.isArray(staffRes.data.rowDatas) && staffRes.data.rowDatas.length > 0) {
             staff = staffRes.data.rowDatas[0];
@@ -79,22 +68,16 @@ export default function StaffVehicleHistoryPage() {
             staff = staffRes;
           }
           
-          console.log("🔍 Parsed staff:", staff);
           
           const serviceCenterId = staff?.serviceCenterId || staff?.serviceCenter?.id;
-          console.log("🔍 ServiceCenterId:", serviceCenterId);
           
           if (serviceCenterId) {
             setServiceCenterId(serviceCenterId);
           } else {
-            console.warn("⚠️ Không tìm thấy serviceCenterId trong staff data");
-            console.warn("⚠️ Staff object keys:", staff ? Object.keys(staff) : "staff is null");
           }
         } else {
-          console.warn("⚠️ Không tìm thấy accountId");
         }
       } catch (err) {
-        console.error("❌ Lỗi khi lấy serviceCenterId:", err);
         toast.error("Không thể lấy thông tin trung tâm dịch vụ");
       }
     };
@@ -102,34 +85,23 @@ export default function StaffVehicleHistoryPage() {
     loadServiceCenterId();
   }, []);
 
-  // ================== LOAD VEHICLE HISTORY ==================
   const loadVehicleHistory = async () => {
     if (!serviceCenterId) {
-      console.warn("⚠️ Chưa có serviceCenterId, không thể load vehicle history");
       return;
     }
 
     setLoading(true);
     try {
-      console.log("🔍 Loading vehicle history với serviceCenterId:", serviceCenterId);
       
-      // ✅ Lấy tất cả appointments đã hoàn thành tại trung tâm này
       const response = await fetchAppointments({
         page: 1,
         pageSize: 1000,
         serviceCenterId,
       });
 
-      console.log("🔍 fetchAppointments response:", response);
-      console.log("🔍 response.data:", response?.data);
-      console.log("🔍 response.data?.rowDatas:", response?.data?.rowDatas);
 
-      // ✅ Xử lý response structure từ API
-      // fetchAppointments gọi getAppointments -> api.get -> axios trả về { data: {...} }
-      // getAppointments trả về response.data (đã unwrap bởi axios interceptor)
       let appointmentsList = [];
       
-      // ✅ Thử nhiều cách parse response
       if (Array.isArray(response)) {
         appointmentsList = response;
       } else if (Array.isArray(response?.data)) {
@@ -145,32 +117,24 @@ export default function StaffVehicleHistoryPage() {
       }
       
       if (appointmentsList.length === 0 && response) {
-        console.warn("⚠️ Không parse được appointmentsList từ response:", response);
-        console.warn("⚠️ Response structure:", Object.keys(response));
       }
 
-      console.log("🔍 Parsed appointmentsList:", appointmentsList);
-      console.log("🔍 Total appointments:", appointmentsList.length);
 
-      // ✅ Filter chỉ lấy những appointment đã hoàn thành sửa chữa
       const completedAppointments = appointmentsList.filter(
         (apt) =>
           apt.status === "COMPLETED" ||
           apt.status === "REPAIR_COMPLETED"
       );
       
-      console.log("🔍 Completed appointments:", completedAppointments.length);
 
-      // ✅ Group by vehicleId để loại bỏ duplicate và lấy thông tin mới nhất
       const vehicleMap = new Map();
       completedAppointments.forEach((apt) => {
         if (!apt.vehicle || !apt.vehicle.id) return;
 
         const vehicleId = apt.vehicle.id;
         const existing = vehicleMap.get(vehicleId);
-
+        
         if (!existing) {
-          // ✅ Lần đầu gặp xe này
           vehicleMap.set(vehicleId, {
             vehicle: apt.vehicle,
             customer: apt.customer,
@@ -179,10 +143,8 @@ export default function StaffVehicleHistoryPage() {
             appointmentCount: 1,
           });
         } else {
-          // ✅ Đã có xe này, tăng số lần và cập nhật thông tin mới nhất nếu cần
           existing.appointmentCount = (existing.appointmentCount || 0) + 1;
           
-          // ✅ Cập nhật thông tin mới nhất nếu appointment này mới hơn
           const currentDate = new Date(apt.appointmentDate || apt.createdAt);
           const existingDate = new Date(existing.lastAppointmentDate || existing.createdAt);
           if (currentDate > existingDate) {
@@ -194,7 +156,6 @@ export default function StaffVehicleHistoryPage() {
         }
       });
 
-      // ✅ Convert map to array
       const vehicleHistory = Array.from(vehicleMap.values()).map((item) => ({
         ...item.vehicle,
         customer: item.customer,
@@ -203,16 +164,12 @@ export default function StaffVehicleHistoryPage() {
         appointmentCount: item.appointmentCount || 1,
       }));
 
-      console.log("🔍 Final vehicleHistory:", vehicleHistory);
-      console.log("🔍 Total vehicles:", vehicleHistory.length);
 
       setVehicleList(vehicleHistory);
       
       if (vehicleHistory.length === 0) {
-        console.warn("⚠️ Không có xe nào đã sửa chữa tại trung tâm này");
       }
     } catch (err) {
-      console.error("❌ Lỗi khi tải lịch sử xe:", err);
       toast.error(
         err?.response?.data?.message ||
           err?.message ||
@@ -229,7 +186,6 @@ export default function StaffVehicleHistoryPage() {
     }
   }, [serviceCenterId]);
 
-  // ================== GET UNIQUE MODELS ==================
   const uniqueModels = useMemo(() => {
     const models = new Set();
     vehicleList.forEach((item) => {
@@ -240,10 +196,8 @@ export default function StaffVehicleHistoryPage() {
     return Array.from(models).sort();
   }, [vehicleList]);
 
-  // ================== FILTER ==================
   const filteredData = useMemo(() => {
     return (vehicleList || []).filter((item) => {
-      // ✅ Filter theo search text
       if (search) {
         const lowerSearch = search.toLowerCase();
         const chassisNumber = item.chassisNumber?.toLowerCase() || "";
@@ -264,12 +218,10 @@ export default function StaffVehicleHistoryPage() {
         if (!matchesSearch) return false;
       }
 
-      // ✅ Filter theo mẫu xe
       if (selectedModel && item.modelName !== selectedModel) {
         return false;
       }
 
-      // ✅ Filter theo khoảng thời gian (dựa trên lastAppointmentDate)
       if (dateRange && dateRange[0] && dateRange[1]) {
         const appointmentDate = dayjs(item.lastAppointmentDate);
         const startDate = dateRange[0].startOf("day");
@@ -284,12 +236,10 @@ export default function StaffVehicleHistoryPage() {
     });
   }, [vehicleList, search, selectedModel, dateRange]);
 
-  // ================== ACTION: XEM CHI TIẾT ==================
   const handleViewDetail = (record) => {
     navigate(`/staff/vehicles/${record.id}/history`);
   };
 
-  // ================== TABLE ==================
   const columns = [
     {
       title: "STT",
@@ -406,7 +356,7 @@ export default function StaffVehicleHistoryPage() {
           boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
           overflow: "hidden",
         }}>
-        {/* Header */}
+        
         <div
           style={{
             display: "flex",
@@ -445,7 +395,7 @@ export default function StaffVehicleHistoryPage() {
           </div>
         </div>
 
-        {/* Filters */}
+        
         <div style={{ marginBottom: 16, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <Input
             prefix={<Search size={16} />}
@@ -479,13 +429,12 @@ export default function StaffVehicleHistoryPage() {
             size="large"
             allowClear
             disabledDate={(current) => {
-              // ✅ Không cho chọn ngày tương lai
               return current && current > dayjs().endOf("day");
             }}
           />
         </div>
 
-        {/* Table */}
+        
         {loading ? (
           <div style={{ textAlign: "center", padding: "40px 0" }}>
             <Spin size="large" />

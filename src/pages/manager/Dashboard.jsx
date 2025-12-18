@@ -36,35 +36,28 @@ export default function Dashboard() {
   const [recentError, setRecentError] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
 
-  // Lấy serviceCenterId và load dashboard data
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
         setLoadingStats(true);
         
-        // Lấy accountId từ user
         const accountId = user?.accountResponse?.id;
         if (!accountId) {
-          console.error("Không tìm thấy accountId");
           return;
         }
 
-        // Lấy serviceCenterId từ staff
         const staffResponse = await getStaffByAccountId(accountId, { page: 1, pageSize: 10 });
         const staffData = staffResponse?.data?.rowDatas?.[0];
         
         if (!staffData?.serviceCenterId) {
-          console.error("Không tìm thấy serviceCenterId");
           return;
         }
 
         const serviceCenterId = staffData.serviceCenterId;
 
-        // Call API dashboard overview
         const dashboardResponse = await getDashboardOverview(serviceCenterId);
         const dashboardData = dashboardResponse?.data || dashboardResponse;
 
-        // Call API appointments để tính toán thống kê chi tiết
         try {
           const appointmentsResponse = await fetchAppointments({ 
             page: 1, 
@@ -78,7 +71,6 @@ export default function Dashboard() {
             appointmentsResponse?.rowDatas ||
             [];
 
-          // Tính toán thống kê từ appointments
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           
@@ -104,21 +96,18 @@ export default function Dashboard() {
             return status === "CANCELLED" || status === "CANCELED" || status === "PAYMENT_FAILED";
           }).length;
 
-          // Map dữ liệu từ API vào stats
           setStats({
             totalAppointments: dashboardData.totalAppointment || appointmentsData.length || 0,
             todayAppointments: todayAppointments,
-            totalStaff: 0, // API không có, cần call API khác
-            activeStaff: 0, // API không có, cần call API khác
+            totalStaff: 0,
+            activeStaff: 0,
             pendingAppointments: pendingAppointments,
             completedAppointments: completedAppointments,
             cancelledAppointments: cancelledAppointments,
             revenue: dashboardData.totalRevenue || 0,
-            revenueChange: 0, // API không có, có thể tính từ dữ liệu tháng trước
+            revenueChange: 0,
           });
         } catch (appointmentsError) {
-          console.error("Error fetching appointments:", appointmentsError);
-          // Nếu không lấy được appointments, chỉ dùng data từ dashboard API
           setStats({
             totalAppointments: dashboardData.totalAppointment || 0,
             todayAppointments: 0,
@@ -132,7 +121,6 @@ export default function Dashboard() {
           });
         }
       } catch (error) {
-        console.error("Error loading dashboard data:", error);
       } finally {
         setLoadingStats(false);
       }
@@ -143,7 +131,6 @@ export default function Dashboard() {
         setRecentLoading(true);
         setRecentError(null);
 
-        // Lấy accountId và serviceCenterId để filter appointments
         const accountId = user?.accountResponse?.id;
         if (!accountId) return;
 
@@ -151,14 +138,12 @@ export default function Dashboard() {
         const staffData = staffResponse?.data?.rowDatas?.[0];
         const serviceCenterId = staffData?.serviceCenterId;
 
-        // Lấy 5 lịch hẹn mới nhất cho dashboard
         const response = await fetchAppointments({ 
           page: 1, 
           pageSize: 5,
           serviceCenterId 
         });
 
-        // Sau interceptor, data thường có dạng { statusCode, data: { rowDatas, total, ... } }
         const data =
           response?.data?.data?.rowDatas ||
           response?.data?.rowDatas ||
@@ -167,7 +152,6 @@ export default function Dashboard() {
 
         setRecentAppointments(data.slice(0, 5));
       } catch (error) {
-        console.error("Error fetching recent appointments:", error);
         setRecentError("Không thể tải danh sách lịch hẹn gần đây.");
         setRecentAppointments([]);
       } finally {
@@ -188,13 +172,12 @@ export default function Dashboard() {
     }).format(amount);
   };
 
-  // Định dạng slotTime "H13_14" -> "13:00 - 14:00"
   const formatSlotTime = (slotTime) => {
     if (!slotTime) return "—";
-    if (!slotTime.startsWith("H")) return slotTime;
-    const parts = slotTime.replace("H", "").split("_");
-    if (parts.length === 2) {
-      const [start, end] = parts;
+    const match = slotTime.match(/H(\d+)_(\d+)/);
+    if (match) {
+      const start = match[1];
+      const end = match[2];
       return `${start}:00 - ${end}:00`;
     }
     return slotTime;
@@ -218,43 +201,82 @@ export default function Dashboard() {
   };
 
   const getStatusBadge = (status) => {
-    const s = status?.toUpperCase();
-    if (!s) return <Badge variant="secondary">—</Badge>;
-
-    if (
-      s === "PENDING" ||
-      s === "APPROVED" ||
-      s === "QUOTE_APPROVED" ||
-      s === "WAITING_FOR_PAYMENT"
-    ) {
-      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Chờ xử lý</Badge>;
+    switch (status?.toUpperCase()) {
+      case "PENDING":
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
+            Chờ xử lý
+          </Badge>
+        );
+      case "APPROVED":
+        return (
+          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+            Đã duyệt
+          </Badge>
+        );
+      case "CHECKED_IN":
+        return (
+          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+            Đã check-in
+          </Badge>
+        );
+      case "QUOTE_APPROVED":
+        return (
+          <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">
+            Đã duyệt báo giá
+          </Badge>
+        );
+      case "REPAIR_COMPLETED":
+        return (
+          <Badge className="bg-teal-100 text-teal-800 hover:bg-teal-100">
+            Hoàn thành sửa chữa
+          </Badge>
+        );
+      case "WAITING_FOR_PAYMENT":
+        return (
+          <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">
+            Chờ thanh toán
+          </Badge>
+        );
+      case "PAYMENT_FAILED":
+        return (
+          <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
+            Thanh toán thất bại
+          </Badge>
+        );
+      case "COMPLETED":
+        return (
+          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+            Hoàn thành
+          </Badge>
+        );
+      case "CANCELLED":
+      case "CANCELED":
+        return (
+          <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
+            Đã hủy
+          </Badge>
+        );
+      default:
+        return <Badge variant="secondary">{status || "—"}</Badge>;
     }
-
-    if (s === "COMPLETED" || s === "REPAIR_COMPLETED") {
-      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Hoàn thành</Badge>;
-    }
-
-    if (s === "CANCELLED" || s === "CANCELED" || s === "PAYMENT_FAILED") {
-      return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Đã hủy</Badge>;
-    }
-
-    return <Badge variant="secondary">{status}</Badge>;
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="p-8 max-w-7xl mx-auto space-y-6">
-        <div className="mb-2">
-          <h1 className="text-2xl font-semibold text-slate-900">Dashboard Trung tâm Dịch vụ</h1>
-          <p className="text-sm text-slate-500 mt-1">
+    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-rose-50 to-rose-100">
+      <div className="w-full px-6 lg:px-10 py-8 space-y-6">
+        <div className="mb-4">
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900">
+            Dashboard Trung tâm Dịch vụ
+          </h1>
+          <p className="text-sm md:text-base text-slate-500 mt-1">
             Tổng quan hoạt động của trung tâm dịch vụ
           </p>
-          <div className="mt-3 h-[2px] w-24 rounded-full bg-red-500/70" />
+          <div className="mt-3 h-[3px] w-24 rounded-full bg-rose-400/80" />
         </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
+        <Card className="bg-white/95 border border-rose-100 shadow-md rounded-2xl backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tổng lịch hẹn</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -267,7 +289,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
+        <Card className="bg-white/95 border border-rose-100 shadow-md rounded-2xl backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Nhân viên</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
@@ -280,7 +302,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
+        <Card className="bg-white/95 border border-rose-100 shadow-md rounded-2xl backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Doanh thu tháng</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -294,7 +316,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
+        <Card className="bg-white/95 border border-rose-100 shadow-md rounded-2xl backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Lịch hẹn chờ xử lý</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
@@ -308,9 +330,8 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Appointments Status */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
+        <Card className="bg-white/95 border border-rose-100 shadow-md rounded-2xl backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -319,13 +340,10 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-600">{stats.completedAppointments}</div>
-            <p className="text-sm text-muted-foreground mt-2">
-              {((stats.completedAppointments / stats.totalAppointments) * 100).toFixed(1)}% tổng số
-            </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
+        <Card className="bg-white/95 border border-rose-100 shadow-md rounded-2xl backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-yellow-600" />
@@ -334,13 +352,10 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-yellow-600">{stats.pendingAppointments}</div>
-            <p className="text-sm text-muted-foreground mt-2">
-              {((stats.pendingAppointments / stats.totalAppointments) * 100).toFixed(1)}% tổng số
-            </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
+        <Card className="bg-white/95 border border-rose-100 shadow-md rounded-2xl backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <XCircle className="h-5 w-5 text-red-600" />
@@ -349,18 +364,14 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-red-600">{stats.cancelledAppointments}</div>
-            <p className="text-sm text-muted-foreground mt-2">
-              {((stats.cancelledAppointments / stats.totalAppointments) * 100).toFixed(1)}% tổng số
-            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Appointments */}
-      <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
+      <Card className="bg-white/95 border border-rose-100 shadow-md rounded-2xl backdrop-blur-sm">
         <CardHeader>
           <CardTitle>Lịch hẹn gần đây</CardTitle>
-          <CardDescription>Danh sách 5 lịch hẹn mới nhất</CardDescription>
+          <CardDescription>Danh sách lịch hẹn mới nhất</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -407,11 +418,12 @@ export default function Dashboard() {
                       `${appointment.customer?.firstName || ""} ${
                         appointment.customer?.lastName || ""
                       }`.trim() || "—";
-                    const phone = appointment.customer?.phone || "—";
+                    const phone = appointment.phone || "—";
                     const service = formatAppointmentType(appointment.type);
-                    const time = appointment.appointmentDate
-                      ? format(new Date(appointment.appointmentDate), "HH:mm")
-                      : formatSlotTime(appointment.slotTime);
+                    const appointmentDate = appointment.appointmentDate
+                      ? format(new Date(appointment.appointmentDate), "dd/MM/yyyy")
+                      : "—";
+                    const timeRange = formatSlotTime(appointment.slotTime);
                     const centerName =
                       appointment.serviceCenter?.name ||
                       appointment.serviceCenter?.code ||
@@ -435,7 +447,14 @@ export default function Dashboard() {
                           </div>
                         </td>
                         <td className="py-3 px-4 text-sm text-slate-900">{service}</td>
-                        <td className="py-3 px-4 text-sm text-slate-900">{time || "—"}</td>
+                        <td className="py-3 px-4 text-sm text-slate-900">
+                          <div className="whitespace-nowrap">
+                            <div className="text-foreground">{appointmentDate}</div>
+                            <div className="text-xs text-slate-500">
+                              {timeRange}
+                            </div>
+                          </div>
+                        </td>
                         <td className="py-3 px-4 text-sm text-slate-900">{centerName}</td>
                         <td className="py-3 px-4">{getStatusBadge(appointment.status)}</td>
                       </tr>

@@ -31,10 +31,9 @@ export default function BranchDetail() {
   const [dashboardData, setDashboardData] = useState(null);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
   const [selectedWeekStart, setSelectedWeekStart] = useState(() => {
-    // Mặc định là thứ 2 của tuần hiện tại
     const today = new Date();
     const day = today.getDay();
-    const diff = today.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
     const monday = new Date(today.setDate(diff));
     monday.setHours(0, 0, 0, 0);
     return monday;
@@ -68,7 +67,6 @@ export default function BranchDetail() {
       const response = await getServiceCenterById(id);
       console.log("BranchDetail: API response:", response);
       
-      // Xử lý nhiều cấu trúc response khác nhau
       const branchData = response?.data || response?.data?.data || response;
       
       if (branchData) {
@@ -103,7 +101,6 @@ export default function BranchDetail() {
     fetchDashboard();
   }, [id]);
 
-  // Slot time options - SlotTime enum values từ API
   const SLOT_TIME_OPTIONS = [
     { value: "H07_08", label: "07:00 - 08:00" },
     { value: "H08_09", label: "08:00 - 09:00" },
@@ -117,18 +114,37 @@ export default function BranchDetail() {
     { value: "H17_18", label: "17:00 - 18:00" },
   ];
 
-  // Get day of week from date
+  const isPastSlot = (dateStr, slotTime) => {
+    if (!dateStr || !slotTime || !slotTime.startsWith("H")) return false;
+
+    const now = new Date();
+    const selectedDate = new Date(dateStr);
+
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const selected = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+
+    if (selected > today) return false;
+    if (selected < today) return true;
+
+    const parts = slotTime.replace("H", "").split("_");
+    const startHour = parseInt(parts[0], 10);
+    if (Number.isNaN(startHour)) return false;
+
+    const slotStart = new Date(selectedDate);
+    slotStart.setHours(startHour, 0, 0, 0);
+
+    return slotStart <= now;
+  };
+
   const getDayOfWeek = (dateString) => {
     const date = new Date(dateString);
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     return days[date.getDay()];
   };
 
-  // Sort slots by time (slotTime format: H07_08, H08_09, etc.)
   const sortSlotsByTime = (slots) => {
     if (!slots || !Array.isArray(slots)) return [];
     return [...slots].sort((a, b) => {
-      // Extract hour from slotTime (e.g., "H07_08" -> 7)
       const getHour = (slotTime) => {
         if (!slotTime || !slotTime.startsWith("H")) return 0;
         const hourStr = slotTime.replace("H", "").split("_")[0];
@@ -138,7 +154,6 @@ export default function BranchDetail() {
     });
   };
 
-  // Handle create slot
   const handleCreateSlot = async () => {
     if (!slotForm.date || !slotForm.slotTime) {
       toast.error("Lỗi: Vui lòng điền đầy đủ thông tin (Ngày và Khung giờ)", {
@@ -168,7 +183,6 @@ export default function BranchDetail() {
         autoClose: 4000,
       });
 
-      // Reset form
       setSlotForm({
         date: "",
         slotTime: "",
@@ -178,7 +192,6 @@ export default function BranchDetail() {
       });
       setIsCreateSlotOpen(false);
 
-      // Refresh branch detail
       await fetchBranchDetail();
     } catch (error) {
       console.error("Error creating slot:", error);
@@ -224,8 +237,8 @@ export default function BranchDetail() {
     totalRevenue: dashboardData?.totalRevenue ?? 0,
     totalAppointments: dashboardData?.totalAppointment ?? 0,
     completedAppointments: dashboardData?.totalAppointment ?? 0,
-    totalStaff: branchDetail?.staffs?.length ?? 0,
-    activeStaff: branchDetail?.staffs?.filter((s) => s.status === "ACTIVE")?.length ?? 0,
+    totalStaff: branchDetail?.staffs?.filter((s) => s.position !== "MANAGER_BRANCH").length ?? 0,
+    activeStaff: branchDetail?.staffs?.filter((s) => s.status === "ACTIVE" && s.position !== "MANAGER_BRANCH").length ?? 0,
     totalWarrantyClaims: dashboardData?.totalRMA ?? 0,
     confirmedWarranty: dashboardData?.totalRMA ?? 0,
   };
@@ -233,7 +246,6 @@ export default function BranchDetail() {
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-6">
-        {/* Header */}
         <div className="mb-2">
           <Button
             variant="ghost"
@@ -254,9 +266,7 @@ export default function BranchDetail() {
           </div>
         </div>
 
-        {/* Summary cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Doanh thu */}
           <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
             <div className="h-1 w-full bg-red-500/80" />
             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-3">
@@ -279,7 +289,6 @@ export default function BranchDetail() {
             </CardContent>
           </Card>
 
-          {/* Lịch hẹn */}
           <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
             <div className="h-1 w-full bg-sky-500/80" />
             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-3">
@@ -304,7 +313,6 @@ export default function BranchDetail() {
             </CardContent>
           </Card>
 
-          {/* Nhân viên */}
           <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
             <div className="h-1 w-full bg-emerald-500/80" />
             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-3">
@@ -323,7 +331,6 @@ export default function BranchDetail() {
             </CardContent>
           </Card>
 
-          {/* Bảo hành */}
           <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
             <div className="h-1 w-full bg-violet-500/80" />
             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-3">
@@ -350,9 +357,7 @@ export default function BranchDetail() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)] gap-6">
-          {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-          {/* Thông tin cơ bản */}
           <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
             <CardHeader className="border-b border-slate-100 pb-3 bg-red-50/40">
               <div className="flex items-center gap-3">
@@ -401,7 +406,6 @@ export default function BranchDetail() {
             </CardContent>
           </Card>
 
-          {/* Thông tin liên hệ */}
           <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
             <CardHeader className="border-b border-slate-100 pb-3 bg-red-50/40">
               <div className="flex items-center gap-3">
@@ -464,7 +468,6 @@ export default function BranchDetail() {
             </CardContent>
           </Card>
 
-          {/* Bản đồ */}
           {(branchDetail.latitude || branchDetail.longitude || branchDetail.address) && (
             <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
               <CardHeader className="border-b border-slate-100 pb-3 bg-red-50/40">
@@ -507,7 +510,6 @@ export default function BranchDetail() {
             </Card>
           )}
 
-          {/* Lịch làm việc */}
           <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
             <CardHeader className="border-b border-slate-100 pb-3 bg-red-50/40">
                 <div className="flex items-center justify-between gap-3">
@@ -521,7 +523,6 @@ export default function BranchDetail() {
                       {branchDetail.serviceCenterSlots && branchDetail.serviceCenterSlots.length > 0 && (
                         <Badge variant="secondary" className="ml-1 rounded-full px-2 py-0.5 text-[11px] bg-slate-100 text-slate-700">
                           {(() => {
-                            // Đếm số slot trong tuần được chọn
                             const weekDays = Array.from({ length: 7 }, (_, i) => {
                               const date = new Date(selectedWeekStart);
                               date.setDate(date.getDate() + i);
@@ -540,7 +541,6 @@ export default function BranchDetail() {
                     </p>
                   </div>
                 </div>
-                {/* Date picker để chọn tuần */}
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -560,7 +560,6 @@ export default function BranchDetail() {
                       selected={selectedWeekStart}
                       onSelect={(date) => {
                         if (date) {
-                          // Đảm bảo chọn thứ 2 của tuần
                           const day = date.getDay();
                           const diff = date.getDate() - day + (day === 0 ? -6 : 1);
                           const monday = new Date(date.setDate(diff));
@@ -578,7 +577,6 @@ export default function BranchDetail() {
               {branchDetail.serviceCenterSlots && branchDetail.serviceCenterSlots.length > 0 ? (
                 <div className="space-y-4">
                   {(() => {
-                    // Tạo mảng 7 ngày trong tuần
                     const weekDays = Array.from({ length: 7 }, (_, i) => {
                       const date = new Date(selectedWeekStart);
                       date.setDate(date.getDate() + i);
@@ -591,7 +589,6 @@ export default function BranchDetail() {
                       };
                     });
 
-                    // Group slots theo ngày
                     const groupedByDate = branchDetail.serviceCenterSlots.reduce((acc, slot) => {
                       const date = slot.date;
                       if (!acc[date]) {
@@ -674,7 +671,6 @@ export default function BranchDetail() {
             </CardContent>
           </Card>
 
-          {/* Dialog tạo slot */}
           <Dialog open={isCreateSlotOpen} onOpenChange={setIsCreateSlotOpen}>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
@@ -684,7 +680,6 @@ export default function BranchDetail() {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                {/* Date */}
                 <div className="space-y-2">
                   <Label htmlFor="date">Ngày *</Label>
                   <Popover>
@@ -716,27 +711,47 @@ export default function BranchDetail() {
                   </Popover>
                 </div>
 
-                {/* Slot Time */}
                 <div className="space-y-2">
                   <Label htmlFor="slotTime">Khung giờ *</Label>
                   <Select
                     value={slotForm.slotTime}
-                    onValueChange={(value) => setSlotForm({ ...slotForm, slotTime: value })}
+                    onValueChange={(value) => {
+                      if (slotForm.date && isPastSlot(slotForm.date, value)) {
+                        toast.error("Không thể chọn khung giờ đã qua thời gian hiện tại.", {
+                          position: "top-right",
+                          autoClose: 4000,
+                        });
+                        return;
+                      }
+                      setSlotForm({ ...slotForm, slotTime: value });
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn khung giờ" />
                     </SelectTrigger>
                     <SelectContent>
-                      {SLOT_TIME_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
+                      {SLOT_TIME_OPTIONS.map((option) => {
+                        const past = slotForm.date ? isPastSlot(slotForm.date, option.value) : false;
+                        return (
+                          <SelectItem
+                            key={option.value}
+                            value={option.value}
+                            disabled={past}
+                            className={past ? "opacity-50 cursor-not-allowed" : ""}
+                          >
+                            {option.label}
+                            {past && (
+                              <span className="ml-2 text-xs text-slate-500">
+                                (Quá giờ)
+                              </span>
+                            )}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
 
-                {/* Capacity */}
                 <div className="space-y-2">
                   <Label htmlFor="capacity">Sức chứa</Label>
                   <Input
@@ -744,12 +759,33 @@ export default function BranchDetail() {
                     type="number"
                     min="0"
                     value={slotForm.capacity}
-                    onChange={(e) => setSlotForm({ ...slotForm, capacity: parseInt(e.target.value) || 0 })}
+                    onFocus={(e) => {
+                      if (e.target.value === "0") {
+                        setSlotForm({ ...slotForm, capacity: "" });
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const value = e.target.value.trim();
+                      setSlotForm({
+                        ...slotForm,
+                        capacity: value === "" ? 0 : parseInt(value, 10) || 0,
+                      });
+                    }}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === "") {
+                        setSlotForm({ ...slotForm, capacity: "" });
+                      } else {
+                        setSlotForm({
+                          ...slotForm,
+                          capacity: parseInt(value, 10) || 0,
+                        });
+                      }
+                    }}
                     placeholder="Nhập sức chứa"
                   />
                 </div>
 
-                {/* Is Active */}
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="isActive"
@@ -761,7 +797,6 @@ export default function BranchDetail() {
                   </Label>
                 </div>
 
-                {/* Note */}
                 <div className="space-y-2">
                   <Label htmlFor="note">Ghi chú</Label>
                   <Textarea

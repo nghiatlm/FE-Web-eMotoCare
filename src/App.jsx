@@ -39,7 +39,7 @@ import AdminProfile from "./pages/admin/AdminProfile";
 import NotFound from "./pages/NotFound";
 
 // service staff
-import { StaffSidebar } from "./components/service-staff/StaffSidebar";
+import { StaffSidebar, StaffTopHeader } from "./components/service-staff/StaffSidebar";
 import StaffDashboard from "./pages/service-staff/StaffDashboard";
 import StaffBooking from "./pages/service-staff/StaffBooking";
 import CreateBooking from "./pages/service-staff/CreateBooking";
@@ -48,13 +48,15 @@ import StaffRMADetailPage from "./pages/service-staff/StaffRMADetailPage";
 import StaffBookingDetailPage from "./pages/service-staff/StaffBookingDetailPage";
 import StaffVehicleHistoryPage from "./pages/service-staff/StaffVehicleHistoryPage";
 import StaffVehicleRepairHistoryPage from "./pages/service-staff/StaffVehicleRepairHistoryPage";
+import StaffProfile from "./pages/service-staff/StaffProfile";
 
 // technician
-import { TechnicianSidebar } from "./components/technician/TechnicanSidebar";
+import { TechnicianSidebar, TechnicianTopHeader } from "./components/technician/TechnicanSidebar";
 import TechnicianDashboard from "./pages/technician/TechnicianDashboard";
 import TechnicianPage from "./pages/technician/TechnicianPage";
 import TechnicianBookingDetailPage from "./pages/technician/TechnicianBookingDetailPage";
 import BatteryDetailPage from "./pages/technician/BatteryDetailPage";
+import TechnicianProfile from "./pages/technician/TechnicianProfile";
 
 // manager
 import { ManagerSidebar, ManagerTopHeader } from "./components/ManagerSidebar";
@@ -195,7 +197,7 @@ const App = () => (
                 <div className="flex min-h-screen w-full">
                   <StaffSidebar />
                   <div className="flex-1 flex flex-col">
-                    <StoreKeeperTopHeader />
+                    <StaffTopHeader />
                     <main className="flex-1">
                       <Routes>
                         <Route
@@ -229,6 +231,11 @@ const App = () => (
                           path="vehicles/:vehicleId/history"
                           element={<StaffVehicleRepairHistoryPage />}
                         />
+                        <Route
+                          path="battery/:evCheckDetailId"
+                          element={<BatteryDetailPage />}
+                        />
+                        <Route path="profile" element={<StaffProfile />} />
 
                         <Route path="*" element={<NotFound />} />
                       </Routes>
@@ -248,7 +255,7 @@ const App = () => (
                 <div className="flex min-h-screen w-full">
                   <TechnicianSidebar />
                   <div className="flex-1 flex flex-col">
-                    <ManagerTopHeader />
+                    <TechnicianTopHeader />
                     <main className="flex-1">
                       <Routes>
                         <Route
@@ -259,16 +266,17 @@ const App = () => (
                           path="dashboard"
                           element={<TechnicianDashboard />}
                         />
-                      <Route path="vehicles" element={<TechnicianPage />} />
-                      <Route
-                        path="vehicles/:id"
-                        element={<TechnicianBookingDetailPage />}
-                      />
-                      <Route
-                        path="battery/:evCheckDetailId"
-                        element={<BatteryDetailPage />}
-                      />
-                      <Route path="*" element={<NotFound />} />
+                        <Route path="vehicles" element={<TechnicianPage />} />
+                        <Route
+                          path="vehicles/:id"
+                          element={<TechnicianBookingDetailPage />}
+                        />
+                        <Route
+                          path="battery/:evCheckDetailId"
+                          element={<BatteryDetailPage />}
+                        />
+                        <Route path="profile" element={<TechnicianProfile />} />
+                        <Route path="*" element={<NotFound />} />
                       </Routes>
                     </main>
                   </div>

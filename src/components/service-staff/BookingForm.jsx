@@ -1,4 +1,4 @@
-// src/components/service-staff/BookingForm.jsx
+
 import { useEffect, useState, useRef } from "react";
 import { Form, InputNumber, DatePicker, Button, Select, Input, Card, Divider, Row, Col, Space, Descriptions, Tag, Spin, Typography } from "antd";
 import { User, Car, CarFront, Calendar, Clock, FileText, Settings, Wrench, Search, Phone, Mail, MapPin, Hash, Palette } from "lucide-react";
@@ -17,7 +17,7 @@ import { getVehicleInfoFromChassisService } from "../../services/appointmentServ
 
 const { Option } = Select;
 
-// Map code slot -> label đẹp
+
 const SLOT_LABEL_MAP = {
   H07_08: "07:00 - 08:00",
   H08_09: "08:00 - 09:00",
@@ -32,7 +32,7 @@ const SLOT_LABEL_MAP = {
 
 const DEFAULT_TYPE = "MAINTENANCE_TYPE";
 
-// ✅ Hàm dịch màu sắc từ tiếng Anh sang tiếng Việt
+
 const translateColor = (color) => {
   if (!color) return "N/A";
   const colorUpper = String(color).trim().toUpperCase();
@@ -64,27 +64,27 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [customerSearchText, setCustomerSearchText] = useState("");
 
-  // 👉 danh sách slot khả dụng sau khi filter theo center + ngày
+
   const [availableSlots, setAvailableSlots] = useState([]);
 
-  // ✅ Danh sách mốc bảo dưỡng (vehicle stages)
+
   const [vehicleStages, setVehicleStages] = useState([]);
   const [loadingVehicleStages, setLoadingVehicleStages] = useState(false);
 
-  // ✅ Danh sách campaigns và recalls
+
   const [campaigns, setCampaigns] = useState([]);
   const [recalls, setRecalls] = useState([]);
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
 
-  // ✅ ServiceCenterId của nhân viên hiện tại
+
   const [currentServiceCenterId, setCurrentServiceCenterId] = useState(null);
 
-  // ✅ State để track xem đã load thông tin từ số khung chưa
+
   const [isChassisNumberLoaded, setIsChassisNumberLoaded] = useState(skipChassisNumber);
   const [vehicleInfo, setVehicleInfo] = useState(null);
   const [isSearchingChassis, setIsSearchingChassis] = useState(false);
 
-  // ====== RESET FORM KHI resetKey THAY ĐỔI ======
+
   useEffect(() => {
     if (resetKey !== undefined) {
       form.resetFields();
@@ -92,13 +92,13 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
       setAvailableSlots([]);
       setVehicleStages([]);
       setCustomerSearchText("");
-      // ✅ Reset các state liên quan đến số khung
+
       setVehicleInfo(null);
       setIsChassisNumberLoaded(skipChassisNumber);
     }
   }, [resetKey, form]);
 
-  // ✅ Cleanup timeout khi component unmount
+
   useEffect(() => {
     return () => {
       if (searchTimeoutRef.current) {
@@ -107,13 +107,13 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
     };
   }, []);
 
-  // ✅ Debounce timer ref
+
   const searchTimeoutRef = useRef(null);
   
-  // ====== SET INITIAL VALUES VÀ TỰ ĐỘNG LOAD THÔNG TIN NẾU CÓ TỪ RMA ======
+
   useEffect(() => {
     if (skipChassisNumber && initialValues?.customerId && initialValues?.vehicleId && initialValues?.chassisNumber) {
-      // ✅ Tự động set vehicleInfo từ initialValues (từ RMA) với đầy đủ thông tin
+
       setVehicleInfo({
         customer: initialValues.customer || {
           id: initialValues.customerId,
@@ -135,15 +135,15 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
     }
   }, [initialValues, skipChassisNumber, form]);
 
-  // ✅ Hàm gọi API để lấy thông tin từ số khung
+
   const handleChassisNumberLookup = async (chassisNumber, e) => {
-    // Ngăn form submit nếu có event
+
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
 
-    // Ngăn gọi nhiều lần cùng lúc
+
     if (isSearchingChassis) {
       return;
     }
@@ -157,24 +157,23 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
     try {
       const response = await getVehicleInfoFromChassisService(chassisNumber.trim());
       
-      console.log("📦 API Response:", response);
       
-      // ✅ Response structure có thể là:
-      // 1. { statusCode, success, message, data: { customer, vehicle, vehicleStages: [...] } }
-      // 2. { customer, vehicle, vehicleStages: [...] } (trực tiếp)
+
+
+
       let customer, vehicle, vehicleStages;
       
       if (response && response.success && response.data) {
-        // Case 1: Có wrapper { success, data }
+
         ({ customer, vehicle, vehicleStages } = response.data);
-        // ✅ Nếu có vehicleStage (cũ) thì convert sang vehicleStages
+
         if (!vehicleStages && response.data.vehicleStage) {
           vehicleStages = [response.data.vehicleStage];
         }
       } else if (response && (response.customer || response.vehicle || response.vehicleStages || response.vehicleStage)) {
-        // Case 2: Trực tiếp { customer, vehicle, vehicleStages }
+
         ({ customer, vehicle, vehicleStages } = response);
-        // ✅ Nếu có vehicleStage (cũ) thì convert sang vehicleStages
+
         if (!vehicleStages && response.vehicleStage) {
           vehicleStages = [response.vehicleStage];
         }
@@ -182,65 +181,58 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
         throw new Error("Không tìm thấy thông tin từ số khung. Response structure không đúng.");
       }
       
-      // ✅ Đảm bảo vehicleStages là mảng
+
       if (!Array.isArray(vehicleStages)) {
         vehicleStages = vehicleStages ? [vehicleStages] : [];
       }
       
-      console.log("✅ Customer:", customer);
-      console.log("✅ Vehicle:", vehicle);
-      console.log("✅ VehicleStages:", vehicleStages);
       
-      // ✅ Lấy mốc bảo dưỡng đầu tiên (UPCOMING) hoặc mốc đầu tiên trong mảng
+
       const vehicleStage = vehicleStages.find(s => s.status === "UPCOMING") || vehicleStages[0] || null;
       
-        // ✅ Lưu thông tin để hiển thị (bao gồm toàn bộ vehicleStages)
+
         setVehicleInfo({ customer, vehicle, vehicleStage, vehicleStages });
         
-        // ✅ Set giá trị vào form (giữ lại chassisNumber để submit)
+
         form.setFieldsValue({ 
           chassisNumber: chassisNumber.trim(),
           ...(customer?.id && { customerId: customer.id }),
           ...(vehicle?.id && { vehicleId: vehicle.id }),
           ...(vehicleStage?.id && { vehicleStageId: vehicleStage.id }),
-          // ✅ Nếu có maintenanceStageId từ vehicleStage, set vào form
+
           ...(vehicleStage?.maintenanceStageId && { maintenanceStageId: vehicleStage.maintenanceStageId }),
         });
         
-        // ✅ Load vehicle stages nếu có vehicleId (để hiển thị dropdown)
-        // ✅ Chỉ load vehicle stages nếu user đã chọn type = MAINTENANCE_TYPE
+
+
         if (vehicle?.id) {
           const currentType = form.getFieldValue("type");
-          // ✅ Chỉ load khi user đã chọn type = MAINTENANCE_TYPE (không tự động load)
+
           if (currentType === "MAINTENANCE_TYPE") {
             loadVehicleStages(vehicle.id, "MAINTENANCE_TYPE");
           }
         }
         
-        // ✅ Nếu có vehicleStage từ API, chỉ load stages nếu user đã chọn type = MAINTENANCE_TYPE
+
         if (vehicleStage?.id) {
           const currentType = form.getFieldValue("type");
-          // ✅ Chỉ load stages nếu user đã chọn type = MAINTENANCE_TYPE (không tự động set)
+
           if (currentType === "MAINTENANCE_TYPE" && vehicle?.id) {
             loadVehicleStages(vehicle.id, "MAINTENANCE_TYPE");
           }
-          // ✅ Log để debug
-          console.log("✅ Đã set vehicleStageId:", vehicleStage.id);
-          console.log("✅ Đã set maintenanceStageId:", vehicleStage.maintenanceStageId);
+
         }
         
-        // ✅ Enable các form items khác
+
         setIsChassisNumberLoaded(true);
-        console.log("✅ isChassisNumberLoaded set to true");
         
-        // ✅ Toast thành công - chỉ hiển thị 1 lần
+
         toast.success("Tìm thấy thông tin xe và khách hàng!");
     } catch (error) {
-      console.error("❌ Lỗi lấy thông tin từ số khung:", error);
       setVehicleInfo(null);
       setIsChassisNumberLoaded(false);
       
-      // ✅ Toast lỗi - lấy từ BE
+
       const errorMessage = error?.response?.data?.message || error?.data?.message || error?.message || "Không tìm thấy thông tin từ số khung. Vui lòng kiểm tra lại!";
       toast.error(errorMessage);
     } finally {
@@ -248,7 +240,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
     }
   };
 
-  // ====== LOAD CUSTOMERS VỚI SEARCH ======
+
   const loadCustomers = async (searchText = "") => {
     try {
       setLoadingCustomers(true);
@@ -260,33 +252,32 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
       const customersList = Array.isArray(cusRes) ? cusRes : [];
       setCustomers(customersList);
     } catch (err) {
-      console.error("Lỗi load khách hàng:", err);
       setCustomers([]);
     } finally {
       setLoadingCustomers(false);
     }
   };
 
-  // ✅ Handle search với debounce
+
   const handleCustomerSearch = (value) => {
     setCustomerSearchText(value);
     
-    // ✅ Clear timeout trước đó
+
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
     
-    // ✅ Debounce: đợi 300ms sau khi user ngừng gõ mới gọi API
+
     searchTimeoutRef.current = setTimeout(() => {
       loadCustomers(value);
     }, 300);
   };
 
-  // ====== LOAD SERVICE CENTER + STAFF INFO ======
+
   useEffect(() => {
     const fetchInit = async () => {
       try {
-        // ✅ Ưu tiên lấy serviceCenterId từ user trong localStorage
+
             const user = JSON.parse(localStorage.getItem("user") || "{}");
         let staffServiceCenterId = 
               user?.accountResponse?.serviceCenterId || 
@@ -295,14 +286,13 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
           user?.accountResponse?.staff?.serviceCenterId ||
               null;
         
-        // ✅ Nếu không có, mới gọi API (có filter theo serviceCenterId nếu đã có)
+
         if (!staffServiceCenterId) {
           try {
-            const staffInfo = await fetchServiceStaff(null); // Gọi không có filter
+            const staffInfo = await fetchServiceStaff(null);
             const staffData = staffInfo?.data?.data || staffInfo?.data || staffInfo;
             staffServiceCenterId = staffData?.serviceCenterId || null;
         } catch (err) {
-          console.error("Lỗi lấy serviceCenterId từ staff:", err);
           }
         }
 
@@ -311,13 +301,13 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
         const cenRes = await getServiceCentersService();
         setCenters(Array.isArray(cenRes) ? cenRes : []);
 
-        // ✅ Load customers lần đầu (không có search)
+
         await loadCustomers();
 
-        // ✅ Load campaigns lần đầu
+
         await loadCampaigns();
 
-        // ✅ Set serviceCenterId mặc định từ staff
+
         if (staffServiceCenterId) {
           form.setFieldsValue({ serviceCenterId: staffServiceCenterId });
         }
@@ -325,50 +315,49 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
         if (initialValues) {
           form.setFieldsValue({
             ...initialValues,
-            // ✅ Override serviceCenterId từ initialValues nếu có, nếu không thì dùng từ staff
+
             serviceCenterId: initialValues.serviceCenterId || staffServiceCenterId,
           });
 
-          // Nếu có sẵn customerId -> load xe luôn
+
           if (initialValues.customerId) {
             handleCustomerChange(initialValues.customerId, false);
           }
 
-          // Nếu có sẵn center + date -> build slot luôn
+
           const centerId = initialValues.serviceCenterId || staffServiceCenterId;
           const date = initialValues.appointmentDate;
           if (centerId && date) {
             buildSlots(centerId, date);
           }
 
-          // ✅ Nếu có sẵn vehicleId và type = MAINTENANCE_TYPE -> load vehicle stages
-          // Sử dụng setTimeout để đảm bảo vehicles đã được load xong
+
+
           if (initialValues.vehicleId && initialValues.type === "MAINTENANCE_TYPE") {
             setTimeout(() => {
               loadVehicleStages(initialValues.vehicleId, initialValues.type);
             }, 500);
           }
         } else if (staffServiceCenterId) {
-          // ✅ Nếu không có initialValues, set serviceCenterId từ staff
+
           form.setFieldsValue({ serviceCenterId: staffServiceCenterId });
         }
       } catch (err) {
-        console.error("Lỗi load dữ liệu BookingForm:", err);
       }
     };
 
     fetchInit();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
-  // ====== LOAD VEHICLES THEO CUSTOMER ======
+
   const handleCustomerChange = async (customerId, clearVehicle = true) => {
     try {
       setLoadingVehicles(true);
 
       if (clearVehicle) {
         form.setFieldsValue({ vehicleId: undefined });
-        setVehicleStages([]); // ✅ Clear vehicle stages khi clear vehicle
+        setVehicleStages([]);
       }
       if (!customerId) {
         setVehicles([]);
@@ -382,14 +371,13 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
 
       setVehicles(Array.isArray(res) ? res : []);
     } catch (err) {
-      console.error("Lỗi load xe theo khách:", err);
       setVehicles([]);
     } finally {
       setLoadingVehicles(false);
     }
   };
 
-  // ====== BUILD SLOT TỪ serviceCenterSlots ======
+
   const buildSlots = (serviceCenterId, dateObj) => {
     if (!serviceCenterId || !dateObj) {
       setAvailableSlots([]);
@@ -404,7 +392,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
       return;
     }
 
-    // DatePicker (antd v5) dùng dayjs -> dùng format YYYY-MM-DD để so với BE
+
     const dateStr = dateObj.format("YYYY-MM-DD");
 
     const slots = center.serviceCenterSlots.filter(
@@ -415,10 +403,10 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
     form.setFieldsValue({ slotTime: undefined });
   };
 
-  // ✅ Khi đổi ngày, tự động build slots với serviceCenterId hiện tại
-  // (Không cần handleServiceCenterChange nữa vì không có field chọn trung tâm)
 
-  // Khi đổi ngày
+
+
+
   const handleDateChange = (date) => {
     const centerId = form.getFieldValue("serviceCenterId") || currentServiceCenterId;
     if (centerId) {
@@ -426,15 +414,15 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
     }
   };
 
-  // ✅ Disable các ngày quá khứ (chỉ cho chọn từ hôm nay trở đi)
+
   const disabledDate = (current) => {
-    // Disable các ngày trước hôm nay
+
     return current && current < dayjs().startOf("day");
   };
 
-  // ====== LOAD VEHICLE STAGES KHI CHỌN XE VÀ TYPE = BẢO DƯỠNG ======
+
   const loadVehicleStages = async (vehicleId, type) => {
-    // ✅ Chỉ load khi type là MAINTENANCE_TYPE và có vehicleId
+
     if (type !== "MAINTENANCE_TYPE" || !vehicleId) {
       setVehicleStages([]);
       form.setFieldsValue({ vehicleStageId: undefined });
@@ -448,63 +436,56 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
         pageSize: 100,
       });
 
-      console.log("🔍 All vehicle stages from API:", stages);
       
-      // ✅ Filter lấy các stage có thể chọn: UPCOMING hoặc NO_START
-      // NO_START = chưa bắt đầu, UPCOMING = sắp tới
+
+
       const availableStages = (stages || []).filter(
         (stage) => {
           const status = stage.status?.toUpperCase();
           const isAvailable = status === "UPCOMING" || status === "NO_START";
-          console.log(`🔍 Stage ${stage.id}: status=${status}, isAvailable=${isAvailable}`);
           return isAvailable;
         }
       );
 
-      console.log("🔍 Available stages after filter:", availableStages);
-      console.log("🔍 Total available stages:", availableStages.length);
 
       setVehicleStages(availableStages);
       
-      // ✅ Tự động chọn mốc bảo dưỡng UPCOMING nếu có và chưa có giá trị
+
       const upcomingStage = availableStages.find(s => (s.status || "").toUpperCase() === "UPCOMING");
       if (upcomingStage?.id && !form.getFieldValue("vehicleStageId")) {
         form.setFieldsValue({ vehicleStageId: upcomingStage.id });
-        console.log("✅ Đã tự động chọn mốc bảo dưỡng UPCOMING:", upcomingStage.id);
       }
     } catch (err) {
-      console.error("Lỗi load mốc bảo dưỡng:", err);
       setVehicleStages([]);
     } finally {
       setLoadingVehicleStages(false);
     }
   };
 
-  // ✅ Khi đổi xe
+
   const handleVehicleChange = (vehicleId) => {
     const type = form.getFieldValue("type");
     loadVehicleStages(vehicleId, type);
   };
 
-  // ✅ Load campaigns và recalls (programs)
+
   const loadCampaigns = async () => {
     try {
       setLoadingCampaigns(true);
       const programsList = await getCampaignsService({
         page: 1,
         pageSize: 100,
-        status: "ACTIVE", // Chỉ lấy programs đang active
+        status: "ACTIVE",
       });
       
-      // ✅ Tách ra thành campaigns và recalls dựa trên type
+
       const allPrograms = Array.isArray(programsList) ? programsList : [];
-      const campaignsList = allPrograms.filter(p => p.type === "CAMPAIGN" || !p.type); // ✅ Fallback: nếu không có type thì coi như campaign
+      const campaignsList = allPrograms.filter(p => p.type === "CAMPAIGN" || !p.type);
       const recallsList = allPrograms.filter(p => p.type === "RECALL");
       
       setCampaigns(campaignsList);
       setRecalls(recallsList);
     } catch (err) {
-      console.error("Lỗi load chiến dịch và triệu hồi:", err);
       setCampaigns([]);
       setRecalls([]);
     } finally {
@@ -512,72 +493,72 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
     }
   };
 
-  // ✅ Khi đổi loại dịch vụ
+
   const handleTypeChange = (type) => {
     const vehicleId = form.getFieldValue("vehicleId");
     loadVehicleStages(vehicleId, type);
     
-    // ✅ Nếu không phải bảo dưỡng, clear vehicleStageId
+
     if (type !== "MAINTENANCE_TYPE") {
       form.setFieldsValue({ vehicleStageId: undefined });
     }
     
-    // ✅ Nếu không phải campaign, clear programId
+
     if (type !== "CAMPAIGN_TYPE") {
       form.setFieldsValue({ programId: undefined });
     }
     
-    // ✅ Nếu không phải recall, clear recallId
+
     if (type !== "RECALL_TYPE") {
       form.setFieldsValue({ recallId: undefined });
     }
   };
 
-  // ✅ Khi chọn campaign
+
   const handleCampaignChange = (programId) => {
     if (programId) {
-      // ✅ Tự động set type = CAMPAIGN_TYPE khi chọn campaign
+
       form.setFieldsValue({ 
         type: "CAMPAIGN_TYPE",
         programId: programId,
-        recallId: undefined // ✅ Clear recallId khi chọn campaign
+        recallId: undefined
       });
-      // ✅ Clear vehicleStageId khi chọn campaign (vì không dùng cho campaign)
+
       form.setFieldsValue({ vehicleStageId: undefined });
     } else {
-      // ✅ Clear programId khi bỏ chọn
+
       form.setFieldsValue({ programId: undefined });
     }
   };
 
-  // ✅ Khi chọn recall
+
   const handleRecallChange = (recallId) => {
     if (recallId) {
-      // ✅ Tự động set type = RECALL_TYPE khi chọn recall
+
       form.setFieldsValue({ 
         type: "RECALL_TYPE",
         recallId: recallId,
-        programId: undefined // ✅ Clear programId khi chọn recall
+        programId: undefined
       });
-      // ✅ Clear vehicleStageId khi chọn recall (vì không dùng cho recall)
+
       form.setFieldsValue({ vehicleStageId: undefined });
     } else {
-      // ✅ Clear recallId khi bỏ chọn
+
       form.setFieldsValue({ recallId: undefined });
     }
   };
 
-  // ====== SUBMIT ======
+
   const handleFinish = (values) => {
     const appointmentDate = values.appointmentDate
       ? values.appointmentDate.format("YYYY-MM-DD")
       : null;
 
-    // ✅ Đảm bảo serviceCenterId luôn có giá trị (từ staff hoặc form)
+
     const serviceCenterId = values.serviceCenterId || currentServiceCenterId;
 
-    // ✅ Xác định type và programId (dùng programId cho cả campaign và recall)
-    // ✅ Không set default type, bắt buộc user phải chọn
+
+
     if (!values.type) {
       toast.error("Vui lòng chọn loại dịch vụ!");
       return;
@@ -585,56 +566,56 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
     let appointmentType = values.type;
     let programId = null;
     
-    // ✅ Nếu có programId, đảm bảo type = CAMPAIGN_TYPE
+
     if (values.programId) {
       appointmentType = "CAMPAIGN_TYPE";
       programId = values.programId;
     }
     
-    // ✅ Nếu có recallId, đảm bảo type = RECALL_TYPE (nhưng vẫn gửi vào programId)
+
     if (values.recallId) {
       appointmentType = "RECALL_TYPE";
-      programId = values.recallId; // ✅ Dùng programId cho cả recall, chỉ khác type
+      programId = values.recallId;
     }
 
-    // ✅ Lấy customerId và vehicleId từ form (đã được set khi load thông tin từ số khung)
+
     const customerId = values.customerId || form.getFieldValue("customerId");
     const vehicleId = values.vehicleId || form.getFieldValue("vehicleId");
     
-    // ✅ Chỉ gửi chassisNumber, BE sẽ tự động map customerId và vehicleId
+
     if (!values.chassisNumber || values.chassisNumber.trim() === "") {
       throw new Error("Vui lòng nhập số khung!");
     }
 
-    // ✅ Chỉ gửi vehicleStageId khi type là MAINTENANCE_TYPE
+
     const vehicleStageId = appointmentType === "MAINTENANCE_TYPE" 
       ? (values.vehicleStageId || form.getFieldValue("vehicleStageId") || null)
       : null;
 
     const payload = {
       serviceCenterId: serviceCenterId,
-      customerId: customerId || null, // ✅ Gửi customerId từ API response
-      vehicleId: vehicleId || null, // ✅ Gửi vehicleId từ API response
-      vehicleStageId: vehicleStageId, // ✅ Chỉ gửi khi type là MAINTENANCE_TYPE
+      customerId: customerId || null,
+      vehicleId: vehicleId || null,
+      vehicleStageId: vehicleStageId,
       slotTime: values.slotTime,
-      campaignId: programId, // ✅ Tên field là campaignId (theo backend), giá trị là id của program
-      appointmentDate, // ✅ dùng string local
+      campaignId: programId,
+      appointmentDate,
       estimatedCost: values.estimatedCost || 0,
       actualCost: 0,
-      status: "PENDING", // ✅ Set status mặc định
+      status: "PENDING",
       type: appointmentType,
       note: values.note || "",
     };
 
     onSubmit?.(payload);
     
-    // ✅ Reset form sau khi submit thành công
+
     form.resetFields();
     setVehicles([]);
     setAvailableSlots([]);
     setVehicleStages([]);
     
-    // ✅ Set lại serviceCenterId sau khi reset
+
     if (currentServiceCenterId) {
       form.setFieldsValue({ serviceCenterId: currentServiceCenterId });
     }
@@ -649,7 +630,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
         initialValues={initialValues}
         size="large">
         
-        {/* ✅ CARD 1: TÌM KIẾM SỐ KHUNG */}
+        
         {!isChassisNumberLoaded && (
         <Card
             style={{ 
@@ -730,10 +711,10 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
           </Card>
               )}
               
-        {/* ✅ CARD 2: THÔNG TIN KHÁCH HÀNG VÀ XE - CHỈ HIỂN THỊ SAU KHI TÌM THẤY */}
+        
         {isChassisNumberLoaded && vehicleInfo && (
           <>
-              {/* ✅ Hidden field để giữ chassisNumber khi đã load thông tin */}
+              
                 <Form.Item name='chassisNumber' hidden>
                   <Input type='hidden' />
       </Form.Item>
@@ -775,11 +756,11 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                           bodyStyle={{ padding: "24px" }}>
               <Row gutter={[16, 0]}>
                 <Col xs={24}>
-              {/* ✅ Hiển thị thông tin sau khi nhập số khung */}
+              
               {vehicleInfo ? (
                 <div style={{ marginTop: 20 }}>
                   <Row gutter={[20, 20]}>
-                    {/* Card khách hàng */}
+                    
                     {vehicleInfo.customer && (
                       <Col xs={24} lg={8}>
                         <Card
@@ -870,7 +851,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                       </Col>
                     )}
                     
-                    {/* Card xe */}
+                    
                     {vehicleInfo.vehicle && (
                       <Col xs={24} lg={8}>
                         <Card 
@@ -967,7 +948,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                       </Col>
                     )}
                     
-                    {/* Card Giai đoạn bảo dưỡng */}
+                    
                     {vehicleInfo.vehicleStages && vehicleInfo.vehicleStages.some(stage => stage.status === "UPCOMING") && (
                       <Col xs={24} lg={8}>
                         <Card
@@ -1022,16 +1003,16 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                                 display: "flex",
                                 flexDirection: "column"
                               }}>
-                                {/* Tag "Sắp tới" ở hàng riêng trên cùng, căn phải */}
+                                
                                 <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
                                   <Tag color="orange" style={{ fontSize: 11, padding: "2px 8px" }}>
                                     Sắp tới
                                   </Tag>
                                 </div>
                                 
-                                {/* Nội dung 4 field chiếm full card */}
+                                
                                 <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                                  {/* Tên mốc bảo dưỡng - cùng một hàng như các field khác */}
+                                  
                                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                     <Text type="secondary" style={{ fontSize: 13, fontWeight: 600 }}>Tên mốc bảo dưỡng</Text>
                                     <Text strong style={{ fontSize: 13, color: "#262626" }}>
@@ -1065,15 +1046,15 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
           </>
         )}
 
-        {/* ✅ TRUNG TÂM DỊCH VỤ - Ẩn field, tự động set từ staff */}
+        
         <Form.Item name='serviceCenterId' hidden>
           <Input type='hidden' />
       </Form.Item>
 
-        {/* ✅ Ẩn tất cả form items khi chưa nhập số khung */}
+        
         {isChassisNumberLoaded && (
           <>
-        {/* ✅ CARD 3: LOẠI DỊCH VỤ VÀ THÔNG TIN BỔ SUNG */}
+        
         <Card
           title={
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1137,7 +1118,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
               </Form.Item>
             </Col>
 
-            {/* ✅ CAMPAIGN - Chỉ hiện khi type = CAMPAIGN_TYPE hoặc đã chọn campaign */}
+            
             {(form.getFieldValue("type") === "CAMPAIGN_TYPE" || form.getFieldValue("programId")) && (
               <Col xs={24} md={12}>
                 <Form.Item
@@ -1160,7 +1141,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                       borderRadius: 8,
                     }}>
                     {campaigns.map((campaign) => {
-                      // ✅ Lấy programId từ id (đã được map trong service)
+
                       const programId = campaign.id;
                       return (
                         <Option key={programId} value={programId}>
@@ -1176,7 +1157,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
               </Col>
             )}
 
-            {/* ✅ RECALL - Chỉ hiện khi type = RECALL_TYPE hoặc đã chọn recall */}
+            
             {(form.getFieldValue("type") === "RECALL_TYPE" || form.getFieldValue("recallId")) && (
               <Col xs={24} md={12}>
                 <Form.Item
@@ -1199,7 +1180,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                       borderRadius: 8,
                     }}>
                     {recalls.map((recall) => {
-                      // ✅ Lấy recallId từ id
+
                       const recallId = recall.id;
                       return (
                         <Option key={recallId} value={recallId}>
@@ -1215,7 +1196,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
               </Col>
             )}
 
-            {/* ✅ MỐC BẢO DƯỠNG - Chỉ hiện khi type = MAINTENANCE_TYPE */}
+            
             {form.getFieldValue("type") === "MAINTENANCE_TYPE" && (
               <Col xs={24} md={12}>
                 <Form.Item
@@ -1237,7 +1218,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                     }}>
                     {vehicleStages
                       .sort((a, b) => {
-                        // ✅ Sắp xếp: UPCOMING trước, NO_START sau
+
                         const statusA = (a.status || "").toUpperCase();
                         const statusB = (b.status || "").toUpperCase();
                         if (statusA === "UPCOMING" && statusB !== "UPCOMING") return -1;
@@ -1271,7 +1252,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
             )}
           </Row>
 
-          {/* ✅ GHI CHÚ - Chỉ hiện khi type = REPAIR_TYPE */}
+          
           {form.getFieldValue("type") === "REPAIR_TYPE" && (
             <>
               <div style={{ 
@@ -1305,7 +1286,7 @@ Nội dung sửa chữa                    </span>
           )}
         </Card>
 
-        {/* ✅ CARD 4: THỜI GIAN HẸN */}
+        
         <Card
           title={
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1394,7 +1375,7 @@ Nội dung sửa chữa                    </span>
           </Row>
         </Card>
 
-        {/* ✅ BUTTON SUBMIT */}
+        
         <Button
           type='primary'
           htmlType='submit'

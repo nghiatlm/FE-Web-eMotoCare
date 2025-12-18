@@ -41,14 +41,12 @@ export default function InformationDetail() {
         setLoading(true);
         setError(null);
 
-        // Lấy accountId từ user
         const accountId = user?.accountResponse?.id;
         if (!accountId) {
           setError("Không tìm thấy thông tin tài khoản");
           return;
         }
 
-        // Gọi API staffs với accountId
         const staffResponse = await getStaffByAccountId(accountId);
         const staffData = staffResponse?.data?.rowDatas?.[0];
         
@@ -59,19 +57,16 @@ export default function InformationDetail() {
 
         setStaff(staffData);
 
-        // Lấy serviceCenterId từ staff
         const serviceCenterId = staffData.serviceCenterId;
         if (!serviceCenterId) {
           setError("Không tìm thấy thông tin trung tâm dịch vụ");
           return;
         }
 
-        // Gọi API service center
         const centerResponse = await getServiceCenterById(serviceCenterId);
         const centerData = centerResponse?.data || centerResponse;
         setServiceCenter(centerData);
       } catch (err) {
-        console.error("Error fetching data:", err);
         setError("Không thể tải thông tin. Vui lòng thử lại sau.");
       } finally {
         setLoading(false);
@@ -104,11 +99,9 @@ export default function InformationDetail() {
     }, {});
   };
 
-  // Sort slots by time (slotTime format: H07_08, H08_09, etc.)
   const sortSlotsByTime = (slots) => {
     if (!slots || !Array.isArray(slots)) return [];
     return [...slots].sort((a, b) => {
-      // Extract hour from slotTime (e.g., "H07_08" -> 7)
       const getHour = (slotTime) => {
         if (!slotTime || !slotTime.startsWith("H")) return 0;
         const hourStr = slotTime.replace("H", "").split("_")[0];
@@ -118,7 +111,6 @@ export default function InformationDetail() {
     });
   };
 
-  // Get Vietnamese day name
   const getVietnameseDay = (dayOfWeek) => {
     const days = {
       Monday: "Thứ Hai",
@@ -188,11 +180,8 @@ export default function InformationDetail() {
     return d >= weekStart && d <= weekEnd;
   });
 
-  // Tìm manager từ danh sách staffs
   const manager = serviceCenter.staffs?.find(s => s.position === "MANAGER_BRANCH");
 
-  // --- Tạo slot (cho Manager) ---
-  // SlotTime enum values từ API
   const SLOT_TIME_OPTIONS = [
     { value: "H07_08", label: "07:00 - 08:00" },
     { value: "H08_09", label: "08:00 - 09:00" },
@@ -206,7 +195,28 @@ export default function InformationDetail() {
     { value: "H17_18", label: "17:00 - 18:00" },
   ];
 
-  // Kiểm tra slot đã tồn tại chưa
+  const isPastSlot = (dateStr, slotTime) => {
+    if (!dateStr || !slotTime || !slotTime.startsWith("H")) return false;
+
+    const now = new Date();
+    const selectedDate = new Date(dateStr);
+
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const selected = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+
+    if (selected > today) return false;
+    if (selected < today) return true;
+
+    const parts = slotTime.replace("H", "").split("_");
+    const startHour = parseInt(parts[0], 10);
+    if (Number.isNaN(startHour)) return false;
+
+    const slotStart = new Date(selectedDate);
+    slotStart.setHours(startHour, 0, 0, 0);
+
+    return slotStart <= now;
+  };
+
   const isSlotExists = (date, slotTime) => {
     if (!date || !slotTime || !serviceCenter?.serviceCenterSlots) return false;
     return serviceCenter.serviceCenterSlots.some(
@@ -214,7 +224,6 @@ export default function InformationDetail() {
     );
   };
 
-  // Lấy danh sách slot đã tồn tại cho ngày đã chọn
   const getExistingSlotsForDate = (date) => {
     if (!date || !serviceCenter?.serviceCenterSlots) return [];
     return serviceCenter.serviceCenterSlots
@@ -237,7 +246,6 @@ export default function InformationDetail() {
       return;
     }
 
-    // Kiểm tra slot đã tồn tại
     if (isSlotExists(slotForm.date, slotForm.slotTime)) {
       toastify.error(`Slot này đã tồn tại cho ngày ${format(new Date(slotForm.date), "dd/MM/yyyy", { locale: vi })}`, {
         position: "top-right",
@@ -255,7 +263,7 @@ export default function InformationDetail() {
         dayOfWeek,
         slotTime: slotForm.slotTime,
         capacity: Number(slotForm.capacity) || 0,
-        isActive: true, // Luôn kích hoạt slot sau khi tạo
+        isActive: true,
         note: slotForm.note || "",
       };
 
@@ -274,11 +282,9 @@ export default function InformationDetail() {
       });
       setIsCreateSlotOpen(false);
 
-      // Refresh service center detail
       const refreshed = await getServiceCenterById(serviceCenter.id);
       setServiceCenter(refreshed?.data || refreshed);
     } catch (error) {
-      console.error("Error creating slot:", error);
       toastify.error(error?.response?.data?.message || error?.message || "Không thể tạo slot. Vui lòng thử lại.", {
         position: "top-right",
         autoClose: 4000,
@@ -304,7 +310,6 @@ export default function InformationDetail() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Information */}
         <div className="lg:col-span-2 space-y-6">
           <Card className="border border-rose-100 shadow-md bg-white/95">
             <CardHeader className="pb-3">
@@ -328,7 +333,6 @@ export default function InformationDetail() {
             </CardContent>
           </Card>
 
-          {/* Bản đồ */}
           {(serviceCenter.latitude || serviceCenter.longitude || serviceCenter.address) && (
             <Card>
               <CardHeader>
@@ -501,7 +505,6 @@ export default function InformationDetail() {
             </CardContent>
           </Card>
 
-          {/* Dialog tạo slot cho Manager */}
           <Dialog open={isCreateSlotOpen} onOpenChange={setIsCreateSlotOpen}>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
@@ -511,7 +514,6 @@ export default function InformationDetail() {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                {/* Date */}
                 <div className="space-y-2">
                   <Label htmlFor="date">Ngày *</Label>
                   <Popover>
@@ -534,7 +536,6 @@ export default function InformationDetail() {
                         onSelect={(date) => {
                           if (date) {
                             const dateStr = format(date, "yyyy-MM-dd");
-                            // Reset slotTime nếu slot đó đã tồn tại
                             const currentSlotTime = slotForm.slotTime;
                             if (currentSlotTime && isSlotExists(dateStr, currentSlotTime)) {
                               setSlotForm({ 
@@ -554,7 +555,6 @@ export default function InformationDetail() {
                   </Popover>
                 </div>
 
-                {/* Slot Time */}
                 <div className="space-y-2">
                   <Label htmlFor="slotTime">Khung giờ *</Label>
                   <Select
@@ -562,6 +562,13 @@ export default function InformationDetail() {
                     onValueChange={(value) => {
                       if (slotForm.date && isSlotExists(slotForm.date, value)) {
                         toastify.error(`Khung giờ ${SLOT_TIME_OPTIONS.find(opt => opt.value === value)?.label} đã được tạo cho ngày ${format(new Date(slotForm.date), "dd/MM/yyyy", { locale: vi })}`, {
+                          position: "top-right",
+                          autoClose: 4000,
+                        });
+                        return;
+                      }
+                      if (slotForm.date && isPastSlot(slotForm.date, value)) {
+                        toastify.error("Không thể chọn khung giờ đã qua thời gian hiện tại.", {
                           position: "top-right",
                           autoClose: 4000,
                         });
@@ -577,18 +584,25 @@ export default function InformationDetail() {
                     <SelectContent>
                       {SLOT_TIME_OPTIONS.map((option) => {
                         const exists = slotForm.date ? isSlotExists(slotForm.date, option.value) : false;
+                        const past = slotForm.date ? isPastSlot(slotForm.date, option.value) : false;
+                        const disabled = exists || past;
                         return (
                           <SelectItem 
                             key={option.value} 
                             value={option.value}
-                            disabled={exists}
-                            className={exists ? "opacity-50 cursor-not-allowed" : ""}
+                            disabled={disabled}
+                            className={disabled ? "opacity-50 cursor-not-allowed" : ""}
                           >
                             <div className="flex items-center justify-between">
                               <span>{option.label}</span>
                               {exists && (
                                 <Badge variant="secondary" className="ml-2 text-xs">
                                   Đã có
+                                </Badge>
+                              )}
+                              {!exists && past && (
+                                <Badge variant="secondary" className="ml-2 text-xs">
+                                  Quá giờ
                                 </Badge>
                               )}
                             </div>
@@ -602,16 +616,15 @@ export default function InformationDetail() {
                       {getExistingSlotsForDate(slotForm.date).length > 0 ? (
                         <span>
                           Đã có {getExistingSlotsForDate(slotForm.date).length} slot cho ngày này. 
-                          Các slot đã tồn tại sẽ bị vô hiệu hóa.
+                          Các slot đã tồn tại hoặc đã qua thời gian hiện tại sẽ bị vô hiệu hóa.
                         </span>
                       ) : (
-                        <span>Tất cả các khung giờ đều có thể chọn.</span>
+                        <span>Các khung giờ đã qua thời gian hiện tại sẽ bị vô hiệu hóa, các khung giờ còn lại có thể chọn.</span>
                       )}
                     </p>
                   )}
                 </div>
 
-                {/* Capacity */}
                 <div className="space-y-2">
                   <Label htmlFor="capacity">Sức chứa</Label>
                   <Input
@@ -619,14 +632,32 @@ export default function InformationDetail() {
                     type="number"
                     min="0"
                     value={slotForm.capacity}
-                    onChange={(e) =>
-                      setSlotForm({ ...slotForm, capacity: parseInt(e.target.value, 10) || 0 })
-                    }
+                    onFocus={(e) => {
+                      if (e.target.value === "0") {
+                        setSlotForm({ ...slotForm, capacity: "" });
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const value = e.target.value.trim();
+                      setSlotForm({
+                        ...slotForm,
+                        capacity: value === "" ? 0 : parseInt(value, 10) || 0,
+                      });
+                    }}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === "") {
+                        setSlotForm({ ...slotForm, capacity: "" });
+                      } else {
+                        setSlotForm({
+                          ...slotForm,
+                          capacity: parseInt(value, 10) || 0,
+                        });
+                      }
+                    }}
                     placeholder="Nhập sức chứa"
                   />
                 </div>
-
-                {/* Note */}
                 <div className="space-y-2">
                   <Label htmlFor="note">Ghi chú</Label>
                   <Textarea
@@ -705,7 +736,7 @@ export default function InformationDetail() {
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Tổng nhân viên</span>
                 <span className="text-2xl font-bold text-foreground">
-                  {serviceCenter.staffs?.length || 0}
+                  {serviceCenter.staffs?.filter(s => s.position !== "MANAGER_BRANCH").length || 0}
                 </span>
               </div>
               <div className="flex justify-between items-center">

@@ -20,14 +20,9 @@ const TechnicianDashboard = () => {
     fetchBookings();
   }, []);
 
-  // ✅ useBookings hook đã tự động lọc bookings theo technician rồi
-  // Không cần lọc lại nữa
   const assignedBookings = Array.isArray(bookings) ? bookings : [];
   
-  // Debug log
-  console.log("TechnicianDashboard - Bookings loaded:", assignedBookings.length);
 
-  // Tính toán thống kê
   const stats = {
     total: assignedBookings.length,
     inService: assignedBookings.filter(b => {
@@ -39,21 +34,18 @@ const TechnicianDashboard = () => {
     canceled: assignedBookings.filter(b => b.status?.toUpperCase() === "CANCELED").length,
   };
 
-  // Booking hôm nay
   const today = dayjs().startOf("day");
   const todayBookings = assignedBookings.filter(b => {
     const bookingDate = dayjs(b.appointmentDate);
     return bookingDate.isSame(today, "day");
   });
 
-  // Booking sắp tới (trong 7 ngày tới)
   const next7Days = dayjs().add(7, "day");
   const upcomingBookings = assignedBookings.filter(b => {
     const bookingDate = dayjs(b.appointmentDate);
     return bookingDate.isAfter(today) && bookingDate.isBefore(next7Days);
   });
 
-  // Thống kê theo loại dịch vụ (5 loại)
   const serviceTypeStats = {
     maintenance: assignedBookings.filter(b => 
       (b.type || "").toUpperCase() === "MAINTENANCE_TYPE"
@@ -72,14 +64,12 @@ const TechnicianDashboard = () => {
     ).length,
   };
 
-  // Booking đang xử lý (cần làm ngay)
   const inProgressBookings = assignedBookings.filter(b => {
     const status = b.status?.toUpperCase();
     return status === "CHECKED_IN" || status === "IN_SERVICE" || 
            status === "QUOTE_APPROVED" || status === "REPAIR_IN_PROGRESS";
   }).slice(0, 5);
 
-  // Booking gần đây (5 booking mới nhất)
   const recentBookings = [...assignedBookings]
     .sort((a, b) => dayjs(b.createdAt || b.appointmentDate).diff(dayjs(a.createdAt || a.appointmentDate)))
     .slice(0, 5);
@@ -137,8 +127,8 @@ const TechnicianDashboard = () => {
       key: "customer",
       render: (_, record) => {
         const customer = record.customer;
-        if (!customer) return "-";
-        return `${customer.firstName || ""} ${customer.lastName || ""}`.trim() || "-";
+        if (!customer) return "";
+        return `${customer.firstName || ""} ${customer.lastName || ""}`.trim() || "";
       },
     },
     {
@@ -151,7 +141,7 @@ const TechnicianDashboard = () => {
       title: "Ngày hẹn",
       dataIndex: "appointmentDate",
       key: "appointmentDate",
-      render: (date) => date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "-",
+      render: (date) => date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "",
     },
     {
       title: "Trạng thái",
@@ -167,7 +157,7 @@ const TechnicianDashboard = () => {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
+      
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2 flex items-center gap-3" style={{ color: "#ff4d4f" }}>
           <LayoutDashboard className="h-8 w-8" />
@@ -176,7 +166,7 @@ const TechnicianDashboard = () => {
         <p className="text-muted-foreground">Tổng quan công việc của bạn</p>
       </div>
 
-      {/* Stats Cards */}
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <Statistic
@@ -215,7 +205,7 @@ const TechnicianDashboard = () => {
         </Card>
       </div>
 
-      {/* Secondary Stats */}
+      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <Statistic
@@ -246,7 +236,7 @@ const TechnicianDashboard = () => {
         </Card>
       </div>
 
-      {/* Service Type Breakdown */}
+      
       <Card title={
         <Space>
           <Activity style={{ color: "#ff4d4f" }} />
@@ -277,7 +267,7 @@ const TechnicianDashboard = () => {
         </div>
       </Card>
 
-      {/* In Progress Bookings */}
+      
       {inProgressBookings.length > 0 && (
         <Card 
           title={
@@ -297,7 +287,7 @@ const TechnicianDashboard = () => {
         </Card>
       )}
 
-      {/* Recent Bookings */}
+      
       <Card 
         title={
           <Space>

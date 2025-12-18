@@ -239,7 +239,6 @@ export default function Campaigns() {
         setSyncStatus("success");
         setLastSync(new Date().toISOString());
         toast.success("Đồng bộ chiến dịch thành công");
-        // refresh list after sync
         fetchCampaigns(pagination.current, pagination.pageSize);
       } else {
         setSyncStatus("error");

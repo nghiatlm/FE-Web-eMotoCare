@@ -1,8 +1,7 @@
-// src/pages/service-staff/StaffVehicleRepairHistoryPage.jsx
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Table, Tag, Button, Card, Spin, Empty, Space, Typography } from "antd";
-import { ArrowLeft, Car, Hash, Palette, Wrench, User, Phone, Mail } from "lucide-react";
+import { ArrowLeft, Car, Hash, Palette, Wrench, User, Phone, Mail, FileText } from "lucide-react";
 import { toast } from "react-toastify";
 import dayjs from "dayjs";
 import { STATUS_COLORS, STATUS_MAP, UI_COLORS } from "../../utils/constants";
@@ -11,10 +10,15 @@ import { fetchAppointments } from "../../services/appointmentService";
 import { getAppointmentById } from "../../api/appointmentsApi";
 import PaymentInfo from "../../components/service-staff/PaymentInfo";
 import PaymentHistory from "../../components/service-staff/PaymentHistory";
+import { fetchEVCheckByAppointmentService } from "../../services/evcheckService";
+import RepairModeEVCheck from "../../components/technician/detail-content/RepairModeEVCheck";
+import RMARepairModeEVCheck from "../../components/technician/detail-content/RMARepairModeEVCheck";
+import MaintenanceModeEVCheck from "../../components/technician/detail-content/MaintenanceModeEVCheck";
+import CampaignModeEVCheck from "../../components/technician/detail-content/CampaignModeEVCheck";
 
 const { Text } = Typography;
 
-// ✅ Hàm dịch màu sắc từ tiếng Anh sang tiếng Việt
+
 const translateColor = (color) => {
   if (!color) return "";
   const colorUpper = String(color).trim().toUpperCase();
@@ -45,8 +49,10 @@ export default function StaffVehicleRepairHistoryPage() {
   const [vehicleInfo, setVehicleInfo] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [loadingBooking, setLoadingBooking] = useState(false);
+  const [currentEVCheckId, setCurrentEVCheckId] = useState(null);
+  const [evCheckStatus, setEvCheckStatus] = useState(null);
+  const [loadingEVCheck, setLoadingEVCheck] = useState(false);
 
-  // ================== LOAD APPOINTMENTS ==================
   const loadAppointments = async () => {
     if (!vehicleId) return;
 
@@ -57,7 +63,6 @@ export default function StaffVehicleRepairHistoryPage() {
         pageSize: 1000,
       });
 
-      // ✅ Parse response
       let appointmentsList = [];
       if (Array.isArray(response)) {
         appointmentsList = response;
@@ -73,46 +78,68 @@ export default function StaffVehicleRepairHistoryPage() {
         appointmentsList = response.data.data.rowDatas;
       }
 
-      // ✅ Filter appointments của xe này và đã hoàn thành
       const vehicleAppointments = appointmentsList.filter(
         (apt) =>
           apt.vehicle?.id === vehicleId &&
           (apt.status === "COMPLETED" || apt.status === "REPAIR_COMPLETED")
       );
 
-      // ✅ Sắp xếp theo ngày (mới nhất trước)
       vehicleAppointments.sort((a, b) => {
         const dateA = new Date(a.appointmentDate || a.createdAt);
         const dateB = new Date(b.appointmentDate || b.createdAt);
         return dateB - dateA;
       });
 
-      // ✅ Lấy thông tin xe và khách hàng từ appointment đầu tiên
       if (vehicleAppointments.length > 0) {
         setVehicleInfo({
           vehicle: vehicleAppointments[0].vehicle,
           customer: vehicleAppointments[0].customer,
         });
         
-        // ✅ Tự động load thông tin thanh toán của appointment đầu tiên
         const firstAppointmentId = vehicleAppointments[0].id;
         if (firstAppointmentId) {
-          // ✅ Load booking detail của appointment đầu tiên
           try {
+            setLoadingBooking(true);
+            setLoadingEVCheck(true);
+            
             const res = await getAppointmentById(firstAppointmentId);
             const bookingData = res?.data?.data || res?.data || res;
             if (bookingData) {
               setSelectedBooking(bookingData);
+              
+              try {
+                const evCheck = await fetchEVCheckByAppointmentService(bookingData.id);
+                if (evCheck) {
+                  let evCheckData = null;
+                  if (Array.isArray(evCheck)) {
+                    evCheckData = evCheck[evCheck.length - 1];
+                  } else if (evCheck?.data?.rowDatas && Array.isArray(evCheck.data.rowDatas)) {
+                    evCheckData = evCheck.data.rowDatas[evCheck.data.rowDatas.length - 1];
+                  } else if (evCheck?.rowDatas && Array.isArray(evCheck.rowDatas)) {
+                    evCheckData = evCheck.rowDatas[evCheck.rowDatas.length - 1];
+                  } else {
+                    evCheckData = evCheck;
+                  }
+
+                  if (evCheckData) {
+                    setCurrentEVCheckId(evCheckData.id);
+                    setEvCheckStatus(evCheckData.status || null);
+                  }
+                }
+              } catch (evErr) {
+              } finally {
+                setLoadingEVCheck(false);
+              }
             }
           } catch (err) {
-            console.error("❌ Lỗi khi tự động load booking đầu tiên:", err);
+          } finally {
+            setLoadingBooking(false);
           }
         }
       }
 
       setAppointments(vehicleAppointments);
     } catch (err) {
-      console.error("❌ Lỗi khi tải lịch sử sửa chữa:", err);
       toast.error(
         err?.response?.data?.message ||
           err?.message ||
@@ -127,33 +154,54 @@ export default function StaffVehicleRepairHistoryPage() {
     loadAppointments();
   }, [vehicleId]);
 
-  // ================== HANDLE VIEW DETAIL ==================
   const handleViewDetail = async (appointmentId) => {
-    // ✅ Nếu đang xem booking này rồi thì ẩn đi
     if (selectedBooking?.id === appointmentId) {
       setSelectedBooking(null);
+      setCurrentEVCheckId(null);
+      setEvCheckStatus(null);
       return;
     }
 
     setLoadingBooking(true);
+    setLoadingEVCheck(true);
     try {
       const res = await getAppointmentById(appointmentId);
-      // ✅ Parse response giống như StaffBookingDetailPage
       const bookingData = res?.data?.data || res?.data || res;
       if (bookingData) {
         setSelectedBooking(bookingData);
+        
+        try {
+          const evCheck = await fetchEVCheckByAppointmentService(bookingData.id);
+          if (evCheck) {
+            let evCheckData = null;
+            if (Array.isArray(evCheck)) {
+              evCheckData = evCheck[evCheck.length - 1];
+            } else if (evCheck?.data?.rowDatas && Array.isArray(evCheck.data.rowDatas)) {
+              evCheckData = evCheck.data.rowDatas[evCheck.data.rowDatas.length - 1];
+            } else if (evCheck?.rowDatas && Array.isArray(evCheck.rowDatas)) {
+              evCheckData = evCheck.rowDatas[evCheck.rowDatas.length - 1];
+            } else {
+              evCheckData = evCheck;
+            }
+
+            if (evCheckData) {
+              setCurrentEVCheckId(evCheckData.id);
+              setEvCheckStatus(evCheckData.status || null);
+            }
+          }
+        } catch (evErr) {
+        }
       } else {
         toast.error("Không tìm thấy thông tin booking");
       }
     } catch (err) {
-      console.error("❌ Lỗi khi tải thông tin booking:", err);
       toast.error("Không thể tải thông tin chi tiết");
     } finally {
       setLoadingBooking(false);
+      setLoadingEVCheck(false);
     }
   };
 
-  // ================== TABLE COLUMNS ==================
   const columns = [
     {
       title: "STT",
@@ -178,7 +226,7 @@ export default function StaffVehicleRepairHistoryPage() {
       width: 120,
       render: (_, record) => {
         const date = record.appointmentDate || record.createdAt;
-        return date ? dayjs(date).format("DD/MM/YYYY") : "—";
+        return date ? dayjs(date).format("DD/MM/YYYY") : "";
       },
     },
     {
@@ -187,7 +235,7 @@ export default function StaffVehicleRepairHistoryPage() {
       key: "slotTime",
       width: 100,
       render: (slot) => {
-        if (!slot) return "—";
+        if (!slot) return "";
         const [start, end] = slot.replace("H", "").split("_");
         return `${start}:00-${end}:00`;
       },
@@ -242,7 +290,7 @@ export default function StaffVehicleRepairHistoryPage() {
           borderRadius: 12,
           boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
         }}>
-        {/* Header */}
+        
         <div style={{ marginBottom: 24 }}>
           <Button
             icon={<ArrowLeft size={16} />}
@@ -278,10 +326,10 @@ export default function StaffVehicleRepairHistoryPage() {
             </div>
           </div>
 
-          {/* Thông tin khách hàng và xe - Cards */}
+          
           {vehicleInfo && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 24, marginBottom: 24 }}>
-              {/* Card Thông tin khách hàng */}
+              
               {vehicleInfo.customer && (
                 <Card
                   style={{ 
@@ -316,7 +364,7 @@ export default function StaffVehicleRepairHistoryPage() {
                         </Text>
                       </Space>
                       <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
-                        {vehicleInfo.customer.account?.phone || vehicleInfo.customer.phoneNumber || vehicleInfo.customer.phone || "—"}
+                        {vehicleInfo.customer.account?.phone || vehicleInfo.customer.phoneNumber || vehicleInfo.customer.phone || ""}
                       </Text>
                     </div>
                     
@@ -328,14 +376,14 @@ export default function StaffVehicleRepairHistoryPage() {
                         </Text>
                       </Space>
                       <Text strong style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
-                        {vehicleInfo.customer.account?.email || vehicleInfo.customer.email || "—"}
+                        {vehicleInfo.customer.account?.email || vehicleInfo.customer.email || ""}
                       </Text>
                     </div>
                   </div>
                 </Card>
               )}
 
-              {/* Card Thông tin phương tiện */}
+              
               {vehicleInfo.vehicle && (
                 <Card
                   style={{ 
@@ -410,7 +458,7 @@ export default function StaffVehicleRepairHistoryPage() {
           )}
         </div>
 
-        {/* Table */}
+        
         {loading ? (
           <div style={{ textAlign: "center", padding: "40px 0" }}>
             <Spin size="large" />
@@ -434,23 +482,115 @@ export default function StaffVehicleRepairHistoryPage() {
           />
         )}
 
-        {/* Hiển thị thông tin thanh toán khi bấm Xem */}
+        
         {selectedBooking && (
           <div style={{ marginTop: 24 }}>
-            {loadingBooking ? (
+            {loadingBooking || loadingEVCheck ? (
               <div style={{ textAlign: "center", padding: "40px 0" }}>
                 <Spin size="large" />
               </div>
             ) : (
-              <div style={{ marginBottom: 24 }}>
-                {selectedBooking.status === "COMPLETED" ? (
-                  // ✅ Đã hoàn thành: Hiển thị lịch sử thanh toán
-                  <PaymentHistory booking={selectedBooking} />
-                ) : (selectedBooking.status === "REPAIR_COMPLETED" || selectedBooking.status === "QUOTE_APPROVED") ? (
-                  // ✅ Chưa hoàn thành: Hiển thị thông tin thanh toán
-                  <PaymentInfo booking={selectedBooking} />
-                ) : null}
-              </div>
+              <>
+                
+                {currentEVCheckId && (
+                  <Card
+                    style={{
+                      marginBottom: 24,
+                      borderRadius: 12,
+                      border: "1px solid #e8e8e8",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                    }}
+                    bodyStyle={{ padding: "24px" }}>
+                    <h3
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 600,
+                        marginBottom: 16,
+                        color: "#d4380d",
+                        borderBottom: "1px solid #f0f0f0",
+                        paddingBottom: 12,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}>
+                      <FileText size={16} color="#d4380d" />
+                      {selectedBooking.type === "REPAIR_TYPE"
+                        ? "Phiếu sửa chữa"
+                        : selectedBooking.type === "MAINTENANCE_TYPE"
+                        ? "Kết quả kiểm tra EVCheck"
+                        : selectedBooking.type === "CAMPAIGN_TYPE"
+                        ? "Phiếu kiểm tra chiến dịch"
+                        : "Chi tiết kiểm tra"}
+                    </h3>
+                    {(() => {
+                      const isRepair = selectedBooking.type === "REPAIR_TYPE";
+                      const isMaintenance = selectedBooking.type === "MAINTENANCE_TYPE";
+                      const isCampaign = selectedBooking.type === "CAMPAIGN_TYPE";
+                      const note = (selectedBooking?.note || "").toLowerCase();
+                      const isRMABooking = note.includes("lịch thay") && note.includes("rma");
+
+                      if (isRepair && isRMABooking) {
+                        return (
+                          <RMARepairModeEVCheck
+                            key={`rma-repair-${currentEVCheckId}`}
+                            booking={selectedBooking}
+                            evCheckId={currentEVCheckId}
+                            onRefresh={() => {}}
+                            readOnly={true}
+                            forceEmpty={!currentEVCheckId}
+                          />
+                        );
+                      } else if (isRepair) {
+                        return (
+                          <RepairModeEVCheck
+                            key={`repair-${currentEVCheckId}`}
+                            booking={selectedBooking}
+                            evCheckId={currentEVCheckId}
+                            onRefresh={() => {}}
+                            readOnly={true}
+                            forceEmpty={!currentEVCheckId}
+                          />
+                        );
+                      } else if (isCampaign) {
+                        return (
+                          <CampaignModeEVCheck
+                            key={`campaign-${currentEVCheckId}`}
+                            booking={selectedBooking}
+                            evCheckId={currentEVCheckId}
+                            evCheckStatus={evCheckStatus}
+                            onRefresh={() => {}}
+                            readOnly={true}
+                            forceEmpty={!currentEVCheckId}
+                          />
+                        );
+                      } else if (isMaintenance && currentEVCheckId) {
+                        return (
+                          <MaintenanceModeEVCheck
+                            key={`maintenance-${currentEVCheckId}-${evCheckStatus}`}
+                            booking={selectedBooking}
+                            evCheckId={currentEVCheckId}
+                            evCheckStatus={evCheckStatus}
+                            setEvCheckStatus={setEvCheckStatus}
+                            readOnly={true}
+                            onRefresh={() => {}}
+                          />
+                        );
+                      }
+                      return null;
+                    })()}
+                  </Card>
+                )}
+
+                {currentEVCheckId && (
+                  <div style={{ marginBottom: 24 }}>
+                    {selectedBooking.status === "COMPLETED" ? (
+                      <PaymentHistory booking={selectedBooking} />
+                    ) : (selectedBooking.status === "REPAIR_COMPLETED" || selectedBooking.status === "QUOTE_APPROVED") ? (
+                      <PaymentInfo booking={selectedBooking} />
+                    ) : null}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

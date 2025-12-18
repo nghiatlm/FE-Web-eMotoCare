@@ -35,12 +35,10 @@ export default function UserDetail() {
         setLoading(true);
         setError(null);
         
-        // Gọi API get all với pageSize lớn để lấy tất cả users
         const response = await getUsers(1, 1000);
         const data = response?.data || response;
         const users = data?.rowDatas || data?.data || [];
         
-        // Tìm user theo id
         const foundUser = users.find((user) => user.id === id);
         
         if (foundUser) {
@@ -49,7 +47,6 @@ export default function UserDetail() {
           setError("Không tìm thấy người dùng");
         }
       } catch (err) {
-        console.error("Error fetching user detail:", err);
         setError("Không thể tải thông tin người dùng. Vui lòng thử lại sau.");
       } finally {
         setLoading(false);
@@ -61,7 +58,6 @@ export default function UserDetail() {
     }
   }, [id]);
 
-  // Translate role to Vietnamese
   const translateRole = (role) => {
     switch (role) {
       case "ROLE_ADMIN":
@@ -81,7 +77,6 @@ export default function UserDetail() {
     }
   };
 
-  // Translate position to Vietnamese
   const translatePosition = (position) => {
     switch (position) {
       case "TECHNICIAN_STAFF":
@@ -97,7 +92,6 @@ export default function UserDetail() {
     }
   };
 
-  // Translate gender to Vietnamese
   const translateGender = (gender) => {
     switch (gender) {
       case "MALE":
@@ -109,7 +103,6 @@ export default function UserDetail() {
     }
   };
 
-  // Translate status to Vietnamese
   const translateStatus = (status) => {
     switch (status) {
       case "ACTIVE":
@@ -168,7 +161,6 @@ export default function UserDetail() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-background to-slate-50/50 p-8">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="space-y-2">
             <Button 
@@ -196,7 +188,6 @@ export default function UserDetail() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Thông tin tài khoản */}
           <Card className="rounded-xl border-2 border-border/60 bg-gradient-to-br from-card to-muted/20 shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
             <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-border/60">
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -245,7 +236,6 @@ export default function UserDetail() {
             </CardContent>
           </Card>
 
-          {/* Thông tin nhân viên (nếu có) */}
           {staff && (
             <Card className="rounded-xl border-2 border-border/60 bg-gradient-to-br from-card to-muted/20 shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
               <CardHeader className="bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent border-b border-border/60">
@@ -330,7 +320,6 @@ export default function UserDetail() {
             </Card>
           )}
 
-          {/* Thông tin khách hàng (nếu có) */}
           {customer && (
             <Card className="rounded-xl border-2 border-border/60 bg-gradient-to-br from-card to-muted/20 shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
               <CardHeader className="bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent border-b border-border/60">
@@ -404,8 +393,6 @@ export default function UserDetail() {
               </CardContent>
             </Card>
           )}
-
-          {/* Thông tin chi nhánh (nếu có) */}
           {serviceCenter && (
             <Card className="rounded-xl border-2 border-border/60 bg-gradient-to-br from-card to-muted/20 shadow-lg overflow-hidden hover:shadow-xl transition-shadow md:col-span-2">
               <CardHeader className="bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border-b border-border/60">
