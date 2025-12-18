@@ -530,6 +530,12 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
 
     try {
       setLoadingVehicleStages(true);
+      // ✅ Clear giá trị ngay khi bắt đầu load để tránh hiển thị ID cũ
+      const currentVehicleStageId = form.getFieldValue("vehicleStageId");
+      if (currentVehicleStageId) {
+        form.setFieldsValue({ vehicleStageId: undefined });
+      }
+      
       const stages = await getVehicleStagesService(vehicleId, {
         page: 1,
         pageSize: 100,
@@ -551,11 +557,25 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
       
 
       const upcomingStage = availableStages.find(s => (s.status || "").toUpperCase() === "UPCOMING");
-      if (upcomingStage?.id && !form.getFieldValue("vehicleStageId")) {
-        form.setFieldsValue({ vehicleStageId: upcomingStage.id });
+      
+      // ✅ Sau khi load xong, set lại giá trị nếu có trong initialValues hoặc chọn upcoming stage
+      if (currentVehicleStageId) {
+        const stageExists = availableStages.find(s => s.id === currentVehicleStageId);
+        if (stageExists) {
+          // Chỉ set lại nếu tìm thấy trong danh sách (tránh hiển thị ID)
+          setTimeout(() => {
+            form.setFieldsValue({ vehicleStageId: currentVehicleStageId });
+          }, 100);
+        }
+      } else if (upcomingStage?.id) {
+        // ✅ Tự động chọn upcoming stage nếu chưa có vehicleStageId
+        setTimeout(() => {
+          form.setFieldsValue({ vehicleStageId: upcomingStage.id });
+        }, 100);
       }
     } catch (err) {
       setVehicleStages([]);
+      form.setFieldsValue({ vehicleStageId: undefined });
     } finally {
       setLoadingVehicleStages(false);
     }
@@ -1317,7 +1337,21 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                     style={{ 
                       width: "100%",
                       borderRadius: 8,
-                    }}>
+                    }}
+                    showSearch
+                    optionFilterProp="children"
+                    filterOption={(input, option) => {
+                      const text = option?.children?.props?.children?.[0]?.props?.children || "";
+                      return text.toLowerCase().includes(input.toLowerCase());
+                    }}
+                    notFoundContent={loadingVehicleStages ? <Spin size="small" /> : "Không có mốc bảo dưỡng"}
+                    value={(() => {
+                      const selectedId = form.getFieldValue("vehicleStageId");
+                      if (!selectedId || vehicleStages.length === 0) return undefined;
+                      const selectedStage = vehicleStages.find(s => s.id === selectedId);
+                      // ✅ Chỉ trả về value nếu tìm thấy stage trong danh sách (tránh hiển thị ID)
+                      return selectedStage ? selectedId : undefined;
+                    })()}>
                     {vehicleStages
                       .sort((a, b) => {
 
@@ -1331,13 +1365,13 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                         const status = (stage.status || "").toUpperCase();
                         const statusLabel = status === "UPCOMING" ? "Sắp tới" : status === "NO_START" ? "Chưa bắt đầu" : "";
                         const isUpcoming = status === "UPCOMING";
+                        const displayName = `${stage.maintenanceStage?.name || "Mốc bảo dưỡng"}${stage.maintenanceStage?.mileage ? ` - ${stage.maintenanceStage.mileage}` : ""}`;
                         
                         return (
                       <Option key={stage.id} value={stage.id}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                               <span>
-                        {stage.maintenanceStage?.name || "Mốc bảo dưỡng"} -{" "}
-                        {stage.maintenanceStage?.mileage || ""}
+                        {displayName}
                               </span>
                               {statusLabel && (
                                 <Tag color={isUpcoming ? "red" : "default"} style={{ margin: 0 }}>

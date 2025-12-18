@@ -1,4 +1,16 @@
 import { STATUS_COLORS, STATUS_MAP, UI_COLORS } from "../../utils/constants";
+
+const SLOT_LABEL_MAP = {
+  H07_08: "07:00 - 08:00",
+  H08_09: "08:00 - 09:00",
+  H09_10: "09:00 - 10:00",
+  H10_11: "10:00 - 11:00",
+  H13_14: "13:00 - 14:00",
+  H14_15: "14:00 - 15:00",
+  H15_16: "15:00 - 16:00",
+  H16_17: "16:00 - 17:00",
+  H17_18: "17:00 - 18:00",
+};
 import {
   Button,
   Tag,
@@ -104,6 +116,9 @@ import MaintenanceModeEVCheck from "../../components/technician/detail-content/M
 import CampaignModeEVCheck from "../../components/technician/detail-content/CampaignModeEVCheck";
 import { useBookings } from "../../hooks/useBookings";
 import useAppointmentHub from "../../hooks/useAppointmentHub";
+import { fetchAppointments } from "../../services/appointmentService";
+import { getServiceCenterById } from "../../api/serviceCentersApi";
+import dayjs from "dayjs";
 
 export default function StaffBookingDetailPage() {
   const { id } = useParams();
@@ -131,6 +146,10 @@ export default function StaffBookingDetailPage() {
   const [checkinCodeInput, setCheckinCodeInput] = useState("");
   const [km, setKm] = useState("");
   const [hasOdometer, setHasOdometer] = useState(false);
+  const [isSlotSelectionModalOpen, setIsSlotSelectionModalOpen] = useState(false);
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [selectedSlotForCheckIn, setSelectedSlotForCheckIn] = useState(null);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   const loadBookingDetailRef = useRef(null);
 
@@ -526,6 +545,173 @@ export default function StaffBookingDetailPage() {
     }
   };
 
+  // ✅ Kiểm tra slot còn trống không
+  const checkSlotAvailability = async (serviceCenterId, appointmentDate, slotTime) => {
+    try {
+      // Lấy danh sách appointments trong cùng ngày và slot
+      const appointments = await fetchAppointments({
+        page: 1,
+        pageSize: 1000,
+        serviceCenterId,
+      });
+
+      const appointmentList = appointments?.data?.rowDatas || appointments?.data || appointments || [];
+      const dateStr = dayjs(appointmentDate).format("YYYY-MM-DD");
+
+      // Đếm số appointments đã CHECKED_IN hoặc đang xử lý trong slot đó
+      const bookedCount = appointmentList.filter((apt) => {
+        const aptDate = dayjs(apt.appointmentDate).format("YYYY-MM-DD");
+        const isSameDate = aptDate === dateStr;
+        const isSameSlot = apt.slotTime === slotTime;
+        const isActive = ["CHECKED_IN", "QUOTE_APPROVED", "REPAIR_COMPLETED", "IN_SERVICE"].includes(apt.status);
+        return isSameDate && isSameSlot && isActive && apt.id !== booking?.id;
+      }).length;
+
+      // Lấy thông tin service center để biết capacity của slot
+      const centerRes = await getServiceCenterById(serviceCenterId);
+      const center = centerRes?.data?.data || centerRes?.data || centerRes;
+      const slot = center?.serviceCenterSlots?.find(
+        (s) => s.date === dateStr && s.slotTime === slotTime && s.isActive
+      );
+
+      const capacity = slot?.capacity || 1; // Mặc định capacity = 1 nếu không có
+      return bookedCount < capacity;
+    } catch (error) {
+      console.error("Error checking slot availability:", error);
+      return true; // Nếu lỗi, cho phép check-in để không block user
+    }
+  };
+
+  // ✅ Kiểm tra xem có slot sớm hơn slot hiện tại còn trống không
+  const checkForEarlierAvailableSlots = async (serviceCenterId, appointmentDate, currentSlotTime) => {
+    try {
+      const centerRes = await getServiceCenterById(serviceCenterId);
+      const center = centerRes?.data?.data || centerRes?.data || centerRes;
+      if (!center?.serviceCenterSlots) return false;
+
+      const dateStr = dayjs(appointmentDate).format("YYYY-MM-DD");
+      const allSlots = center.serviceCenterSlots
+        .filter((s) => s.date === dateStr && s.isActive)
+        .sort((a, b) => {
+          const getHour = (slotTime) => {
+            const match = slotTime?.match(/H(\d{2})_(\d{2})/);
+            return match ? parseInt(match[1], 10) : 0;
+          };
+          return getHour(a.slotTime) - getHour(b.slotTime);
+        });
+
+      // Lấy giờ bắt đầu của slot hiện tại
+      const getCurrentSlotHour = (slotTime) => {
+        const match = slotTime?.match(/H(\d{2})_(\d{2})/);
+        return match ? parseInt(match[1], 10) : 0;
+      };
+      const currentSlotHour = getCurrentSlotHour(currentSlotTime);
+
+      // Tìm các slot sớm hơn slot hiện tại
+      const earlierSlots = allSlots.filter((slot) => {
+        const slotHour = getCurrentSlotHour(slot.slotTime);
+        return slotHour < currentSlotHour;
+      });
+
+      // Kiểm tra xem có slot sớm hơn nào còn trống không
+      for (const slot of earlierSlots) {
+        const isAvailable = await checkSlotAvailability(serviceCenterId, appointmentDate, slot.slotTime);
+        if (isAvailable) {
+          return true; // Có ít nhất một slot sớm hơn còn trống
+        }
+      }
+
+      return false; // Không có slot sớm hơn còn trống
+    } catch (error) {
+      console.error("Error checking for earlier available slots:", error);
+      return false;
+    }
+  };
+
+  // ✅ Load tất cả các slot available để user chọn
+  const loadAvailableSlots = async (serviceCenterId, appointmentDate, currentSlotTime) => {
+    try {
+      setLoadingSlots(true);
+      const centerRes = await getServiceCenterById(serviceCenterId);
+      const center = centerRes?.data?.data || centerRes?.data || centerRes;
+      if (!center?.serviceCenterSlots) {
+        setAvailableSlots([]);
+        return;
+      }
+
+      const dateStr = dayjs(appointmentDate).format("YYYY-MM-DD");
+      const allSlots = center.serviceCenterSlots
+        .filter((s) => s.date === dateStr && s.isActive)
+        .sort((a, b) => {
+          const getHour = (slotTime) => {
+            const match = slotTime?.match(/H(\d{2})_(\d{2})/);
+            return match ? parseInt(match[1], 10) : 0;
+          };
+          return getHour(a.slotTime) - getHour(b.slotTime);
+        });
+
+      // Kiểm tra availability cho từng slot
+      const availableSlotsList = [];
+      for (const slot of allSlots) {
+        const isAvailable = await checkSlotAvailability(serviceCenterId, appointmentDate, slot.slotTime);
+        if (isAvailable) {
+          availableSlotsList.push({
+            slotTime: slot.slotTime,
+            label: SLOT_LABEL_MAP[slot.slotTime] || slot.slotTime,
+            capacity: slot.capacity || 1,
+          });
+        }
+      }
+
+      setAvailableSlots(availableSlotsList);
+      
+      // Tự động chọn slot hiện tại (lịch đặt) nếu còn available, nếu không chọn slot đầu tiên
+      if (availableSlotsList.length > 0) {
+        const currentSlotExists = availableSlotsList.find(s => s.slotTime === currentSlotTime);
+        setSelectedSlotForCheckIn(currentSlotExists ? currentSlotTime : availableSlotsList[0].slotTime);
+      } else {
+        // Nếu không còn slot nào, vẫn cho phép check-in với slot hiện tại
+        setSelectedSlotForCheckIn(currentSlotTime);
+        setAvailableSlots([{
+          slotTime: currentSlotTime,
+          label: SLOT_LABEL_MAP[currentSlotTime] || currentSlotTime,
+          capacity: 0,
+        }]);
+      }
+    } catch (error) {
+      console.error("Error loading available slots:", error);
+      setAvailableSlots([]);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
+  // ✅ Hàm thực hiện check-in với slot đã chọn
+  const performCheckIn = async (slotTime) => {
+    try {
+      await changeAppointmentStatusService(booking.id, "CHECKED_IN", {
+        code: booking.code,
+        checkinQRCode: booking.checkinQRCode,
+        slotTime: slotTime,
+      });
+
+      toast.success("Check-in thành công!");
+      updateStatus(booking.id, "CHECKED_IN");
+      setCheckinCodeInput("");
+      setIsSlotSelectionModalOpen(false);
+      setSelectedSlotForCheckIn(null);
+      setAvailableSlots([]);
+      loadBookingDetail(); // ✅ Reload để cập nhật slotTime mới
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message ||
+          error?.data?.message ||
+          error?.message ||
+          "Check-in thất bại!"
+      );
+    }
+  };
+
   const handleManualCheckIn = async () => {
     if (!booking.checkinQRCode) {
       toast.error("Lịch hẹn chưa có mã QR check-in!");
@@ -543,14 +729,52 @@ export default function StaffBookingDetailPage() {
     }
 
     try {
-      await changeAppointmentStatusService(booking.id, "CHECKED_IN", {
-        code: booking.code,
-        checkinQRCode: booking.checkinQRCode,
-      });
+      const serviceCenterId = booking?.serviceCenterId || booking?.serviceCenter?.id;
+      const appointmentDate = booking?.appointmentDate;
+      const currentSlotTime = booking?.slotTime;
 
-      toast.success("Check-in thành công!");
-      updateStatus(booking.id, "CHECKED_IN");
-      setCheckinCodeInput("");
+      if (!serviceCenterId || !appointmentDate || !currentSlotTime) {
+        // Nếu thiếu thông tin, check-in bình thường
+        await changeAppointmentStatusService(booking.id, "CHECKED_IN", {
+          code: booking.code,
+          checkinQRCode: booking.checkinQRCode,
+        });
+        toast.success("Check-in thành công!");
+        updateStatus(booking.id, "CHECKED_IN");
+        setCheckinCodeInput("");
+        return;
+      }
+
+      // ✅ Kiểm tra slot hiện tại còn trống không
+      const isSlotAvailable = await checkSlotAvailability(
+        serviceCenterId,
+        appointmentDate,
+        currentSlotTime
+      );
+
+      if (!isSlotAvailable) {
+        // ✅ Slot hiện tại đã đầy, hiển thị modal để chọn slot khác
+        await loadAvailableSlots(serviceCenterId, appointmentDate, currentSlotTime);
+        setIsSlotSelectionModalOpen(true);
+        return; // Dừng lại để đợi user chọn slot
+      }
+
+      // ✅ Kiểm tra xem có slot sớm hơn còn trống không (để cho phép khách đến sớm chọn slot sớm hơn)
+      const hasEarlierAvailableSlots = await checkForEarlierAvailableSlots(
+        serviceCenterId,
+        appointmentDate,
+        currentSlotTime
+      );
+
+      if (hasEarlierAvailableSlots) {
+        // ✅ Có slot sớm hơn còn trống, hiển thị modal để user chọn (có thể chọn slot sớm hơn hoặc giữ nguyên)
+        await loadAvailableSlots(serviceCenterId, appointmentDate, currentSlotTime);
+        setIsSlotSelectionModalOpen(true);
+        return; // Dừng lại để đợi user chọn slot
+      }
+
+      // ✅ Slot hiện tại còn trống và không có slot sớm hơn, check-in trực tiếp với slot đã đặt
+      await performCheckIn(currentSlotTime);
     } catch (error) {
       toast.error(
         error?.response?.data?.message ||
@@ -1958,6 +2182,67 @@ export default function StaffBookingDetailPage() {
             <p style={{ fontSize: 16 }}>
               Bạn có chắc muốn hủy lịch hẹn này? Không có phí hủy.
             </p>
+          )}
+        </div>
+      </Modal>
+
+      {/* ✅ Modal chọn slot khi check-in */}
+      <Modal
+        title='Chọn khung giờ'
+        open={isSlotSelectionModalOpen}
+        onOk={() => {
+          if (selectedSlotForCheckIn) {
+            performCheckIn(selectedSlotForCheckIn);
+          } else {
+            toast.error("Vui lòng chọn khung giờ!");
+          }
+        }}
+        onCancel={() => {
+          setIsSlotSelectionModalOpen(false);
+          setSelectedSlotForCheckIn(null);
+          setAvailableSlots([]);
+        }}
+        okText='Xác nhận check-in'
+        cancelText='Hủy'
+        okButtonProps={{ 
+          disabled: !selectedSlotForCheckIn || loadingSlots,
+          style: { backgroundColor: "#ff4d4f", borderColor: "#ff4d4f" }
+        }}>
+        <div style={{ padding: "16px 0" }}>
+          <p style={{ fontSize: 14, marginBottom: 16, color: "#595959" }}>
+            Lịch đặt: <strong>{SLOT_LABEL_MAP[booking?.slotTime] || booking?.slotTime}</strong>
+          </p>
+          <p style={{ fontSize: 14, marginBottom: 16, color: "#595959" }}>
+            Vui lòng chọn khung giờ để check-in (có thể chọn slot khác nếu có):
+          </p>
+          
+          {loadingSlots ? (
+            <div style={{ textAlign: "center", padding: "20px 0" }}>
+              <Spin size="large" />
+              <p style={{ marginTop: 12, color: "#8c8c8c" }}>Đang tải danh sách slot...</p>
+            </div>
+          ) : availableSlots.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "20px 0" }}>
+              <p style={{ color: "#ff4d4f" }}>Không còn slot trống nào trong ngày này.</p>
+            </div>
+          ) : (
+            <Select
+              style={{ width: "100%" }}
+              size="large"
+              value={selectedSlotForCheckIn}
+              onChange={setSelectedSlotForCheckIn}
+              placeholder="Chọn khung giờ">
+              {availableSlots.map((slot) => {
+                const isCurrentSlot = slot.slotTime === booking?.slotTime;
+                return (
+                  <Select.Option key={slot.slotTime} value={slot.slotTime}>
+                    {slot.label} 
+                    {isCurrentSlot && " (Lịch đặt)"}
+                    {slot.capacity > 1 && !isCurrentSlot && ` (Còn ${slot.capacity} chỗ)`}
+                  </Select.Option>
+                );
+              })}
+            </Select>
           )}
         </div>
       </Modal>

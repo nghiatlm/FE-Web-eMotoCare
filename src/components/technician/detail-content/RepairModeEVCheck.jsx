@@ -1290,40 +1290,46 @@ export default function RepairModeEVCheck({
           partCodeLower.includes("pin") ||
           partCodeLower.includes("lfp");
 
-        return (
-          <div className='space-y-2'>
-            <Input.TextArea
-              placeholder='Nhập kết quả kiểm tra...'
-              value={r.result ?? ""}
-              onChange={(e) => handleChange(i, "result", e.target.value)}
-              disabled={readOnly || !canEditFields}
-              autoSize={{ minRows: 2, maxRows: 8 }}
-              style={{ resize: "none", fontSize: 14, maxWidth: "100%" }}
-            />
-            {/* ✅ Hiển thị dữ liệu pin nếu bộ phận là PIN */}
-            {isBattery && r.partItemId && (
-              <div className='mt-2 p-2 border rounded bg-gray-50'>
-                {/* ✅ Hiển thị component nếu có ID thật */}
-                {r.id && !r.id.startsWith("temp_") ? (
-                  <BatteryDataDisplay
-                    evCheckDetailId={r.id}
-                    canImport={
-                      // ✅ Cho phép import pin cả trước và sau khi gửi báo giá
-                      !readOnly &&
-                      (canEditFields ||
-                        evCheckStatus === "INSPECTION_COMPLETED" ||
-                        evCheckStatus === "QUOTE_APPROVED" ||
-                        evCheckStatus === "REPAIR_IN_PROGRESS")
-                    }
-                  />
-                ) : (
-                  <div className='text-xs text-gray-500 italic p-2 bg-yellow-50 rounded'>
-                    💡 Vui lòng chọn biện pháp để tự động lưu hạng mục
-                  </div>
-                )}
+        // ✅ Nếu là pin, chỉ hiển thị BatteryDataDisplay, không có Input.TextArea
+        if (isBattery && r.partItemId && r.id && !r.id.startsWith("temp_")) {
+          return (
+            <div className='p-2 border rounded bg-gray-50'>
+              <BatteryDataDisplay
+                evCheckDetailId={r.id}
+                canImport={
+                  // ✅ Cho phép import pin cả trước và sau khi gửi báo giá
+                  !readOnly &&
+                  (canEditFields ||
+                    evCheckStatus === "INSPECTION_COMPLETED" ||
+                    evCheckStatus === "QUOTE_APPROVED" ||
+                    evCheckStatus === "REPAIR_IN_PROGRESS")
+                }
+              />
+            </div>
+          );
+        }
+        
+        // ✅ Nếu là pin nhưng chưa có ID (chưa lưu), hiển thị thông báo
+        if (isBattery && r.partItemId && (!r.id || r.id.startsWith("temp_"))) {
+          return (
+            <div className='p-2 border rounded bg-gray-50'>
+              <div className='text-xs text-gray-500 italic p-2 bg-yellow-50 rounded'>
+                💡 Vui lòng chọn biện pháp để tự động lưu hạng mục
               </div>
-            )}
-          </div>
+            </div>
+          );
+        }
+        
+        // ✅ Nếu không phải pin, hiển thị Input.TextArea như bình thường
+        return (
+          <Input.TextArea
+            placeholder='Nhập kết quả kiểm tra...'
+            value={r.result ?? ""}
+            onChange={(e) => handleChange(i, "result", e.target.value)}
+            disabled={readOnly || !canEditFields}
+            autoSize={{ minRows: 2, maxRows: 8 }}
+            style={{ resize: "none", fontSize: 14, maxWidth: "100%" }}
+          />
         );
       },
     },

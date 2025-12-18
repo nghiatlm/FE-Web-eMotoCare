@@ -166,8 +166,13 @@ export default function MaintenanceModeEVCheck({
           }
 
 
-          const partIdFromItem = item?.partItem?.part?.id || item?.maintenanceStageDetail?.part?.id || null;
-          const partTypeIdFromItem = item?.partItem?.part?.partType?.id || item?.maintenanceStageDetail?.part?.partType?.id || null;
+          // ✅ Lấy partId và partTypeId từ nhiều nguồn để cache
+          const partIdFromItem = item?.partItem?.part?.id || 
+                                 item?.maintenanceStageDetail?.part?.id ||
+                                 item?.maintenanceStageDetail?.partItem?.part?.id || null;
+          const partTypeIdFromItem = item?.partItem?.part?.partType?.id || 
+                                     item?.maintenanceStageDetail?.part?.partType?.id ||
+                                     item?.maintenanceStageDetail?.partItem?.part?.partType?.id || null;
           
 
           if (partIdFromItem && partTypeIdFromItem) {
@@ -175,6 +180,8 @@ export default function MaintenanceModeEVCheck({
               ...prev,
               [partIdFromItem]: partTypeIdFromItem
             }));
+            // ✅ Lưu partTypeId vào row để dùng sau
+            item._partTypeId = partTypeIdFromItem;
           }
 
 
@@ -208,6 +215,8 @@ export default function MaintenanceModeEVCheck({
             initialPriceService,
           status: normalizedStatus,
             exportNoteStatus,
+          // ✅ Lưu partTypeId vào row để dùng khi update giá dịch vụ
+          _partTypeId: partTypeIdFromItem || item._partTypeId || null,
           };
         })
       );
@@ -224,14 +233,21 @@ export default function MaintenanceModeEVCheck({
       setEvCheckDetails(mapped);
 
 
+      // ✅ Tự động load giá dịch vụ cho các items có remedies cần tính giá
       mapped.forEach((row) => {
+        const normalizedRemedies = (row.remedies || "").toString().toUpperCase().trim();
+        const needsPriceService = ["TUNE", "CLEAN", "REPAIR", "REPLACE", "WARRANTY"].includes(normalizedRemedies);
+        
         if (
           (!row.priceService || Number(row.priceService) === 0) &&
-            ["NONE", "TUNE", "CLEAN", "REPAIR", "REPLACE", "WARRANTY"].includes(row.remedies) &&
-          (row.partItem || row.maintenanceStageDetail?.part)
+          needsPriceService &&
+          (row.partItem || row.maintenanceStageDetail?.partItem || row.maintenanceStageDetail?.part)
         ) {
-
-          updateLaborCostForRow(row.id, row.remedies, row);
+          // ✅ Gọi với delay nhỏ để đảm bảo state đã được set
+          setTimeout(() => {
+            console.log(`🔄 [loadEVCheckDetails] Tự động load giá dịch vụ cho row.id: ${row.id}, remedies: ${normalizedRemedies}`);
+            updateLaborCostForRow(row.id, normalizedRemedies, row);
+          }, 100);
         }
       });
 
@@ -296,8 +312,25 @@ export default function MaintenanceModeEVCheck({
   };
 
   const updateLaborCostForRow = async (recordId, remedies, rowData = null) => {
+    // ✅ Normalize remedies để đảm bảo format đúng
+    const normalizedRemedies = (remedies || "").toString().toUpperCase().trim();
+    console.log(`🔄 [updateLaborCostForRow] Bắt đầu update cho recordId: ${recordId}, remedies: ${normalizedRemedies}`);
 
-    if (!["NONE", "TUNE", "CLEAN", "REPAIR", "REPLACE", "WARRANTY"].includes(remedies)) {
+    if (!["NONE", "TUNE", "CLEAN", "REPAIR", "REPLACE", "WARRANTY"].includes(normalizedRemedies)) {
+      // ✅ Nếu remedies là NONE, set priceService = 0
+      if (normalizedRemedies === "NONE") {
+        setEvCheckDetails((prev) =>
+          prev.map((row) => {
+            if (row.id !== recordId) return row;
+            return {
+              ...row,
+              priceService: 0,
+              totalAmount: (row.remedies === "REPLACE" ? Number(row.pricePart || 0) : 0) + 0,
+            };
+          })
+        );
+        return;
+      }
       setEvCheckDetails((prev) =>
         prev.map((row) => {
           if (row.id !== recordId) return row;
@@ -312,15 +345,25 @@ export default function MaintenanceModeEVCheck({
     }
     
     try {
-
+      // ✅ Ưu tiên dùng rowData nếu có (từ handleChange), nếu không thì lấy từ state
       let currentRow = rowData;
       if (!currentRow) {
         currentRow = evCheckDetails.find((r) => r.id === recordId);
       }
       
       if (!currentRow) {
+        console.warn(`⚠️ [updateLaborCostForRow] Không tìm thấy row cho recordId: ${recordId}`);
         return;
       }
+      
+      console.log(`🔍 [updateLaborCostForRow] currentRow data:`, {
+        recordId: currentRow.id,
+        hasPartItem: !!currentRow?.partItem,
+        hasMaintenanceStageDetail: !!currentRow?.maintenanceStageDetail,
+        partItemId: currentRow?.partItem?.part?.id,
+        maintenanceStageDetailPartId: currentRow?.maintenanceStageDetail?.part?.id,
+        _partTypeId: currentRow?._partTypeId,
+      });
       
 
       const partItem = currentRow?.partItem || currentRow?.maintenanceStageDetail?.partItem || null;
@@ -341,47 +384,107 @@ export default function MaintenanceModeEVCheck({
       }
       
 
-      const partId = currentRow?.partItem?.part?.id || currentRow?.maintenanceStageDetail?.part?.id || null;
+      // ✅ Lấy partId và partTypeId từ nhiều nguồn
+      const partId = currentRow?.partItem?.part?.id || 
+                     currentRow?.maintenanceStageDetail?.part?.id || 
+                     currentRow?.maintenanceStageDetail?.partItem?.part?.id || null;
       let partTypeId = null;
       
 
+      // ✅ Ưu tiên 1: Lấy từ _partTypeId nếu có (đã được set khi load details)
       if (currentRow?._partTypeId) {
         partTypeId = currentRow._partTypeId;
       }
       
 
+      // ✅ Ưu tiên 2: Lấy từ cache nếu có partId
       if (!partTypeId && partId) {
         partTypeId = partTypeIdCache[partId] || null;
       }
       
 
+      // ✅ Ưu tiên 3: Lấy trực tiếp từ partItem hoặc maintenanceStageDetail
       if (!partTypeId) {
+        // ✅ Thử nhiều cách lấy partTypeId
         partTypeId = currentRow?.partItem?.part?.partType?.id || 
-                     currentRow?.maintenanceStageDetail?.part?.partType?.id || null;
+                     currentRow?.maintenanceStageDetail?.part?.partType?.id ||
+                     currentRow?.maintenanceStageDetail?.partItem?.part?.partType?.id ||
+                     currentRow?.partItem?.partType?.id ||
+                     currentRow?.maintenanceStageDetail?.partType?.id || null;
+        
+        // ✅ Nếu tìm thấy, cache lại để dùng sau
+        if (partTypeId && partId) {
+          setPartTypeIdCache(prev => ({
+            ...prev,
+            [partId]: partTypeId
+          }));
+        }
+      }
+      
+      // ✅ Ưu tiên 4: Nếu vẫn không có partTypeId nhưng có partId, gọi API để lấy
+      if (!partTypeId && partId) {
+        try {
+          console.log(`🔄 [updateLaborCostForRow] Gọi API để lấy partTypeId cho partId: ${partId}`);
+          const { getPartById } = await import("../../../api/partsApi");
+          const partRes = await getPartById(partId);
+          const partData = partRes?.data?.data || partRes?.data || partRes;
+          partTypeId = partData?.partType?.id || partData?.partTypeId || null;
+          
+          if (partTypeId) {
+            console.log(`✅ [updateLaborCostForRow] Đã lấy được partTypeId từ API: ${partTypeId}`);
+            // ✅ Cache lại để dùng sau
+            setPartTypeIdCache(prev => ({
+              ...prev,
+              [partId]: partTypeId
+            }));
+          }
+        } catch (err) {
+          console.error(`❌ [updateLaborCostForRow] Lỗi khi gọi API getPartById:`, err);
+        }
       }
       
       if (!partTypeId) {
+        console.warn(`⚠️ [updateLaborCostForRow] Không tìm thấy partTypeId cho recordId: ${recordId}, remedies: ${normalizedRemedies}`, {
+          partId,
+          hasPartItem: !!currentRow?.partItem,
+          hasMaintenanceStageDetail: !!currentRow?.maintenanceStageDetail,
+          partItemPart: currentRow?.partItem?.part,
+          maintenanceStageDetailPart: currentRow?.maintenanceStageDetail?.part,
+          maintenanceStageDetailPartItem: currentRow?.maintenanceStageDetail?.partItem,
+          partItemPartTypeId: currentRow?.partItem?.part?.partType?.id,
+          maintenanceStageDetailPartTypeId: currentRow?.maintenanceStageDetail?.part?.partType?.id,
+          maintenanceStageDetailPartItemPartTypeId: currentRow?.maintenanceStageDetail?.partItem?.part?.partType?.id,
+          _partTypeId: currentRow?._partTypeId,
+          partTypeIdCache: partTypeIdCache[partId],
+        });
         return;
       }
       
+      console.log(`✅ [updateLaborCostForRow] Đã tìm thấy partTypeId: ${partTypeId} cho recordId: ${recordId}`);
       
       // ✅ Lấy từ "price" thay vì "laborCost" (theo yêu cầu)
-      const labor = await getLaborCostByRemediesService(partTypeId, remedies, "price");
+      const labor = await getLaborCostByRemediesService(partTypeId, normalizedRemedies, "price");
+      console.log(`💰 [updateLaborCostForRow] Giá dịch vụ nhận được: ${labor} cho recordId: ${recordId}`);
       
-      setEvCheckDetails((prev) =>
-        prev.map((row) => {
+      setEvCheckDetails((prev) => {
+        const updated = prev.map((row) => {
           if (row.id !== recordId) return row;
           const priceService = Number(labor || 0);
           const pricePart = Number(row.pricePart || 0);
           const validPart = row.remedies === "REPLACE" ? pricePart : 0;
+          console.log(`✅ [updateLaborCostForRow] Cập nhật priceService: ${priceService}, totalAmount: ${validPart + priceService} cho recordId: ${recordId}`);
           return {
             ...row,
             priceService,
             totalAmount: validPart + priceService,
           };
-        })
-      );
+        });
+        console.log(`✅ [updateLaborCostForRow] State đã được cập nhật, tìm row với recordId: ${recordId}:`, updated.find(r => r.id === recordId));
+        return updated;
+      });
     } catch (e) {
+      console.error(`❌ [updateLaborCostForRow] Lỗi khi update giá dịch vụ cho recordId: ${recordId}:`, e);
+      toast.error("Không thể cập nhật giá dịch vụ!");
     }
   };
 
@@ -548,8 +651,10 @@ export default function MaintenanceModeEVCheck({
         }
 
         if (field === "remedies") {
-          updated.remedies = value;
-          if (value !== "REPLACE") {
+          const normalizedValue = (value || "").toString().toUpperCase().trim();
+          console.log(`🔄 [handleChange] Thay đổi remedies cho recordId: ${recordId}, từ "${row.remedies}" sang "${normalizedValue}"`);
+          updated.remedies = normalizedValue;
+          if (normalizedValue !== "REPLACE") {
             updated.pricePart = 0;
           } else {
             // ✅ Khi chọn "REPLACE", set pricePart = 0 (chưa hiển thị giá)
@@ -557,11 +662,23 @@ export default function MaintenanceModeEVCheck({
             updated.pricePart = 0;
           }
           const validPricePart =
-            value === "REPLACE" ? Number(updated.pricePart || 0) : 0;
+            normalizedValue === "REPLACE" ? Number(updated.pricePart || 0) : 0;
           updated.totalAmount =
             validPricePart + Number(updated.priceService || 0);
-
-          updateLaborCostForRow(recordId, value, updated);
+          
+          // ✅ Đảm bảo updated row có đầy đủ thông tin về partTypeId
+          // ✅ Giữ nguyên _partTypeId từ row gốc nếu có
+          if (row._partTypeId && !updated._partTypeId) {
+            updated._partTypeId = row._partTypeId;
+          }
+          
+          // ✅ Gọi updateLaborCostForRow với normalized value và updated row data
+          console.log(`🔄 [handleChange] Gọi updateLaborCostForRow cho recordId: ${recordId}, remedies: ${normalizedValue}`, {
+            hasPartTypeId: !!updated._partTypeId,
+            hasPartItem: !!updated.partItem,
+            hasMaintenanceStageDetail: !!updated.maintenanceStageDetail,
+          });
+          updateLaborCostForRow(recordId, normalizedValue, updated);
           return updated;
         }
 
@@ -716,64 +833,34 @@ export default function MaintenanceModeEVCheck({
       }
 
       toast.dismiss(loadingToast);
+      toast.success("Cập nhật trạng thái thành công!");
       setStatusChanges({});
+      
+      // ✅ Cập nhật EVCheck status thành REPAIR_COMPLETED
+      await updateEVCheckService(evCheckId, { status: "REPAIR_COMPLETED" });
+      setLocalEvCheckStatus("REPAIR_COMPLETED");
+      setParentEvCheckStatus?.("REPAIR_COMPLETED");
+
+      // ✅ Cập nhật Appointment status thành REPAIR_COMPLETED
+      if (booking?.id) {
+        try {
+          const { getAppointmentById } = await import("../../../api/appointmentsApi");
+          const appointmentRes = await getAppointmentById(booking.id);
+          const currentAppointment = appointmentRes?.data?.data || appointmentRes?.data || appointmentRes;
+          
+          await changeAppointmentStatusService(booking.id, "REPAIR_COMPLETED", {
+            note: currentAppointment?.note || booking?.note || "",
+            approveById: currentAppointment?.approveById || booking?.approveById || null,
+            code: currentAppointment?.code || booking?.code || "",
+            checkinQRCode: currentAppointment?.checkinQRCode || booking?.checkinQRCode || "",
+          });
+        } catch (err) {
+          // ✅ Bỏ qua lỗi cập nhật appointment để không chặn flow
+        }
+      }
+      
+      // ✅ Load lại details sau khi đã cập nhật status
       await loadEVCheckDetails();
-      
-      // ✅ Kiểm tra xem tất cả detail đã COMPLETED chưa
-      const { getRepairDetailsList } = await import("../../../api/evcheck");
-      const res = await getRepairDetailsList(evCheckId);
-      let rawDetails = [];
-      
-      if (Array.isArray(res?.evCheckDetails)) {
-        rawDetails = res.evCheckDetails;
-      } else if (Array.isArray(res?.rowDatas) && res.rowDatas.length > 0) {
-        rawDetails = res.rowDatas[0].evCheckDetails || [];
-      } else if (res?.data) {
-        if (Array.isArray(res.data?.evCheckDetails)) {
-          rawDetails = res.data.evCheckDetails;
-        } else if (
-          Array.isArray(res.data?.rowDatas) &&
-          res.data.rowDatas.length > 0
-        ) {
-          rawDetails = res.data.rowDatas[0].evCheckDetails || [];
-        }
-      } else if (Array.isArray(res)) {
-        rawDetails = res;
-      }
-
-      rawDetails = rawDetails.filter((item) => item != null);
-
-      const allCompleted =
-        rawDetails.length > 0 &&
-        rawDetails.every((d) => d.status === "COMPLETED");
-
-      if (allCompleted) {
-        await updateEVCheckService(evCheckId, { status: "REPAIR_COMPLETED" });
-        setEvCheckStatus("REPAIR_COMPLETED");
-        toast.success("Đã hoàn thành tất cả hạng mục sửa chữa!");
-
-        if (booking?.id) {
-          try {
-
-            const { getAppointmentById } = await import("../../../api/appointmentsApi");
-            const appointmentRes = await getAppointmentById(booking.id);
-            const currentAppointment = appointmentRes?.data?.data || appointmentRes?.data || appointmentRes;
-            
-
-            await changeAppointmentStatusService(booking.id, "REPAIR_COMPLETED", {
-              note: currentAppointment?.note || booking?.note || "",
-              approveById: currentAppointment?.approveById || booking?.approveById || null,
-              code: currentAppointment?.code || booking?.code || "",
-              checkinQRCode: currentAppointment?.checkinQRCode || booking?.checkinQRCode || "",
-            });
-          } catch (err) {
-
-          }
-        }
-      } else {
-        await updateEVCheckService(evCheckId, { status: "REPAIR_COMPLETED" });
-        toast.success("Cập nhật trạng thái thành công!");
-      }
       
       onRefresh?.();
     } catch (err) {
