@@ -809,6 +809,66 @@ export default function BatteryDetailContent({ batteryData }) {
                   </Card>
                 </Col>
               )}
+              {conclusion.solution && (
+                <Col xs={24} sm={24} md={12}>
+                  <Card
+                    size="small"
+                    style={{
+                      backgroundColor: "#fff1f0",
+                      border: "1px solid #ffccc7",
+                      borderLeft: "5px solid #ff4d4f",
+                      borderRadius: "10px",
+                      height: "100%",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                    }}
+                    bodyStyle={{ padding: "20px" }}
+                    hoverable
+                  >
+                    <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+                        <div 
+                          style={{ 
+                            color: "#ff4d4f",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "8px",
+                            backgroundColor: "rgba(255, 77, 79, 0.15)",
+                          }}
+                        >
+                          <Activity size={20} />
+                        </div>
+                        <Title 
+                          level={5} 
+                          style={{ 
+                            margin: 0, 
+                            color: "#ff4d4f",
+                            fontWeight: 600,
+                            fontSize: "16px",
+                            lineHeight: "1.5",
+                          }}
+                        >
+                          Biện pháp
+                        </Title>
+                      </div>
+                      <Paragraph
+                        style={{
+                          whiteSpace: "pre-wrap",
+                          lineHeight: 1.75,
+                          color: "#262626",
+                          fontSize: "14px",
+                          margin: 0,
+                          textAlign: "justify",
+                        }}
+                      >
+                        {conclusion.solution}
+                      </Paragraph>
+                    </Space>
+                  </Card>
+                </Col>
+              )}
             </Row>
           </div>
         </div>
