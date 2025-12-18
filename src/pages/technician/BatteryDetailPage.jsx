@@ -702,6 +702,15 @@ export default function BatteryDetailPage() {
                         borderColor: "#ffccc7",
                         borderLeft: "5px solid #ff4d4f",
                       },
+                      {
+                        key: "solution",
+                        title: "Biện pháp khắc phục",
+                        icon: <Info className="h-5 w-5" />,
+                        color: "#13c2c2",
+                        bgColor: "#e6fffb",
+                        borderColor: "#87e8de",
+                        borderLeft: "5px solid #13c2c2",
+                      },
                     ];
 
                     return (

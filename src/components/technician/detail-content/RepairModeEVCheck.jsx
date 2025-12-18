@@ -559,7 +559,7 @@ export default function RepairModeEVCheck({
           }
 
 
-        const partItemForPrice = item.partItem || partOption?.partItem || null;
+        let partItemForPrice = item.partItem || partOption?.partItem || null;
         const pricePart = Number(partItemForPrice?.price || item.pricePart || 0);
         
 
