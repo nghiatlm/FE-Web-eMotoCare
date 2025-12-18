@@ -25,7 +25,8 @@ export default function Branches() {
   const [branchDetail, setBranchDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [geocodeLoading, setGeocodeLoading] = useState(false);
-  const DEFAULT_COORDS = { lat: 10.762622, lng: 106.660172 }; // TP.HCM center fallback
+  const [geocodeError, setGeocodeError] = useState("");
+  const DEFAULT_COORDS = { lat: 10.762622, lng: 106.660172 };
   const formRef = useRef(null);
   const geoTimeoutRef = useRef(null);
 
@@ -40,7 +41,6 @@ export default function Branches() {
     status: "active",
     latitude: "",
     longitude: "",
-    // Address components
     provinceCode: "",
     provinceName: "",
     districtCode: "",
@@ -78,6 +78,7 @@ export default function Branches() {
     setErrors({});
     setDistrictOptions([]);
     setWardOptions([]);
+    setGeocodeError("");
   };
 
   const validateField = (fieldName, value) => {
@@ -112,7 +113,6 @@ export default function Branches() {
           newErrors.phone = "Số điện thoại không được để trống";
         } else {
           const cleanedPhone = value.replace(/\s+/g, "").replace(/[-()]/g, "");
-          // Số điện thoại VN: bắt đầu bằng 0, số thứ 2 là 3,5,7,8,9, tổng 10 số
           const phoneRegex = /^0[35789]\d{8}$/;
           if (cleanedPhone.length !== 10) {
             newErrors.phone = "Số điện thoại phải có đúng 10 số và bắt đầu bằng số 0";
@@ -144,14 +144,12 @@ export default function Branches() {
   const validateForm = () => {
     const newErrors = {};
 
-    // Validate tên chi nhánh
     if (!form.name || form.name.trim() === "") {
       newErrors.name = "Tên chi nhánh không được để trống";
     } else if (form.name.trim().length < 3) {
       newErrors.name = "Tên chi nhánh phải có ít nhất 3 ký tự";
     }
 
-    // Validate email (nếu có)
     if (form.email && form.email.trim() !== "") {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(form.email.trim())) {
@@ -159,12 +157,10 @@ export default function Branches() {
       }
     }
 
-    // Validate số điện thoại
     if (!form.phone || form.phone.trim() === "") {
       newErrors.phone = "Số điện thoại không được để trống";
     } else {
       const cleanedPhone = form.phone.replace(/\s+/g, "").replace(/[-()]/g, "");
-      // Số điện thoại VN: bắt đầu bằng 0, số thứ 2 là 3,5,7,8,9, tổng 10 số
       const phoneRegex = /^0[35789]\d{8}$/;
       if (cleanedPhone.length !== 10) {
         newErrors.phone = "Số điện thoại phải có đúng 10 số và bắt đầu bằng số 0";
@@ -173,20 +169,14 @@ export default function Branches() {
       }
     }
 
-    // Validate địa chỉ
-    // Form edit: chỉ kiểm tra form.location
-    // Form add: kiểm tra dropdown hoặc location
     if (isEditOpen) {
-      // Form edit chỉ cần form.location
       if (!form.location || form.location.trim() === "") {
         newErrors.location = "Vui lòng nhập địa chỉ";
       } else if (form.location.trim().length < 5) {
         newErrors.location = "Địa chỉ phải có ít nhất 5 ký tự";
       }
     } else {
-      // Form add: kiểm tra dropdown hoặc location
       if (form.provinceName || form.provinceCode) {
-        // Nếu đang dùng dropdown, cần đủ các thành phần
         if (!form.districtName && !form.districtCode) {
           newErrors.location = "Vui lòng chọn Quận/Huyện";
         } else if (!form.wardName && !form.wardCode) {
@@ -195,7 +185,6 @@ export default function Branches() {
           newErrors.location = "Vui lòng nhập Số nhà, tên đường";
         }
       } else {
-        // Nếu không dùng dropdown, kiểm tra location cũ
         if (!form.location || form.location.trim() === "") {
           newErrors.location = "Vui lòng nhập địa chỉ hoặc chọn địa chỉ từ dropdown";
         } else if (form.location.trim().length < 5) {
@@ -248,7 +237,6 @@ export default function Branches() {
         status: row.status || "active",
         latitude: row.latitude || "",
         longitude: row.longitude || "",
-        // Reset các dropdown fields cho form edit
         provinceCode: "",
         provinceName: "",
         districtCode: "",
@@ -278,41 +266,72 @@ export default function Branches() {
     }
   }, [isAddOpen]);
 
-  // Geocode địa chỉ để tự động lấy lat/lng cho form add & edit
   const geocodeAddress = async (address) => {
     if (!address || address.trim().length < 3) {
       return { lat: null, lng: null };
     }
 
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-        address
-      )}&countrycodes=vn&limit=1&addressdetails=1`;
+    const addressVariants = [];
+    const trimmedAddress = address.trim();
+    
+    if (!trimmedAddress.endsWith("Vietnam") && !trimmedAddress.endsWith("Việt Nam")) {
+      addressVariants.push(`${trimmedAddress}, Vietnam`);
+      addressVariants.push(`${trimmedAddress}, Việt Nam`);
+    }
+    addressVariants.push(trimmedAddress);
+    
+    for (const addressToTry of addressVariants) {
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          addressToTry
+        )}&countrycodes=vn&limit=3&addressdetails=1&accept-language=vi`;
 
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-        },
-      });
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            "User-Agent": "EMotoCare/1.0",
+          },
+        });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (Array.isArray(data) && data.length > 0) {
-          return {
-            lat: parseFloat(data[0].lat),
-            lng: parseFloat(data[0].lon),
-          };
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data) && data.length > 0) {
+            const bestResult = data[0];
+            const result = {
+              lat: parseFloat(bestResult.lat),
+              lng: parseFloat(bestResult.lon),
+            };
+            
+            if (!isNaN(result.lat) && !isNaN(result.lng) && 
+                result.lat >= -90 && result.lat <= 90 && 
+                result.lng >= -180 && result.lng <= 180) {
+              console.log("Chi nhánh - Geocode thành công:", {
+                input: address,
+                variant: addressToTry,
+                output: result,
+                display_name: bestResult.display_name,
+                importance: bestResult.importance,
+              });
+              return result;
+            }
+          }
+        } else {
+          console.warn(`Chi nhánh - Geocode API trả về lỗi cho "${addressToTry}":`, response.status, response.statusText);
         }
+        
+        if (response.status === 429) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      } catch (error) {
+        console.error(`Chi nhánh - Lỗi khi geocode địa chỉ "${addressToTry}":`, error);
       }
-    } catch (error) {
-      console.error("Error geocoding address:", error);
     }
 
+    console.warn("Chi nhánh - Không thể geocode địa chỉ sau khi thử tất cả biến thể:", address);
     return { lat: null, lng: null };
   };
 
-  // Hàm xây dựng địa chỉ đầy đủ từ các component
   const buildFullAddress = () => {
     const parts = [];
     if (form.streetAddress?.trim()) parts.push(form.streetAddress.trim());
@@ -320,18 +339,18 @@ export default function Branches() {
     if (form.districtName?.trim()) parts.push(form.districtName.trim());
     if (form.provinceName?.trim()) parts.push(form.provinceName.trim());
     
-    // Nếu có địa chỉ đầy đủ từ dropdown, dùng nó
     if (parts.length > 0) {
-      return parts.join(", ");
+      const fullAddress = parts.join(", ");
+      if (parts.length >= 2) {
+        return fullAddress;
+      }
+      return fullAddress;
     }
     
-    // Nếu không có, dùng location cũ (backward compatible)
     return form.location || "";
   };
 
-  // Hàm tìm tọa độ khi click nút
   const handleFindCoordinates = async () => {
-    // Nếu đang ở form edit, dùng form.location; nếu ở form add, dùng buildFullAddress()
     const addressToGeocode = isEditOpen ? form.location : buildFullAddress();
     
     if (!addressToGeocode || addressToGeocode.trim().length < 3) {
@@ -343,32 +362,41 @@ export default function Branches() {
     }
 
     setGeocodeLoading(true);
+    setGeocodeError("");
     try {
       const coords = await geocodeAddress(addressToGeocode);
-      if (coords.lat && coords.lng) {
+      if (coords.lat != null && coords.lng != null) {
+        console.log("Chi nhánh - Tìm tọa độ thủ công:", {
+          latitude: coords.lat,
+          longitude: coords.lng,
+        });
         setForm((f) => ({
           ...f,
           latitude: coords.lat.toString(),
           longitude: coords.lng.toString(),
         }));
+        setGeocodeError("");
         toast.success("Đã tìm thấy tọa độ!", {
           position: "top-right",
           autoClose: 2000,
         });
       } else {
-        toast.warning("Không tìm thấy tọa độ cho địa chỉ này", {
+        console.warn(
+          "Chi nhánh - Geocode không trả lat/long cho địa chỉ:",
+          addressToGeocode
+        );
+        const errorMsg = "Không tìm được tọa độ phù hợp cho địa chỉ này. Vui lòng kiểm tra lại địa chỉ hoặc nhập tọa độ thủ công.";
+        setGeocodeError(errorMsg);
+        toast.error(errorMsg, {
           position: "top-right",
-          autoClose: 3000,
+          autoClose: 2500,
         });
-        // Xóa tọa độ cũ nếu không tìm thấy
-        setForm((f) => ({
-          ...f,
-          latitude: "",
-          longitude: "",
-        }));
       }
     } catch (error) {
-      toast.error("Lỗi khi tìm tọa độ. Vui lòng thử lại.", {
+      console.error("Lỗi khi geocode địa chỉ:", error);
+      const errorMsg = "Lỗi khi tìm tọa độ. Vui lòng thử lại hoặc nhập tọa độ thủ công.";
+      setGeocodeError(errorMsg);
+      toast.error(errorMsg, {
         position: "top-right",
         autoClose: 3000,
       });
@@ -377,7 +405,6 @@ export default function Branches() {
     }
   };
 
-  // Xử lý khi chọn tỉnh/thành phố
   const handleProvinceChange = (code) => {
     const province = provinces.find((p) => p.code === code);
     setForm((f) => ({
@@ -394,7 +421,6 @@ export default function Branches() {
     setWardOptions([]);
   };
 
-  // Xử lý khi chọn quận/huyện
   const handleDistrictChange = (code) => {
     const district = districtOptions.find((d) => d.code === code);
     setForm((f) => ({
@@ -408,7 +434,6 @@ export default function Branches() {
     setWardOptions(wards);
   };
 
-  // Xử lý khi chọn phường/xã
   const handleWardChange = (code) => {
     const ward = wardOptions.find((w) => w.code === code);
     setForm((f) => ({
@@ -418,44 +443,65 @@ export default function Branches() {
     }));
   };
 
-  // Tự động geocode khi địa chỉ thay đổi (add hoặc edit)
   useEffect(() => {
-    if (!(isAddOpen || isEditOpen)) return;
+    if (!(isAddOpen || isEditOpen)) {
+      setGeocodeError("");
+      return;
+    }
 
     if (geoTimeoutRef.current) {
       clearTimeout(geoTimeoutRef.current);
     }
 
-    // Form edit: chỉ geocode khi form.location thay đổi
-    // Form add: geocode khi dropdown hoặc location thay đổi
+    setGeocodeError("");
+
     let addressToGeocode = "";
     if (isEditOpen) {
-      // Form edit chỉ dùng form.location
       addressToGeocode = form.location || "";
     } else {
-      // Form add: dùng buildFullAddress() hoặc form.location
       const fullAddress = buildFullAddress();
       addressToGeocode = fullAddress || form.location || "";
+      
+      const hasStreetAddress = form.streetAddress?.trim().length >= 3;
+      const hasLocationInfo = form.wardName || form.districtName || form.provinceName;
+      
+      if (!hasStreetAddress || !hasLocationInfo) {
+        if (!form.location || form.location.trim().length < 10) {
+          return;
+        }
+        addressToGeocode = form.location;
+      }
     }
 
-    // Chỉ tự động geocode nếu có địa chỉ đầy đủ và chưa có tọa độ
-    const shouldGeocode = addressToGeocode.trim().length >= 3 && (!form.latitude || !form.longitude);
+    const shouldGeocode = addressToGeocode.trim().length >= 10;
     if (!shouldGeocode) {
+      if (form.latitude && form.longitude) {
+        setGeocodeError("");
+      }
       return;
     }
 
     geoTimeoutRef.current = setTimeout(async () => {
       setGeocodeLoading(true);
+      setGeocodeError("");
       const coords = await geocodeAddress(addressToGeocode);
-      if (coords.lat && coords.lng) {
+      if (coords.lat != null && coords.lng != null) {
         setForm((f) => ({
           ...f,
           latitude: coords.lat.toString(),
           longitude: coords.lng.toString(),
         }));
+        setGeocodeError("");
+        console.log("Chi nhánh - Tự động lấy tọa độ:", {
+          address: addressToGeocode,
+          latitude: coords.lat,
+          longitude: coords.lng,
+        });
+      } else {
+        setGeocodeError("Không thể tự động lấy tọa độ. Vui lòng bấm 'Làm mới' để thử lại hoặc nhập tọa độ thủ công.");
       }
       setGeocodeLoading(false);
-    }, 400);
+    }, 800);
 
     return () => {
       if (geoTimeoutRef.current) clearTimeout(geoTimeoutRef.current);
@@ -466,7 +512,6 @@ export default function Branches() {
     e.preventDefault();
     
     if (!validateForm()) {
-      // Hiển thị lỗi cụ thể từ errors object
       const errorMessages = Object.values(errors).filter(Boolean);
       if (errorMessages.length > 0) {
         toast.error(errorMessages[0], {
@@ -484,15 +529,39 @@ export default function Branches() {
 
     const tmpId = `BR-${Date.now()}`;
     const fullAddress = buildFullAddress();
+
+    let latitude = form.latitude;
+    let longitude = form.longitude;
+    const addressForGeocode = fullAddress || form.location;
+
+    if ((!latitude || !longitude) && addressForGeocode?.trim()?.length >= 3) {
+      try {
+        const coords = await geocodeAddress(addressForGeocode);
+        if (coords.lat != null && coords.lng != null) {
+          latitude = coords.lat.toString();
+          longitude = coords.lng.toString();
+          console.log("Chi nhánh - Auto geocode trước khi tạo:", {
+            latitude,
+            longitude,
+          });
+        }
+      } catch (error) {
+        console.error("Auto-geocode before create failed:", error);
+      }
+    }
+
     const body = {
       name: form.name.trim(),
       description: form.description?.trim() || "",
       email: form.email?.trim() || "",
       phone: form.phone.replace(/\s+/g, "").replace(/[-()]/g, ""),
-      address: fullAddress.trim() || form.location.trim(),
-      latitude: form.latitude || "",
-      longitude: form.longitude || "",
+      address: (fullAddress || form.location).trim(),
+      latitude: latitude || "",
+      longitude: longitude || "",
       status: "ACTIVE",
+      serviceCenterInventory: {
+        serviceCenterInventoryName: form.name.trim(),
+      },
     };
 
     try {
@@ -513,19 +582,14 @@ export default function Branches() {
         longitude: created?.longitude || form.longitude,
       };
       window?.applyAddBranch?.(mapped);
+      window?.reloadBranches?.();
       toast.success("Thêm chi nhánh thành công!", {
         position: "top-right",
         autoClose: 2000,
       });
       
-      // Đóng dialog và reset form
       setIsAddOpen(false);
       resetForm();
-      
-      // Reload trang sau 1.5 giây để cập nhật dữ liệu
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
     } catch (err) {
       toast.error(err?.response?.data?.message || "Không thể thêm chi nhánh. Vui lòng thử lại.", {
         position: "top-right",
@@ -544,7 +608,6 @@ export default function Branches() {
     if (!selected?.id) return;
 
     if (!validateForm()) {
-      // Hiển thị lỗi cụ thể từ errors object
       const errorMessages = Object.values(errors).filter(Boolean);
       if (errorMessages.length > 0) {
         toast.error(errorMessages[0], {
@@ -561,6 +624,27 @@ export default function Branches() {
     }
 
     const statusUpper = String(form.status || "active").toUpperCase();
+
+    let latitude = form.latitude;
+    let longitude = form.longitude;
+    const addressForGeocode = form.location;
+
+    if ((!latitude || !longitude) && addressForGeocode?.trim()?.length >= 3) {
+      try {
+        const coords = await geocodeAddress(addressForGeocode);
+        if (coords.lat != null && coords.lng != null) {
+          latitude = coords.lat.toString();
+          longitude = coords.lng.toString();
+          console.log("Chi nhánh - Auto geocode trước khi cập nhật:", {
+            latitude,
+            longitude,
+          });
+        }
+      } catch (error) {
+        console.error("Auto-geocode before update failed:", error);
+      }
+    }
+
     const body = {
       code: form.code,
       name: form.name.trim(),
@@ -568,8 +652,8 @@ export default function Branches() {
       email: form.email?.trim() || "",
       phone: form.phone.replace(/\s+/g, "").replace(/[-()]/g, ""),
       address: form.location.trim(),
-      latitude: form.latitude || "",
-      longitude: form.longitude || "",
+      latitude: latitude || "",
+      longitude: longitude || "",
       status: statusUpper,
     };
 
@@ -814,12 +898,44 @@ export default function Branches() {
                         disabled={geocodeLoading}
                         variant="outline"
                         className="shrink-0"
+                        title="Bấm để làm mới tọa độ (hệ thống đã tự động lấy tọa độ)"
                       >
                         <MapPin className="h-4 w-4 mr-2" />
-                        {geocodeLoading ? "Đang tìm..." : "Tìm tọa độ"}
+                        {geocodeLoading ? "Đang tìm..." : "Làm mới"}
                       </Button>
                     )}
                   </div>
+                  {geocodeLoading && (
+                    <p className="text-xs text-blue-600 flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      Đang tự động lấy tọa độ từ địa chỉ...
+                    </p>
+                  )}
+                  {!geocodeLoading && form.latitude && form.longitude && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-green-600 flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        Đã tự động lấy tọa độ:
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="bg-green-50 border border-green-200 rounded px-2 py-1">
+                          <span className="text-green-700 font-semibold">Latitude:</span>
+                          <span className="text-green-800 ml-1">{form.latitude}</span>
+                        </div>
+                        <div className="bg-green-50 border border-green-200 rounded px-2 py-1">
+                          <span className="text-green-700 font-semibold">Longitude:</span>
+                          <span className="text-green-800 ml-1">{form.longitude}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {!geocodeLoading && geocodeError && !form.latitude && !form.longitude && (
+                    <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                      <p className="font-semibold mb-1">⚠️ Lưu ý:</p>
+                      <p>{geocodeError}</p>
+                      <p className="mt-1 text-yellow-700">Bạn có thể nhập tọa độ thủ công vào các trường Latitude và Longitude bên dưới.</p>
+                    </div>
+                  )}
                 </div>
 
                 {(form.streetAddress || form.provinceName || form.location) && (
@@ -944,13 +1060,45 @@ export default function Branches() {
                       disabled={geocodeLoading}
                       variant="outline"
                       className="shrink-0"
+                      title="Bấm để làm mới tọa độ (hệ thống đã tự động lấy tọa độ)"
                     >
                       <MapPin className="h-4 w-4 mr-2" />
-                      {geocodeLoading ? "Đang tìm..." : "Tìm tọa độ"}
+                      {geocodeLoading ? "Đang tìm..." : "Làm mới"}
                     </Button>
                   )}
                 </div>
                 {errors.location && <p className="text-sm text-red-500 mt-1">{errors.location}</p>}
+                {geocodeLoading && (
+                  <p className="text-xs text-blue-600 flex items-center gap-1 mt-1">
+                    <MapPin className="h-3 w-3" />
+                    Đang tự động lấy tọa độ từ địa chỉ...
+                  </p>
+                )}
+                {!geocodeLoading && form.latitude && form.longitude && (
+                  <div className="space-y-1 mt-1">
+                    <p className="text-xs text-green-600 flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      Đã tự động lấy tọa độ:
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="bg-green-50 border border-green-200 rounded px-2 py-1">
+                        <span className="text-green-700 font-semibold">Latitude:</span>
+                        <span className="text-green-800 ml-1">{form.latitude}</span>
+                      </div>
+                      <div className="bg-green-50 border border-green-200 rounded px-2 py-1">
+                        <span className="text-green-700 font-semibold">Longitude:</span>
+                        <span className="text-green-800 ml-1">{form.longitude}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {!geocodeLoading && geocodeError && !form.latitude && !form.longitude && (
+                  <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                    <p className="font-semibold mb-1">⚠️ Lưu ý:</p>
+                    <p>{geocodeError}</p>
+                    <p className="mt-1 text-yellow-700">Bạn có thể nhập tọa độ thủ công vào các trường Latitude và Longitude bên dưới.</p>
+                  </div>
+                )}
                 
                 {form.location && (
                   <div className="mt-2 rounded-md border border-slate-200 bg-white overflow-hidden">

@@ -230,6 +230,21 @@ export function ManagerTopHeader() {
     loadProfile();
   }, [user]);
 
+  // Lắng nghe event cập nhật avatar từ trang Hồ sơ quản lý
+  useEffect(() => {
+    const handleAvatarUpdated = (event) => {
+      const newUrl = event?.detail?.avatarUrl;
+      if (newUrl) {
+        setAvatarUrl(newUrl);
+      }
+    };
+
+    window.addEventListener("manager-avatar-updated", handleAvatarUpdated);
+    return () => {
+      window.removeEventListener("manager-avatar-updated", handleAvatarUpdated);
+    };
+  }, []);
+
   return (
     <header className="h-14 bg-white border-b border-red-100 flex items-center justify-between px-4 pr-6 sticky top-0 z-10 text-red-600">
       <SidebarTrigger className="text-red-600" />

@@ -8,6 +8,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,

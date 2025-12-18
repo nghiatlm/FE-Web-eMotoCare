@@ -60,7 +60,7 @@ const getStatusBadgeClass = (status) => {
 
 export default function StorekeeperAccessoryDetail() {
   const { inventoryId, partCode } = useParams();
-  const partId = partCode; // partCode giờ là partId
+  const partId = partCode;
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -112,7 +112,6 @@ export default function StorekeeperAccessoryDetail() {
       setLoading(true);
       setError("");
       try {
-        // Gọi API với partId và serviceCenterId
         const response = await getPartItems({
           partId: resolvedPartId,
           serviceCenterId,
@@ -129,7 +128,6 @@ export default function StorekeeperAccessoryDetail() {
           return;
         }
 
-        // Lấy thông tin part từ partItem đầu tiên
         const firstPartItem = partItemsList[0];
         const part = firstPartItem?.part || {};
 
@@ -210,14 +208,12 @@ export default function StorekeeperAccessoryDetail() {
 
     return (
       <div className="space-y-6">
-        {/* Thông tin phụ tùng */}
         <Card className="rounded-2xl border border-slate-200/80 bg-white shadow-lg overflow-hidden">
           <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-b border-slate-200/80 pb-4">
             <CardTitle className="text-lg font-bold text-slate-800">Thông tin phụ tùng</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Phần bên trái: Hình ảnh và thông tin cơ bản */}
               <div className="flex items-start gap-5">
                 {partDetail.partImage ? (
                   <div className="relative h-28 w-28 rounded-xl overflow-hidden ring-4 ring-slate-100 shadow-lg flex-shrink-0">
@@ -245,7 +241,6 @@ export default function StorekeeperAccessoryDetail() {
                 </div>
               </div>
               
-              {/* Phần bên phải: Loại và Tổng tồn kho */}
               <div className="flex items-center gap-6">
                 <div className="flex-1 p-4 rounded-xl bg-slate-50 border border-slate-200">
                   <p className="text-xs font-semibold uppercase text-slate-500 mb-2 tracking-wider">Loại</p>
@@ -262,7 +257,6 @@ export default function StorekeeperAccessoryDetail() {
             </div>
           </CardContent>
         </Card>
-        {/* Danh sách partItem */}
         <Card className="rounded-2xl border border-slate-200/80 bg-white shadow-lg overflow-hidden">
           <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-b border-slate-200/80 pb-4">
             <CardTitle className="text-lg font-bold text-slate-800">

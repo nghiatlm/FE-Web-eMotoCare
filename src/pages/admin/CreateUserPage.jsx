@@ -47,7 +47,6 @@ export default function CreateUserPage() {
     password: "",
     roleName: "",
     status: "ACTIVE",
-    // Staff fields
     staffCode: "",
     firstName: "",
     lastName: "",
@@ -58,7 +57,6 @@ export default function CreateUserPage() {
     avatarUrl: "",
     position: "",
     serviceCenterId: "",
-    // Customer (optional)
     customerFirstName: "",
     customerLastName: "",
     customerAddress: "",
@@ -122,7 +120,6 @@ export default function CreateUserPage() {
         const phone = (nextForm.phone || "").trim();
         if (!phone) return "Số điện thoại không được để trống";
         const cleanedPhone = phone.replace(/\s+/g, "").replace(/[-()]/g, "");
-        // Số điện thoại VN: bắt đầu bằng 0, số thứ 2 là 3,5,7,8,9, tổng 10 số
         const phoneRegex = /^0[35789]\d{8}$/;
         if (cleanedPhone.length !== 10) {
           return "Số điện thoại phải có đúng 10 số và bắt đầu bằng số 0";
@@ -138,19 +135,9 @@ export default function CreateUserPage() {
         if (!emailRegex.test(email)) return "Email không hợp lệ. Format: example@domain.com";
         return "";
       }
-      // case "password": {
-      //   const pwd = (nextForm.password || "").trim();
-      //   if (!pwd) return "Mật khẩu là bắt buộc";
-      //   if (pwd.length < 6) return "Mật khẩu phải có ít nhất 6 ký tự";
-      //   return "";
-      // }
       case "roleName": {
         return nextForm.roleName ? "" : "Vai trò là bắt buộc";
       }
-      // // Staff fields (only when not customer)
-      // case "staffCode":
-      //   if (!isCustomer && !nextForm.staffCode.trim()) return "Mã nhân viên là bắt buộc";
-      //   return "";
       case "firstName":
         if (isCustomer) return "";
         if (!nextForm.firstName.trim()) return "Tên là bắt buộc";
@@ -187,7 +174,6 @@ export default function CreateUserPage() {
         if (isCustomer) return "";
         if (role !== "ROLE_ADMIN" && !nextForm.serviceCenterId) return "Chi nhánh là bắt buộc";
         return "";
-      // Customer fields (only when customer)
       case "customerFirstName":
         if (!isCustomer) return "";
         if (!nextForm.customerFirstName.trim()) return "Tên khách hàng là bắt buộc";
@@ -227,7 +213,6 @@ export default function CreateUserPage() {
       const err = getFieldError(key, formData);
       if (err) newErrors[key] = err;
     });
-    // Also validate serviceCenterId based on role (for admin skip)
     const role = formData.roleName;
     if (role && role !== "ROLE_ADMIN" && role !== "ROLE_CUSTOMER" && !formData.serviceCenterId) {
       newErrors.serviceCenterId = "Chi nhánh là bắt buộc";
@@ -239,10 +224,7 @@ export default function CreateUserPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form submitted", formData);
-
     if (!validateForm()) {
-      console.log("Validation failed", errors);
       toast.error("Vui lòng điền đầy đủ thông tin bắt buộc", {
         position: "top-right",
         autoClose: 4000,
@@ -258,7 +240,6 @@ export default function CreateUserPage() {
         return parts.join(", ");
       };
 
-      // Upload avatar to Firebase if selected
       let avatarUrl = formData.avatarUrl.trim();
       if (selectedAvatar) {
         try {
@@ -294,7 +275,6 @@ export default function CreateUserPage() {
         }
       }
 
-      // Format payload with nested staff & optional customer object
       const isCustomer = formData.roleName === "ROLE_CUSTOMER";
 
       const payload = {
@@ -336,7 +316,6 @@ export default function CreateUserPage() {
         }
       }
 
-      // Optional customer block
       const customer = {
         firstName: formData.customerFirstName.trim(),
         lastName: formData.customerLastName.trim(),
@@ -362,10 +341,7 @@ export default function CreateUserPage() {
         payload.customer = customer;
       }
 
-      // Call API to create user
-      console.log("Calling API with payload:", payload);
       const response = await createUser(payload);
-      console.log("API response:", response);
 
       if (response?.success !== false) {
         if (window.refreshUserList) {
@@ -382,7 +358,6 @@ export default function CreateUserPage() {
         throw new Error(response.message || "Tạo người dùng thất bại");
       }
     } catch (error) {
-      console.error("Error creating user:", error);
       toast.error(`Tạo người dùng thất bại: ${error.message || "Không thể tạo người dùng. Vui lòng thử lại."}`, {
         position: "top-right",
         autoClose: 5000,
@@ -409,8 +384,7 @@ export default function CreateUserPage() {
       };
       const err = getFieldError(field, next);
 
-      setErrors((prevErr) => {
-        // If value changes role, clear dependent sections errors
+      setErrors((prevErr) => {  
         if (field === "roleName") {
           const positionErrorReset = mappedPosition ? "" : prevErr.position;
           if (value === "ROLE_CUSTOMER") {

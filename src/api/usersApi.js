@@ -3,8 +3,19 @@ import api from "./api";
 const BASE_URL = "/v1/users";
 const user = JSON.parse(localStorage.getItem("user"));
 const token = user?.token;
-export const getUsers = (page = 1, pageSize = 10) => {
-  return api.get(`${BASE_URL}?page=${page}&pageSize=${pageSize}`, {
+export const getUsers = (page = 1, pageSize = 10, extraParams = {}) => {
+  const searchParams = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+  });
+
+  Object.entries(extraParams || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      searchParams.append(key, String(value));
+    }
+  });
+
+  return api.get(`${BASE_URL}?${searchParams.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 };

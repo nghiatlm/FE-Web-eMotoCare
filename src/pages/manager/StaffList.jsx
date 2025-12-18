@@ -13,8 +13,8 @@ export default function StaffList() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [roleFilter, setRoleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [staffs, setStaffs] = useState([]);
   const [serviceCenterId, setServiceCenterId] = useState(null);
@@ -23,14 +23,12 @@ export default function StaffList() {
   const [pageSize] = useState(10);
   const [total, setTotal] = useState(0);
 
-  // Get serviceCenterId from staff info
   useEffect(() => {
     const fetchStaffInfo = async () => {
       try {
         const accountId = user?.accountResponse?.id;
         if (!accountId) return;
 
-        // Lưu lại accountId của manager hiện tại để loại khỏi danh sách
         setCurrentAccountId(accountId);
 
         const staffResponse = await getStaffByAccountId(accountId);
@@ -49,7 +47,6 @@ export default function StaffList() {
     }
   }, [user]);
 
-  // Fetch staffs by serviceCenterId
   useEffect(() => {
     if (!serviceCenterId) return;
 
@@ -112,7 +109,6 @@ export default function StaffList() {
     }
   };
 
-  // Map position to role
   const getRoleFromPosition = (position) => {
     if (position?.includes("TECHNICIAN")) return "technician";
     if (position?.includes("SERVICE_STAFF") || position?.includes("STAFF")) return "staff";
@@ -121,7 +117,6 @@ export default function StaffList() {
     return "other";
   };
 
-  // Translate position to Vietnamese
   const translatePosition = (position) => {
     switch (position) {
       case "TECHNICIAN_STAFF":
@@ -163,8 +158,8 @@ export default function StaffList() {
         staff.phone.includes(search) ||
         staff.email.toLowerCase().includes(search.toLowerCase()) ||
         staff.staffCode.toLowerCase().includes(search.toLowerCase());
-      const matchesStatus = statusFilter === "all" || staff.status === statusFilter;
-      const matchesRole = roleFilter === "all" || staff.role === roleFilter;
+      const matchesStatus = !statusFilter || staff.status === statusFilter;
+      const matchesRole = !roleFilter || staff.role === roleFilter;
       return matchesSearch && matchesStatus && matchesRole;
     });
 
@@ -198,7 +193,6 @@ export default function StaffList() {
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
                 <SelectItem value="active">Đang làm việc</SelectItem>
                 <SelectItem value="inactive">Nghỉ việc</SelectItem>
               </SelectContent>
@@ -209,21 +203,20 @@ export default function StaffList() {
                 <SelectValue placeholder="Vai trò" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
                 <SelectItem value="technician">Kỹ thuật viên</SelectItem>
                 <SelectItem value="staff">Nhân viên dịch vụ</SelectItem>
                 <SelectItem value="storekeeper">Thủ kho</SelectItem>
               </SelectContent>
             </Select>
 
-            {(search || statusFilter !== "all" || roleFilter !== "all") && (
+            {(search || statusFilter || roleFilter) && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
                   setSearch("");
-                  setStatusFilter("all");
-                  setRoleFilter("all");
+                  setStatusFilter("");
+                  setRoleFilter("");
                 }}
                 className="border-transparent text-slate-600 hover:text-red-600 hover:bg-red-50"
               >
@@ -234,7 +227,7 @@ export default function StaffList() {
         </div>
 
         <p className="text-sm text-slate-600">
-          {search || statusFilter !== "all" || roleFilter !== "all"
+          {search || statusFilter || roleFilter
             ? `Hiển thị ${filteredStaff.length} / ${staffs.length} nhân viên (đã lọc)`
             : `Hiển thị ${staffs.length} / ${total} nhân viên`}
         </p>
@@ -352,7 +345,6 @@ export default function StaffList() {
           </div>
         </div>
 
-        {/* Pagination – giống style UserTable */}
         {total > 0 && (
           <div className="mt-4 pb-4 flex items-center justify-center text-sm text-slate-500">
             <Pagination>

@@ -48,13 +48,15 @@ import StaffRMADetailPage from "./pages/service-staff/StaffRMADetailPage";
 import StaffBookingDetailPage from "./pages/service-staff/StaffBookingDetailPage";
 import StaffVehicleHistoryPage from "./pages/service-staff/StaffVehicleHistoryPage";
 import StaffVehicleRepairHistoryPage from "./pages/service-staff/StaffVehicleRepairHistoryPage";
+import StaffProfile from "./pages/service-staff/StaffProfile";
 
 // technician
-import { TechnicianSidebar } from "./components/technician/TechnicanSidebar";
+import { TechnicianSidebar, TechnicianTopHeader } from "./components/technician/TechnicanSidebar";
 import TechnicianDashboard from "./pages/technician/TechnicianDashboard";
 import TechnicianPage from "./pages/technician/TechnicianPage";
 import TechnicianBookingDetailPage from "./pages/technician/TechnicianBookingDetailPage";
 import BatteryDetailPage from "./pages/technician/BatteryDetailPage";
+import TechnicianProfile from "./pages/technician/TechnicianProfile";
 
 // manager
 import { ManagerSidebar, ManagerTopHeader } from "./components/ManagerSidebar";
@@ -233,6 +235,7 @@ const App = () => (
                           path="battery/:evCheckDetailId"
                           element={<BatteryDetailPage />}
                         />
+                        <Route path="profile" element={<StaffProfile />} />
 
                         <Route path="*" element={<NotFound />} />
                       </Routes>
@@ -263,16 +266,17 @@ const App = () => (
                           path="dashboard"
                           element={<TechnicianDashboard />}
                         />
-                      <Route path="vehicles" element={<TechnicianPage />} />
-                      <Route
-                        path="vehicles/:id"
-                        element={<TechnicianBookingDetailPage />}
-                      />
-                      <Route
-                        path="battery/:evCheckDetailId"
-                        element={<BatteryDetailPage />}
-                      />
-                      <Route path="*" element={<NotFound />} />
+                        <Route path="vehicles" element={<TechnicianPage />} />
+                        <Route
+                          path="vehicles/:id"
+                          element={<TechnicianBookingDetailPage />}
+                        />
+                        <Route
+                          path="battery/:evCheckDetailId"
+                          element={<BatteryDetailPage />}
+                        />
+                        <Route path="profile" element={<TechnicianProfile />} />
+                        <Route path="*" element={<NotFound />} />
                       </Routes>
                     </main>
                   </div>
