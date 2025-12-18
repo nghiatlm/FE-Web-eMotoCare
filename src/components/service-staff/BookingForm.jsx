@@ -9,9 +9,10 @@ import dayjs from "dayjs";
 
 import { getCustomersService } from "../../services/customerService";
 import { getServiceCentersService } from "../../services/serivceCenterService";
+import { getServiceCenterById } from "../../api/serviceCentersApi";
 import { getVehiclesByCustomerService } from "../../services/vehicleService";
 import { getVehicleStagesService } from "../../services/vehicleStageService";
-import { fetchServiceStaff } from "../../services/staffsService";
+import { getStaffByAccountId } from "../../api/staffsApi";
 import { getCampaignsService } from "../../services/campaignService";
 import { getVehicleInfoFromChassisService } from "../../services/appointmentService";
 
@@ -53,6 +54,29 @@ const translateColor = (color) => {
     "BROWN": "Nâu",
   };
   return colorMap[colorUpper] || color;
+};
+
+// Hàm chuyển tên màu thành mã hex để hiển thị màu thực tế
+const getColorHex = (color) => {
+  if (!color) return "#999999"; // Màu xám mặc định
+  const colorUpper = String(color).trim().toUpperCase();
+  const colorHexMap = {
+    BLUE: "#1890ff",
+    RED: "#ff4d4f",
+    GREEN: "#52c41a",
+    YELLOW: "#fadb14",
+    BLACK: "#000000",
+    WHITE: "#ffffff",
+    GRAY: "#8c8c8c",
+    GREY: "#8c8c8c",
+    SILVER: "#c0c0c0",
+    GOLD: "#ffd700",
+    ORANGE: "#fa8c16",
+    PURPLE: "#722ed1",
+    PINK: "#eb2f96",
+    BROWN: "#8b4513",
+  };
+  return colorHexMap[colorUpper] || color; // Nếu không tìm thấy, trả về giá trị gốc (có thể đã là hex)
 };
 
 const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipChassisNumber = false }) => {
@@ -237,6 +261,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
       toast.error(errorMessage);
     } finally {
       setIsSearchingChassis(false);
+      setIsSearchingChassis(false);
     }
   };
 
@@ -277,36 +302,63 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
   useEffect(() => {
     const fetchInit = async () => {
       try {
-
-            const user = JSON.parse(localStorage.getItem("user") || "{}");
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
+        const accountId = user?.accountResponse?.id;
+        
         let staffServiceCenterId = 
-              user?.accountResponse?.serviceCenterId || 
-              user?.serviceCenterId || 
+          user?.accountResponse?.serviceCenterId || 
+          user?.serviceCenterId || 
           user?.staff?.serviceCenterId ||
           user?.accountResponse?.staff?.serviceCenterId ||
-              null;
-        
+          null;
 
-        if (!staffServiceCenterId) {
+        // ✅ Lấy serviceCenterId từ staff của user hiện tại
+        if (!staffServiceCenterId && accountId) {
           try {
-            const staffInfo = await fetchServiceStaff(null);
-            const staffData = staffInfo?.data?.data || staffInfo?.data || staffInfo;
-            staffServiceCenterId = staffData?.serviceCenterId || null;
-        } catch (err) {
+            const staffResponse = await getStaffByAccountId(accountId);
+            const staffData = staffResponse?.data?.rowDatas?.[0] || 
+                              staffResponse?.data?.[0] ||
+                              staffResponse?.data?.data ||
+                              staffResponse?.data ||
+                              staffResponse;
+            staffServiceCenterId = staffData?.serviceCenterId || 
+                                   staffData?.serviceCenter?.id ||
+                                   null;
+          } catch (err) {
+            console.error("Error fetching staff service center:", err);
           }
         }
 
         setCurrentServiceCenterId(staffServiceCenterId);
 
-        const cenRes = await getServiceCentersService();
-        setCenters(Array.isArray(cenRes) ? cenRes : []);
-
+        // ✅ Load service center cụ thể của staff để lấy slots
+        if (staffServiceCenterId) {
+          try {
+            const centerRes = await getServiceCenterById(staffServiceCenterId);
+            const centerData = centerRes?.data?.data || centerRes?.data || centerRes;
+            if (centerData) {
+              setCenters([centerData]);
+            } else {
+              // Fallback: load tất cả centers và filter
+              const cenRes = await getServiceCentersService();
+              const allCenters = Array.isArray(cenRes) ? cenRes : [];
+              const filteredCenter = allCenters.find(c => c.id === staffServiceCenterId);
+              setCenters(filteredCenter ? [filteredCenter] : allCenters);
+            }
+          } catch (err) {
+            console.error("Error fetching service center:", err);
+            // Fallback: load tất cả centers
+            const cenRes = await getServiceCentersService();
+            setCenters(Array.isArray(cenRes) ? cenRes : []);
+          }
+        } else {
+          // Nếu không có serviceCenterId, load tất cả (fallback)
+          const cenRes = await getServiceCentersService();
+          setCenters(Array.isArray(cenRes) ? cenRes : []);
+        }
 
         await loadCustomers();
-
-
         await loadCampaigns();
-
 
         if (staffServiceCenterId) {
           form.setFieldsValue({ serviceCenterId: staffServiceCenterId });
@@ -315,15 +367,12 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
         if (initialValues) {
           form.setFieldsValue({
             ...initialValues,
-
             serviceCenterId: initialValues.serviceCenterId || staffServiceCenterId,
           });
-
 
           if (initialValues.customerId) {
             handleCustomerChange(initialValues.customerId, false);
           }
-
 
           const centerId = initialValues.serviceCenterId || staffServiceCenterId;
           const date = initialValues.appointmentDate;
@@ -331,18 +380,16 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
             buildSlots(centerId, date);
           }
 
-
-
           if (initialValues.vehicleId && initialValues.type === "MAINTENANCE_TYPE") {
             setTimeout(() => {
               loadVehicleStages(initialValues.vehicleId, initialValues.type);
             }, 500);
           }
         } else if (staffServiceCenterId) {
-
           form.setFieldsValue({ serviceCenterId: staffServiceCenterId });
         }
       } catch (err) {
+        console.error("Error in fetchInit:", err);
       }
     };
 
@@ -392,12 +439,36 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
       return;
     }
 
-
     const dateStr = dateObj.format("YYYY-MM-DD");
+    const now = dayjs();
+    const isToday = dateObj.isSame(now, "day");
 
-    const slots = center.serviceCenterSlots.filter(
+    // ✅ Filter slots: chỉ lấy slots active và đúng ngày
+    let slots = center.serviceCenterSlots.filter(
       (s) => s.isActive && s.date === dateStr
     );
+
+    // ✅ Nếu là ngày hôm nay, chỉ hiển thị các slot chưa qua
+    if (isToday) {
+      const currentHour = now.hour();
+      const currentMinute = now.minute();
+      const currentTimeInMinutes = currentHour * 60 + currentMinute;
+      
+      slots = slots.filter((slot) => {
+        // Parse slotTime (format: H07_08, H08_09, etc.)
+        const slotTime = slot.slotTime || "";
+        const match = slotTime.match(/H(\d{2})_(\d{2})/);
+        if (!match) return false; // Nếu không parse được, loại bỏ để an toàn
+        
+        const startHour = parseInt(match[1], 10);
+        const startTimeInMinutes = startHour * 60;
+        
+        // ✅ Chỉ hiển thị slot nếu giờ bắt đầu chưa qua (ít nhất 30 phút trước khi bắt đầu)
+        // Để đảm bảo có đủ thời gian để chuẩn bị
+        const bufferMinutes = 30; // Buffer 30 phút
+        return startTimeInMinutes > (currentTimeInMinutes + bufferMinutes);
+      });
+    }
 
     setAvailableSlots(slots);
     form.setFieldsValue({ slotTime: undefined });
@@ -409,15 +480,43 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
 
   const handleDateChange = (date) => {
     const centerId = form.getFieldValue("serviceCenterId") || currentServiceCenterId;
-    if (centerId) {
-    buildSlots(centerId, date);
+    if (centerId && date) {
+      buildSlots(centerId, date);
+    } else {
+      setAvailableSlots([]);
+      form.setFieldsValue({ slotTime: undefined });
     }
   };
 
+  // ✅ Tự động load slots khi centers đã load và đã có ngày được chọn
+  useEffect(() => {
+    const selectedDate = form.getFieldValue("appointmentDate");
+    const centerId = form.getFieldValue("serviceCenterId") || currentServiceCenterId;
+    
+    if (centers.length > 0 && centerId && selectedDate) {
+      buildSlots(centerId, selectedDate);
+    }
+  }, [centers, currentServiceCenterId]);
+
 
   const disabledDate = (current) => {
-
-    return current && current < dayjs().startOf("day");
+    if (!current) return false;
+    
+    const now = dayjs();
+    const today = now.startOf("day");
+    const currentHour = now.hour();
+    
+    // ✅ Disable các ngày trong quá khứ
+    if (current.isBefore(today, "day")) {
+      return true;
+    }
+    
+    // ✅ Sau 18h (6 PM), disable ngày hôm nay
+    if (current.isSame(today, "day") && currentHour >= 18) {
+      return true;
+    }
+    
+    return false;
   };
 
 
@@ -431,6 +530,12 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
 
     try {
       setLoadingVehicleStages(true);
+      // ✅ Clear giá trị ngay khi bắt đầu load để tránh hiển thị ID cũ
+      const currentVehicleStageId = form.getFieldValue("vehicleStageId");
+      if (currentVehicleStageId) {
+        form.setFieldsValue({ vehicleStageId: undefined });
+      }
+      
       const stages = await getVehicleStagesService(vehicleId, {
         page: 1,
         pageSize: 100,
@@ -452,11 +557,25 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
       
 
       const upcomingStage = availableStages.find(s => (s.status || "").toUpperCase() === "UPCOMING");
-      if (upcomingStage?.id && !form.getFieldValue("vehicleStageId")) {
-        form.setFieldsValue({ vehicleStageId: upcomingStage.id });
+      
+      // ✅ Sau khi load xong, set lại giá trị nếu có trong initialValues hoặc chọn upcoming stage
+      if (currentVehicleStageId) {
+        const stageExists = availableStages.find(s => s.id === currentVehicleStageId);
+        if (stageExists) {
+          // Chỉ set lại nếu tìm thấy trong danh sách (tránh hiển thị ID)
+          setTimeout(() => {
+            form.setFieldsValue({ vehicleStageId: currentVehicleStageId });
+          }, 100);
+        }
+      } else if (upcomingStage?.id) {
+        // ✅ Tự động chọn upcoming stage nếu chưa có vehicleStageId
+        setTimeout(() => {
+          form.setFieldsValue({ vehicleStageId: upcomingStage.id });
+        }, 100);
       }
     } catch (err) {
       setVehicleStages([]);
+      form.setFieldsValue({ vehicleStageId: undefined });
     } finally {
       setLoadingVehicleStages(false);
     }
@@ -685,6 +804,8 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                         icon={<Search size={16} />}
                         size="large"
                         danger
+                        loading={isSearchingChassis}
+                        disabled={isSearchingChassis}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -931,13 +1052,14 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                                 <Text type="secondary" style={{ fontSize: 14, fontWeight: 600 }}>Màu sắc</Text>
                                 </Space>
                               <Tag 
-                                color="red" 
                                 style={{ 
                                   borderRadius: 6, 
                                   padding: "4px 12px",
                                   fontSize: 13,
                                   fontWeight: 500,
                                   border: "none",
+                                  backgroundColor: getColorHex(vehicleInfo.vehicle.color),
+                                  color: vehicleInfo.vehicle.color?.toUpperCase() === "WHITE" || vehicleInfo.vehicle.color?.toUpperCase() === "YELLOW" || vehicleInfo.vehicle.color?.toUpperCase() === "GOLD" ? "#000000" : "#ffffff",
                                 }}
                               >
                                 {translateColor(vehicleInfo.vehicle.color)}
@@ -1215,7 +1337,21 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                     style={{ 
                       width: "100%",
                       borderRadius: 8,
-                    }}>
+                    }}
+                    showSearch
+                    optionFilterProp="children"
+                    filterOption={(input, option) => {
+                      const text = option?.children?.props?.children?.[0]?.props?.children || "";
+                      return text.toLowerCase().includes(input.toLowerCase());
+                    }}
+                    notFoundContent={loadingVehicleStages ? <Spin size="small" /> : "Không có mốc bảo dưỡng"}
+                    value={(() => {
+                      const selectedId = form.getFieldValue("vehicleStageId");
+                      if (!selectedId || vehicleStages.length === 0) return undefined;
+                      const selectedStage = vehicleStages.find(s => s.id === selectedId);
+                      // ✅ Chỉ trả về value nếu tìm thấy stage trong danh sách (tránh hiển thị ID)
+                      return selectedStage ? selectedId : undefined;
+                    })()}>
                     {vehicleStages
                       .sort((a, b) => {
 
@@ -1229,13 +1365,13 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                         const status = (stage.status || "").toUpperCase();
                         const statusLabel = status === "UPCOMING" ? "Sắp tới" : status === "NO_START" ? "Chưa bắt đầu" : "";
                         const isUpcoming = status === "UPCOMING";
+                        const displayName = `${stage.maintenanceStage?.name || "Mốc bảo dưỡng"}${stage.maintenanceStage?.mileage ? ` - ${stage.maintenanceStage.mileage}` : ""}`;
                         
                         return (
                       <Option key={stage.id} value={stage.id}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                               <span>
-                        {stage.maintenanceStage?.name || "Mốc bảo dưỡng"} -{" "}
-                        {stage.maintenanceStage?.mileage || ""}
+                        {displayName}
                               </span>
                               {statusLabel && (
                                 <Tag color={isUpcoming ? "red" : "default"} style={{ margin: 0 }}>

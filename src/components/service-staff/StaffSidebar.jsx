@@ -1,6 +1,5 @@
 import { CalendarCheck, LogOut, Plus, List, LayoutDashboard, BookOpen, Car } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -18,6 +17,7 @@ import {
 import { authService } from "@/services/authService";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useState, useEffect } from "react";
 import { getStaffByAccountId } from "@/api/staffsApi";
 
 const sections = [
@@ -223,16 +223,18 @@ export function StaffSidebar() {
   );
 }
 
+// Header component for staff layout
 export function StaffTopHeader() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [displayName, setDisplayName] = useState("Nhân viên dịch vụ");
-  const [initials, setInitials] = useState("NV");
+  const [displayName, setDisplayName] = useState("STAFF Service");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [initials, setInitials] = useState("ST");
 
   useEffect(() => {
     const loadProfile = async () => {
-      const account = user?.accountResponse || user?.user || user || {};
+      const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const account = user?.accountResponse || user || storedUser || {};
       const accountId = account.id || account.accountId;
       try {
         if (accountId) {
@@ -242,7 +244,7 @@ export function StaffTopHeader() {
             const name =
               `${staff.firstName || ""} ${staff.lastName || ""}`.trim() ||
               staff.account?.phone ||
-              "Nhân viên dịch vụ";
+              "STAFF Service";
             const avatar = staff.avatarUrl || staff.account?.avatarUrl || "";
             const init =
               name
@@ -251,7 +253,7 @@ export function StaffTopHeader() {
                 .map((p) => p[0])
                 .join("")
                 .slice(0, 2)
-                .toUpperCase() || "NV";
+                .toUpperCase() || "ST";
             setDisplayName(name);
             setAvatarUrl(avatar);
             setInitials(init);
@@ -262,7 +264,7 @@ export function StaffTopHeader() {
           `${account.firstName || ""} ${account.lastName || ""}`.trim() ||
           account.phone ||
           account.email ||
-          "Nhân viên dịch vụ";
+          "STAFF Service";
         const fallbackInit =
           fallbackName
             .split(" ")
@@ -270,17 +272,17 @@ export function StaffTopHeader() {
             .map((p) => p[0])
             .join("")
             .slice(0, 2)
-            .toUpperCase() || "NV";
+            .toUpperCase() || "ST";
         setDisplayName(fallbackName);
         setInitials(fallbackInit);
         setAvatarUrl(account.avatarUrl || "");
       } catch (error) {
-        const account = user?.accountResponse || user?.user || user || {};
+        const account = user?.accountResponse || user || storedUser || {};
         const fallbackName =
           `${account.firstName || ""} ${account.lastName || ""}`.trim() ||
           account.phone ||
           account.email ||
-          "Nhân viên dịch vụ";
+          "STAFF Service";
         const fallbackInit =
           fallbackName
             .split(" ")
@@ -288,7 +290,7 @@ export function StaffTopHeader() {
             .map((p) => p[0])
             .join("")
             .slice(0, 2)
-            .toUpperCase() || "NV";
+            .toUpperCase() || "ST";
         setDisplayName(fallbackName);
         setInitials(fallbackInit);
         setAvatarUrl(account.avatarUrl || "");
@@ -297,30 +299,19 @@ export function StaffTopHeader() {
     loadProfile();
   }, [user]);
 
-  // Lắng nghe event cập nhật avatar từ trang Hồ sơ nhân viên dịch vụ
-  useEffect(() => {
-    const handleAvatarUpdated = (event) => {
-      const newUrl = event?.detail?.avatarUrl;
-      if (newUrl) {
-        setAvatarUrl(newUrl);
-      }
-    };
-
-    window.addEventListener("staff-avatar-updated", handleAvatarUpdated);
-    return () => {
-      window.removeEventListener("staff-avatar-updated", handleAvatarUpdated);
-    };
-  }, []);
-
   return (
-    <header className="h-14 bg-white border-b border-red-100 flex items-center justify-between px-4 sticky top-0 z-10 text-red-600">
+    <header className="h-14 bg-white border-b border-red-100 flex items-center justify-between px-4 pr-6 sticky top-0 z-10 text-red-600">
       <SidebarTrigger className="text-red-600" />
       <button
         type="button"
         onClick={() => navigate("/staff/profile")}
         className="flex items-center gap-3 hover:bg-red-50 px-2 py-1 rounded-lg transition-colors"
-        aria-label="Xem hồ sơ nhân viên dịch vụ"
+        aria-label="Xem hồ sơ nhân viên"
       >
+        <div className="flex flex-col items-end leading-tight">
+          <span className="text-sm font-semibold text-red-700">{displayName}</span>
+          <span className="text-[11px] text-red-400">STAFF Service</span>
+        </div>
         {avatarUrl ? (
           <img
             src={avatarUrl}
@@ -332,9 +323,6 @@ export function StaffTopHeader() {
             {initials}
           </div>
         )}
-        <span className="text-sm font-semibold text-red-700 max-w-[200px] truncate leading-tight">
-          {displayName}
-        </span>
       </button>
     </header>
   );

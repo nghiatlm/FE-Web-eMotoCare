@@ -8,6 +8,7 @@ import { STATUS_COLORS, STATUS_MAP, UI_COLORS } from "../../utils/constants";
 
 import { fetchAppointments } from "../../services/appointmentService";
 import { getAppointmentById } from "../../api/appointmentsApi";
+import { getStaffByAccountId } from "../../api/staffsApi";
 import PaymentInfo from "../../components/service-staff/PaymentInfo";
 import PaymentHistory from "../../components/service-staff/PaymentHistory";
 import { fetchEVCheckByAppointmentService } from "../../services/evcheckService";
@@ -41,6 +42,29 @@ const translateColor = (color) => {
   return colorMap[colorUpper] || color;
 };
 
+// Hàm chuyển tên màu thành mã hex để hiển thị màu thực tế
+const getColorHex = (color) => {
+  if (!color) return "#999999"; // Màu xám mặc định
+  const colorUpper = String(color).trim().toUpperCase();
+  const colorHexMap = {
+    BLUE: "#1890ff",
+    RED: "#ff4d4f",
+    GREEN: "#52c41a",
+    YELLOW: "#fadb14",
+    BLACK: "#000000",
+    WHITE: "#ffffff",
+    GRAY: "#8c8c8c",
+    GREY: "#8c8c8c",
+    SILVER: "#c0c0c0",
+    GOLD: "#ffd700",
+    ORANGE: "#fa8c16",
+    PURPLE: "#722ed1",
+    PINK: "#eb2f96",
+    BROWN: "#8b4513",
+  };
+  return colorHexMap[colorUpper] || color; // Nếu không tìm thấy, trả về giá trị gốc (có thể đã là hex)
+};
+
 export default function StaffVehicleRepairHistoryPage() {
   const { vehicleId } = useParams();
   const navigate = useNavigate();
@@ -52,6 +76,45 @@ export default function StaffVehicleRepairHistoryPage() {
   const [currentEVCheckId, setCurrentEVCheckId] = useState(null);
   const [evCheckStatus, setEvCheckStatus] = useState(null);
   const [loadingEVCheck, setLoadingEVCheck] = useState(false);
+  const [serviceCenterId, setServiceCenterId] = useState(null);
+
+  useEffect(() => {
+    const loadServiceCenterId = async () => {
+      try {
+        const userStr = localStorage.getItem("user");
+        if (!userStr) return;
+
+        const user = JSON.parse(userStr);
+        const accountId = user?.accountResponse?.id || user?.id || user?.accountId;
+
+        if (accountId) {
+          const staffRes = await getStaffByAccountId(accountId);
+          
+          let staff = null;
+          if (staffRes?.data?.rowDatas && Array.isArray(staffRes.data.rowDatas) && staffRes.data.rowDatas.length > 0) {
+            staff = staffRes.data.rowDatas[0];
+          } else if (staffRes?.data && Array.isArray(staffRes.data) && staffRes.data.length > 0) {
+            staff = staffRes.data[0];
+          } else if (staffRes?.rowDatas && Array.isArray(staffRes.rowDatas) && staffRes.rowDatas.length > 0) {
+            staff = staffRes.rowDatas[0];
+          } else if (staffRes?.data && !Array.isArray(staffRes.data)) {
+            staff = staffRes.data;
+          } else if (staffRes && !Array.isArray(staffRes)) {
+            staff = staffRes;
+          }
+          
+          const serviceCenterId = staff?.serviceCenterId || staff?.serviceCenter?.id;
+          if (serviceCenterId) {
+            setServiceCenterId(serviceCenterId);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading service center ID:", err);
+      }
+    };
+
+    loadServiceCenterId();
+  }, []);
 
   const loadAppointments = async () => {
     if (!vehicleId) return;
@@ -61,6 +124,7 @@ export default function StaffVehicleRepairHistoryPage() {
       const response = await fetchAppointments({
         page: 1,
         pageSize: 1000,
+        serviceCenterId: serviceCenterId || undefined,
       });
 
       let appointmentsList = [];
@@ -151,8 +215,10 @@ export default function StaffVehicleRepairHistoryPage() {
   };
 
   useEffect(() => {
-    loadAppointments();
-  }, [vehicleId]);
+    if (serviceCenterId !== null) {
+      loadAppointments();
+    }
+  }, [vehicleId, serviceCenterId]);
 
   const handleViewDetail = async (appointmentId) => {
     if (selectedBooking?.id === appointmentId) {
@@ -446,7 +512,13 @@ export default function StaffVehicleRepairHistoryPage() {
                             Màu sắc:
                           </Text>
                         </Space>
-                        <Tag color="red" style={{ borderRadius: 6, fontSize: 12 }}>
+                        <Tag 
+                          style={{ 
+                            borderRadius: 6, 
+                            fontSize: 12,
+                            backgroundColor: getColorHex(vehicleInfo.vehicle.color),
+                            color: vehicleInfo.vehicle.color?.toUpperCase() === "WHITE" || vehicleInfo.vehicle.color?.toUpperCase() === "YELLOW" || vehicleInfo.vehicle.color?.toUpperCase() === "GOLD" ? "#000000" : "#ffffff",
+                          }}>
                           {translateColor(vehicleInfo.vehicle.color)}
                         </Tag>
                       </div>

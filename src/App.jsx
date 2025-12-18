@@ -196,9 +196,9 @@ const App = () => (
               <SidebarProvider>
                 <div className="flex min-h-screen w-full">
                   <StaffSidebar />
-                  <div className="flex-1 flex flex-col">
+                  <div className="flex-1 flex flex-col overflow-hidden">
                     <StaffTopHeader />
-                    <main className="flex-1">
+                    <main className="flex-1 overflow-y-auto overflow-x-hidden">
                       <Routes>
                         <Route
                           path=""
@@ -254,9 +254,9 @@ const App = () => (
               <SidebarProvider>
                 <div className="flex min-h-screen w-full">
                   <TechnicianSidebar />
-                  <div className="flex-1 flex flex-col">
-                    <TechnicianTopHeader />
-                    <main className="flex-1">
+                  <div className="flex-1 flex flex-col overflow-hidden">
+                    <ManagerTopHeader />
+                    <main className="flex-1 overflow-y-auto overflow-x-hidden">
                       <Routes>
                         <Route
                           path=""

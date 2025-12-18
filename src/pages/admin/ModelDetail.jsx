@@ -59,6 +59,29 @@ const translateColor = (color) => {
   return colorMap[color.toLowerCase()] || color;
 };
 
+// Hàm chuyển tên màu thành mã hex để hiển thị màu thực tế
+const getColorHex = (color) => {
+  if (!color) return "#999999"; // Màu xám mặc định
+  const colorUpper = String(color).trim().toUpperCase();
+  const colorHexMap = {
+    BLUE: "#1890ff",
+    RED: "#ff4d4f",
+    GREEN: "#52c41a",
+    YELLOW: "#fadb14",
+    BLACK: "#000000",
+    WHITE: "#ffffff",
+    GRAY: "#8c8c8c",
+    GREY: "#8c8c8c",
+    SILVER: "#c0c0c0",
+    GOLD: "#ffd700",
+    ORANGE: "#fa8c16",
+    PURPLE: "#722ed1",
+    PINK: "#eb2f96",
+    BROWN: "#8b4513",
+  };
+  return colorHexMap[colorUpper] || color; // Nếu không tìm thấy, trả về giá trị gốc (có thể đã là hex)
+};
+
 export default function ModelDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -313,7 +336,7 @@ export default function ModelDetail() {
                             <div className="flex items-center gap-2">
                               <div
                                 className="w-4 h-4 rounded-full border border-slate-300"
-                                style={{ backgroundColor: vehicle.color?.toLowerCase() || "#ccc" }}
+                                style={{ backgroundColor: getColorHex(vehicle.color) || "#ccc" }}
                               />
                               <span className="text-sm">{translateColor(vehicle.color)}</span>
                             </div>

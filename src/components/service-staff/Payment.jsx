@@ -204,7 +204,6 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
             checkinQRCode: currentAppointment?.checkinQRCode || booking?.checkinQRCode || "",
           });
           
-          toast.success("Đã tạo yêu cầu thanh toán bằng app! Khách hàng sẽ thanh toán trên ứng dụng.");
           onPaymentSuccess?.({ method: "APP", amount: totalAmount });
           onClose();
           return;
@@ -227,7 +226,6 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
       const res = await createPaymentLinkService(payload);
       
       if (paymentMethod === "CASH") {
-        toast.success("Đã xác nhận thanh toán tiền mặt!");
         onPaymentSuccess?.({ method: "CASH", amount: totalAmount });
         onClose();
       } else {
@@ -241,7 +239,6 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
 
         if (url) {
           window.open(url, "_blank");
-          toast.success("Tạo yêu cầu thanh toán thành công!");
           onPaymentSuccess?.({ method: "PAYOS", amount: totalAmount, url });
           onClose();
         } else {
