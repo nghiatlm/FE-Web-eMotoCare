@@ -230,7 +230,7 @@ export function TechnicianTopHeader() {
   }, []);
 
   return (
-    <header className="h-14 bg-white border-b border-red-100 flex items-center justify-between px-4 sticky top-0 z-10 text-red-600">
+    <header className="h-14 bg-white border-b border-red-100 flex items-center justify-between px-4 pr-6 sticky top-0 z-10 text-red-600">
       <SidebarTrigger className="text-red-600" />
       <button
         type="button"
@@ -238,6 +238,10 @@ export function TechnicianTopHeader() {
         className="flex items-center gap-3 hover:bg-red-50 px-2 py-1 rounded-lg transition-colors"
         aria-label="Xem hồ sơ kỹ thuật viên"
       >
+        <div className="flex flex-col items-end leading-tight">
+          <span className="text-sm font-semibold text-red-700">{displayName}</span>
+          <span className="text-[11px] text-red-400">Kỹ thuật viên</span>
+        </div>
         {avatarUrl ? (
           <img
             src={avatarUrl}
@@ -249,9 +253,6 @@ export function TechnicianTopHeader() {
             {initials}
           </div>
         )}
-        <span className="text-sm font-semibold text-red-700 max-w-[200px] truncate leading-tight">
-          {displayName}
-        </span>
       </button>
     </header>
   );

@@ -7,7 +7,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { useServiceCenter } from "@/hooks/useServiceCenter";
 import { useNavigate } from "react-router-dom";
 
-export default function ImportSlipsTable({ search = "", typeFilter = "", statusFilter = "" }) {
+export default function ImportSlipsTable({ search = "", typeFilter = "" }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -43,7 +43,6 @@ export default function ImportSlipsTable({ search = "", typeFilter = "", statusF
             ? item.serviceCenter.name || item.serviceCenter.code || "N/A"
             : "N/A";
 
-          // Map type labels
           const typeLabelMap = {
             "SUPPLIER": "Nhà cung cấp",
             "TRANSFER_IN": "Nhận điều chuyển",
@@ -51,23 +50,21 @@ export default function ImportSlipsTable({ search = "", typeFilter = "", statusF
           };
           const typeLabel = typeLabelMap[item.type] || item.type || "N/A";
 
-          // Tính số mặt hàng từ importNoteDetails
           const totalItems = item.importNoteDetails?.length || 0;
 
-          // Format supplier/importFrom
           const supplierDisplay = item.supplier || item.importFrom || "—";
 
           return {
-            code: item.code, // Dùng code làm id cho navigation
+            code: item.code,
             importDate: importDate,
             supplier: supplierDisplay,
             type: typeLabel,
-            typeRaw: item.type, // Giữ type gốc để style
+            typeRaw: item.type,
             totalItems: totalItems,
             totalValue: item.totalAmout || item.totalAmount || 0, 
             importByName: importByName,
             serviceCenterName: serviceCenterName,
-            rawData: item // Giữ rawData để navigate và edit
+            rawData: item
           };
         });
         
@@ -111,7 +108,6 @@ export default function ImportSlipsTable({ search = "", typeFilter = "", statusF
     const q = search.trim().toLowerCase();
     let result = rows;
 
-    // Filter by type
     if (typeFilter && typeFilter !== "all") {
       result = result.filter((r) => {
         const rowType = r.rawData?.type || r.type || "";
@@ -119,15 +115,6 @@ export default function ImportSlipsTable({ search = "", typeFilter = "", statusF
       });
     }
 
-    // Filter by status
-    if (statusFilter && statusFilter !== "all") {
-      result = result.filter((r) => {
-        const rowStatus = r.rawData?.importNoteStatus || r.rawData?.status || "";
-        return rowStatus === statusFilter;
-      });
-    }
-
-    // Filter by search
     if (q) {
       result = result.filter((r) =>
         [r.code, r.supplier, r.importByName, r.serviceCenterName, r.type].join(" ").toLowerCase().includes(q)
@@ -135,7 +122,7 @@ export default function ImportSlipsTable({ search = "", typeFilter = "", statusF
     }
 
     return result;
-  }, [rows, search, typeFilter, statusFilter]);
+  }, [rows, search, typeFilter]);
 
   if (loading) {
     return (
@@ -150,7 +137,6 @@ export default function ImportSlipsTable({ search = "", typeFilter = "", statusF
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="bg-white/95 backdrop-blur rounded-xl border border-rose-200/60 shadow-md overflow-hidden">
@@ -208,7 +194,7 @@ export default function ImportSlipsTable({ search = "", typeFilter = "", statusF
                   <div className="flex flex-col items-center gap-2">
                     <FileDown className="h-12 w-12 text-muted-foreground/40 mb-2" />
                     <p className="text-muted-foreground text-sm font-medium">Không tìm thấy phiếu nhập phù hợp</p>
-                    <p className="text-xs text-muted-foreground">{search || typeFilter || statusFilter ? "Hãy thay đổi từ khóa hoặc bộ lọc" : "Chưa có phiếu nhập nào"}</p>
+                    <p className="text-xs text-muted-foreground">{search || typeFilter ? "Hãy thay đổi từ khóa hoặc bộ lọc" : "Chưa có phiếu nhập nào"}</p>
                   </div>
                 </td>
               </tr>
