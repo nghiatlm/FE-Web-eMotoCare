@@ -26,7 +26,6 @@ export default function ServicePackages() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Fetch Part Types
   useEffect(() => {
     const fetchPartTypes = async () => {
       try {
@@ -55,7 +54,6 @@ export default function ServicePackages() {
     fetchPartTypes();
   }, [page, pageSize, toast]);
 
-  // Filter part types by search
   const filteredPartTypes = useMemo(() => {
     if (!search.trim()) return partTypes;
     
