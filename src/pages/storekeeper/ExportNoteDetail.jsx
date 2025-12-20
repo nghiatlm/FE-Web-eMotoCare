@@ -630,7 +630,7 @@ export default function ExportNoteDetail() {
                         Trạng thái
                       </th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider whitespace-nowrap">
-                        Trạng thái kho
+                        Trạng thái xuất
                       </th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider whitespace-nowrap">
                         SL tồn kho

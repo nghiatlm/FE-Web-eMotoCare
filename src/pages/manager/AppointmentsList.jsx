@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, Calendar as CalendarIcon, Eye, AlertCircle, Loader2 } from "lucide-react";
+import { Search, Calendar as CalendarIcon, Eye, AlertCircle, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,7 +15,8 @@ import { format } from "date-fns";
 export default function AppointmentsList() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [serviceTypeFilter, setServiceTypeFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
   const [selectedDate, setSelectedDate] = useState(null);
   const [appointments, setAppointments] = useState([]);
@@ -123,7 +124,9 @@ export default function AppointmentsList() {
       serviceType.toLowerCase().includes(searchLower) ||
       appointment.code?.toLowerCase().includes(searchLower);
     
-    const matchesStatus = !statusFilter || appointment.status?.toUpperCase() === statusFilter.toUpperCase();
+    const matchesStatus = !statusFilter || statusFilter === "all" || appointment.status?.toUpperCase() === statusFilter.toUpperCase();
+    
+    const matchesServiceType = !serviceTypeFilter || serviceTypeFilter === "all" || appointment.type?.toUpperCase() === serviceTypeFilter.toUpperCase();
     
     let matchesDate = true;
     if (dateFilter && appointment.appointmentDate) {
@@ -131,10 +134,19 @@ export default function AppointmentsList() {
       matchesDate = appointmentDate === dateFilter;
     }
     
-    return matchesSearch && matchesStatus && matchesDate;
+    return matchesSearch && matchesStatus && matchesServiceType && matchesDate;
   });
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const handleClearFilters = () => {
+    setSearch("");
+    setStatusFilter("all");
+    setServiceTypeFilter("all");
+    setDateFilter("");
+    setSelectedDate(null);
+    setPage(1);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-slate-50">
@@ -172,6 +184,7 @@ export default function AppointmentsList() {
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">Tất cả trạng thái</SelectItem>
                 <SelectItem value="PENDING">Chờ xử lý</SelectItem>
                 <SelectItem value="APPROVED">Đã duyệt</SelectItem>
                 <SelectItem value="CHECKED_IN">Đã check-in</SelectItem>
@@ -181,6 +194,26 @@ export default function AppointmentsList() {
                 <SelectItem value="PAYMENT_FAILED">Thanh toán thất bại</SelectItem>
                 <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
                 <SelectItem value="CANCELED">Đã hủy</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={serviceTypeFilter}
+              onValueChange={(value) => {
+                setPage(1);
+                setServiceTypeFilter(value);
+              }}
+            >
+              <SelectTrigger className="w-[150px] md:w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
+                <SelectValue placeholder="Loại dịch vụ" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả loại dịch vụ</SelectItem>
+                <SelectItem value="WARRANTY_TYPE">Bảo hành</SelectItem>
+                <SelectItem value="MAINTENANCE_TYPE">Bảo dưỡng</SelectItem>
+                <SelectItem value="REPAIR_TYPE">Sửa chữa</SelectItem>
+                <SelectItem value="CAMPAIGN_TYPE">Chiến dịch</SelectItem>
+                <SelectItem value="RECALL_TYPE">Triệu hồi</SelectItem>
               </SelectContent>
             </Select>
 
@@ -211,6 +244,18 @@ export default function AppointmentsList() {
                 />
               </PopoverContent>
             </Popover>
+
+            {(search || statusFilter !== "all" || serviceTypeFilter !== "all" || dateFilter) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearFilters}
+                className="gap-2 border-transparent text-slate-600 hover:text-red-600 hover:bg-red-50"
+              >
+                <X className="h-4 w-4" />
+                Xóa lọc
+              </Button>
+            )}
           </div>
         </div>
 
@@ -227,34 +272,34 @@ export default function AppointmentsList() {
                 <colgroup>
                   <col style={{ width: '5%' }} />
                   <col style={{ width: '15%' }} />
+                  <col style={{ width: '18%' }} />
                   <col style={{ width: '12%' }} />
                   <col style={{ width: '12%' }} />
                   <col style={{ width: '15%' }} />
-                  <col style={{ width: '18%' }} />
-                  <col style={{ width: '13%' }} />
                   <col style={{ width: '10%' }} />
+                  <col style={{ width: '13%' }} />
                 </colgroup>
                 <thead>
                   <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
                     <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
                       STT
                     </th>
-                    <th className="text-left py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                    <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
                       Mã lịch hẹn
                     </th>
-                    <th className="text-left py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                    <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
                       Khách hàng
                     </th>
-                    <th className="text-left py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                    <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
                       Loại dịch vụ
                     </th>
-                    <th className="text-left py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
-                      Ngày/giờ
+                    <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                      Ngày
                     </th>
-                    <th className="text-left py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
-                      Trung tâm dịch vụ
+                    <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                      Giờ
                     </th>
-                    <th className="text-left py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                    <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
                       Trạng thái
                     </th>
                     <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
@@ -270,12 +315,12 @@ export default function AppointmentsList() {
                 <colgroup>
                   <col style={{ width: '5%' }} />
                   <col style={{ width: '15%' }} />
+                  <col style={{ width: '18%' }} />
                   <col style={{ width: '12%' }} />
                   <col style={{ width: '12%' }} />
                   <col style={{ width: '15%' }} />
-                  <col style={{ width: '18%' }} />
-                  <col style={{ width: '13%' }} />
                   <col style={{ width: '10%' }} />
+                  <col style={{ width: '13%' }} />
                 </colgroup>
                 <tbody>
                   {loading ? (
@@ -311,7 +356,6 @@ export default function AppointmentsList() {
                         ? format(new Date(appointment.appointmentDate), "dd/MM/yyyy")
                         : "—";
                       const slotTime = formatSlotTime(appointment.slotTime);
-                      const serviceCenterName = appointment.serviceCenter?.name || "—";
 
                       return (
                         <tr
@@ -323,32 +367,23 @@ export default function AppointmentsList() {
                           <td className="py-4 px-4 text-sm text-slate-600 text-center align-top whitespace-nowrap">
                             {(page - 1) * pageSize + index + 1}
                           </td>
-                          <td className="py-4 px-4 align-top">
+                          <td className="py-4 px-4 text-center align-top">
                             <div className="font-medium text-foreground text-sm whitespace-nowrap overflow-hidden text-ellipsis block">{appointment.code || "—"}</div>
                           </td>
-                          <td className="py-4 px-4 align-top">
-                            <div>
-                              <div className="font-medium text-foreground whitespace-nowrap overflow-hidden text-ellipsis block">{customerName}</div>
-                            </div>
+                          <td className="py-4 px-4 text-center align-top">
+                            <div className="font-medium text-foreground whitespace-nowrap">{customerName}</div>
                           </td>
-                          <td className="py-4 px-4 align-top">
-                            <div>
-                              <div className="text-foreground font-medium whitespace-nowrap overflow-hidden text-ellipsis block">{serviceType}</div>
-                            </div>
+                          <td className="py-4 px-4 text-center align-top">
+                            <div className="text-foreground font-medium whitespace-nowrap overflow-hidden text-ellipsis block">{serviceType}</div>
                           </td>
-                          <td className="py-4 px-4 align-top">
-                            <div className="whitespace-nowrap">
-                              <div className="text-foreground">{appointmentDate}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {slotTime}
-                              </div>
-                            </div>
+                          <td className="py-4 px-4 text-center align-top">
+                            <div className="text-foreground whitespace-nowrap">{appointmentDate}</div>
                           </td>
-                          <td className="py-4 px-4 align-top">
-                            <div className="text-sm text-foreground whitespace-nowrap overflow-hidden text-ellipsis block">{serviceCenterName}</div>
+                          <td className="py-4 px-4 text-center align-top">
+                            <div className="text-foreground whitespace-nowrap">{slotTime}</div>
                           </td>
-                          <td className="py-4 px-4 align-top">
-                            <div className="flex items-center gap-2 whitespace-nowrap">
+                          <td className="py-4 px-4 text-center align-top">
+                            <div className="flex items-center justify-center gap-2 whitespace-nowrap">
                               {getStatusBadge(appointment.status)}
                             </div>
                           </td>

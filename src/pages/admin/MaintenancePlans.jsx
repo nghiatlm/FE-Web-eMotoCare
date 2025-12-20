@@ -341,7 +341,7 @@ export default function MaintenancePlans() {
                         <span className="font-semibold text-slate-900 text-sm whitespace-nowrap overflow-hidden text-ellipsis block">{plan.name}</span>
                       </td>
                       <td className="py-4 px-6 align-top">
-                        <span className="text-sm text-slate-700 line-clamp-2 max-w-[320px] block">{plan.description || "—"}</span>
+                        <span className="text-sm text-slate-700 line-clamp-1 md:line-clamp-2 max-w-[200px] md:max-w-[320px] block overflow-hidden text-ellipsis">{plan.description || "—"}</span>
                       </td>
                       <td className="py-4 px-6 text-center align-top">
                         <div className="flex items-center justify-center gap-1.5 flex-wrap">
