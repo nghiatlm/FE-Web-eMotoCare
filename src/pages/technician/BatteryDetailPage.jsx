@@ -11,8 +11,8 @@ import {
   Alert,
   Typography,
   Space,
-  Spin,
 } from "antd";
+import Loading from "../../components/Loading";
 import {
   Battery,
   TrendingUp,
@@ -85,7 +85,7 @@ export default function BatteryDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Spin size="large" />
+        <Loading />
       </div>
     );
   }

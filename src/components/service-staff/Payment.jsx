@@ -1,4 +1,5 @@
-import { Modal, Table, Radio, Button, Spin, Empty, Tag, Image } from "antd";
+import { Modal, Table, Radio, Button, Empty, Tag, Image } from "antd";
+import Loading from "../Loading";
 import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import { createPaymentLinkService } from "../../services/paymentService";
@@ -391,10 +392,24 @@ Xác nhận hóa đơn        </span>
       footer={null}
       width={980}
       destroyOnClose>
-      <Spin
-        spinning={loading || fetchingEVCheck}
-        tip={fetchingEVCheck ? "Đang tải báo giá..." : "Đang xử lý..."}>
-        <div className='space-y-6'>
+      <div style={{ position: "relative" }}>
+        {(loading || fetchingEVCheck) && (
+          <div style={{ 
+            position: "absolute", 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            display: "flex", 
+            justifyContent: "center", 
+            alignItems: "center", 
+            backgroundColor: "rgba(255, 255, 255, 0.8)", 
+            zIndex: 1000 
+          }}>
+            <Loading />
+          </div>
+        )}
+        <div className='space-y-6' style={{ opacity: (loading || fetchingEVCheck) ? 0.5 : 1 }}>
           <div className='bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg text-sm border border-blue-200'>
             <p>
               <strong>Khách hàng:</strong> {booking.customer?.firstName}{" "}
@@ -502,7 +517,7 @@ Xác nhận hóa đơn        </span>
             </Button>
           </div>
         </div>
-      </Spin>
+      </div>
     </Modal>
   );
 };

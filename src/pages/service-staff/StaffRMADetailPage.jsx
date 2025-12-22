@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Spin, Button } from "antd";
+import { Button } from "antd";
 import { toast } from "react-toastify";
 import { ArrowLeft } from "lucide-react";
 import { getRMAService, getCustomerByRMAService } from "../../services/rmaService";
 import { getRmaById } from "../../api/rmasApi";
 import RMADetails from "../../components/service-staff/RMADetails";
+import Loading from "../../components/Loading";
 
 export default function StaffRMADetailPage() {
   const { rmaId } = useParams();
@@ -57,7 +58,7 @@ export default function StaffRMADetailPage() {
   if (loading) {
     return (
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "400px" }}>
-        <Spin size="large" />
+        <Loading />
       </div>
     );
   }

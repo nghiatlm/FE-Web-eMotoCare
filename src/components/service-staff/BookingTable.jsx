@@ -6,6 +6,7 @@ import {
   SERVICE_TYPE_COLORS,
   SERVICE_TYPE_MAP,
 } from "../../utils/constants";
+import Loading from "../Loading";
 
 export default function BookingTable({
   data = [],
@@ -158,7 +159,7 @@ export default function BookingTable({
         columns={columns}
         dataSource={data}
         rowKey='id'
-        loading={loading}
+        loading={loading ? { indicator: <Loading size="medium" /> } : false}
         pagination={{ 
           pageSize: 10,
           showSizeChanger: true,

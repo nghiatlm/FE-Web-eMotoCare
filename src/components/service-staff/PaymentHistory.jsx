@@ -1,4 +1,5 @@
-import { Card, Spin, Empty } from "antd";
+import { Card, Empty } from "antd";
+import Loading from "../Loading";
 import { useState, useEffect } from "react";
 import { fetchEVCheckByAppointmentService } from "../../services/evcheckService";
 import { History } from "lucide-react";
@@ -163,7 +164,7 @@ const PaymentHistory = ({ booking }) => {
   if (loading) {
     return (
       <Card>
-        <Spin tip="Đang tải lịch sử thanh toán..." />
+        <Loading />
       </Card>
     );
   }

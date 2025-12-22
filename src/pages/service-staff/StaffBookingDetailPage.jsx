@@ -17,12 +17,12 @@ import {
   Divider,
   Select,
   Card,
-  Spin,
   Modal,
   Space,
   Typography,
   Input,
 } from "antd";
+import Loading from "../../components/Loading";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -312,7 +312,7 @@ export default function StaffBookingDetailPage() {
           alignItems: "center",
           minHeight: "60vh",
         }}>
-        <Spin size='large' />
+        <Loading />
       </div>
     );
   }
@@ -2239,8 +2239,7 @@ export default function StaffBookingDetailPage() {
           
           {loadingSlots ? (
             <div style={{ textAlign: "center", padding: "20px 0" }}>
-              <Spin size="large" />
-              <p style={{ marginTop: 12, color: "#8c8c8c" }}>Đang tải danh sách slot...</p>
+              <Loading />
             </div>
           ) : availableSlots.length === 0 ? (
             <div style={{ textAlign: "center", padding: "20px 0" }}>

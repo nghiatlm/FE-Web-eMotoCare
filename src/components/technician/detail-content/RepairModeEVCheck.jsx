@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Table, Input, Select, Button, Spin, Tag, Checkbox, Tooltip } from "antd";
+import { Table, Input, Select, Button, Tag, Checkbox, Tooltip } from "antd";
 import { toast } from "react-toastify";
 import {
   fetchEVCheckDetailsServiceRe as getRepairDetailsList,
@@ -18,6 +18,7 @@ import RMAConfirmationModal from "../../../components/service-staff/RMAConfirmat
 import useEVCheckHub from "../../../hooks/useEVCheckHub.jsx";
 import useRMAHub from "../../../hooks/useRMAHub.jsx";
 import BatteryDataDisplay from "../BatteryDataDisplay";
+import Loading from "../../Loading";
 
 const { Option } = Select;
 
@@ -451,7 +452,8 @@ export default function RepairModeEVCheck({
     
     
     try {
-      const cost = await getLaborCostByRemediesService(partTypeId, remedies);
+      // Lấy giá dịch vụ theo price (giống bên bảo dưỡng)
+      const cost = await getLaborCostByRemediesService(partTypeId, remedies, "price");
       updateRow(index, { priceService: Number(cost || 0) });
     } catch (e) {
       updateRow(index, { priceService: 0 });
@@ -2057,7 +2059,7 @@ export default function RepairModeEVCheck({
 
       {loading || vehiclePartLoading || replacePartLoading ? (
         <div className='flex justify-center p-10'>
-          <Spin />
+          <Loading />
         </div>
       ) : (
         <>

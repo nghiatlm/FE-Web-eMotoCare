@@ -1,4 +1,5 @@
-import { Card, Spin, Empty } from "antd";
+import { Card, Empty } from "antd";
+import Loading from "../Loading";
 import { useState, useEffect } from "react";
 import { fetchEVCheckByAppointmentService } from "../../services/evcheckService";
 
@@ -162,7 +163,7 @@ const PaymentInfo = ({ booking, onOpenPayment }) => {
   if (loading) {
     return (
       <Card>
-        <Spin tip="Đang tải thông tin thanh toán..." />
+        <Loading />
       </Card>
     );
   }

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Table, Tag, Button, Select, Input, Card } from "antd";
 import { RotateCcw, Shield, Search } from "lucide-react";
+import Loading from "../../components/Loading";
 
 import {
   getRMAService,
@@ -287,7 +288,7 @@ export default function StaffWarrantyPage() {
         columns={columns}
         dataSource={filteredData}
         rowKey='id'
-        loading={loading}
+        loading={loading ? { indicator: <Loading size="medium" /> } : false}
         bordered
         pagination={{ 
           pageSize: 10,

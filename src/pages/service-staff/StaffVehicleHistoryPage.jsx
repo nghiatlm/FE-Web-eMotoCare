@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Table, Tag, Button, Input, Card, Spin, Empty, Select, DatePicker, Space } from "antd";
+import { Table, Tag, Button, Input, Card, Empty, Select, DatePicker, Space } from "antd";
+import Loading from "../../components/Loading";
 import { Search, Car, Filter } from "lucide-react";
 import { toast } from "react-toastify";
 import dayjs from "dayjs";
@@ -437,7 +438,7 @@ export default function StaffVehicleHistoryPage() {
         
         {loading ? (
           <div style={{ textAlign: "center", padding: "40px 0" }}>
-            <Spin size="large" />
+            <Loading />
           </div>
         ) : filteredData.length === 0 ? (
           <Empty

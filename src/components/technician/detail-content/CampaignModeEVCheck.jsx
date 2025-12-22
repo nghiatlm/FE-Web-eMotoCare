@@ -2,7 +2,7 @@
 
 
 import { useState, useEffect, useCallback } from "react";
-import { Table, Input, Select, Button, Spin, Tag, Checkbox, Tooltip } from "antd";
+import { Table, Input, Select, Button, Tag, Checkbox, Tooltip } from "antd";
 import { toast } from "react-toastify";
 import {
   fetchEVCheckDetailsServiceRe as getRepairDetailsList,
@@ -18,6 +18,7 @@ import { changeAppointmentStatusService } from "../../../services/appointmentSer
 import { PlusOutlined } from "@ant-design/icons";
 import useEVCheckHub from "../../../hooks/useEVCheckHub.jsx";
 import useRMAHub from "../../../hooks/useRMAHub.jsx";
+import Loading from "../../Loading";
 import BatteryDataDisplay from "../BatteryDataDisplay";
 import { getCampaignById } from "../../../api/campaignsApi.js";
 
@@ -1539,7 +1540,7 @@ export default function CampaignModeEVCheck({
 
       {loading || vehiclePartLoading || replacePartLoading ? (
         <div className='flex justify-center p-10'>
-          <Spin />
+          <Loading />
         </div>
       ) : (
         <>

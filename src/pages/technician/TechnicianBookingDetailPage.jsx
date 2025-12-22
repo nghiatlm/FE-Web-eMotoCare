@@ -15,11 +15,11 @@ import {
   Divider,
   Button,
   Input,
-  Spin,
   Space,
   Tag,
   Typography,
 } from "antd";
+import Loading from "../../components/Loading";
 import { toast } from "react-toastify";
 import {
   ArrowLeft,
@@ -239,7 +239,7 @@ export default function TechnicianBookingDetailPage({
           alignItems: "center",
           minHeight: "60vh",
         }}>
-        <Spin size='large' />
+        <Loading />
       </div>
     );
   }
@@ -886,7 +886,7 @@ export default function TechnicianBookingDetailPage({
             justifyContent: "center",
             padding: "40px 0",
           }}>
-          <Spin />
+          <Loading />
         </div>
       ) : isRepair && chassisConfirmed ? (
         <Card

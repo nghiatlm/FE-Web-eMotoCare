@@ -115,6 +115,17 @@ const TechnicianDashboard = () => {
     return typeMap[type] || type;
   };
 
+  const formatSlotTime = (slotTime) => {
+    if (!slotTime) return "";
+    // Format: H08_09 -> 08:00 - 09:00
+    const match = slotTime.match(/H(\d{2})_(\d{2})/);
+    if (match) {
+      const [, start, end] = match;
+      return `${start}:00 - ${end}:00`;
+    }
+    return slotTime;
+  };
+
   const columns = [
     {
       title: "Mã booking",
@@ -141,7 +152,13 @@ const TechnicianDashboard = () => {
       title: "Ngày hẹn",
       dataIndex: "appointmentDate",
       key: "appointmentDate",
-      render: (date) => date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "",
+      render: (date) => date ? dayjs(date).format("DD/MM/YYYY") : "",
+    },
+    {
+      title: "Khung giờ",
+      dataIndex: "slotTime",
+      key: "slotTime",
+      render: (slotTime) => formatSlotTime(slotTime) || "",
     },
     {
       title: "Trạng thái",

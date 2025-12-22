@@ -7,7 +7,6 @@ import {
   Tag,
   Image,
   Button,
-  Spin,
   Checkbox,
   Tooltip,
 } from "antd";
@@ -31,6 +30,7 @@ import RMAConfirmationModal from "../../../components/service-staff/RMAConfirmat
 import useEVCheckHub from "../../../hooks/useEVCheckHub.jsx";
 import useRMAHub from "../../../hooks/useRMAHub.jsx";
 import BatteryDataDisplay from "../BatteryDataDisplay";
+import Loading from "../../Loading";
 
 
 const { Option } = Select;
@@ -1526,7 +1526,7 @@ export default function MaintenanceModeEVCheck({
     <>
       {loading ? (
         <div className='flex justify-center p-10'>
-          <Spin />
+          <Loading />
         </div>
       ) : (
         <>

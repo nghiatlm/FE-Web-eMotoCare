@@ -1,6 +1,7 @@
 
 import { useEffect, useState, useRef } from "react";
-import { Form, InputNumber, DatePicker, Button, Select, Input, Card, Divider, Row, Col, Space, Descriptions, Tag, Spin, Typography } from "antd";
+import { Form, InputNumber, DatePicker, Button, Select, Input, Card, Divider, Row, Col, Space, Descriptions, Tag, Typography } from "antd";
+import Loading from "../Loading";
 import { User, Car, CarFront, Calendar, Clock, FileText, Settings, Wrench, Search, Phone, Mail, MapPin, Hash, Palette } from "lucide-react";
 
 const { Text, Title } = Typography;
@@ -775,6 +776,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                 </div>
                   }
                   name='chassisNumber'
+                  normalize={(value) => (value ? value.toUpperCase() : value)}
               rules={[{ required: true, message: "Nhập số khung!" }]}
               style={{ marginBottom: 0 }}>
               <Row gutter={[12, 0]}>
@@ -787,6 +789,15 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                       borderRadius: 8,
                       fontSize: 14,
                     }}
+                          onInput={(e) => {
+                            if (e && e.target && typeof e.target.value === "string") {
+                              // Chỉ cho phép A-Z và số, ép thành chữ hoa ngay khi nhập
+                              const upper = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+                              if (upper !== e.target.value) {
+                                e.target.value = upper;
+                              }
+                            }
+                          }}
                         onPressEnter={(e) => {
                           const chassisNumber = e.target.value;
                       handleChassisNumberLookup(chassisNumber, e);
@@ -1358,7 +1369,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                       const text = option?.children?.props?.children?.[0]?.props?.children || "";
                       return text.toLowerCase().includes(input.toLowerCase());
                     }}
-                    notFoundContent={loadingVehicleStages ? <Spin size="small" /> : "Không có mốc bảo dưỡng"}
+                    notFoundContent={loadingVehicleStages ? <Loading size="small" /> : "Không có mốc bảo dưỡng"}
                     value={(() => {
                       const selectedId = form.getFieldValue("vehicleStageId");
                       if (!selectedId || vehicleStages.length === 0) return undefined;

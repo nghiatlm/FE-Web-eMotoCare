@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
-import { Table, Spin, Button, Modal, Card, Tag, Image, Space, Divider, Typography, Tooltip } from "antd";
+import { Table, Button, Modal, Card, Tag, Image, Space, Divider, Typography, Tooltip } from "antd";
+import Loading from "../Loading";
 import { toast } from "react-toastify";
 import { Calendar, User, FileText, Package, Clock, Tag as TagIcon } from "lucide-react";
 import dayjs from "dayjs";
@@ -425,7 +426,7 @@ function RMADetails({ rma, details = [], loading }) {
         bodyStyle={{ padding: "12px" }}>
       {loading ? (
           <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
-            <Spin size="large" />
+            <Loading />
         </div>
       ) : (
         <Table
