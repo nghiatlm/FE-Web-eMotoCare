@@ -48,6 +48,7 @@ export default function Branches() {
     wardCode: "",
     wardName: "",
     streetAddress: "",
+    warehouseName: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -74,6 +75,7 @@ export default function Branches() {
       wardCode: "",
       wardName: "",
       streetAddress: "",
+      warehouseName: "",
     });
     setErrors({});
     setDistrictOptions([]);
@@ -199,12 +201,19 @@ export default function Branches() {
 
   useEffect(() => {
     const fetchBranchDetail = async () => {
-      if (selected?.id && isViewOpen) {
+      if (selected?.id && (isViewOpen || isEditOpen)) {
         try {
           setLoadingDetail(true);
           const response = await getServiceCenterById(selected.id);
-          if (response.success && response.data) {
-            setBranchDetail(response.data);
+          const data = response?.data || response;
+          if (data) {
+            setBranchDetail(data);
+            if (isEditOpen) {
+              setForm(prev => ({
+                ...prev,
+                warehouseName: data?.serviceCenterInventory?.serviceCenterInventoryName || "",
+              }));
+            }
           } else {
             setBranchDetail(selected);
           }
@@ -214,13 +223,13 @@ export default function Branches() {
         } finally {
           setLoadingDetail(false);
         }
-      } else if (!isViewOpen) {
+      } else if (!isViewOpen && !isEditOpen) {
         setBranchDetail(null);
       }
     };
 
     fetchBranchDetail();
-  }, [selected, isViewOpen]);
+  }, [selected, isViewOpen, isEditOpen]);
 
   useEffect(() => {
     window.openEditBranch = (row) => {
@@ -657,6 +666,13 @@ export default function Branches() {
       status: statusUpper,
     };
 
+    if (form.warehouseName && form.warehouseName.trim()) {
+      body.serviceCenterInventory = {
+        serviceCenterId: selected.id,
+        serviceCenterInventoryName: form.warehouseName.trim(),
+      };
+    }
+
     try {
       const res = await updateServiceCenter(selected.id, body);
       const updated = res?.data || res;
@@ -1034,6 +1050,15 @@ export default function Branches() {
               <div className="space-y-2">
                 <Label>Mô tả</Label>
                 <Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Tên kho</Label>
+                <Input 
+                  value={form.warehouseName} 
+                  onChange={(e) => setForm((f) => ({ ...f, warehouseName: e.target.value }))} 
+                  placeholder="VD: Kho tổng chi nhánh quận 1"
+                />
               </div>
 
               <div className="space-y-2">
