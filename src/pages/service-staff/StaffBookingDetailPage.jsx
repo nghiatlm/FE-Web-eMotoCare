@@ -520,7 +520,7 @@ export default function StaffBookingDetailPage() {
       toast.success("Đã thanh toán phí hủy thành công!");
       await loadBookingDetail();
     } else {
-      toast.success("Thanh toán thành công!");
+      toast.success("Tạo thanh toán thành công!");
       await loadBookingDetail();
     }
   };

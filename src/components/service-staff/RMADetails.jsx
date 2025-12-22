@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from "react";
 import { Table, Spin, Button, Modal, Card, Tag, Image, Space, Divider, Typography, Tooltip } from "antd";
 import { toast } from "react-toastify";
-import { Calendar, User, FileText, Package, Clock, CheckCircle, Tag as TagIcon } from "lucide-react";
+import { Calendar, User, FileText, Package, Clock, Tag as TagIcon } from "lucide-react";
+import dayjs from "dayjs";
 
 const { Text } = Typography;
 import BookingForm from "../../components/service-staff/BookingForm";
@@ -13,6 +14,7 @@ import { getPartItemByIdService } from "../../services/partitemsService";
 function PartNameCell({ row }) {
   const [partName, setPartName] = React.useState("");
   const [serialNumber, setSerialNumber] = React.useState("");
+  const [warrantyInfo, setWarrantyInfo] = React.useState(null);
   
   React.useEffect(() => {
     const loadPartInfo = async () => {
@@ -41,6 +43,23 @@ function PartNameCell({ row }) {
       
       setPartName(name || "");
       setSerialNumber(partItem?.serialNumber || "");
+      
+      // ✅ Load thông tin bảo hành
+      if (partItem?.warantyStartDate && partItem?.warantyEndDate) {
+        const startDate = new Date(partItem.warantyStartDate);
+        const endDate = new Date(partItem.warantyEndDate);
+        const now = new Date();
+        const isWarrantyValid = now >= startDate && now <= endDate;
+        
+        setWarrantyInfo({
+          startDate: partItem.warantyStartDate,
+          endDate: partItem.warantyEndDate,
+          period: partItem.warrantyPeriod || null,
+          isValid: isWarrantyValid,
+        });
+      } else {
+        setWarrantyInfo(null);
+      }
     };
     
     loadPartInfo();
@@ -50,8 +69,20 @@ function PartNameCell({ row }) {
     <div>
       <div style={{ fontWeight: 500, marginBottom: 2, fontSize: 12 }}>{partName || ""}</div>
       {serialNumber && partName !== serialNumber && (
-        <div style={{ fontSize: 11, color: "#8c8c8c" }}>
+        <div style={{ fontSize: 11, color: "#8c8c8c", marginBottom: 2 }}>
           S/N: {serialNumber}
+        </div>
+      )}
+      {warrantyInfo && (
+        <div style={{ fontSize: 10, color: warrantyInfo.isValid ? "#52c41a" : "#ff4d4f", marginTop: 4 }}>
+          <div style={{ fontWeight: 500 }}>
+            BH: {dayjs(warrantyInfo.startDate).format("DD/MM/YYYY")} - {dayjs(warrantyInfo.endDate).format("DD/MM/YYYY")}
+          </div>
+          {warrantyInfo.period && (
+            <div style={{ fontSize: 9, color: "#8c8c8c", marginTop: 2 }}>
+              ({warrantyInfo.period} tháng)
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -173,8 +204,16 @@ function ReplacePartInfo({ replacePart }) {
           <div style={{ display: "flex", gap: 8 }}>
             <Text type="secondary" style={{ fontSize: 12, minWidth: 80 }}>Thời gian BH:</Text>
             <Text style={{ fontSize: 13, color: "#595959" }}>
-              {new Date(replacePart.warantyStartDate).toLocaleDateString("vi-VN")} - {new Date(replacePart.warantyEndDate).toLocaleDateString("vi-VN")}
+              {dayjs(replacePart.warantyStartDate).format("DD/MM/YYYY")} - {dayjs(replacePart.warantyEndDate).format("DD/MM/YYYY")}
             </Text>
+          </div>
+        )}
+        {replacePart?.isManufacturerWarranty && (
+          <div style={{ display: "flex", gap: 8 }}>
+            <Text type="secondary" style={{ fontSize: 12, minWidth: 80 }}>Loại BH:</Text>
+            <Tag color="blue" style={{ fontSize: 11, margin: 0 }}>
+              Bảo hành nhà sản xuất
+            </Tag>
           </div>
         )}
         {loading && (
@@ -469,6 +508,52 @@ function RMADetails({ rma, details = [], loading }) {
 
                       <div style={{ padding: "20px" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                          {/* Thông tin bảo hành phụ tùng */}
+                          {partItem?.warantyStartDate && partItem?.warantyEndDate && (
+                            <div style={{ 
+                              padding: "14px 16px",
+                              backgroundColor: "#e6f7ff",
+                              borderRadius: 6,
+                              borderLeft: "4px solid #1890ff"
+                            }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                                <div style={{ 
+                                  width: 6, 
+                                  height: 6, 
+                                  borderRadius: "50%", 
+                                  backgroundColor: "#1890ff" 
+                                }} />
+                                <Text strong style={{ fontSize: 13, color: "#1890ff" }}>
+                                  Thông tin bảo hành
+                                </Text>
+                              </div>
+                              <div style={{ marginLeft: 14, display: "flex", flexDirection: "column", gap: 6 }}>
+                                <div style={{ display: "flex", gap: 8 }}>
+                                  <Text type="secondary" style={{ fontSize: 12, minWidth: 100 }}>Thời gian BH:</Text>
+                                  <Text style={{ fontSize: 13, color: "#262626" }}>
+                                    {dayjs(partItem.warantyStartDate).format("DD/MM/YYYY")} - {dayjs(partItem.warantyEndDate).format("DD/MM/YYYY")}
+                                  </Text>
+                                </div>
+                                {partItem.warrantyPeriod && (
+                                  <div style={{ display: "flex", gap: 8 }}>
+                                    <Text type="secondary" style={{ fontSize: 12, minWidth: 100 }}>Chính sách BH:</Text>
+                                    <Text style={{ fontSize: 13, color: "#262626" }}>
+                                      {partItem.warrantyPeriod} tháng
+                                    </Text>
+                                  </div>
+                                )}
+                                {partItem.isManufacturerWarranty && (
+                                  <div style={{ display: "flex", gap: 8 }}>
+                                    <Text type="secondary" style={{ fontSize: 12, minWidth: 100 }}>Loại BH:</Text>
+                                    <Tag color="blue" style={{ fontSize: 11, margin: 0 }}>
+                                      Bảo hành nhà sản xuất
+                                    </Tag>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
                           <div style={{ 
                             padding: "14px 16px",
                             backgroundColor: "#fffbf0",
@@ -483,11 +568,11 @@ function RMADetails({ rma, details = [], loading }) {
                                 backgroundColor: "#faad14" 
                               }} />
                               <Text strong style={{ fontSize: 13, color: "#ad6800" }}>
-                                Kết quả kiểm tra
+                                Lý do
                               </Text>
                             </div>
                             <Text style={{ fontSize: 14, color: "#ad6800", lineHeight: 1.6, marginLeft: 14 }}>
-                              {record.result || "Chưa có thông tin"}
+                              {record.reason || "Chưa có thông tin"}
                             </Text>
                           </div>
 
@@ -602,6 +687,30 @@ function RMADetails({ rma, details = [], loading }) {
                                         </Text>
                                       </div>
                                     )}
+                                    {replacePart?.warantyStartDate && replacePart?.warantyEndDate && (
+                                      <div style={{ display: "flex", gap: 8 }}>
+                                        <Text type="secondary" style={{ fontSize: 12, minWidth: 80 }}>Thời gian BH:</Text>
+                                        <Text style={{ fontSize: 13, color: "#262626" }}>
+                                          {dayjs(replacePart.warantyStartDate).format("DD/MM/YYYY")} - {dayjs(replacePart.warantyEndDate).format("DD/MM/YYYY")}
+                                        </Text>
+                                      </div>
+                                    )}
+                                    {replacePart?.warrantyPeriod && (
+                                      <div style={{ display: "flex", gap: 8 }}>
+                                        <Text type="secondary" style={{ fontSize: 12, minWidth: 80 }}>Chính sách BH:</Text>
+                                        <Text style={{ fontSize: 13, color: "#262626" }}>
+                                          {replacePart.warrantyPeriod} tháng
+                                        </Text>
+                                      </div>
+                                    )}
+                                    {replacePart?.isManufacturerWarranty && (
+                                      <div style={{ display: "flex", gap: 8 }}>
+                                        <Text type="secondary" style={{ fontSize: 12, minWidth: 80 }}>Loại BH:</Text>
+                                        <Tag color="blue" style={{ fontSize: 11, margin: 0 }}>
+                                          Bảo hành nhà sản xuất
+                                        </Tag>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               ) : (
@@ -660,19 +769,6 @@ function RMADetails({ rma, details = [], loading }) {
                 width: 80,
                 align: "center",
                 render: (qty) => qty || 1,
-              },
-              {
-                title: "Lý do",
-                dataIndex: "reason",
-                width: 140,
-                ellipsis: {
-                  showTitle: true,
-                },
-                render: (reason) => (
-                  <Tooltip title={reason} placement="topLeft">
-                    <span style={{ fontSize: 12 }}>{reason || ""}</span>
-                  </Tooltip>
-                ),
               },
               {
                 title: "Kết quả",

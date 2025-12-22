@@ -24,6 +24,8 @@ const SLOT_LABEL_MAP = {
   H08_09: "08:00 - 09:00",
   H09_10: "09:00 - 10:00",
   H10_11: "10:00 - 11:00",
+  H11_12: "11:00 - 12:00",
+  H12_13: "12:00 - 13:00",
   H13_14: "13:00 - 14:00",
   H14_15: "14:00 - 15:00",
   H15_16: "15:00 - 16:00",
@@ -56,9 +58,8 @@ const translateColor = (color) => {
   return colorMap[colorUpper] || color;
 };
 
-// Hàm chuyển tên màu thành mã hex để hiển thị màu thực tế
 const getColorHex = (color) => {
-  if (!color) return "#999999"; // Màu xám mặc định
+  if (!color) return "#999999"; 
   const colorUpper = String(color).trim().toUpperCase();
   const colorHexMap = {
     BLUE: "#1890ff",
@@ -443,32 +444,36 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
     const now = dayjs();
     const isToday = dateObj.isSame(now, "day");
 
-    // ✅ Filter slots: chỉ lấy slots active và đúng ngày
     let slots = center.serviceCenterSlots.filter(
       (s) => s.isActive && s.date === dateStr
     );
 
-    // ✅ Nếu là ngày hôm nay, chỉ hiển thị các slot chưa qua
     if (isToday) {
       const currentHour = now.hour();
       const currentMinute = now.minute();
       const currentTimeInMinutes = currentHour * 60 + currentMinute;
       
       slots = slots.filter((slot) => {
-        // Parse slotTime (format: H07_08, H08_09, etc.)
         const slotTime = slot.slotTime || "";
         const match = slotTime.match(/H(\d{2})_(\d{2})/);
-        if (!match) return false; // Nếu không parse được, loại bỏ để an toàn
+        if (!match) return false; 
         
         const startHour = parseInt(match[1], 10);
         const startTimeInMinutes = startHour * 60;
         
-        // ✅ Chỉ hiển thị slot nếu giờ bắt đầu chưa qua (ít nhất 30 phút trước khi bắt đầu)
-        // Để đảm bảo có đủ thời gian để chuẩn bị
-        const bufferMinutes = 30; // Buffer 30 phút
+        const bufferMinutes = 30;
         return startTimeInMinutes > (currentTimeInMinutes + bufferMinutes);
       });
     }
+
+    // ✅ Sort slots theo thứ tự thời gian từ nhỏ đến lớn
+    slots.sort((a, b) => {
+      const getStartHour = (slotTime) => {
+        const match = slotTime?.match(/H(\d{2})_(\d{2})/);
+        return match ? parseInt(match[1], 10) : 0;
+      };
+      return getStartHour(a.slotTime) - getStartHour(b.slotTime);
+    });
 
     setAvailableSlots(slots);
     form.setFieldsValue({ slotTime: undefined });
@@ -488,7 +493,6 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
     }
   };
 
-  // ✅ Tự động load slots khi centers đã load và đã có ngày được chọn
   useEffect(() => {
     const selectedDate = form.getFieldValue("appointmentDate");
     const centerId = form.getFieldValue("serviceCenterId") || currentServiceCenterId;
@@ -506,12 +510,12 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
     const today = now.startOf("day");
     const currentHour = now.hour();
     
-    // ✅ Disable các ngày trong quá khứ
+   
     if (current.isBefore(today, "day")) {
       return true;
     }
     
-    // ✅ Sau 18h (6 PM), disable ngày hôm nay
+    
     if (current.isSame(today, "day") && currentHour >= 18) {
       return true;
     }
@@ -530,7 +534,6 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
 
     try {
       setLoadingVehicleStages(true);
-      // ✅ Clear giá trị ngay khi bắt đầu load để tránh hiển thị ID cũ
       const currentVehicleStageId = form.getFieldValue("vehicleStageId");
       if (currentVehicleStageId) {
         form.setFieldsValue({ vehicleStageId: undefined });
@@ -558,17 +561,14 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
 
       const upcomingStage = availableStages.find(s => (s.status || "").toUpperCase() === "UPCOMING");
       
-      // ✅ Sau khi load xong, set lại giá trị nếu có trong initialValues hoặc chọn upcoming stage
       if (currentVehicleStageId) {
         const stageExists = availableStages.find(s => s.id === currentVehicleStageId);
         if (stageExists) {
-          // Chỉ set lại nếu tìm thấy trong danh sách (tránh hiển thị ID)
           setTimeout(() => {
             form.setFieldsValue({ vehicleStageId: currentVehicleStageId });
           }, 100);
         }
       } else if (upcomingStage?.id) {
-        // ✅ Tự động chọn upcoming stage nếu chưa có vehicleStageId
         setTimeout(() => {
           form.setFieldsValue({ vehicleStageId: upcomingStage.id });
         }, 100);
@@ -676,12 +676,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
 
     const serviceCenterId = values.serviceCenterId || currentServiceCenterId;
 
-
-
-    if (!values.type) {
-      toast.error("Vui lòng chọn loại dịch vụ!");
-      return;
-    }
+    // Validation đã được xử lý bởi Form.Item rules
     let appointmentType = values.type;
     let programId = null;
     
@@ -1221,7 +1216,8 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                     <span style={{ fontSize: 14, fontWeight: 500, color: "#262626" }}>Loại dịch vụ</span>
                   </div>
                 }
-                name='type'>
+                name='type'
+                rules={[{ required: true, message: "Vui lòng chọn loại dịch vụ!" }]}>
                 <Select
                   allowClear
                   placeholder='Chọn loại dịch vụ'
@@ -1251,7 +1247,16 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                     </div>
                   }
                   name='programId'
-                  rules={form.getFieldValue("type") === "CAMPAIGN_TYPE" ? [{ required: true, message: "Chọn campaign!" }] : []}
+                  rules={[
+                    ({ getFieldValue }) => ({
+                      validator(_, value) {
+                        if (getFieldValue("type") === "CAMPAIGN_TYPE" && !value) {
+                          return Promise.reject(new Error("Vui lòng chọn chiến dịch!"));
+                        }
+                        return Promise.resolve();
+                      },
+                    }),
+                  ]}
                   tooltip='Chọn chiến dịch cho lịch hẹn'>
                   <Select
                     placeholder='Chọn chiến dịch'
@@ -1290,7 +1295,16 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                     </div>
                   }
                   name='recallId'
-                  rules={form.getFieldValue("type") === "RECALL_TYPE" ? [{ required: true, message: "Chọn triệu hồi!" }] : []}
+                  rules={[
+                    ({ getFieldValue }) => ({
+                      validator(_, value) {
+                        if (getFieldValue("type") === "RECALL_TYPE" && !value) {
+                          return Promise.reject(new Error("Vui lòng chọn chương trình triệu hồi!"));
+                        }
+                        return Promise.resolve();
+                      },
+                    }),
+                  ]}
                   tooltip='Chọn chương trình triệu hồi cho lịch hẹn'>
                   <Select
                     placeholder='Chọn chương trình triệu hồi'

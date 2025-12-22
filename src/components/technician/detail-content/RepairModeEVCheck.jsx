@@ -1266,7 +1266,7 @@ export default function RepairModeEVCheck({
               toast.warning(`Appointment status: ${verifiedAppointment?.status}`);
             }
           } catch (err) {
-            toast.error(`Lỗi cập nhật appointment: ${err.response?.data?.message || err.message || "Unknown error"}`);
+            // toast.error(`Lỗi cập nhật appointment: ${err.response?.data?.message || err.message || "Unknown error"}`);
 
             return;
           }
@@ -2183,46 +2183,11 @@ export default function RepairModeEVCheck({
         booking={booking}
         partsForRMA={currentRMAParts}
         onRMASuccess={async () => {
-
           setSelectedRMAItems(new Set());
           setIsRMAConfirmationOpen(false);
-          
-
-          if (booking?.id) {
-            try {
-              const { getAppointmentById } = await import("../../../api/appointmentsApi");
-              const appointmentRes = await getAppointmentById(booking.id);
-              const currentAppointment = appointmentRes?.data?.data || appointmentRes?.data || appointmentRes;
-              
-              const updatePayload = {
-                note: currentAppointment?.note || booking?.note || "",
-                approveById: currentAppointment?.approveById || booking?.approveById || null,
-                code: currentAppointment?.code || booking?.code || "",
-                checkinQRCode: currentAppointment?.checkinQRCode || booking?.checkinQRCode || "",
-              };
-              
-              await changeAppointmentStatusService(booking.id, "COMPLETED", updatePayload);
-              
-
-              const verifyRes = await getAppointmentById(booking.id);
-              const verifiedAppointment = verifyRes?.data?.data || verifyRes?.data || verifyRes;
-              
-              if (verifiedAppointment?.status !== "COMPLETED") {
-                toast.warning(`Appointment status: ${verifiedAppointment?.status}`);
-              }
-              
-
-              await loadRepairDetails();
-              
-
-              toast.success("Tạo RMA thành công!");
-              onRefresh?.();
-            } catch (err) {
-              toast.error(`Lỗi cập nhật appointment: ${err.response?.data?.message || err.message || "Unknown error"}`);
-            }
-          }
-          
-
+          await loadRepairDetails();
+          toast.success("Tạo RMA thành công!");
+          onRefresh?.();
           setIsRMASubmitting(false);
         }}
       />
