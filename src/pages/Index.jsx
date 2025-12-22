@@ -168,29 +168,87 @@ const Index = () => {
 
                 let finalTotalCampaign = totalCampaign || 0;
                 let finalTotalAppointments = totalAppointment || 0;
+                let currentMonthRevenue = totalRevenue || 0;
+                let revenueChangePercent = 0;
+                let currentMonthCampaigns = 0;
+                let campaignsChangePercent = 0;
+                let currentMonthWarranty = totalRMA || 0;
+                let warrantyChangePercent = 0;
+                let currentMonthAppointments = totalAppointment || 0;
+                let appointmentsChangePercent = 0;
+                
                 try {
                     const overviewResponseForStats = await getDashboardOverviewData(selectedYear);
-                    const overviewDataForStats = overviewResponseForStats?.data?.data?.data || 
-                                                 overviewResponseForStats?.data?.data || 
-                                                 overviewResponseForStats?.data || 
-                                                 [];
+                    const overviewDataForStats = overviewResponseForStats?.data?.data;
+                    
                     if (Array.isArray(overviewDataForStats) && overviewDataForStats.length > 0) {
                         finalTotalCampaign = overviewDataForStats.reduce((sum, item) => sum + (Number(item.campaign) || 0), 0);
                         finalTotalAppointments = overviewDataForStats.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
+                        
+                        const currentMonth = new Date().getMonth() + 1;
+                        const currentMonthData = overviewDataForStats.find((item) => Number(item.month) === currentMonth);
+                        const previousMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+                        const previousMonthData = overviewDataForStats.find((item) => Number(item.month) === previousMonth);
+                        
+                        if (currentMonthData) {
+                            currentMonthRevenue = Number(currentMonthData.revenue) || 0;
+                            currentMonthCampaigns = (Number(currentMonthData.campaign) || 0) + (Number(currentMonthData.recall) || 0);
+                            currentMonthWarranty = Number(currentMonthData.warranty) || 0;
+                            currentMonthAppointments = Number(currentMonthData.total) || 0;
+                        }
+                        
+                        if (previousMonthData) {
+                            const previousMonthRevenue = Number(previousMonthData.revenue) || 0;
+                            if (previousMonthRevenue > 0) {
+                                revenueChangePercent = ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100;
+                            } else if (currentMonthRevenue > 0) {
+                                revenueChangePercent = 100;
+                            } else {
+                                revenueChangePercent = 0;
+                            }
+                            
+                            const previousMonthCampaigns = (Number(previousMonthData.campaign) || 0) + (Number(previousMonthData.recall) || 0);
+                            if (previousMonthCampaigns > 0) {
+                                campaignsChangePercent = ((currentMonthCampaigns - previousMonthCampaigns) / previousMonthCampaigns) * 100;
+                            } else if (currentMonthCampaigns > 0) {
+                                campaignsChangePercent = 100;
+                            } else {
+                                campaignsChangePercent = 0;
+                            }
+                            
+                            const previousMonthWarranty = Number(previousMonthData.warranty) || 0;
+                            if (previousMonthWarranty > 0) {
+                                warrantyChangePercent = ((currentMonthWarranty - previousMonthWarranty) / previousMonthWarranty) * 100;
+                            } else if (currentMonthWarranty > 0) {
+                                warrantyChangePercent = 100;
+                            } else {
+                                warrantyChangePercent = 0;
+                            }
+                            
+                            const previousMonthAppointments = Number(previousMonthData.total) || 0;
+                            if (previousMonthAppointments > 0) {
+                                appointmentsChangePercent = ((currentMonthAppointments - previousMonthAppointments) / previousMonthAppointments) * 100;
+                            } else if (currentMonthAppointments > 0) {
+                                appointmentsChangePercent = 100;
+                            } else {
+                                appointmentsChangePercent = 0;
+                            }
+                        }
                     }
                 } catch (error) {
                     console.error("Error calculating total campaigns and appointments:", error);
                 }
 
                 setStats({
-                    totalRevenue: totalRevenue || 0,
-                    totalRevenueChange: 0, 
-                    activeCampaigns: finalTotalCampaign,
-                    activeCampaignsChange: 0, 
+                    totalRevenue: currentMonthRevenue,
+                    totalRevenueChange: Number.isFinite(revenueChangePercent) ? revenueChangePercent : 0, 
+                    activeCampaigns: currentMonthCampaigns,
+                    activeCampaignsChange: Number.isFinite(campaignsChangePercent) ? campaignsChangePercent : 0, 
                     totalBranchesChange: 0, 
-                    totalWarranty: totalRMA || 0,
-                    totalWarrantyChange: 0,
-                    totalAppointments: finalTotalAppointments,
+                    totalWarranty: currentMonthWarranty,
+                    totalWarrantyChange: Number.isFinite(warrantyChangePercent) ? warrantyChangePercent : 0,
+                    totalAppointments: currentMonthAppointments,
+                    totalAppointmentsChange: Number.isFinite(appointmentsChangePercent) ? appointmentsChangePercent : 0,
                     totalRecall: totalRecall || 0,
                     totalEVCheckInProgress: totalEVCheckInProgress || 0,
                 });
@@ -204,6 +262,7 @@ const Index = () => {
                     totalWarranty: 0,
                     totalWarrantyChange: 0,
                     totalAppointments: 0,
+                    totalAppointmentsChange: 0,
                     totalRecall: 0,
                     totalEVCheckInProgress: 0,
                 });
@@ -225,9 +284,6 @@ const Index = () => {
                     (u) => u.roleName === "ROLE_CUSTOMER" && u.customer?.createdAt
                 );
 
-                const now = new Date();
-                const currentYearForCustomers = now.getFullYear();
-
                 const monthlyCounts = Array.from({ length: 12 }, (_, i) => ({
                     monthIndex: i,
                     monthLabel: `Tháng ${i + 1}`,
@@ -236,7 +292,7 @@ const Index = () => {
 
                 customers.forEach((user) => {
                     const createdAt = new Date(user.customer.createdAt);
-                    if (createdAt.getFullYear() !== currentYearForCustomers) return;
+                    if (createdAt.getFullYear() !== selectedYear) return;
                     const monthIdx = createdAt.getMonth();
                     if (monthIdx >= 0 && monthIdx < 12) {
                         monthlyCounts[monthIdx].value += 1;
@@ -276,16 +332,46 @@ const Index = () => {
         }).format(amount);
     };
 
+    const formatPercent = (value) => {
+        const num = Number(value);
+        if (!Number.isFinite(num)) return '0';
+        // Nếu là số nguyên thì hiển thị không có số thập phân
+        if (num % 1 === 0) {
+            return num.toString();
+        }
+        // Nếu không phải số nguyên thì làm tròn đến 1 chữ số thập phân
+        return num.toFixed(1);
+    };
+
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-pink-50">
             <div className="p-8 max-w-[95%] mx-auto space-y-6">
                 <div className="mb-6">
-                    <h1 className="text-3xl font-bold text-slate-900 mb-2 flex items-center gap-3">
-                        <LayoutDashboard className="h-8 w-8 text-red-600"/>
-                        Dashboard
-                    </h1>
-                    <p className="text-slate-600">Tổng quan hệ thống quản lý xe điện</p>
-                    <div className="mt-3 h-[2px] w-24 rounded-full bg-red-500/70" />
+                    <div className="flex items-center justify-between flex-wrap gap-4">
+                        <div>
+                            <h1 className="text-3xl font-bold text-slate-900 mb-2 flex items-center gap-3">
+                                <LayoutDashboard className="h-8 w-8 text-red-600"/>
+                                Dashboard
+                            </h1>
+                            <p className="text-slate-600">Tổng quan hệ thống quản lý</p>
+                            <div className="mt-3 h-[2px] w-24 rounded-full bg-red-500/70" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label className="text-sm font-medium text-slate-700 whitespace-nowrap">Năm:</label>
+                            <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+                                <SelectTrigger className="w-[120px]">
+                                    <SelectValue placeholder="Chọn năm" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {years.map((year) => (
+                                        <SelectItem key={year} value={year.toString()}>
+                                            {year}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -314,7 +400,7 @@ const Index = () => {
                                 )}
                                 <span>
                                     {stats.totalRevenueChange >= 0 ? '+' : ''}
-                                    {stats.totalRevenueChange.toFixed(2)}% so với kỳ trước
+                                    {formatPercent(stats.totalRevenueChange)}% so với tháng trước
                                 </span>
                             </p>
                         </CardContent>
@@ -345,7 +431,7 @@ const Index = () => {
                                 )}
                                 <span>
                                     {stats.activeCampaignsChange >= 0 ? '+' : ''}
-                                    {stats.activeCampaignsChange.toFixed(2)}% so với kỳ trước
+                                    {formatPercent(stats.activeCampaignsChange)}% so với tháng trước
                                 </span>
                             </p>
                         </CardContent>
@@ -375,7 +461,7 @@ const Index = () => {
                                 )}
                                 <span>
                                     {stats.totalWarrantyChange >= 0 ? '+' : ''}
-                                    {stats.totalWarrantyChange.toFixed(2)}% so với kỳ trước
+                                    {formatPercent(stats.totalWarrantyChange)}% so với tháng trước
                                 </span>
                             </p>
                         </CardContent>
@@ -396,9 +482,18 @@ const Index = () => {
                             <div className="text-2xl font-semibold text-slate-900">
                                 {loading ? '...' : stats.totalAppointments.toLocaleString('vi-VN')}
                             </div>
-                            <p className="text-xs mt-2 flex items-center gap-1 text-emerald-600">
-                                <TrendingUp className="h-3 w-3" />
-                                <span>+0.00% so với kỳ trước</span>
+                            <p className={`text-xs mt-2 flex items-center gap-1 ${
+                                stats.totalAppointmentsChange >= 0 ? 'text-emerald-600' : 'text-red-600'
+                            }`}>
+                                {stats.totalAppointmentsChange >= 0 ? (
+                                    <TrendingUp className="h-3 w-3" />
+                                ) : (
+                                    <TrendingDown className="h-3 w-3" />
+                                )}
+                                <span>
+                                    {stats.totalAppointmentsChange >= 0 ? '+' : ''}
+                                    {formatPercent(stats.totalAppointmentsChange)}% so với tháng trước
+                                </span>
                             </p>
                         </CardContent>
                     </Card>
@@ -407,29 +502,12 @@ const Index = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
                         <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <CardTitle className="text-lg font-semibold text-slate-900">Số lượng loại lịch hẹn</CardTitle>
-                                    <p className="text-sm text-slate-500 mt-1">Số lượng loại lịch hẹn theo từng tháng trong năm</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <label className="text-sm text-slate-600 whitespace-nowrap">Năm:</label>
-                                    <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
-                                        <SelectTrigger className="w-[100px]">
-                                            <SelectValue placeholder="Chọn năm" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {years.map((year) => (
-                                                <SelectItem key={year} value={year.toString()}>
-                                                    {year}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                            <div>
+                                <CardTitle className="text-lg font-semibold text-slate-900">Số lượng loại lịch hẹn</CardTitle>
+                                <p className="text-sm text-slate-500 mt-1">Số lượng loại lịch hẹn theo từng tháng trong năm</p>
                             </div>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent style={{paddingLeft: 0}}>
                             <ResponsiveContainer width="100%" height={400}>
                                 <AreaChart data={monthlySalesData.length ? monthlySalesData : Array.from({ length: 12 }, (_, i) => ({
                                     month: `Tháng ${i + 1}`,
@@ -503,47 +581,25 @@ const Index = () => {
 
                     <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
                         <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <CardTitle className="text-lg font-semibold text-slate-900">Đăng ký</CardTitle>
-                                    <p className="text-sm text-slate-500 mt-1">
-                                        Số lượng khách hàng đăng ký theo tháng (năm hiện tại)
-                                    </p>
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-2xl font-bold text-slate-900">
-                                        +{customerRegistrationsSummary.total}
-                                    </div>
-                                    <p className="text-xs flex items-center gap-1">
-                                        <TrendingUp
-                                            className={`h-3 w-3 ${
-                                                customerRegistrationsSummary.changePercent >= 0
-                                                    ? "text-emerald-600"
-                                                    : "text-red-500"
-                                            }`}
-                                        />
-                                        <span
-                                            className={
-                                                customerRegistrationsSummary.changePercent >= 0
-                                                    ? "text-emerald-600"
-                                                    : "text-red-500"
-                                            }
-                                        >
-                                            {customerRegistrationsSummary.changePercent >= 0 ? "+" : ""}
-                                            {customerRegistrationsSummary.changePercent}% so với 6 tháng đầu năm
-                                        </span>
-                                    </p>
-                                </div>
+                            <div>
+                                <CardTitle className="text-lg font-semibold text-slate-900">Đăng ký</CardTitle>
+                                <p className="text-sm text-slate-500 mt-1">
+                                    Số lượng khách hàng đăng ký theo tháng
+                                </p>
                             </div>
                         </CardHeader>
-                        <CardContent>
-                            <ResponsiveContainer width="100%" height={300}>
+                        <CardContent style={{paddingLeft: 0}}>
+                            <ResponsiveContainer width="100%" height={395}>
                                 <BarChart data={customerRegistrations}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                                     <XAxis
                                         dataKey="monthLabel"
                                         stroke="#64748b"
                                         style={{ fontSize: "12px" }}
+                                        interval={0}
+                                        angle={-45}
+                                        textAnchor="end"
+                                        height={80}
                                     />
                                     <YAxis
                                         stroke="#64748b"

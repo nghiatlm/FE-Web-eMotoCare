@@ -28,6 +28,7 @@ export default function InformationDetail() {
   const [isCreateSlotOpen, setIsCreateSlotOpen] = useState(false);
   const [isCreatingSlot, setIsCreatingSlot] = useState(false);
   const [weekAnchor, setWeekAnchor] = useState(new Date());
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [slotForm, setSlotForm] = useState({
     date: "",
     slotTime: "",
@@ -246,6 +247,15 @@ export default function InformationDetail() {
       return;
     }
 
+    const capacityValue = Number(slotForm.capacity) || 0;
+    if (capacityValue < 1) {
+      toastify.error("Sức chứa phải tối thiểu là 1", {
+        position: "top-right",
+        autoClose: 4000,
+      });
+      return;
+    }
+
     if (isSlotExists(slotForm.date, slotForm.slotTime)) {
       toastify.error(`Slot này đã tồn tại cho ngày ${format(new Date(slotForm.date), "dd/MM/yyyy", { locale: vi })}`, {
         position: "top-right",
@@ -262,7 +272,7 @@ export default function InformationDetail() {
         date: slotForm.date,
         dayOfWeek,
         slotTime: slotForm.slotTime,
-        capacity: Number(slotForm.capacity) || 0,
+        capacity: Math.max(1, Number(slotForm.capacity) || 1),
         isActive: true,
         note: slotForm.note || "",
       };
@@ -296,21 +306,19 @@ export default function InformationDetail() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-rose-50/60 p-6 lg:p-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div className="space-y-2">
-          <div className="inline-flex items-center gap-3 px-3 py-1.5 rounded-full bg-rose-100 text-rose-700 text-sm font-semibold shadow-sm">
-            <Building2 className="h-4 w-4" />
-            Thông tin trung tâm
-          </div>
-          <div>
-            <h1 className="text-3xl lg:text-4xl font-bold text-slate-900">Thông tin Chi tiết Trung tâm</h1>
-            <p className="text-muted-foreground text-base">Thông tin chi tiết về trung tâm dịch vụ</p>
+      <div className="w-full max-w-[1920px] mx-auto">
+        <div className="mb-8 flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-3 px-3 py-1.5 rounded-full bg-rose-100 text-rose-700 text-sm font-semibold shadow-sm">
+              <Building2 className="h-4 w-4" />
+            </div>
+            <div>
+              <h1 className="text-3xl lg:text-4xl font-bold text-slate-900">Thông tin chi tiết</h1>
+              <p className="text-muted-foreground text-base mt-2">Thông tin chi tiết về trung tâm dịch vụ</p>
+            </div>
           </div>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6 w-full">
           <Card className="border border-rose-100 shadow-md bg-white/95">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2">
@@ -516,7 +524,7 @@ export default function InformationDetail() {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="date">Ngày *</Label>
-                  <Popover>
+                  <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
@@ -546,6 +554,7 @@ export default function InformationDetail() {
                             } else {
                               setSlotForm({ ...slotForm, date: dateStr });
                             }
+                            setIsDatePickerOpen(false);
                           }
                         }}
                         disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
@@ -626,36 +635,49 @@ export default function InformationDetail() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="capacity">Sức chứa</Label>
+                  <Label htmlFor="capacity">Sức chứa *</Label>
                   <Input
                     id="capacity"
                     type="number"
-                    min="0"
+                    min="1"
                     value={slotForm.capacity}
                     onFocus={(e) => {
-                      if (e.target.value === "0") {
+                      if (e.target.value === "0" || e.target.value === "") {
                         setSlotForm({ ...slotForm, capacity: "" });
                       }
                     }}
                     onBlur={(e) => {
                       const value = e.target.value.trim();
-                      setSlotForm({
-                        ...slotForm,
-                        capacity: value === "" ? 0 : parseInt(value, 10) || 0,
-                      });
+                      const numValue = parseInt(value, 10);
+                      if (value === "" || isNaN(numValue) || numValue < 1) {
+                        setSlotForm({
+                          ...slotForm,
+                          capacity: 1,
+                        });
+                      } else {
+                        setSlotForm({
+                          ...slotForm,
+                          capacity: numValue,
+                        });
+                      }
                     }}
                     onChange={(e) => {
                       const value = e.target.value;
                       if (value === "") {
                         setSlotForm({ ...slotForm, capacity: "" });
                       } else {
-                        setSlotForm({
-                          ...slotForm,
-                          capacity: parseInt(value, 10) || 0,
-                        });
+                        const numValue = parseInt(value, 10);
+                        if (!isNaN(numValue) && numValue >= 1) {
+                          setSlotForm({
+                            ...slotForm,
+                            capacity: numValue,
+                          });
+                        } else if (value === "0") {
+                          setSlotForm({ ...slotForm, capacity: "" });
+                        }
                       }
                     }}
-                    placeholder="Nhập sức chứa"
+                    placeholder="Nhập sức chứa (tối thiểu 1)"
                   />
                 </div>
                 <div className="space-y-2">
@@ -679,80 +701,6 @@ export default function InformationDetail() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </div>
-
-        <div className="space-y-6 lg:col-span-1 lg:sticky lg:top-20 self-start">
-          <Card>
-            <CardHeader>
-              <CardTitle>Trạng thái</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Badge
-                className={`text-lg px-4 py-2 ${
-                  serviceCenter.status === "ACTIVE"
-                    ? "bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400"
-                    : "bg-gray-100 text-gray-800 hover:bg-gray-100 dark:bg-gray-900/20 dark:text-gray-400"
-                }`}
-              >
-                {serviceCenter.status === "ACTIVE" ? "Đang hoạt động" : "Ngưng hoạt động"}
-              </Badge>
-              <div className="mt-4 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Mã trung tâm</span>
-                  <span className="text-foreground font-medium">{serviceCenter.code || serviceCenter.id}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {manager && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary" />
-                  Quản lý
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Tên quản lý</label>
-                  <p className="text-foreground font-semibold mt-1">
-                    {manager.firstName} {manager.lastName}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Mã nhân viên</label>
-                  <p className="text-foreground mt-1">{manager.staffCode || "—"}</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Thống kê</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Tổng nhân viên</span>
-                <span className="text-2xl font-bold text-foreground">
-                  {serviceCenter.staffs?.filter(s => s.position !== "MANAGER_BRANCH").length || 0}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Số slot lịch</span>
-                <span className="text-2xl font-bold text-primary">
-                  {serviceCenter.serviceCenterSlots?.length || 0}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Slot đang hoạt động</span>
-                <span className="text-2xl font-bold text-green-600">
-                  {serviceCenter.serviceCenterSlots?.filter(s => s.isActive).length || 0}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

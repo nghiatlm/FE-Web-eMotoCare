@@ -255,7 +255,7 @@ const App = () => (
                 <div className="flex min-h-screen w-full">
                   <TechnicianSidebar />
                   <div className="flex-1 flex flex-col overflow-hidden">
-                    <ManagerTopHeader />
+                    <TechnicianTopHeader />
                     <main className="flex-1 overflow-y-auto overflow-x-hidden">
                       <Routes>
                         <Route

@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  ShieldCheck,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,15 +17,15 @@ import { fetchAppointments } from "@/services/appointmentService";
 import { format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStaffByAccountId } from "@/api/staffsApi";
-import { getDashboardOverview } from "@/api/dashboardApi";
+import { getDashboardOverview, getDashboardOverviewData } from "@/api/dashboardApi";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState({
     totalAppointments: 0,
     todayAppointments: 0,
-    totalStaff: 0,
-    activeStaff: 0,
+    totalWarranty: 0,
+    warrantyChange: 0,
     pendingAppointments: 0,
     completedAppointments: 0,
     cancelledAppointments: 0,
@@ -57,6 +58,64 @@ export default function Dashboard() {
 
         const dashboardResponse = await getDashboardOverview(serviceCenterId);
         const dashboardData = dashboardResponse?.data || dashboardResponse;
+
+        let currentMonthRevenue = dashboardData.totalRevenue || 0;
+        let revenueChangePercent = 0;
+        let currentMonthAppointments = dashboardData.totalAppointment || 0;
+        let appointmentsChangePercent = 0;
+        let currentMonthWarranty = dashboardData.totalRMA || 0;
+        let warrantyChangePercent = 0;
+
+        try {
+          const currentYear = new Date().getFullYear();
+          const overviewResponseForStats = await getDashboardOverviewData(currentYear);
+          const overviewDataForStats = overviewResponseForStats?.data?.data;
+          
+          if (Array.isArray(overviewDataForStats) && overviewDataForStats.length > 0) {
+            const currentMonth = new Date().getMonth() + 1;
+            const currentMonthData = overviewDataForStats.find((item) => Number(item.month) === currentMonth);
+            const previousMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+            const previousMonthData = overviewDataForStats.find((item) => Number(item.month) === previousMonth);
+            
+            if (currentMonthData) {
+              currentMonthRevenue = Number(currentMonthData.revenue) || 0;
+              currentMonthAppointments = Number(currentMonthData.total) || 0;
+              currentMonthWarranty = Number(currentMonthData.warranty) || 0;
+            }
+            
+            if (previousMonthData) {
+              const previousMonthRevenue = Number(previousMonthData.revenue) || 0;
+              if (previousMonthRevenue > 0) {
+                revenueChangePercent = ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100;
+              } else if (currentMonthRevenue > 0) {
+                revenueChangePercent = 100;
+              } else {
+                revenueChangePercent = 0;
+              }
+              
+              const previousMonthAppointments = Number(previousMonthData.total) || 0;
+              if (previousMonthAppointments > 0) {
+                appointmentsChangePercent = ((currentMonthAppointments - previousMonthAppointments) / previousMonthAppointments) * 100;
+              } else if (currentMonthAppointments > 0) {
+                appointmentsChangePercent = 100;
+              } else {
+                appointmentsChangePercent = 0;
+              }
+              
+              const previousMonthWarranty = Number(previousMonthData.warranty) || 0;
+              if (previousMonthWarranty > 0) {
+                warrantyChangePercent = ((currentMonthWarranty - previousMonthWarranty) / previousMonthWarranty) * 100;
+              } else if (currentMonthWarranty > 0) {
+                warrantyChangePercent = 100;
+              } else {
+                warrantyChangePercent = 0;
+              }
+            }
+          }
+        } catch (overviewError) {
+          console.error("Error fetching overview data:", overviewError);
+        }
+
 
         try {
           const appointmentsResponse = await fetchAppointments({ 
@@ -97,27 +156,27 @@ export default function Dashboard() {
           }).length;
 
           setStats({
-            totalAppointments: dashboardData.totalAppointment || appointmentsData.length || 0,
+            totalAppointments: currentMonthAppointments || appointmentsData.length || 0,
             todayAppointments: todayAppointments,
-            totalStaff: 0,
-            activeStaff: 0,
+            totalWarranty: currentMonthWarranty,
+            warrantyChange: Number.isFinite(warrantyChangePercent) ? warrantyChangePercent : 0,
             pendingAppointments: pendingAppointments,
             completedAppointments: completedAppointments,
             cancelledAppointments: cancelledAppointments,
-            revenue: dashboardData.totalRevenue || 0,
-            revenueChange: 0,
+            revenue: currentMonthRevenue,
+            revenueChange: Number.isFinite(revenueChangePercent) ? revenueChangePercent : 0,
           });
         } catch (appointmentsError) {
           setStats({
-            totalAppointments: dashboardData.totalAppointment || 0,
+            totalAppointments: currentMonthAppointments || 0,
             todayAppointments: 0,
-            totalStaff: 0,
-            activeStaff: 0,
+            totalWarranty: currentMonthWarranty,
+            warrantyChange: Number.isFinite(warrantyChangePercent) ? warrantyChangePercent : 0,
             pendingAppointments: 0,
             completedAppointments: 0,
             cancelledAppointments: 0,
-            revenue: dashboardData.totalRevenue || 0,
-            revenueChange: 0,
+            revenue: currentMonthRevenue,
+            revenueChange: Number.isFinite(revenueChangePercent) ? revenueChangePercent : 0,
           });
         }
       } catch (error) {
@@ -169,7 +228,17 @@ export default function Dashboard() {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
       currency: 'VND',
+      maximumFractionDigits: 0,
     }).format(amount);
+  };
+
+  const formatPercent = (value) => {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return '0';
+    if (num % 1 === 0) {
+      return num.toString();
+    }
+    return num.toFixed(1);
   };
 
   const formatSlotTime = (slotTime) => {
@@ -291,14 +360,24 @@ export default function Dashboard() {
 
         <Card className="bg-white/95 border border-rose-100 shadow-md rounded-2xl backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Nhân viên</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Số lượng bảo hành</CardTitle>
+            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.activeStaff}/{stats.totalStaff}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Đang làm việc / Tổng số
-            </p>
+            <div className="text-2xl font-bold">{stats.totalWarranty}</div>
+            <div className={`flex items-center text-xs mt-1 ${
+              stats.warrantyChange >= 0 ? 'text-green-600' : 'text-red-600'
+            }`}>
+              {stats.warrantyChange >= 0 ? (
+                <TrendingUp className="h-3 w-3 mr-1" />
+              ) : (
+                <TrendingDown className="h-3 w-3 mr-1" />
+              )}
+              <span>
+                {stats.warrantyChange >= 0 ? '+' : ''}
+                {formatPercent(stats.warrantyChange)}% so với tháng trước
+              </span>
+            </div>
           </CardContent>
         </Card>
 
@@ -309,9 +388,18 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(stats.revenue)}</div>
-            <div className="flex items-center text-xs text-green-600 mt-1">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              +{stats.revenueChange}% so với tháng trước
+            <div className={`flex items-center text-xs mt-1 ${
+              stats.revenueChange >= 0 ? 'text-green-600' : 'text-red-600'
+            }`}>
+              {stats.revenueChange >= 0 ? (
+                <TrendingUp className="h-3 w-3 mr-1" />
+              ) : (
+                <TrendingDown className="h-3 w-3 mr-1" />
+              )}
+              <span>
+                {stats.revenueChange >= 0 ? '+' : ''}
+                {formatPercent(stats.revenueChange)}% so với tháng trước
+              </span>
             </div>
           </CardContent>
         </Card>

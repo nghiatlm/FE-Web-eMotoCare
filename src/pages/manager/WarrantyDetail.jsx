@@ -858,7 +858,7 @@ export default function WarrantyDetail() {
           partId: formData.replacePartId || detail.replacePart?.partId || null,
           exportNoteId: null,
           importNoteId: null,
-          quantity: 0,
+          quantity: 1,
           serialNumber: formData.replacePartSerial || detail.replacePart?.serialNumber || "",
           price: formData.replacePartPrice ? parseFloat(formData.replacePartPrice) : (detail.replacePart?.price || 0),
           warrantyPeriod: warrantyPeriod,
@@ -870,9 +870,7 @@ export default function WarrantyDetail() {
       }
 
       await updateRmaDetail(detailId, payload);
-
       await fetchRmaDetail();
-
       setSavedDetails(prev => new Set([...prev, detailId]));
 
       toastify.success("Đã cập nhật thông tin hãng thành công");
