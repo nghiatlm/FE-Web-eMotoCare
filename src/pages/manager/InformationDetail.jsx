@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Building2, MapPin, Phone, Mail, Clock, Users, Wrench, Calendar, ChevronRight, Plus, ChevronLeft, ChevronRight as ChevronRightIcon, CalendarRange } from "lucide-react";
+import { Building2, MapPin, Phone, Mail, Clock, Users, Wrench, Calendar, ChevronRight, Plus, ChevronLeft, ChevronRight as ChevronRightIcon, CalendarRange, Warehouse } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -341,6 +341,48 @@ export default function InformationDetail() {
             </CardContent>
           </Card>
 
+          {serviceCenter.serviceCenterInventory && (
+            <Card className="border border-rose-100 shadow-md bg-white/95">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2">
+                  <Warehouse className="h-5 w-5 text-primary" />
+                  Thông tin kho
+                </CardTitle>
+                <CardDescription>Thông tin kho của trung tâm dịch vụ</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <InfoItem 
+                    icon={Warehouse} 
+                    label="Tên kho" 
+                    value={serviceCenter.serviceCenterInventory?.serviceCenterInventoryName || "—"} 
+                  />
+                  <div className="flex gap-3 p-3 rounded-lg border border-rose-50 bg-rose-50/50 hover:border-rose-100 transition-colors">
+                    <div className="h-10 w-10 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center flex-shrink-0">
+                      <Clock className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex items-center">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-slate-500">Trạng thái</p>
+                        <Badge 
+                          className={`mt-1 ${
+                            serviceCenter.serviceCenterInventory?.status === "ACTIVE"
+                              ? "bg-emerald-600 hover:bg-emerald-700"
+                              : "bg-slate-400 hover:bg-slate-500"
+                          }`}
+                        >
+                          {serviceCenter.serviceCenterInventory?.status === "ACTIVE" 
+                            ? "Đang hoạt động" 
+                            : "Ngưng hoạt động"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {(serviceCenter.latitude || serviceCenter.longitude || serviceCenter.address) && (
             <Card>
               <CardHeader>
@@ -383,11 +425,6 @@ export default function InformationDetail() {
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="h-5 w-5 text-primary" />
                   Lịch làm việc
-                  {serviceCenter.serviceCenterSlots && serviceCenter.serviceCenterSlots.length > 0 && (
-                    <Badge variant="secondary" className="ml-2 rounded-full px-2 py-0.5 text-[11px] bg-slate-100 text-slate-700">
-                      {serviceCenter.serviceCenterSlots.length} slot
-                    </Badge>
-                  )}
                 </CardTitle>
                 <CardDescription>Quản lý các khung giờ làm việc tại trung tâm của bạn.</CardDescription>
               </div>

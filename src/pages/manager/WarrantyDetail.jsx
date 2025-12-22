@@ -146,7 +146,9 @@ export default function WarrantyDetail() {
   const [loadingParts, setLoadingParts] = useState(false);
   const [openPartPopovers, setOpenPartPopovers] = useState({});
   const [partInfoMap, setPartInfoMap] = useState({});
-  const [savedDetails, setSavedDetails] = useState(new Set()); 
+  const [savedDetails, setSavedDetails] = useState(new Set());
+  const [validationErrors, setValidationErrors] = useState({});
+  const [touchedFields, setTouchedFields] = useState({}); 
 
   const generateYears = () => {
     const currentYear = new Date().getFullYear();
@@ -707,23 +709,116 @@ export default function WarrantyDetail() {
   const handleApproveDetail = async (detailId, detail) => {
     if (!detailId || !detail) return;
     
+    const formData = detailForms[detailId] || {};
+    const releaseDateRMA = formData.releaseDateRMA || detail.releaseDateRMA || null;
+    const expirationDateRMA = formData.expirationDateRMA || detail.expirationDateRMA || null;
+    
     setIsProcessing(true);
     setUpdatingDetailId(detailId);
     try {
       await updateRmaDetail(detailId, { 
         status: "APPROVED",
+        releaseDateRMA: releaseDateRMA,
+        expirationDateRMA: expirationDateRMA,
       });
 
       await fetchRmaDetail();
 
-      toastify.success("Đã cập nhật hãng thành công");
+      toastify.success("Đã xác nhận RMA thành công");
     } catch (error) {
       console.error("Error approving RMA detail:", error);
-      toastify.error(error?.response?.data?.message || "Không thể cập nhật hãng");
+      toastify.error(error?.response?.data?.message || "Không thể xác nhận RMA");
     } finally {
       setIsProcessing(false);
       setUpdatingDetailId(null);
     }
+  };
+
+  const validateDetail = (detailId, formData, detail, shouldValidateAll = false) => {
+    const errors = {};
+    const touched = touchedFields[detailId] || {};
+    
+    const releaseDateRMA = formData.releaseDateRMA || detail?.releaseDateRMA || null;
+    if (shouldValidateAll || touched.releaseDateRMA) {
+      if (!releaseDateRMA) {
+        errors.releaseDateRMA = "Vui lòng chọn ngày phát hành RMA";
+      }
+    }
+    
+    const expirationDateRMA = formData.expirationDateRMA || detail?.expirationDateRMA || null;
+    if (shouldValidateAll || touched.expirationDateRMA) {
+      if (!expirationDateRMA) {
+        errors.expirationDateRMA = "Vui lòng chọn ngày hết hạn RMA";
+      } else if (releaseDateRMA) {
+        const releaseDate = new Date(releaseDateRMA);
+        const expirationDate = new Date(expirationDateRMA);
+        releaseDate.setHours(0, 0, 0, 0);
+        expirationDate.setHours(0, 0, 0, 0);
+        
+        if (expirationDate <= releaseDate) {
+          errors.expirationDateRMA = "Ngày hết hạn phải sau ngày phát hành";
+        }
+      }
+    }
+    
+    const rmaNumber = formData.rmaNumber || detail?.rmaNumber || "";
+    const inspector = formData.inspector || detail?.inspector || "";
+    const result = formData.result || detail?.result || "";
+    const currentSolution = formData.solution !== undefined 
+      ? formData.solution 
+      : detail?.solution || "";
+    
+    if (shouldValidateAll || touched.rmaNumber) {
+      if (!rmaNumber.trim()) {
+        errors.rmaNumber = "Vui lòng nhập số RMA";
+      }
+    }
+    if (shouldValidateAll || touched.inspector) {
+      if (!inspector.trim()) {
+        errors.inspector = "Vui lòng nhập người kiểm tra";
+      }
+    }
+    if (shouldValidateAll || touched.result) {
+      if (!result.trim()) {
+        errors.result = "Vui lòng nhập kết quả kiểm tra";
+      }
+    }
+    if (shouldValidateAll || touched.solution) {
+      if (!currentSolution) {
+        errors.solution = "Vui lòng chọn giải pháp";
+      }
+    }
+    
+    const solutionValue = currentSolution === "WARRANTY" || currentSolution === "REPLACE" ? "REPLACE" : currentSolution;
+    
+    if (solutionValue === "REPLACE" && (shouldValidateAll || touched.solution || touched.replacePartSerial || touched.replacePartWarrantyPeriod || touched.replacePartWarrantyStart)) {
+      const hasReplacePart = formData.replacePartId || detail?.replacePart?.partId;
+      const replacePartSerial = formData.replacePartSerial || detail?.replacePart?.serialNumber || "";
+      const warrantyPeriod = formData.replacePartWarrantyPeriod || detail?.replacePart?.warrantyPeriod || 0;
+      const warrantyStartDate = formData.replacePartWarrantyStart || detail?.replacePart?.warantyStartDate || formData.releaseDateRMA || detail?.releaseDateRMA || null;
+      
+      if (!hasReplacePart) {
+        errors.replacePart = "Giải pháp 'Thay thế' yêu cầu phải có bộ phận thay thế";
+      } else {
+        if (shouldValidateAll || touched.replacePartSerial) {
+          if (!replacePartSerial.trim()) {
+            errors.replacePartSerial = "Vui lòng nhập số Serial";
+          }
+        }
+        if (shouldValidateAll || touched.replacePartWarrantyPeriod) {
+          if (!warrantyPeriod || warrantyPeriod === 0) {
+            errors.replacePartWarrantyPeriod = "Vui lòng nhập thời hạn bảo hành";
+          }
+        }
+        if (shouldValidateAll || touched.replacePartWarrantyStart) {
+          if (!warrantyStartDate) {
+            errors.replacePartWarrantyStart = "Vui lòng chọn ngày bắt đầu bảo hành";
+          }
+        }
+      }
+    }
+    
+    return errors;
   };
 
   const handleFormChange = (detailId, field, value) => {
@@ -787,8 +882,8 @@ export default function WarrantyDetail() {
       }
 
       if (field === "replacePartWarrantyPeriod" || field === "replacePartWarrantyStart" || field === "releaseDateRMA") {
-        const warrantyPeriod = updatedForm.replacePartWarrantyPeriod || currentForm.replacePartWarrantyPeriod || 0;
-        const warrantyStart = updatedForm.replacePartWarrantyStart || currentForm.replacePartWarrantyStart || (field === "releaseDateRMA" ? value : null);
+        const warrantyPeriod = updatedForm.replacePartWarrantyPeriod || currentForm.replacePartWarrantyPeriod || detail?.replacePart?.warrantyPeriod || 0;
+        const warrantyStart = updatedForm.replacePartWarrantyStart || currentForm.replacePartWarrantyStart || detail?.replacePart?.warantyStartDate || updatedForm.releaseDateRMA || currentForm.releaseDateRMA || detail?.releaseDateRMA || null;
         
         if (warrantyStart && warrantyPeriod && warrantyPeriod > 0) {
           const startDate = new Date(warrantyStart);
@@ -800,10 +895,26 @@ export default function WarrantyDetail() {
         }
       }
 
-      return {
+      const newForm = {
         ...prev,
         [detailId]: updatedForm,
       };
+      
+      setTouchedFields(prev => ({
+        ...prev,
+        [detailId]: {
+          ...prev[detailId],
+          [field]: true,
+        },
+      }));
+      
+      const errors = validateDetail(detailId, updatedForm, detail, false);
+      setValidationErrors(prev => ({
+        ...prev,
+        [detailId]: errors,
+      }));
+
+      return newForm;
     });
   };
 
@@ -812,11 +923,22 @@ export default function WarrantyDetail() {
     
     const formData = detailForms[detailId] || {};
     
+    const errors = validateDetail(detailId, formData, detail, true);
+    setValidationErrors(prev => ({
+      ...prev,
+      [detailId]: errors,
+    }));
+    
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
+    
     setIsProcessing(true);
     setUpdatingDetailId(detailId);
     try {
-      const releaseDate = formData.releaseDateRMA || detail.releaseDateRMA || toUtcDateISOString(new Date());
-      const warrantyStartDate = formData.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || releaseDate;
+      const releaseDateRMA = formData.releaseDateRMA || detail.releaseDateRMA || null;
+      const expirationDateRMA = formData.expirationDateRMA || detail.expirationDateRMA || null;
+      const warrantyStartDate = formData.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || releaseDateRMA;
       
       let warrantyEndDate = null;
       const warrantyPeriod = formData.replacePartWarrantyPeriod || detail.replacePart?.warrantyPeriod || 0;
@@ -827,15 +949,6 @@ export default function WarrantyDetail() {
         warrantyEndDate = toUtcDateISOString(endDate);
       } else {
         warrantyEndDate = formData.replacePartWarrantyEnd || detail.replacePart?.warantyEndDate || null;
-      }
-
-      let expirationDateRMA = formData.expirationDateRMA || detail.expirationDateRMA || null;
-      const releaseDateRMA = formData.releaseDateRMA || detail.releaseDateRMA || null;
-      if (releaseDateRMA && !expirationDateRMA) {
-        const releaseDate = new Date(releaseDateRMA);
-        const expirationDate = new Date(releaseDate);
-        expirationDate.setDate(expirationDate.getDate() + 7);
-        expirationDateRMA = toUtcDateISOString(expirationDate);
       }
 
       const payload = {
@@ -958,88 +1071,64 @@ export default function WarrantyDetail() {
           Quay lại danh sách
         </Button>
 
-        <div className="relative mb-8 overflow-hidden rounded-3xl border border-border/60 bg-card shadow-xl">
+        <div className="relative mb-6 overflow-hidden rounded-xl border border-border/60 bg-card shadow-md">
           <div className={cn("absolute inset-0 bg-gradient-to-br opacity-90", statusInfo.gradient)} />
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjEpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-40" />
-          <div className="relative flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between md:p-10">
-            <div className="flex-1 space-y-6">
-              <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-white/90 bg-white/95 shadow-lg backdrop-blur-sm">
-                  <StatusHeroIcon className="h-7 w-7 text-primary" />
+          <div className="relative p-5 md:p-6">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/90 bg-white/95 shadow-sm backdrop-blur-sm">
+                  <StatusHeroIcon className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mã yêu cầu</span>
-                    <Hash className="h-3.5 w-3.5 text-muted-foreground" />
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Mã yêu cầu</span>
+                    <Hash className="h-3 w-3 text-muted-foreground" />
                   </div>
-                  <span className="text-lg font-bold text-foreground">{rma.code}</span>
+                  <span className="text-base font-bold text-foreground">{rma.code}</span>
                 </div>
               </div>
-              <div>
-                <h1 className="text-3xl font-bold text-foreground md:text-4xl mb-3">Chi tiết yêu cầu bảo hành</h1>
-                <p className="text-base text-muted-foreground leading-relaxed">{statusDescription}</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <span className={cn("inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold shadow-md backdrop-blur-sm border-2", statusInfo.pill)}>
-                  <StatusHeroIcon className="h-4 w-4" />
-                  {STATUS_META[currentStatus]?.label || statusInfo.label}
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full border-2 border-white/80 bg-white/70 px-4 py-2.5 text-sm font-medium text-foreground shadow-md backdrop-blur-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  {createdAt}
-                </span>
-                {staffName && (
-                  <span className="inline-flex items-center gap-2 rounded-full border-2 border-white/80 bg-white/70 px-4 py-2.5 text-sm font-medium text-foreground shadow-md backdrop-blur-sm">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    {staffName}
-                  </span>
-                )}
-              </div>
               {rma?.rmaDetails && rma.rmaDetails.some((detail) => detail.status?.toUpperCase() === "PENDING") && (
-                <div className="flex flex-wrap items-center gap-3 mt-4">
+                <div className="flex items-center gap-2">
                   <Button
                     onClick={() => setIsConfirmDialogOpen(true)}
                     disabled={isProcessing}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md backdrop-blur-sm border-2 border-white/80"
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm h-8 text-xs"
                   >
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
                     Duyệt tất cả
                   </Button>
                   <Button
                     onClick={() => setIsRejectDialogOpen(true)}
                     disabled={isProcessing}
                     variant="destructive"
-                    className="shadow-md backdrop-blur-sm border-2 border-white/80"
+                    size="sm"
+                    className="shadow-sm h-8 text-xs"
                   >
-                    <XCircle className="h-4 w-4 mr-2" />
+                    <XCircle className="h-3.5 w-3.5 mr-1.5" />
                     Từ chối tất cả
                   </Button>
                 </div>
               )}
             </div>
-            <div className="grid w-full md:w-auto md:min-w-[300px] grid-cols-2 gap-4">
-              <div className="rounded-2xl border-2 border-white/80 bg-white/90 backdrop-blur-sm px-5 py-5 text-foreground shadow-lg hover:shadow-xl transition-shadow">
-                <div className="flex items-center gap-2 mb-2">
-                  <Package className="h-4 w-4 text-primary" />
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tổng serial</p>
-              </div>
-                <p className="text-3xl font-bold text-primary mb-1">{totalSerials}</p>
-                <p className="text-xs text-muted-foreground leading-tight">Đang được quản lý trong yêu cầu</p>
-              </div>
-              <div className="rounded-2xl border-2 border-white/80 bg-white/90 backdrop-blur-sm px-5 py-5 text-foreground shadow-lg hover:shadow-xl transition-shadow">
-                <div className="flex items-center gap-2 mb-2">
-                  <Hash className="h-4 w-4 text-primary" />
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Số phụ tùng</p>
-              </div>
-                <p className="text-3xl font-bold text-primary mb-1">{partCount}</p>
-                <p className="text-xs text-muted-foreground leading-tight">Đính kèm trong yêu cầu</p>
-            </div>
-              <div className="col-span-2 rounded-2xl border-2 border-white/80 bg-white/90 backdrop-blur-sm px-5 py-4 text-foreground shadow-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <MapPin className="h-4 w-4 text-primary" />
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Địa chỉ trả hàng</p>
-                </div>
-                <p className="text-sm font-medium leading-relaxed">{returnAddress}</p>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground md:text-3xl mb-2">Chi tiết yêu cầu bảo hành</h1>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-3">{statusDescription}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur-sm border", statusInfo.pill)}>
+                  <StatusHeroIcon className="h-3.5 w-3.5" />
+                  {STATUS_META[currentStatus]?.label || statusInfo.label}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/70 px-3 py-1.5 text-xs font-medium text-foreground shadow-sm backdrop-blur-sm">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                  {createdAt}
+                </span>
+                {staffName && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/70 px-3 py-1.5 text-xs font-medium text-foreground shadow-sm backdrop-blur-sm">
+                    <User className="h-3.5 w-3.5 text-muted-foreground" />
+                    {staffName}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -1060,46 +1149,6 @@ export default function WarrantyDetail() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6 pt-6">
-                <div className="rounded-lg border border-border/60 bg-card shadow-sm overflow-hidden">
-                  <div className="bg-muted/30 border-b border-border/60 px-5 py-3">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-base font-semibold text-foreground">Thông tin chung</h3>
-                    </div>
-                  </div>
-                  <div className="grid gap-4 px-5 py-4 md:grid-cols-3">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Hash className="h-4 w-4 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">Mã yêu cầu</p>
-                      </div>
-                      <p className="text-base font-semibold text-foreground">{detailInfo.request.code}</p>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">Ngày tạo</p>
-                      </div>
-                      <p className="text-base font-semibold text-foreground">{detailInfo.request.createdAt}</p>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-primary" />
-                        <p className="text-sm text-muted-foreground">Trạng thái</p>
-                      </div>
-                      <p className="text-base font-semibold text-primary">{STATUS_META[normalizedStatus]?.label || detailInfo.request.status}</p>
-                    </div>
-                    {detailInfo.request.description && (
-                      <div className="space-y-2 md:col-span-3">
-                        <div className="flex items-center gap-2">
-                          <MessageSquareIcon className="h-4 w-4 text-muted-foreground" />
-                          <p className="text-sm text-muted-foreground">Mô tả</p>
-                        </div>
-                        <p className="text-base font-medium text-foreground leading-relaxed">{detailInfo.request.description}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
                 {/* Khách hàng và Phương tiện */}
                 <div className="grid gap-5 lg:grid-cols-2">
                   <div className="rounded-2xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 shadow-sm overflow-hidden">
@@ -1345,7 +1394,7 @@ export default function WarrantyDetail() {
                                       <div className="flex-1">
                                         <div className="flex items-center gap-3 mb-1">
                                           <h3 className="text-base font-semibold text-foreground">
-                                            RMA #{index + 1}: {rmaNumber}
+                                            RMA {index + 1}: {rmaNumber}
                                           </h3>
                                           {getStatusBadgeForDetail(detailStatus)}
                                         </div>
@@ -1397,6 +1446,36 @@ export default function WarrantyDetail() {
                                           </h3>
                                         </div>
                                       </div>
+                                      {partItem && (
+                                      <div className="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-red-500/10 via-red-500/5 to-transparent border border-red-200/60 shadow-sm m-4">
+                                        {partItemImage && (
+                                          <div className="flex-shrink-0">
+                                            <img
+                                              src={partItemImage}
+                                              alt={partItemName}
+                                              className="h-20 w-20 rounded-lg object-cover border-2 border-red-300/40 shadow-md"
+                                              onError={(e) => {
+                                                e.target.style.display = "none";
+                                              }}
+                                            />
+                                          </div>
+                                        )}
+                                        {partItemName !== "—" && (
+                                          <div className="flex-1 min-w-0 pt-1">
+                                            <p className="text-xs font-bold uppercase tracking-wider text-red-700/70 mb-2">
+                                              PHỤ TÙNG CẦN BẢO HÀNH
+                                            </p>
+                                            <p className="text-base font-bold text-foreground break-words leading-tight">{partItemName}</p>
+                                            {partItem?.part?.code && (
+                                              <p className="text-sm text-muted-foreground mt-1">Mã: {partItem.part.code}</p>
+                                            )}
+                                            {partItemSerial && partItemSerial !== "—" && (
+                                              <p className="text-sm text-muted-foreground mt-1">Serial: {partItemSerial}</p>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                       <div className="grid gap-5 px-5 py-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
                                         <div className="space-y-1.5">
                                           <div className="flex items-center gap-2">
@@ -1414,8 +1493,89 @@ export default function WarrantyDetail() {
                                               Ngày phát hành
                                             </p>
                                           </div>
-                                          <p className="text-sm md:text-base font-semibold text-foreground">{releaseDate}</p>
+                                          {detailStatus?.toUpperCase() === "PENDING" ? (
+                                            <div className="space-y-1">
+                                              <Popover>
+                                                <PopoverTrigger asChild>
+                                                  <Button
+                                                    variant="outline"
+                                                    className={cn(
+                                                      "w-1/2 justify-start text-left font-normal h-9 text-sm",
+                                                      !(detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA) && "text-muted-foreground",
+                                                      validationErrors[detailId]?.releaseDateRMA && "border-destructive"
+                                                    )}
+                                                  >
+                                                    {detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA ? (
+                                                      format(new Date(detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA), "dd/MM/yyyy")
+                                                    ) : (
+                                                      <span>Chọn ngày</span>
+                                                    )}
+                                                  </Button>
+                                                </PopoverTrigger>
+                                              <PopoverContent className="w-auto p-0" align="start">
+                                                <div className="p-3 border-b flex items-center gap-2">
+                                                  <Select
+                                                    value={getDatePickerMonth(detailId, "releaseDateRMA", detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA).getFullYear().toString()}
+                                                    onValueChange={(year) => {
+                                                      const currentMonth = getDatePickerMonth(detailId, "releaseDateRMA", detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA);
+                                                      const newDate = new Date(currentMonth);
+                                                      newDate.setFullYear(parseInt(year));
+                                                      setDatePickerMonth(detailId, "releaseDateRMA", newDate);
+                                                    }}
+                                                  >
+                                                    <SelectTrigger className="w-[100px] h-8">
+                                                      <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                      {generateYears().map((year) => (
+                                                        <SelectItem key={year} value={year.toString()}>
+                                                          {year}
+                                                        </SelectItem>
+                                                      ))}
+                                                    </SelectContent>
+                                                  </Select>
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8"
+                                                    onClick={() => setDatePickerMonth(detailId, "releaseDateRMA", new Date())}
+                                                  >
+                                                    Năm nay
+                                                  </Button>
+                                                </div>
+                                                <CalendarComponent
+                                                  mode="single"
+                                                  selected={
+                                                    detailForms[detailId]?.releaseDateRMA 
+                                                      ? new Date(detailForms[detailId].releaseDateRMA)
+                                                      : detail.releaseDateRMA 
+                                                        ? new Date(detail.releaseDateRMA)
+                                                        : undefined
+                                                  }
+                                                  onSelect={(date) => {
+                                                    const dateISO = toUtcDateISOString(date);
+                                                    handleFormChange(detailId, "releaseDateRMA", dateISO);
+                                                  }}
+                                                  month={getDatePickerMonth(detailId, "releaseDateRMA", detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA)}
+                                                  onMonthChange={(month) => setDatePickerMonth(detailId, "releaseDateRMA", month)}
+                                                  disabled={(date) => {
+                                                    const today = new Date();
+                                                    today.setHours(0, 0, 0, 0);
+                                                    return date < today;
+                                                  }}
+                                                  initialFocus
+                                                />
+                                              </PopoverContent>
+                                            </Popover>
+                                            {validationErrors[detailId]?.releaseDateRMA && (
+                                              <p className="text-xs text-red-500 mt-1">{validationErrors[detailId].releaseDateRMA}</p>
+                                            )}
+                                            </div>
+                                          ) : (
+                                            <p className="text-sm md:text-base font-semibold text-foreground">{releaseDate}</p>
+                                          )}
                                         </div>
+
                                         <div className="space-y-1.5">
                                           <div className="flex items-center gap-2">
                                             <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -1423,7 +1583,101 @@ export default function WarrantyDetail() {
                                               Ngày hết hạn
                                             </p>
                                           </div>
-                                          <p className="text-sm md:text-base font-semibold text-foreground">{expirationDate}</p>
+                                          {detailStatus?.toUpperCase() === "PENDING" ? (
+                                            <div className="space-y-1">
+                                              <Popover>
+                                                <PopoverTrigger asChild>
+                                                  <Button
+                                                    variant="outline"
+                                                    className={cn(
+                                                      "w-1/2 justify-start text-left font-normal h-9 text-sm",
+                                                      !(detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA) && "text-muted-foreground",
+                                                      validationErrors[detailId]?.expirationDateRMA && "border-destructive"
+                                                    )}
+                                                  >
+                                                    {detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA ? (
+                                                      format(new Date(detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA), "dd/MM/yyyy")
+                                                    ) : (
+                                                      <span>Chọn ngày</span>
+                                                    )}
+                                                  </Button>
+                                                </PopoverTrigger>
+                                              <PopoverContent className="w-auto p-0" align="start">
+                                                <div className="p-3 border-b flex items-center gap-2">
+                                                  <Select
+                                                    value={getDatePickerMonth(detailId, "expirationDateRMA", detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA || new Date()).getFullYear().toString()}
+                                                    onValueChange={(year) => {
+                                                      const currentMonth = getDatePickerMonth(detailId, "expirationDateRMA", detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA || new Date());
+                                                      const newDate = new Date(currentMonth);
+                                                      newDate.setFullYear(parseInt(year));
+                                                      setDatePickerMonth(detailId, "expirationDateRMA", newDate);
+                                                    }}
+                                                  >
+                                                    <SelectTrigger className="w-[100px] h-8">
+                                                      <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                      {generateYears().map((year) => (
+                                                        <SelectItem key={year} value={year.toString()}>
+                                                          {year}
+                                                        </SelectItem>
+                                                      ))}
+                                                    </SelectContent>
+                                                  </Select>
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8"
+                                                    onClick={() => setDatePickerMonth(detailId, "expirationDateRMA", new Date())}
+                                                  >
+                                                    Năm nay
+                                                  </Button>
+                                                </div>
+                                                <CalendarComponent
+                                                  mode="single"
+                                                  selected={
+                                                    detailForms[detailId]?.expirationDateRMA 
+                                                      ? new Date(detailForms[detailId].expirationDateRMA)
+                                                      : detail.expirationDateRMA 
+                                                        ? new Date(detail.expirationDateRMA)
+                                                        : undefined
+                                                  }
+                                                  onSelect={(date) => {
+                                                    const dateISO = toUtcDateISOString(date);
+                                                    handleFormChange(detailId, "expirationDateRMA", dateISO);
+                                                  }}
+                                                  month={getDatePickerMonth(detailId, "expirationDateRMA", detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA || new Date())}
+                                                  onMonthChange={(month) => setDatePickerMonth(detailId, "expirationDateRMA", month)}
+                                                  disabled={(date) => {
+                                                    const today = new Date();
+                                                    today.setHours(0, 0, 0, 0);
+                                                    
+                                                    if (date < today) {
+                                                      return true;
+                                                    }
+                                                  
+                                                    const releaseDate = detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA;
+                                                    if (releaseDate) {
+                                                      const release = new Date(releaseDate);
+                                                      release.setHours(0, 0, 0, 0);
+                                                      const selected = new Date(date);
+                                                      selected.setHours(0, 0, 0, 0);
+                                                      return selected <= release;
+                                                    }
+                                                    
+                                                    return false;
+                                                  }}
+                                                  initialFocus
+                                                />
+                                              </PopoverContent>
+                                            </Popover>
+                                            {validationErrors[detailId]?.expirationDateRMA && (
+                                              <p className="text-xs text-red-500 mt-1">{validationErrors[detailId].expirationDateRMA}</p>
+                                            )}
+                                            </div>
+                                          ) : (
+                                            <p className="text-sm md:text-base font-semibold text-foreground">{expirationDate}</p>
+                                          )}
                                         </div>
                                         {((result && result !== "—") || (solution && solution !== "—")) && (
                                           <div className="md:col-span-3 pt-4 mt-2 border-t border-dashed border-border/70">
@@ -1460,12 +1714,21 @@ export default function WarrantyDetail() {
                                       </div>
                                     </div>
 
+
                                     {detailStatus?.toUpperCase() === "APPROVED" && (
-                                      <div className="rounded-xl border border-red-200/80 bg-red-50/70 shadow-sm overflow-hidden">
-                                        <div className="bg-red-600/5 border-b border-red-200/80 px-5 py-3">
+                                          <div className={cn(
+                                            "rounded-xl border shadow-sm overflow-hidden",
+                                            (validationErrors[detailId]?.rmaNumber || 
+                                             validationErrors[detailId]?.inspector || 
+                                             validationErrors[detailId]?.result || 
+                                             validationErrors[detailId]?.solution)
+                                              ? "border-destructive/50 bg-destructive/5" 
+                                              : "border-blue-200/80 bg-blue-50/70"
+                                          )}>
+                                        <div className="bg-blue-600/5 border-b border-blue-200/80 px-5 py-3">
                                           <div className="flex items-center gap-2">
-                                            <CheckCircle2 className="h-5 w-5 text-red-500" />
-                                            <h3 className="text-base font-semibold tracking-tight text-red-800">
+                                            <CheckCircle2 className="h-5 w-5 text-blue-500" />
+                                            <h3 className="text-base font-semibold tracking-tight text-blue-800">
                                               Phản hồi của hãng
                                             </h3>
                                           </div>
@@ -1485,7 +1748,13 @@ export default function WarrantyDetail() {
                                                 onChange={(e) => handleFormChange(detailId, "rmaNumber", e.target.value)}
                                                 placeholder="Nhập số RMA"
                                                 disabled={isSaved}
+                                                className={cn(
+                                                  validationErrors[detailId]?.rmaNumber && "border-destructive"
+                                                )}
                                               />
+                                              {validationErrors[detailId]?.rmaNumber && (
+                                                <p className="text-xs text-red-500">{validationErrors[detailId].rmaNumber}</p>
+                                              )}
                                             </div>
                                             <div className="space-y-1.5">
                                               <Label
@@ -1500,237 +1769,13 @@ export default function WarrantyDetail() {
                                                 onChange={(e) => handleFormChange(detailId, "inspector", e.target.value)}
                                                 placeholder="Nhập tên người kiểm tra"
                                                 disabled={isSaved}
+                                                className={cn(
+                                                  validationErrors[detailId]?.inspector && "border-destructive"
+                                                )}
                                               />
-                                            </div>
-                                            <div className="space-y-1.5">
-                                              <Label
-                                                htmlFor={`releaseDate-${detailId}`}
-                                                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-                                              >
-                                                Ngày phát hành RMA
-                                              </Label>
-                                              <Popover>
-                                                <PopoverTrigger asChild>
-                                                  <Button
-                                                    variant="outline"
-                                                    className={cn(
-                                                      "w-full justify-start text-left font-normal",
-                                                      !(detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA) && "text-muted-foreground"
-                                                    )}
-                                                    disabled={isSaved}
-                                                  >
-                                                    <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                                                    {detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA ? (
-                                                      format(new Date(detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA), "dd/MM/yyyy")
-                                                    ) : (
-                                                      <span>Ngày tháng</span>
-                                                    )}
-                                                  </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0" align="start">
-                                                  <div className="p-3 border-b flex items-center gap-2">
-                                                    <Select
-                                                      value={getDatePickerMonth(detailId, "releaseDateRMA", detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA).getFullYear().toString()}
-                                                      onValueChange={(year) => {
-                                                        const currentMonth = getDatePickerMonth(detailId, "releaseDateRMA", detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA);
-                                                        const newDate = new Date(currentMonth);
-                                                        newDate.setFullYear(parseInt(year));
-                                                        setDatePickerMonth(detailId, "releaseDateRMA", newDate);
-                                                      }}
-                                                    >
-                                                      <SelectTrigger className="w-[100px] h-8">
-                                                        <SelectValue />
-                                                      </SelectTrigger>
-                                                      <SelectContent>
-                                                        {generateYears().map((year) => (
-                                                          <SelectItem key={year} value={year.toString()}>
-                                                            {year}
-                                                          </SelectItem>
-                                                        ))}
-                                                      </SelectContent>
-                                                    </Select>
-                                                    <Button
-                                                      variant="ghost"
-                                                      size="sm"
-                                                      className="h-8"
-                                                      onClick={() => setDatePickerMonth(detailId, "releaseDateRMA", new Date())}
-                                                    >
-                                                      Năm nay
-                                                    </Button>
-                                                  </div>
-                                                  <CalendarComponent
-                                                    mode="single"
-                                                    selected={
-                                                      detailForms[detailId]?.releaseDateRMA 
-                                                        ? new Date(detailForms[detailId].releaseDateRMA)
-                                                  : detail.releaseDateRMA 
-                                                          ? new Date(detail.releaseDateRMA)
-                                                          : undefined
-                                                    }
-                                                    onSelect={(date) => {
-                                                      const dateISO = toUtcDateISOString(date);
-                                                      handleFormChange(detailId, "releaseDateRMA", dateISO);
-                                                    }}
-                                                    month={getDatePickerMonth(detailId, "releaseDateRMA", detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA)}
-                                                    onMonthChange={(month) => setDatePickerMonth(detailId, "releaseDateRMA", month)}
-                                                    disabled={(date) => {
-                                                      const today = new Date();
-                                                      today.setHours(0, 0, 0, 0);
-                                                      return date < today;
-                                                    }}
-                                                    initialFocus
-                                                  />
-                                                </PopoverContent>
-                                              </Popover>
-                                            </div>
-                                            <div className="space-y-1.5">
-                                              <Label
-                                                htmlFor={`expirationDate-${detailId}`}
-                                                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-                                              >
-                                                Ngày hết hạn RMA
-                                              </Label>
-                                              <Popover>
-                                                <PopoverTrigger asChild>
-                                                  <Button
-                                                    variant="outline"
-                                                    className={cn(
-                                                      "w-full justify-start text-left font-normal",
-                                                      !(detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA || (() => {
-                                                        const releaseDate = detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA;
-                                                        if (releaseDate) {
-                                                          const release = new Date(releaseDate);
-                                                          const expiration = new Date(release);
-                                                          expiration.setDate(expiration.getDate() + 7);
-                                                          return expiration;
-                                                        }
-                                                        return null;
-                                                      })()) && "text-muted-foreground"
-                                                    )}
-                                                    disabled={isSaved}
-                                                  >
-                                                    <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                                                    {(() => {
-                                                      const expirationDate = detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA;
-                                                      if (expirationDate) {
-                                                        return format(new Date(expirationDate), "dd/MM/yyyy");
-                                                      }
-                                                      const releaseDate = detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA;
-                                                      if (releaseDate) {
-                                                        const release = new Date(releaseDate);
-                                                        const expiration = new Date(release);
-                                                        expiration.setDate(expiration.getDate() + 7);
-                                                        return format(expiration, "dd/MM/yyyy");
-                                                      }
-                                                      return "Ngày tháng";
-                                                    })()}
-                                                  </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0" align="start">
-                                                  <div className="p-3 border-b flex items-center gap-2">
-                                                    <Select
-                                                      value={getDatePickerMonth(detailId, "expirationDateRMA", detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA || (() => {
-                                                        const releaseDate = detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA;
-                                                        if (releaseDate) {
-                                                          const release = new Date(releaseDate);
-                                                          const expiration = new Date(release);
-                                                          expiration.setDate(expiration.getDate() + 7);
-                                                          return expiration;
-                                                        }
-                                                        return new Date();
-                                                      })()).getFullYear().toString()}
-                                                      onValueChange={(year) => {
-                                                        const currentMonth = getDatePickerMonth(detailId, "expirationDateRMA", detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA || (() => {
-                                                          const releaseDate = detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA;
-                                                          if (releaseDate) {
-                                                            const release = new Date(releaseDate);
-                                                            const expiration = new Date(release);
-                                                            expiration.setDate(expiration.getDate() + 7);
-                                                            return expiration;
-                                                          }
-                                                          return new Date();
-                                                        })());
-                                                        const newDate = new Date(currentMonth);
-                                                        newDate.setFullYear(parseInt(year));
-                                                        setDatePickerMonth(detailId, "expirationDateRMA", newDate);
-                                                      }}
-                                                    >
-                                                      <SelectTrigger className="w-[100px] h-8">
-                                                        <SelectValue />
-                                                      </SelectTrigger>
-                                                      <SelectContent>
-                                                        {generateYears().map((year) => (
-                                                          <SelectItem key={year} value={year.toString()}>
-                                                            {year}
-                                                          </SelectItem>
-                                                        ))}
-                                                      </SelectContent>
-                                                    </Select>
-                                                    <Button
-                                                      variant="ghost"
-                                                      size="sm"
-                                                      className="h-8"
-                                                      onClick={() => setDatePickerMonth(detailId, "expirationDateRMA", new Date())}
-                                                    >
-                                                      Năm nay
-                                                    </Button>
-                                                  </div>
-                                                  <CalendarComponent
-                                                    mode="single"
-                                                    selected={
-                                                      detailForms[detailId]?.expirationDateRMA 
-                                                        ? new Date(detailForms[detailId].expirationDateRMA)
-                                                        : detail.expirationDateRMA 
-                                                          ? new Date(detail.expirationDateRMA)
-                                                          : (() => {
-                                                            const releaseDate = detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA;
-                                                            if (releaseDate) {
-                                                              const release = new Date(releaseDate);
-                                                              const expiration = new Date(release);
-                                                              expiration.setDate(expiration.getDate() + 7);
-                                                              return expiration;
-                                                            }
-                                                            return undefined;
-                                                          })()
-                                                    }
-                                                    onSelect={(date) => {
-                                                      const dateISO = toUtcDateISOString(date);
-                                                      handleFormChange(detailId, "expirationDateRMA", dateISO);
-                                                    }}
-                                                    month={getDatePickerMonth(detailId, "expirationDateRMA", detailForms[detailId]?.expirationDateRMA || detail.expirationDateRMA || (() => {
-                                                      const releaseDate = detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA;
-                                                      if (releaseDate) {
-                                                        const release = new Date(releaseDate);
-                                                        const expiration = new Date(release);
-                                                        expiration.setDate(expiration.getDate() + 7);
-                                                        return expiration;
-                                                      }
-                                                      return new Date();
-                                                    })())}
-                                                    onMonthChange={(month) => setDatePickerMonth(detailId, "expirationDateRMA", month)}
-                                                    disabled={(date) => {
-                                                      const today = new Date();
-                                                      today.setHours(0, 0, 0, 0);
-                                                      
-                                                      if (date < today) {
-                                                        return true;
-                                                      }
-                                                      
-                                                      const releaseDate = detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA;
-                                                      if (releaseDate) {
-                                                        const release = new Date(releaseDate);
-                                                        release.setHours(0, 0, 0, 0);
-                                                        const dateOnly = new Date(date);
-                                                        dateOnly.setHours(0, 0, 0, 0);
-                                                        return dateOnly <= release;
-                                                      }
-                                                      
-                                                      return false;
-                                                    }}
-                                                    initialFocus
-                                                  />
-                                                </PopoverContent>
-                                              </Popover>
+                                              {validationErrors[detailId]?.inspector && (
+                                                <p className="text-xs text-red-500">{validationErrors[detailId].inspector}</p>
+                                              )}
                                             </div>
                                           </div>
                                           
@@ -1747,9 +1792,15 @@ export default function WarrantyDetail() {
                                               onChange={(e) => handleFormChange(detailId, "result", e.target.value)}
                                               placeholder="Nhập kết quả kiểm tra từ hãng"
                                               rows={3}
-                                              className="resize-none"
+                                              className={cn(
+                                                "resize-none",
+                                                validationErrors[detailId]?.result && "border-destructive"
+                                              )}
                                               disabled={isSaved}
                                             />
+                                            {validationErrors[detailId]?.result && (
+                                              <p className="text-xs text-red-500">{validationErrors[detailId].result}</p>
+                                            )}
                                           </div>
 
                                           <div className="space-y-1.5">
@@ -1774,7 +1825,12 @@ export default function WarrantyDetail() {
                                               onValueChange={(value) => handleFormChange(detailId, "solution", value)}
                                               disabled={isSaved}
                                             >
-                                              <SelectTrigger id={`solution-${detailId}`}>
+                                              <SelectTrigger 
+                                                id={`solution-${detailId}`}
+                                                className={cn(
+                                                  validationErrors[detailId]?.solution && "border-destructive"
+                                                )}
+                                              >
                                                 <SelectValue placeholder="Chọn giải pháp" />
                                               </SelectTrigger>
                                               <SelectContent>
@@ -1782,60 +1838,45 @@ export default function WarrantyDetail() {
                                                 <SelectItem value="REPAIR">Sửa chữa</SelectItem>
                                               </SelectContent>
                                             </Select>
+                                            {validationErrors[detailId]?.solution && (
+                                              <p className="text-xs text-red-500">{validationErrors[detailId].solution}</p>
+                                            )}
                                           </div>
 
-                                          <div className="rounded-xl border border-red-200/80 bg-red-50/70 shadow-sm overflow-hidden mt-4">
-                                            <div className="bg-red-600/5 border-b border-red-200/80 px-5 py-3">
+                                          {(() => {
+                                            const currentSolution = detailForms[detailId]?.solution !== undefined 
+                                              ? detailForms[detailId].solution 
+                                              : detail.solution || "";
+                                            const solutionValue = currentSolution === "WARRANTY" || currentSolution === "REPLACE" ? "REPLACE" : currentSolution;
+                                            
+                                            if (solutionValue === "REPAIR") {
+                                              return null;
+                                            }
+                                            
+                                            return (
+                                          <div className={cn(
+                                            "rounded-xl border shadow-sm overflow-hidden mt-4",
+                                            (validationErrors[detailId]?.replacePart || 
+                                             validationErrors[detailId]?.replacePartSerial || 
+                                             validationErrors[detailId]?.replacePartWarrantyPeriod || 
+                                             validationErrors[detailId]?.replacePartWarrantyStart)
+                                              ? "border-destructive/50 bg-destructive/5" 
+                                              : "border-rose-200/80 bg-rose-50/70"
+                                          )}>
+                                            <div className="bg-rose-600/5 border-b border-rose-200/80 px-5 py-3">
                                               <div className="flex items-center gap-2">
-                                                <Package className="h-5 w-5 text-red-500" />
-                                                <h3 className="text-base font-semibold tracking-tight text-red-800">
-                                                  Bộ phận thay thế (Tùy chọn)
+                                                <Package className="h-5 w-5 text-rose-500" />
+                                                <h3 className="text-base font-semibold tracking-tight text-rose-800">
+                                                  Bộ phận thay thế
                                                 </h3>
                                               </div>
                                             </div>
+                                            {validationErrors[detailId]?.replacePart && (
+                                              <div className="px-5 pt-2">
+                                                <p className="text-xs text-red-500">{validationErrors[detailId].replacePart}</p>
+                                              </div>
+                                            )}
                                             <div className="p-5 space-y-5">
-                                              {(() => {
-                                                const selectedPartId = detailForms[detailId]?.replacePartId || detail.replacePart?.partId;
-                                                const selectedPart = parts.find(part => part.id === selectedPartId);
-                                                const replacePartPart = detail.replacePart?.part || selectedPart || partItem?.part || (selectedPartId ? partInfoMap[selectedPartId] : null);
-                                                
-                                                const shouldShow = selectedPartId || (partItem?.part && !selectedPartId);
-                                                const displayPart = selectedPartId ? replacePartPart : partItem?.part;
-                                                const displayName = displayPart?.name || "";
-                                                const displayImage = displayPart?.image || "";
-                                                
-                                                if (shouldShow && (displayName || displayImage)) {
-                                                  return (
-                                                    <div className="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-red-500/10 via-red-500/5 to-transparent border border-red-200/60 shadow-sm">
-                                                      {displayImage && (
-                                                        <div className="flex-shrink-0">
-                                                          <img
-                                                            src={displayImage}
-                                                            alt={displayName}
-                                                            className="h-20 w-20 rounded-lg object-cover border-2 border-red-300/40 shadow-md"
-                                                            onError={(e) => {
-                                                              e.target.style.display = "none";
-                                                            }}
-                                                          />
-                                                        </div>
-                                                      )}
-                                                      {displayName && (
-                                                        <div className="flex-1 min-w-0 pt-1">
-                                                          <p className="text-xs font-bold uppercase tracking-wider text-red-700/70 mb-2">
-                                                            {selectedPartId ? "PHỤ TÙNG ĐÃ CHỌN" : "PHỤ TÙNG GỐC"}
-                                                          </p>
-                                                          <p className="text-base font-bold text-foreground break-words leading-tight">{displayName}</p>
-                                                          {displayPart?.code && (
-                                                            <p className="text-sm text-muted-foreground mt-1">Mã: {displayPart.code}</p>
-                                                          )}
-                                                        </div>
-                                                      )}
-                                                    </div>
-                                                  );
-                                                }
-                                                return null;
-                                              })()}
-                                              
                                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                                 <div className="space-y-1.5">
                                                   <Label
@@ -1855,7 +1896,10 @@ export default function WarrantyDetail() {
                                                         id={`replacePartId-${detailId}`}
                                                         value={partName}
                                                         readOnly
-                                                        className="bg-muted cursor-not-allowed"
+                                                    className={cn(
+                                                      "bg-muted cursor-not-allowed",
+                                                      validationErrors[detailId]?.replacePart && "border-destructive"
+                                                    )}
                                                         placeholder="Tự động từ phụ tùng gốc"
                                                         disabled={isSaved}
                                                       />
@@ -1875,7 +1919,13 @@ export default function WarrantyDetail() {
                                                     onChange={(e) => handleFormChange(detailId, "replacePartSerial", e.target.value)}
                                                     placeholder="Nhập số serial (VD: PIN-2025-L01-000123)"
                                                     disabled={isSaved}
+                                                    className={cn(
+                                                      validationErrors[detailId]?.replacePartSerial && "border-destructive"
+                                                    )}
                                                   />
+                                                  {validationErrors[detailId]?.replacePartSerial && (
+                                                    <p className="text-xs text-red-500">{validationErrors[detailId].replacePartSerial}</p>
+                                                  )}
                                                 </div>
                                                 <div className="space-y-1.5">
                                                   <Label
@@ -1892,14 +1942,20 @@ export default function WarrantyDetail() {
                                                     onChange={(e) => handleFormChange(detailId, "replacePartWarrantyPeriod", e.target.value ? parseInt(e.target.value) : 0)}
                                                     placeholder="Nhập số tháng (VD: 12)"
                                                     disabled={isSaved}
+                                                    className={cn(
+                                                      validationErrors[detailId]?.replacePartWarrantyPeriod && "border-destructive"
+                                                    )}
                                                   />
+                                                  {validationErrors[detailId]?.replacePartWarrantyPeriod && (
+                                                    <p className="text-xs text-red-500">{validationErrors[detailId].replacePartWarrantyPeriod}</p>
+                                                  )}
                                                 </div>
                                                 <div className="space-y-1.5">
                                                   <Label
                                                     htmlFor={`replacePartWarrantyStart-${detailId}`}
                                                     className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
                                                   >
-                                                    Ngày bắt đầu BH
+                                                    Ngày bắt đầu bảo hành
                                                   </Label>
                                                   <Popover>
                                                     <PopoverTrigger asChild>
@@ -1907,7 +1963,8 @@ export default function WarrantyDetail() {
                                                         variant="outline"
                                                         className={cn(
                                                           "w-full justify-start text-left font-normal",
-                                                          !(detailForms[detailId]?.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA) && "text-muted-foreground"
+                                                          !(detailForms[detailId]?.replacePartWarrantyStart || detail.replacePart?.warantyStartDate || detailForms[detailId]?.releaseDateRMA || detail.releaseDateRMA) && "text-muted-foreground",
+                                                          validationErrors[detailId]?.replacePartWarrantyStart && "border-destructive"
                                                         )}
                                                         disabled={isSaved}
                                                       >
@@ -1978,6 +2035,9 @@ export default function WarrantyDetail() {
                                                       />
                                                     </PopoverContent>
                                                   </Popover>
+                                                  {validationErrors[detailId]?.replacePartWarrantyStart && (
+                                                    <p className="text-xs text-red-500 mt-1">{validationErrors[detailId].replacePartWarrantyStart}</p>
+                                                  )}
                                                 </div>
                                                 <div className="space-y-2">
                                                   <Label htmlFor={`replacePartWarrantyEnd-${detailId}`} className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Ngày kết thúc bảo hành</Label>
@@ -1989,7 +2049,7 @@ export default function WarrantyDetail() {
                                                         ? format(new Date(detailForms[detailId]?.replacePartWarrantyEnd || detail.replacePart.warantyEndDate), "dd/MM/yyyy")
                                                         : ""
                                                     }
-                                                    placeholder="Tự động tính từ ngày bắt đầu + số tháng"
+                                                    placeholder="Ngày tháng"
                                                     className="bg-muted"
                                                     disabled={isSaved}
                                                   />
@@ -1997,6 +2057,8 @@ export default function WarrantyDetail() {
                                               </div>
                                             </div>
                                           </div>
+                                            );
+                                          })()}
 
                                           <div className="flex justify-end gap-2 pt-2">
                                             <Button
@@ -2085,92 +2147,6 @@ export default function WarrantyDetail() {
                                               <p className="text-base font-semibold text-foreground">{formatCurrency(priceService)}</p>
                                             </div>
                                           )}
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {partItem && (
-                                      <div className="rounded-xl border-2 border-border/60 bg-gradient-to-br from-card to-muted/20 shadow-lg overflow-hidden">
-                                        <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-border/60 px-6 py-4">
-                                          <div className="flex items-center gap-2">
-                                            <Package className="h-5 w-5 text-primary" />
-                                            <h3 className="text-lg font-bold text-foreground">Phụ tùng cần bảo hành</h3>
-                                          </div>
-                                        </div>
-                                        <div className="px-6 py-5 space-y-5">
-                                          {(partItemImage || partItemName !== "—") && (
-                                            <div className="flex items-start gap-5 p-4 rounded-xl bg-gradient-to-br from-primary/5 via-primary/3 to-transparent border border-primary/20 shadow-sm">
-                                              {partItemImage && (
-                                                <div className="flex-shrink-0">
-                                                  <div className="relative">
-                                                    <img
-                                                      src={partItemImage}
-                                                      alt={partItemName}
-                                                      className="h-24 w-24 rounded-xl object-cover border-2 border-primary/30 shadow-md ring-2 ring-primary/10"
-                                                      onError={(e) => {
-                                                        e.target.style.display = "none";
-                                                      }}
-                                                    />
-                                                    <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-black/5 to-transparent pointer-events-none" />
-                                                  </div>
-                                                </div>
-                                              )}
-                                              {partItemName !== "—" && (
-                                                <div className="flex-1 min-w-0 pt-1">
-                                                  <p className="text-xs font-bold uppercase tracking-wider text-primary/70 mb-2">TÊN PHỤ TÙNG</p>
-                                                  <p className="text-lg font-bold text-foreground break-words leading-tight">{partItemName}</p>
-                                                </div>
-                                              )}
-                                            </div>
-                                          )}
-                                          
-                                          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-                                            {(partItemSerial && partItemSerial !== "—") && (
-                                              <div className="rounded-lg border border-border/60 bg-card/50 p-4 shadow-sm hover:shadow-md transition-shadow">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                  <Hash className="h-4 w-4 text-primary" />
-                                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"># Số serial</p>
-                                                </div>
-                                                <p className="text-base font-bold text-foreground break-all font-mono">{partItemSerial}</p>
-                                              </div>
-                                            )}
-                                            {(partItemPrice && partItemPrice !== "—") && (
-                                              <div className="rounded-lg border border-border/60 bg-card/50 p-4 shadow-sm hover:shadow-md transition-shadow">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                  <Hash className="h-4 w-4 text-primary" />
-                                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"># Giá</p>
-                                                </div>
-                                                <p className="text-base font-bold text-foreground">{partItemPrice}</p>
-                                              </div>
-                                            )}
-                                            {(partItemWarrantyStart && partItemWarrantyStart !== "—") && (
-                                              <div className="rounded-lg border border-border/60 bg-card/50 p-4 shadow-sm hover:shadow-md transition-shadow">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                  <Calendar className="h-4 w-4 text-primary" />
-                                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">BH từ</p>
-                                                </div>
-                                                <p className="text-base font-bold text-foreground">{partItemWarrantyStart}</p>
-                                              </div>
-                                            )}
-                                            {(partItemWarrantyEnd && partItemWarrantyEnd !== "—") && (
-                                              <div className="rounded-lg border border-border/60 bg-card/50 p-4 shadow-sm hover:shadow-md transition-shadow">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                  <Calendar className="h-4 w-4 text-primary" />
-                                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">BH đến</p>
-                                                </div>
-                                                <p className="text-base font-bold text-foreground">{partItemWarrantyEnd}</p>
-                                              </div>
-                                            )}
-                                            {(partItemStatus && partItemStatus !== "—") && (
-                                              <div className="rounded-lg border border-border/60 bg-card/50 p-4 shadow-sm hover:shadow-md transition-shadow sm:col-span-2">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Trạng thái</p>
-                                                </div>
-                                                <p className="text-base font-bold text-foreground">{translateStatus(partItemStatus)}</p>
-                                              </div>
-                                            )}
-                                          </div>
                                         </div>
                                       </div>
                                     )}
@@ -2272,55 +2248,6 @@ export default function WarrantyDetail() {
               </CardContent>
             </Card>
 
-            <Card className="border-border/60 shadow-lg bg-card">
-              <CardHeader className="bg-gradient-to-r from-primary/5 via-transparent to-transparent border-b border-border/60 px-5 py-4">
-                <div className="flex items-center gap-2">
-                  <UsersIcon className="h-4 w-4 text-primary" />
-                  <CardTitle className="text-base">Nhân viên phụ trách</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="p-5">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10 text-base font-bold text-primary shadow-md border-2 border-primary/20">
-                    {staffInitials}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-base font-semibold text-foreground mb-1.5">{staffDisplayName}</p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {staffPositionLabel && (
-                        <Badge className="border border-primary/30 bg-primary/10 text-primary text-xs px-2 py-0.5">
-                          {staffPositionLabel}
-                        </Badge>
-                      )}
-                      
-                      {rma.staff?.staffCode && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <FileText className="h-3 w-3" />
-                          {rma.staff.staffCode}
-                        </span>
-                      )}
-                    </div>
-                    {(staffPhone || staffEmail) && (
-                      <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
-                        {staffPhone && (
-                          <span className="flex items-center gap-1">
-                            <Phone className="h-3 w-3" />
-                            {staffPhone}
-                          </span>
-                        )}
-                        {staffEmail && (
-                          <span className="flex items-center gap-1">
-                            <Mail className="h-3 w-3" />
-                            {staffEmail}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Ghi chú */}
             <Card className="border-border/60 shadow-lg bg-card">
               <CardHeader className="bg-gradient-to-r from-primary/5 via-transparent to-transparent border-b border-border/60">
@@ -2400,5 +2327,6 @@ export default function WarrantyDetail() {
     </div>
   );
 }
+
 
 
