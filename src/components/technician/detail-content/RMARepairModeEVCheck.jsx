@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Table, Input, Select, Button, Spin, Tag, Tooltip } from "antd";
+import { Table, Input, Select, Button, Tag, Tooltip } from "antd";
 import { toast } from "react-toastify";
 import {
   fetchEVCheckDetailsServiceRe as getRepairDetailsList,
@@ -12,6 +12,7 @@ import { getPartItemByIdService } from "../../../services/partitemsService.js";
 import { getExportStatusByAppointmentCodeAndPartId } from "../../../services/exportNotesService.js";
 import useEVCheckHub from "../../../hooks/useEVCheckHub.jsx";
 import useRMAHub from "../../../hooks/useRMAHub.jsx";
+import Loading from "../../Loading";
 
 const { Option } = Select;
 
@@ -765,7 +766,7 @@ export default function RMARepairModeEVCheck({
 
       {loading || vehiclePartLoading ? (
         <div className='flex justify-center p-10'>
-          <Spin />
+          <Loading />
         </div>
       ) : (
         <div className="repair-mode-table" style={{ width: '100%', overflow: 'hidden', maxWidth: '100%' }}>

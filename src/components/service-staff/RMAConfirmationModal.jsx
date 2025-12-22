@@ -1,7 +1,7 @@
 import { Modal, Button, List, Typography, Card, Space, Tag, Divider } from "antd";
 import { toast } from "react-toastify";
 import { useState } from "react";
-import { AlertTriangle, Package, CheckCircle, XCircle } from "lucide-react";
+import { AlertTriangle, Package  } from "lucide-react";
 
 import {
   createRMAService,

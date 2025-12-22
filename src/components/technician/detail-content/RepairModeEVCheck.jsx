@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Table, Input, Select, Button, Spin, Tag, Checkbox, Tooltip } from "antd";
+import { Table, Input, Select, Button, Tag, Checkbox, Tooltip } from "antd";
 import { toast } from "react-toastify";
 import {
   fetchEVCheckDetailsServiceRe as getRepairDetailsList,
@@ -18,6 +18,7 @@ import RMAConfirmationModal from "../../../components/service-staff/RMAConfirmat
 import useEVCheckHub from "../../../hooks/useEVCheckHub.jsx";
 import useRMAHub from "../../../hooks/useRMAHub.jsx";
 import BatteryDataDisplay from "../BatteryDataDisplay";
+import Loading from "../../Loading";
 
 const { Option } = Select;
 
@@ -451,7 +452,8 @@ export default function RepairModeEVCheck({
     
     
     try {
-      const cost = await getLaborCostByRemediesService(partTypeId, remedies);
+      // Lấy giá dịch vụ theo price (giống bên bảo dưỡng)
+      const cost = await getLaborCostByRemediesService(partTypeId, remedies, "price");
       updateRow(index, { priceService: Number(cost || 0) });
     } catch (e) {
       updateRow(index, { priceService: 0 });
@@ -644,7 +646,8 @@ export default function RepairModeEVCheck({
             replacePartName: replacePartName || "",
             result: item.result ?? "",
           remedies: item.remedies || "NONE",
-          pricePart: pricePart,
+          // ✅ Chỉ hiển thị giá PT khi đã chọn phụ tùng thay thế
+          pricePart: replacePartId ? pricePart : 0,
           priceService: initialPriceService,
           totalAmount: Number(item.totalAmount || 0),
           quantity: Number(item.quantity || 1),
@@ -1265,7 +1268,7 @@ export default function RepairModeEVCheck({
               toast.warning(`Appointment status: ${verifiedAppointment?.status}`);
             }
           } catch (err) {
-            toast.error(`Lỗi cập nhật appointment: ${err.response?.data?.message || err.message || "Unknown error"}`);
+            // toast.error(`Lỗi cập nhật appointment: ${err.response?.data?.message || err.message || "Unknown error"}`);
 
             return;
           }
@@ -1381,9 +1384,7 @@ export default function RepairModeEVCheck({
             const isWarranty = checkWarrantyStatus(partItem);
 
 
-            const partPrice = Number(partItem?.price || 0);
-
-
+            // Không load giá PT khi chọn bộ phận, chỉ load khi chọn phụ tùng thay thế
             const enrichedPartItem = partItem ? {
               ...partItem,
               part: part || partItem.part || null
@@ -1391,13 +1392,13 @@ export default function RepairModeEVCheck({
 
             const updatedRow = {
               displayName: sel?.label || "",
-              pricePart: partPrice,
+              pricePart: 0, // Giá PT = 0, chờ chọn phụ tùng thay thế mới load giá
               partItem: enrichedPartItem,
               ...(isWarranty
                 ? {
                     replacePartId: "",
                     replacePartName: "",
-                    pricePart: partPrice,
+                    pricePart: 0,
                   }
                 : {}),
             };
@@ -1721,13 +1722,11 @@ export default function RepairModeEVCheck({
               }}
             onChange={(opt) => {
               if (!opt) {
-
-                const currentRow = details[i];
-                const partItemPrice = Number(currentRow?.partItem?.price || 0);
+                // Khi xóa phụ tùng thay thế → giá PT = 0
                 updateRow(i, {
                   proposedReplacePartId: "",
                   replacePartName: "",
-                  pricePart: partItemPrice,
+                  pricePart: 0,
                 });
                 return;
               }
@@ -1739,6 +1738,7 @@ export default function RepairModeEVCheck({
                 const fullLabel = opt.label || selected?.name || "";
 
 
+                // Khi chọn phụ tùng thay thế → load giá từ bộ phận gốc
                 const currentRow = details[i];
                 const partItemPrice = Number(currentRow?.partItem?.price || 0);
 
@@ -2059,7 +2059,7 @@ export default function RepairModeEVCheck({
 
       {loading || vehiclePartLoading || replacePartLoading ? (
         <div className='flex justify-center p-10'>
-          <Spin />
+          <Loading />
         </div>
       ) : (
         <>
@@ -2185,46 +2185,11 @@ export default function RepairModeEVCheck({
         booking={booking}
         partsForRMA={currentRMAParts}
         onRMASuccess={async () => {
-
           setSelectedRMAItems(new Set());
           setIsRMAConfirmationOpen(false);
-          
-
-          if (booking?.id) {
-            try {
-              const { getAppointmentById } = await import("../../../api/appointmentsApi");
-              const appointmentRes = await getAppointmentById(booking.id);
-              const currentAppointment = appointmentRes?.data?.data || appointmentRes?.data || appointmentRes;
-              
-              const updatePayload = {
-                note: currentAppointment?.note || booking?.note || "",
-                approveById: currentAppointment?.approveById || booking?.approveById || null,
-                code: currentAppointment?.code || booking?.code || "",
-                checkinQRCode: currentAppointment?.checkinQRCode || booking?.checkinQRCode || "",
-              };
-              
-              await changeAppointmentStatusService(booking.id, "COMPLETED", updatePayload);
-              
-
-              const verifyRes = await getAppointmentById(booking.id);
-              const verifiedAppointment = verifyRes?.data?.data || verifyRes?.data || verifyRes;
-              
-              if (verifiedAppointment?.status !== "COMPLETED") {
-                toast.warning(`Appointment status: ${verifiedAppointment?.status}`);
-              }
-              
-
-              await loadRepairDetails();
-              
-
-              toast.success("Tạo RMA thành công!");
-              onRefresh?.();
-            } catch (err) {
-              toast.error(`Lỗi cập nhật appointment: ${err.response?.data?.message || err.message || "Unknown error"}`);
-            }
-          }
-          
-
+          await loadRepairDetails();
+          toast.success("Tạo RMA thành công!");
+          onRefresh?.();
           setIsRMASubmitting(false);
         }}
       />

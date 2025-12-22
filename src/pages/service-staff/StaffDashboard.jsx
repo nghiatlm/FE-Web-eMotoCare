@@ -15,6 +15,7 @@ import { Card, Statistic, Table, Tag, Space } from "antd";
 import dayjs from "dayjs";
 import { getRMAService } from "../../services/rmaService";
 import { fetchServiceStaff } from "../../services/staffsService";
+import Loading from "../../components/Loading";
 
 const StaffDashboard = () => {
   const { data: bookings, loading: bookingsLoading, fetchBookings } = useBookings();
@@ -109,6 +110,21 @@ const StaffDashboard = () => {
     return statusMap[status] || status;
   };
 
+  const formatSlotTime = (slotTime) => {
+    if (!slotTime) return "";
+    // Format: H08_09 -> 08:00 - 09:00
+    const match = slotTime.match(/H(\d{2})_(\d{2})/);
+    if (match) {
+      const [, start, end] = match;
+      return `${start}:00 - ${end}:00`;
+    }
+    return slotTime;
+  };
+
+  if (bookingsLoading) {
+    return <Loading message="Đang tải dữ liệu..." className="min-h-[400px]" />;
+  }
+
   const columns = [
     {
       title: "Mã booking",
@@ -129,7 +145,13 @@ const StaffDashboard = () => {
       title: "Ngày hẹn",
       dataIndex: "appointmentDate",
       key: "appointmentDate",
-      render: (date) => date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "",
+      render: (date) => date ? dayjs(date).format("DD/MM/YYYY") : "",
+    },
+    {
+      title: "Khung giờ",
+      dataIndex: "slotTime",
+      key: "slotTime",
+      render: (slotTime) => formatSlotTime(slotTime) || "",
     },
     {
       title: "Trạng thái",

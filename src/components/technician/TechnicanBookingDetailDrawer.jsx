@@ -9,12 +9,13 @@ import {
   SERVICE_TYPE_COLORS,
 } from "../../utils/constants.js";
 
-import { Drawer, Divider, Button, Input, Spin } from "antd";
+import { Drawer, Divider, Button, Input } from "antd";
 import { toast } from "react-toastify";
 import {
   fetchEVCheckByAppointmentService,
   updateEVCheckService,
 } from "../../services/evcheckService.js";
+import Loading from "../Loading";
 
 export default function TechnicianBookingDetailDrawer({
   booking,
@@ -275,7 +276,7 @@ export default function TechnicianBookingDetailDrawer({
       
       {loading ? (
         <div className='flex justify-center p-10'>
-          <Spin />
+          <Loading />
         </div>
       ) : isRepair && chassisConfirmed ? (
         <section className='bg-white rounded-xl shadow p-5 border border-orange-200 max-h-96 overflow-auto'>

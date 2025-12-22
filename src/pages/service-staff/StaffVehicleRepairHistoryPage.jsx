@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Table, Tag, Button, Card, Spin, Empty, Space, Typography } from "antd";
+import { Table, Tag, Button, Card, Empty, Space, Typography } from "antd";
+import Loading from "../../components/Loading";
 import { ArrowLeft, Car, Hash, Palette, Wrench, User, Phone, Mail, FileText } from "lucide-react";
 import { toast } from "react-toastify";
 import dayjs from "dayjs";
@@ -533,7 +534,7 @@ export default function StaffVehicleRepairHistoryPage() {
         
         {loading ? (
           <div style={{ textAlign: "center", padding: "40px 0" }}>
-            <Spin size="large" />
+            <Loading />
           </div>
         ) : appointments.length === 0 ? (
           <Empty
@@ -559,7 +560,7 @@ export default function StaffVehicleRepairHistoryPage() {
           <div style={{ marginTop: 24 }}>
             {loadingBooking || loadingEVCheck ? (
               <div style={{ textAlign: "center", padding: "40px 0" }}>
-                <Spin size="large" />
+                <Loading />
               </div>
             ) : (
               <>

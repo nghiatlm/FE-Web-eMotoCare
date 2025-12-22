@@ -1,5 +1,6 @@
 import { STATUS_COLORS, STATUS_MAP } from "../../utils/constants";
-import { Drawer, Button, Tag, Divider, Select, Input, Modal, Spin } from "antd";
+import { Drawer, Button, Tag, Divider, Select, Input, Modal } from "antd";
+import Loading from "../Loading";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
@@ -188,7 +189,6 @@ export default function BookingDetailDrawer({
     }
   };
 
-  // ✅ Kiểm tra slot còn trống không
   const checkSlotAvailability = async (serviceCenterId, appointmentDate, slotTime) => {
     try {
       const appointments = await fetchAppointments({
@@ -265,7 +265,7 @@ export default function BookingDetailDrawer({
     }
   };
 
-  // ✅ Load tất cả các slot available để user chọn
+  
   const loadAvailableSlots = async (serviceCenterId, appointmentDate, currentSlotTime) => {
     try {
       setLoadingSlots(true);
@@ -301,12 +301,10 @@ export default function BookingDetailDrawer({
 
       setAvailableSlots(availableSlotsList);
       
-      // Tự động chọn slot hiện tại (lịch đặt) nếu còn available, nếu không chọn slot đầu tiên
       if (availableSlotsList.length > 0) {
         const currentSlotExists = availableSlotsList.find(s => s.slotTime === currentSlotTime);
         setSelectedSlotForCheckIn(currentSlotExists ? currentSlotTime : availableSlotsList[0].slotTime);
       } else {
-        // Nếu không còn slot nào, vẫn cho phép check-in với slot hiện tại
         setSelectedSlotForCheckIn(currentSlotTime);
         setAvailableSlots([{
           slotTime: currentSlotTime,
@@ -322,7 +320,6 @@ export default function BookingDetailDrawer({
     }
   };
 
-  // ✅ Hàm thực hiện check-in với slot đã chọn
   const performCheckIn = async (slotTime) => {
     try {
       await changeAppointmentStatusService(booking.id, "CHECKED_IN", {
@@ -376,7 +373,6 @@ export default function BookingDetailDrawer({
         return;
       }
 
-      // ✅ Kiểm tra slot hiện tại còn trống không
       const isSlotAvailable = await checkSlotAvailability(
         serviceCenterId,
         appointmentDate,
@@ -384,13 +380,11 @@ export default function BookingDetailDrawer({
       );
 
       if (!isSlotAvailable) {
-        // ✅ Slot hiện tại đã đầy, hiển thị modal để chọn slot khác
         await loadAvailableSlots(serviceCenterId, appointmentDate, currentSlotTime);
         setIsSlotSelectionModalOpen(true);
-        return; // Dừng lại để đợi user chọn slot
+        return; 
       }
 
-      // ✅ Kiểm tra xem có slot sớm hơn còn trống không (để cho phép khách đến sớm chọn slot sớm hơn)
       const hasEarlierAvailableSlots = await checkForEarlierAvailableSlots(
         serviceCenterId,
         appointmentDate,
@@ -398,13 +392,11 @@ export default function BookingDetailDrawer({
       );
 
       if (hasEarlierAvailableSlots) {
-        // ✅ Có slot sớm hơn còn trống, hiển thị modal để user chọn (có thể chọn slot sớm hơn hoặc giữ nguyên)
         await loadAvailableSlots(serviceCenterId, appointmentDate, currentSlotTime);
         setIsSlotSelectionModalOpen(true);
-        return; // Dừng lại để đợi user chọn slot
+        return; 
       }
 
-      // ✅ Slot hiện tại còn trống và không có slot sớm hơn, check-in trực tiếp với slot đã đặt
       await performCheckIn(currentSlotTime);
     } catch (error) {
       toast.error((error?.response?.data?.message || error?.data?.message || error?.message || "Check-in thất bại!"));
@@ -695,8 +687,7 @@ export default function BookingDetailDrawer({
           
           {loadingSlots ? (
             <div style={{ textAlign: "center", padding: "20px 0" }}>
-              <Spin size="large" />
-              <p style={{ marginTop: 12, color: "#8c8c8c" }}>Đang tải danh sách slot...</p>
+              <Loading />
             </div>
           ) : availableSlots.length === 0 ? (
             <div style={{ textAlign: "center", padding: "20px 0" }}>
