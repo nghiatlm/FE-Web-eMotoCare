@@ -333,31 +333,46 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
 
         setCurrentServiceCenterId(staffServiceCenterId);
 
-        // ✅ Load service center cụ thể của staff để lấy slots
+        // ✅ Load service center: ưu tiên center của staff, nhưng vẫn merge với tất cả center và center trong initialValues
+        let centersList = [];
+
+        // Ưu tiên center của staff
         if (staffServiceCenterId) {
           try {
             const centerRes = await getServiceCenterById(staffServiceCenterId);
             const centerData = centerRes?.data?.data || centerRes?.data || centerRes;
-            if (centerData) {
-              setCenters([centerData]);
-            } else {
-              // Fallback: load tất cả centers và filter
-              const cenRes = await getServiceCentersService();
-              const allCenters = Array.isArray(cenRes) ? cenRes : [];
-              const filteredCenter = allCenters.find(c => c.id === staffServiceCenterId);
-              setCenters(filteredCenter ? [filteredCenter] : allCenters);
-            }
+            if (centerData) centersList = [centerData];
           } catch (err) {
             console.error("Error fetching service center:", err);
-            // Fallback: load tất cả centers
-            const cenRes = await getServiceCentersService();
-            setCenters(Array.isArray(cenRes) ? cenRes : []);
           }
-        } else {
-          // Nếu không có serviceCenterId, load tất cả (fallback)
-          const cenRes = await getServiceCentersService();
-          setCenters(Array.isArray(cenRes) ? cenRes : []);
         }
+
+        // Luôn load tất cả center để đảm bảo dropdown có đủ
+        try {
+          const cenRes = await getServiceCentersService();
+          const allCenters = Array.isArray(cenRes) ? cenRes : [];
+          const merged = [...centersList];
+          allCenters.forEach((c) => {
+            if (!merged.find((m) => m.id === c.id)) merged.push(c);
+          });
+          centersList = merged;
+        } catch (err) {
+          console.error("Error fetching all service centers:", err);
+        }
+
+        // Nếu initialValues có serviceCenterId khác staff, fetch thêm để chắc chắn có trong danh sách
+        const initialCenterId = initialValues?.serviceCenterId;
+        if (initialCenterId && !centersList.find((c) => c.id === initialCenterId)) {
+          try {
+            const extraCenterRes = await getServiceCenterById(initialCenterId);
+            const extraCenter = extraCenterRes?.data?.data || extraCenterRes?.data || extraCenterRes;
+            if (extraCenter) centersList = [...centersList, extraCenter];
+          } catch (err) {
+            console.error("Error fetching initial service center:", err);
+          }
+        }
+
+        setCenters(centersList);
 
         await loadCustomers();
         await loadCampaigns();
@@ -367,19 +382,19 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
         }
 
         if (initialValues) {
+          const initialCenterId = initialValues.serviceCenterId || staffServiceCenterId;
           form.setFieldsValue({
             ...initialValues,
-            serviceCenterId: initialValues.serviceCenterId || staffServiceCenterId,
+            serviceCenterId: initialCenterId,
           });
 
           if (initialValues.customerId) {
             handleCustomerChange(initialValues.customerId, false);
           }
 
-          const centerId = initialValues.serviceCenterId || staffServiceCenterId;
           const date = initialValues.appointmentDate;
-          if (centerId && date) {
-            buildSlots(centerId, date);
+          if (initialCenterId && date) {
+            buildSlots(initialCenterId, date);
           }
 
           if (initialValues.vehicleId && initialValues.type === "MAINTENANCE_TYPE") {
@@ -442,11 +457,17 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
     }
 
     const dateStr = dateObj.format("YYYY-MM-DD");
+    const isSameDate = (slotDate) => {
+      if (!slotDate) return false;
+      const d = dayjs(slotDate);
+      if (!d.isValid()) return false;
+      return d.format("YYYY-MM-DD") === dateStr;
+    };
     const now = dayjs();
     const isToday = dateObj.isSame(now, "day");
 
     let slots = center.serviceCenterSlots.filter(
-      (s) => s.isActive && s.date === dateStr
+      (s) => s.isActive && isSameDate(s.date)
     );
 
     if (isToday) {

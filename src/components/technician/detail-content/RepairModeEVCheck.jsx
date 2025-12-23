@@ -885,6 +885,10 @@ export default function RepairModeEVCheck({
       updateRow(index, {
         proposedReplacePartId: "",
         replacePartName: "",
+        remedies: "NONE",
+        pricePart: 0,
+        priceService: 0,
+        totalAmount: 0,
       });
     }
 
@@ -1533,7 +1537,7 @@ export default function RepairModeEVCheck({
     },
     {
       title: "Biện pháp",
-      width: 90,
+      width: 120,
       render: (_, r, i) => {
         const isWarranty = checkWarrantyStatus(r.partItem);
 

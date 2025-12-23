@@ -682,74 +682,6 @@ export default function TechnicianBookingDetailPage({
                 </div>
               )}
 
-              {booking.vehicle.engineNumber && (
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-start",
-                    alignItems: "center",
-                    gap: "12px",
-                  }}>
-                  <Space size={8}>
-                    <Wrench
-                      size={16}
-                      style={{ color: UI_COLORS.PRIMARY_RED }}
-                    />
-                    <Text
-                      type='secondary'
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        minWidth: "100px",
-                      }}>
-                      Số máy:
-                    </Text>
-                  </Space>
-                  <Text
-                    strong
-                    style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
-                    {booking.vehicle.engineNumber}
-                  </Text>
-                </div>
-              )}
-            </div>
-
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              {chassisNumber && (
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-start",
-                    alignItems: "center",
-                    gap: "12px",
-                  }}>
-                  <Space size={8}>
-                    <Hash size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
-                    <Text
-                      type='secondary'
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        minWidth: "100px",
-                      }}>
-                      Số khung (VIN):
-                    </Text>
-                  </Space>
-                  <Tag
-                    color={UI_COLORS.TAG_RED}
-                    style={{
-                      borderRadius: 6,
-                      padding: "4px 12px",
-                      fontSize: 13,
-                      fontWeight: 500,
-                      border: "none",
-                    }}>
-                    {chassisNumber}
-                  </Tag>
-                </div>
-              )}
-
               {translateColor(booking.vehicle.color) && (
                 <div
                   style={{
@@ -785,6 +717,74 @@ export default function TechnicianBookingDetailPage({
                     }}>
                     {translateColor(booking.vehicle.color)}
                   </Tag>
+                </div>
+              )}
+            </div>
+
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {chassisNumber && (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-start",
+                    alignItems: "center",
+                    gap: "12px",
+                  }}>
+                  <Space size={8}>
+                    <Hash size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                    <Text
+                      type='secondary'
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 600,
+                        minWidth: "100px",
+                      }}>
+                      Số khung:
+                    </Text>
+                  </Space>
+                  <Tag
+                    color={UI_COLORS.TAG_RED}
+                    style={{
+                      borderRadius: 6,
+                      padding: "4px 12px",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      border: "none",
+                    }}>
+                    {chassisNumber}
+                  </Tag>
+                </div>
+              )}
+
+              {booking.vehicle.engineNumber && (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-start",
+                    alignItems: "center",
+                    gap: "12px",
+                  }}>
+                  <Space size={8}>
+                    <Wrench
+                      size={16}
+                      style={{ color: UI_COLORS.PRIMARY_RED }}
+                    />
+                    <Text
+                      type='secondary'
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 600,
+                        minWidth: "100px",
+                      }}>
+                      Số máy:
+                    </Text>
+                  </Space>
+                  <Text
+                    strong
+                    style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                    {booking.vehicle.engineNumber}
+                  </Text>
                 </div>
               )}
 

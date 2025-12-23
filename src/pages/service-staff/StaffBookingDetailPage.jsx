@@ -151,6 +151,7 @@ export default function StaffBookingDetailPage() {
   const [selectedSlotForCheckIn, setSelectedSlotForCheckIn] = useState(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [loadingCheckIn, setLoadingCheckIn] = useState(false);
+  const [loadingApprove, setLoadingApprove] = useState(false);
 
   const loadBookingDetailRef = useRef(null);
 
@@ -528,6 +529,7 @@ export default function StaffBookingDetailPage() {
   const handleChangeStatus = async (newStatus) => {
     try {
       if (newStatus === "APPROVED") {
+        setLoadingApprove(true);
         await approveAppointmentService(booking.id);
       } else {
         await changeAppointmentStatusService(booking.id, newStatus);
@@ -543,6 +545,10 @@ export default function StaffBookingDetailPage() {
           e?.message ||
           "Không thể cập nhật trạng thái!"
       );
+    } finally {
+      if (newStatus === "APPROVED") {
+        setLoadingApprove(false);
+      }
     }
   };
 
@@ -1422,7 +1428,7 @@ export default function StaffBookingDetailPage() {
                               fontWeight: 600,
                               minWidth: "120px",
                             }}>
-                            Số khung (VIN):
+                            Số khung:
                           </Text>
                         </Space>
                         <Tag
@@ -2087,6 +2093,7 @@ export default function StaffBookingDetailPage() {
                 <Button
                   type='primary'
                   onClick={() => handleChangeStatus("APPROVED")}
+                  loading={loadingApprove}
                   style={{
                     backgroundColor: "#ff4d4f",
                     borderColor: "#ff4d4f",
