@@ -346,12 +346,24 @@ export default function InventorySummary() {
             <thead className="sticky top-0 z-10">
               <tr className="bg-gradient-to-r from-red-60 via-red-10/80 to-red-100/60 border-b border-red-100">
                 <th className="px-5 py-3 w-12"></th>
-                <th className="text-center px-5 py-3 w-16 text-xs font-semibold tracking-wide text-red-700 uppercase">STT</th>
-                <th className="text-center px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase">Mã phụ tùng</th>
-                <th className="text-center px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase">Tên phụ tùng</th>
-                <th className="text-center px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase">Số lượng tồn kho</th>
-                <th className="text-center px-5 py-3 min-w-[260px] text-xs font-semibold tracking-wide text-red-700 uppercase">Kho</th>
-                <th className="text-center px-5 py-3 max-w-[200px] text-xs font-semibold tracking-wide text-red-700 uppercase">Mô tả</th>
+                <th className="text-center px-5 py-3 w-16 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  STT
+                </th>
+                <th className="text-center px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  Hình ảnh
+                </th>
+                <th className="text-left px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  Mã phụ tùng
+                </th>
+                <th className="text-left px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  Tên phụ tùng
+                </th>
+                <th className="text-center px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  Số lượng tồn kho
+                </th>
+                <th className="text-left px-5 py-3 min-w-[260px] text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  Kho
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -400,32 +412,31 @@ export default function InventorySummary() {
                       <td className="px-5 py-4 text-center text-sm font-medium text-muted-foreground">
                         {rowIndex + 1}
                       </td>
+                      {/* Hình ảnh */}
                       <td className="px-5 py-4 text-center">
+                        {r.partImage ? (
+                          <img
+                            src={r.partImage}
+                            alt={r.partName}
+                            className="h-12 w-12 rounded-lg object-cover border border-border/60 shadow-sm mx-auto"
+                          />
+                        ) : (
+                          <div className="h-12 w-12 rounded-lg border border-dashed border-border/60 flex items-center justify-center text-xs text-muted-foreground mx-auto">
+                            N/A
+                          </div>
+                        )}
+                      </td>
+                      {/* Mã phụ tùng */}
+                      <td className="px-5 py-4 text-left">
                         <span className="text-primary font-semibold tracking-wide">
                           {r.partCode}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-center">
-                        <div className="flex items-center justify-center gap-3">
-                          {r.partImage ? (
-                            <img
-                              src={r.partImage}
-                              alt={r.partName}
-                              className="h-12 w-12 rounded-lg object-cover border border-border/60 shadow-sm"
-                            />
-                          ) : (
-                            <div className="h-12 w-12 rounded-lg border border-dashed border-border/60 flex items-center justify-center text-xs text-muted-foreground">
-                              N/A
-                            </div>
-                          )}
-                          <div className="space-y-1 text-left">
-                            <p className="font-medium text-foreground line-clamp-2">{r.partName}</p>
-                            <p className="text-xs uppercase tracking-wide text-muted-foreground/80">
-                              Mã chuẩn: {r.partCode}
-                            </p>
-                          </div>
-                        </div>
+                      {/* Tên phụ tùng */}
+                      <td className="px-5 py-4 text-left">
+                        <p className="font-medium text-foreground line-clamp-2">{r.partName}</p>
                       </td>
+                      {/* Số lượng + trạng thái */}
                       <td className="px-5 py-4 text-center">
                         <div className="flex flex-col items-center gap-2">
                           <Badge variant="secondary" className="text-sm px-3 py-1 w-fit">
@@ -436,9 +447,10 @@ export default function InventorySummary() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-4 text-center">
+                      {/* Kho gần nhất */}
+                      <td className="px-5 py-4 text-left">
                         {r.nearestWarehouse ? (
-                          <div className="flex flex-col items-center space-y-1.5 text-sm text-muted-foreground">
+                          <div className="flex flex-col items-start space-y-1.5 text-sm text-muted-foreground">
                             {r.nearestWarehouse.split("\n").map((line, idx) => {
                               if (!line) return null;
                               if (idx === 0) {
@@ -462,11 +474,6 @@ export default function InventorySummary() {
                         ) : (
                           <p className="text-sm text-muted-foreground">—</p>
                         )}
-                      </td>
-                      <td className="px-5 py-4 text-center max-w-[200px]">
-                        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 truncate">
-                          {r.branches && r.branches.length > 0 ? r.branches[0].description : "—"}
-                        </p>
                       </td>
                     </tr>
                     {isExpanded && hasBranches ? (
@@ -523,7 +530,7 @@ export default function InventorySummary() {
                                         </td>
                                         <td className="px-6 py-3 text-center">{r.partName}</td>
                                         <td className="px-6 py-3 text-center text-primary/90 font-medium">
-                                          {item.serialNumber || item.id}
+                                          {item.serialNumber || "—"}
                                         </td>
                                         <td className="px-6 py-3 text-center">
                                           <div className="flex items-center justify-center">
