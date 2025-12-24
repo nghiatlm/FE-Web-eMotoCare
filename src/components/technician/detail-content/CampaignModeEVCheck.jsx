@@ -18,6 +18,7 @@ import { changeAppointmentStatusService } from "../../../services/appointmentSer
 import { PlusOutlined } from "@ant-design/icons";
 import useEVCheckHub from "../../../hooks/useEVCheckHub.jsx";
 import useRMAHub from "../../../hooks/useRMAHub.jsx";
+import useExportNoteHub from "../../../hooks/useExportNoteHub.jsx";
 import Loading from "../../Loading";
 import BatteryDataDisplay from "../BatteryDataDisplay";
 import { getCampaignById } from "../../../api/campaignsApi.js";
@@ -736,8 +737,15 @@ export default function CampaignModeEVCheck({
 
   useRMAHub(handleRMAUpdate);
 
+  // Handler để refresh trạng thái phụ tùng khi có update từ export note
+  const handleExportNoteUpdate = useCallback(() => {
+    if (evCheckId && !forceEmpty && !vehiclePartLoading && !replacePartLoading) {
+      // Reload lại details để cập nhật trạng thái phụ tùng
+      loadRepairDetails();
+    }
+  }, [evCheckId, forceEmpty, vehiclePartLoading, replacePartLoading, loadRepairDetails]);
 
-
+  useExportNoteHub(handleExportNoteUpdate);
 
   const canEditFields =
     !readOnly &&
@@ -1229,12 +1237,34 @@ export default function CampaignModeEVCheck({
           partCodeLower.includes("pin") ||
           partCodeLower.includes("lfp");
         
+        // Khi đã hoàn thành sửa chữa, chỉ hiển thị text
+        if (!canEditFields || readOnly) {
+          return (
+            <div className="space-y-2">
+              <span style={{ fontSize: 14, whiteSpace: "pre-wrap" }}>
+                {r.result || ""}
+              </span>
+              {isBattery && r.partItemId && (
+                <div className="mt-2 p-2 border rounded bg-gray-50">
+                  {r.id && !r.id.startsWith("temp_") ? (
+                    <BatteryDataDisplay 
+                      evCheckDetailId={r.id} 
+                      canImport={false}
+                    />
+                  ) : (
+                    <span className="text-gray-400"></span>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        }
+        
         return (
           <div className="space-y-2">
         <Input.TextArea
               value={r.result ?? ""}
           onChange={(e) => handleChange(i, "result", e.target.value)}
-          disabled={readOnly || !canEditFields}
           autoSize={{ minRows: 2, maxRows: 8 }}
               style={{ resize: "none", fontSize: 14, maxWidth: "100%" }}
             />
@@ -1256,7 +1286,7 @@ export default function CampaignModeEVCheck({
                     }
                   />
                 ) : (
-                  <span className="text-gray-400">—</span>
+                  <span className="text-gray-400"></span>
                 )}
               </div>
             )}
@@ -1285,14 +1315,19 @@ export default function CampaignModeEVCheck({
           return map[normalized] || "Chọn";
         };
         const remediesLabel = getRemediesLabel(r.remedies);
+        
+        // Khi đã hoàn thành sửa chữa, chỉ hiển thị text
+        if (!canEditFields || readOnly) {
+          return <span style={{ fontSize: 14 }}>{remediesLabel}</span>;
+        }
+        
         return (
           <Tooltip title={remediesLabel} placement="topLeft">
             <Select
               placeholder='Chọn'
               value={r.remedies}
               style={{ width: "100%", minWidth: 120 }}
-              onChange={(v) => handleChange(i, "remedies", v)}
-              disabled={readOnly || !canEditFields}>
+              onChange={(v) => handleChange(i, "remedies", v)}>
               <Option value='NONE'>Không</Option>
               <Option value='TUNE'>Điều chỉnh</Option>
               <Option value='CLEAN'>Vệ sinh</Option>
@@ -1350,8 +1385,11 @@ export default function CampaignModeEVCheck({
         const isReplace = (r.remedies || "").toUpperCase() === "REPLACE";
         
 
-        if (!isReplace) {
-          return "0";
+        const quantity = Number(r.quantity || 0);
+        
+        // ✅ Chỉ hiển thị số lượng khi là REPLACE và quantity > 0
+        if (!isReplace || quantity === 0) {
+          return "";
         }
         
 
@@ -1369,7 +1407,7 @@ export default function CampaignModeEVCheck({
         }
         
 
-        return <span style={{ fontSize: "14px" }}>{r.quantity || 0}</span>;
+        return <span style={{ fontSize: "14px" }}>{quantity}</span>;
       },
     },
     {

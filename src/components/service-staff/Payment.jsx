@@ -16,11 +16,49 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
   const [totalServiceFee, setTotalServiceFee] = useState(0);
   const [totalPartsFee, setTotalPartsFee] = useState(0);
   const [vat, setVat] = useState(0);
+  const [paymentUrl, setPaymentUrl] = useState(null);
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   const appointmentId = booking?.id;
 
+  // Listen for payment success message from iframe
   useEffect(() => {
-    if (!open || !appointmentId) return;
+    const handleMessage = (event) => {
+      // Verify origin if needed
+      if (event.data && event.data.type === 'PAYMENT_SUCCESS') {
+        setPaymentSuccess(true);
+        setTimeout(() => {
+          onPaymentSuccess?.({ method: "PAY_OS_CENTER", amount: totalAmount });
+          onClose();
+        }, 1500);
+      } else if (event.data && event.data.type === 'PAYMENT_FAILED') {
+        toast.error("Thanh toán thất bại. Vui lòng thử lại.");
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [onPaymentSuccess, onClose, totalAmount]);
+
+  useEffect(() => {
+    // Chỉ reset khi modal đóng hoàn toàn
+    if (!open) {
+      // Delay reset để tránh reset khi modal đang transition
+      const timer = setTimeout(() => {
+        setPaymentUrl(null);
+        setShowQRCode(false);
+        setPaymentSuccess(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+    
+    // Nếu đang hiển thị QR code, không load lại data
+    if (showQRCode) return;
+    
+    if (!appointmentId) return;
 
     if (cancellationFee > 0 && (isPendingCancel || booking?.status === "CANCELED")) {
       setQuoteItems([{
@@ -190,6 +228,17 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
     if (!appointmentId) return toast.error("Thiếu thông tin lịch hẹn");
     if (totalAmount <= 0) return toast.warning("Tổng tiền phải lớn hơn 0");
 
+    // ✅ Kiểm tra trạng thái booking trước khi tạo thanh toán
+    const bookingStatus = booking?.status?.toUpperCase();
+    if (bookingStatus === "WAITING_FOR_PAYMENT") {
+      toast.warning("Đã có thanh toán đang chờ xử lý. Vui lòng đợi thanh toán hoàn tất.");
+      return;
+    }
+    if (bookingStatus === "COMPLETED") {
+      toast.info("Lịch hẹn đã hoàn thành thanh toán.");
+      return;
+    }
+
     setLoading(true);
     try {
       if (paymentMethod === "APP") {
@@ -239,16 +288,16 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
           res?.checkoutUrl;
 
         if (url) {
-          window.open(url, "_blank");
-          onPaymentSuccess?.({ method: "PAYOS", amount: totalAmount, url });
-          onClose();
+          setPaymentUrl(url);
+          setShowQRCode(true);
+          setLoading(false);
+          // toast.success("Tạo thanh toán thành công! Vui lòng quét mã QR để thanh toán.");
         } else {
           throw new Error("Không nhận được link thanh toán từ BE");
         }
       }
     } catch (e) {
       toast.error(e?.response?.data?.message || e?.data?.message || e?.message || "Không thể tạo yêu cầu thanh toán");
-    } finally {
       setLoading(false);
     }
   };
@@ -385,14 +434,27 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
     <Modal
       title={
         <span className='text-xl font-bold text-[#d4380d] justify-center flex items-center'>
-Xác nhận hóa đơn        </span>
+          {showQRCode ? "Thanh toán" : "Xác nhận hóa đơn"}
+        </span>
       }
       open={open}
-      onCancel={onClose}
+      onCancel={() => {
+        setShowQRCode(false);
+        setPaymentUrl(null);
+        onClose();
+      }}
       footer={null}
-      width={980}
-      destroyOnClose>
-      <div style={{ position: "relative" }}>
+      width={showQRCode ? 1400 : 980}
+      style={{ top: 10 }}
+      bodyStyle={showQRCode ? { 
+        padding: '20px', 
+        height: 'calc(100vh - 150px)', 
+        maxHeight: '900px',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      } : {}}>
+      <div style={{ position: "relative", height: showQRCode ? "100%" : "auto", display: showQRCode ? "flex" : "block", flexDirection: showQRCode ? "column" : "initial" }}>
         {(loading || fetchingEVCheck) && (
           <div style={{ 
             position: "absolute", 
@@ -409,22 +471,79 @@ Xác nhận hóa đơn        </span>
             <Loading />
           </div>
         )}
-        <div className='space-y-6' style={{ opacity: (loading || fetchingEVCheck) ? 0.5 : 1 }}>
-          <div className='bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg text-sm border border-blue-200'>
-            <p>
-              <strong>Khách hàng:</strong> {booking.customer?.firstName}{" "}
-              {booking.customer?.lastName}
-            </p>
-            <p>
-              <strong>Mã lịch hẹn:</strong>{" "}
-              <span className='font-mono text-red-600'>{booking.code}</span>
-            </p>
-            <p>
-              <strong>Loại dịch vụ:</strong>{" "}
-              <span className=' font-bold text-blue-600'>
-                {SERVICE_TYPE_MAP[booking.type] || booking.type}
-              </span>
-            </p>
+        
+        {showQRCode && paymentUrl ? (
+          <div className="flex flex-col" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+            {!paymentSuccess && (
+              <div className="flex justify-end gap-3 mb-4" style={{ flexShrink: 0 }}>
+                <Button 
+                  size="large" 
+                  onClick={() => {
+                    setShowQRCode(false);
+                    setPaymentUrl(null);
+                  }}
+                >
+                  Quay lại
+                </Button>
+              </div>
+            )}
+            {paymentSuccess && (
+              <div className="flex justify-center items-center mb-4 p-4 bg-green-50 border border-green-200 rounded-lg" style={{ flexShrink: 0 }}>
+                <p className="text-green-700 font-semibold text-lg">
+                  ✓ Thanh toán thành công! Đang đóng cửa sổ...
+                </p>
+              </div>
+            )}
+            
+            <div 
+              style={{
+                width: "100%",
+                flex: "1 1 auto",
+                border: "1px solid #e8e8e8",
+                borderRadius: "8px",
+                overflow: "hidden",
+                backgroundColor: "#fff",
+                minHeight: 0,
+                display: "flex"
+              }}
+            >
+              <iframe
+                src={paymentUrl}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  border: "none",
+                  display: "block",
+                  flex: "1 1 auto"
+                }}
+                title="Payment QR Code"
+                allow="payment"
+              />
+            </div>
+          </div>
+        ) : (
+          <div className='space-y-6' style={{ opacity: (loading || fetchingEVCheck) ? 0.5 : 1 }}>
+          <div className='bg-gray-50 p-4 rounded-lg border border-gray-200'>
+            <div className='space-y-3'>
+              <div>
+                <span className='text-sm text-gray-600'>Khách hàng:</span>
+                <span className='ml-2 text-base font-medium text-gray-900'>
+                  {booking.customer?.firstName} {booking.customer?.lastName}
+                </span>
+              </div>
+              <div>
+                <span className='text-sm text-gray-600'>Mã lịch hẹn:</span>
+                <span className='ml-2 text-base font-mono font-semibold text-gray-900'>
+                  {booking.code}
+                </span>
+              </div>
+              <div>
+                <span className='text-sm text-gray-600'>Loại dịch vụ:</span>
+                <span className='ml-2 text-base font-medium text-gray-900'>
+                  {SERVICE_TYPE_MAP[booking.type] || booking.type}
+                </span>
+              </div>
+            </div>
           </div>
 
           {quoteItems.length > 0 ? (
@@ -485,18 +604,20 @@ Xác nhận hóa đơn        </span>
             <Empty description='Chưa có hạng mục nào để thanh toán' />
           )}
 
-          <div className='bg-gray-50 p-4 rounded-lg'>
-            <h4 className='font-semibold mb-3'>Phương thức thanh toán</h4>
+          <div className='bg-gray-50 p-4 rounded-lg border border-gray-200'>
+            <h4 className='font-semibold mb-3 text-gray-900'>Phương thức thanh toán</h4>
             <Radio.Group
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}>
-              <Radio value='PAY_OS_CENTER'>Chuyển khoản ngân hàng</Radio>
-              <Radio value='CASH'>Tiền mặt</Radio>
-              <Radio value='APP'>Thanh toán bằng app</Radio>
+              <div className='space-y-2'>
+                <Radio value='PAY_OS_CENTER'>Chuyển khoản ngân hàng</Radio>
+                <Radio value='CASH'>Tiền mặt</Radio>
+                <Radio value='APP'>Thanh toán bằng app</Radio>
+              </div>
             </Radio.Group>
           </div>
 
-          <div className='flex justify-end gap-3 pt-4 border-t'>
+          <div className='flex justify-end gap-3 pt-4 border-t border-gray-200'>
             <Button size='large' onClick={onClose} disabled={loading}>
               Hủy
             </Button>
@@ -506,9 +627,7 @@ Xác nhận hóa đơn        </span>
               size='large'
               onClick={handlePayment}
               loading={loading}
-              disabled={loading || totalAmount === 0}
-              className=''
-              style={{ backgroundColor: "#ff4d4f", borderColor: "#ff4d4f" }}>
+              disabled={loading || totalAmount === 0}>
               {paymentMethod === "CASH"
                 ? "Xác nhận đã thu tiền"
                 : paymentMethod === "APP"
@@ -517,6 +636,7 @@ Xác nhận hóa đơn        </span>
             </Button>
           </div>
         </div>
+        )}
       </div>
     </Modal>
   );

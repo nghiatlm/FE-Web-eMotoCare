@@ -57,7 +57,7 @@ export default function RMAConfirmationModal({
           rmaId,
           evCheckDetailId: item.id,
           quantity: item.quantity || 1,
-          reason: item.NoiDung || item.result || "Lỗi kỹ thuật / hư hỏng",
+          reason: item.NoiDung || item.result ,
           inspector: staffData?.fullName || staffData?.name || "",
           result: "",
           solution: item.remedies || "",

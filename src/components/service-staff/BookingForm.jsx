@@ -81,7 +81,7 @@ const getColorHex = (color) => {
   return colorHexMap[colorUpper] || color; // Nếu không tìm thấy, trả về giá trị gốc (có thể đã là hex)
 };
 
-const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipChassisNumber = false }) => {
+const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipChassisNumber = false, hideServiceTypeCard = false }) => {
   const [form] = Form.useForm();
   const [customers, setCustomers] = useState([]);
   const [centers, setCenters] = useState([]);
@@ -910,7 +910,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                   <Row gutter={[20, 20]}>
                     
                     {vehicleInfo.customer && (
-                      <Col xs={24} lg={8}>
+                      <Col xs={24} lg={12}>
                         <Card
                           bodyStyle={{ padding: "20px 24px" }}
                           style={{
@@ -1001,7 +1001,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                     
                     
                     {vehicleInfo.vehicle && (
-                      <Col xs={24} lg={8}>
+                      <Col xs={24} lg={12}>
                         <Card 
                           bodyStyle={{ padding: "20px 24px" }}
                           style={{
@@ -1096,96 +1096,6 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                         </Card>
                       </Col>
                     )}
-                    
-                    
-                    {vehicleInfo.vehicleStages && vehicleInfo.vehicleStages.some(stage => stage.status === "UPCOMING") && (
-                      <Col xs={24} lg={8}>
-                        <Card
-                          bodyStyle={{ padding: "20px 24px", display: "flex", flexDirection: "column", height: "100%" }}
-                          style={{
-                            borderRadius: 12,
-                            border: "1px solid #e8e8e8",
-                            background: "#fff",
-                            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-                            height: "100%",
-                            minHeight: "280px",
-                          }}
-                        >
-                          <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
-                            <div
-                              style={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: "10px",
-                                background: "linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%)",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                marginRight: 12,
-                                boxShadow: "0 2px 8px rgba(255, 77, 79, 0.3)",
-                              }}
-                            >
-                              <Wrench size={20} color="#fff" />
-                            </div>
-                            <Text strong style={{ fontSize: 16, color: "#262626" }}>
-                              Thông tin bảo dưỡng
-                            </Text>
-                          </div>
-                          
-                          <div style={{ 
-                            height: 1, 
-                            background: "linear-gradient(90deg, #e8e8e8 0%, transparent 100%)",
-                            marginBottom: 20 
-                          }} />
-                          
-                          <Space direction="vertical" size={16} style={{ width: "100%", flex: 1, display: "flex" }}>
-                            {vehicleInfo.vehicleStages
-                              .filter(stage => stage.status === "UPCOMING")
-                              .map((stage, index) => (
-                              <div key={stage.id || index} style={{ 
-                                padding: "12px",
-                                background: "#fff7f3",
-                                borderRadius: 8,
-                                border: "1px solid #ffccc7",
-                                marginBottom: index < vehicleInfo.vehicleStages.filter(s => s.status === "UPCOMING").length - 1 ? 12 : 0,
-                                minHeight: "200px",
-                                display: "flex",
-                                flexDirection: "column"
-                              }}>
-                                
-                                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-                                  <Tag color="orange" style={{ fontSize: 11, padding: "2px 8px" }}>
-                                    Sắp tới
-                                  </Tag>
-                                </div>
-                                
-                                
-                                <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                                  
-                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                    <Text type="secondary" style={{ fontSize: 13, fontWeight: 600 }}>Tên mốc bảo dưỡng</Text>
-                                    <Text strong style={{ fontSize: 13, color: "#262626" }}>
-                                      {stage.maintenanceStageName || `Mốc bảo dưỡng ${index + 1}`}
-                                    </Text>
-                                  </div>
-                                  
-                                  <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-around" }}>
-                                    {stage.expectedImplementationDate && (
-                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                        <Text type="secondary" style={{ fontSize: 13, fontWeight: 600 }}>Ngày dự kiến</Text>
-                                        <Text style={{ fontSize: 13, color: "#262626" }}>
-                                          {dayjs(stage.expectedImplementationDate).format("DD/MM/YYYY")}
-                                        </Text>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </Space>
-                        </Card>
-                      </Col>
-                    )}
                   </Row>
                 </div>
               ) : null}
@@ -1193,6 +1103,129 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
           </Row>
         </Card>
           </>
+        )}
+
+        {/* Card riêng hiển thị TẤT CẢ các mốc bảo dưỡng */}
+        {vehicleInfo && vehicleInfo.vehicleStages && vehicleInfo.vehicleStages.length > 0 && (
+          <Card
+            title={
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: "10px",
+                    background: "linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 2px 8px rgba(255, 77, 79, 0.3)",
+                  }}
+                >
+                  <Wrench size={20} color="#fff" />
+                </div>
+                <span style={{ fontSize: 16, fontWeight: 600, color: "#262626" }}>
+                  Thông tin bảo dưỡng
+                </span>
+              </div>
+            }
+            style={{ 
+              marginBottom: 24, 
+              borderRadius: 12,
+              border: "1px solid #e8e8e8",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+            }}
+            headStyle={{ 
+              borderBottom: "1px solid #f0f0f0", 
+              padding: "20px 24px",
+              background: "#fafafa",
+              borderRadius: "12px 12px 0 0",
+            }}
+            bodyStyle={{ padding: "24px" }}
+          >
+            <Row gutter={[16, 16]}>
+              {/* Hiển thị TẤT CẢ các mốc bảo dưỡng */}
+              {vehicleInfo.vehicleStages
+                .sort((a, b) => {
+                  // Sắp xếp: UPCOMING trước, sau đó các mốc khác
+                  const statusA = (a.status || "").toUpperCase();
+                  const statusB = (b.status || "").toUpperCase();
+                  if (statusA === "UPCOMING" && statusB !== "UPCOMING") return -1;
+                  if (statusA !== "UPCOMING" && statusB === "UPCOMING") return 1;
+                  return 0;
+                })
+                .map((stage, index) => {
+                  const status = (stage.status || "").toUpperCase();
+                  // Map tất cả các trạng thái
+                  const statusLabelMap = {
+                    "UPCOMING": "Sắp tới",
+                    "NO_START": "Chưa bắt đầu",
+                    "COMPLETED": "Đã hoàn thành",
+                    "IN_PROGRESS": "Đang thực hiện",
+                    "SKIPPED": "Đã bỏ qua",
+                    "EXPIRED": "Đã hết hạn",
+                  };
+                  const statusLabel = statusLabelMap[status] || status;
+                  const tagColorMap = {
+                    "UPCOMING": "orange",
+                    "NO_START": "blue",
+                    "COMPLETED": "green",
+                    "IN_PROGRESS": "processing",
+                    "SKIPPED": "default",
+                    "EXPIRED": "red",
+                  };
+                  const tagColor = tagColorMap[status] || "default";
+                  
+                  return (
+                    <Col xs={24} sm={12} lg={8} key={stage.id || index}>
+                      <div style={{ 
+                        padding: "16px",
+                        background: status === "UPCOMING" ? "#fff7f3" : status === "COMPLETED" ? "#f6ffed" : status === "EXPIRED" ? "#fff1f0" : "#f0f0f0",
+                        borderRadius: 8,
+                        border: status === "UPCOMING" ? "1px solid #ffccc7" : status === "COMPLETED" ? "1px solid #b7eb8f" : status === "EXPIRED" ? "1px solid #ffccc7" : "1px solid #d9d9d9",
+                        height: "100%",
+                        display: "flex",
+                        flexDirection: "column"
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+                          <Tag color={tagColor} style={{ fontSize: 12, padding: "4px 10px" }}>
+                            {statusLabel}
+                          </Tag>
+                        </div>
+                        
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                          <div style={{ marginBottom: 12 }}>
+                            <Text type="secondary" style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>Tên mốc bảo dưỡng</Text>
+                            <Text strong style={{ fontSize: 14, color: "#262626" }}>
+                              {stage.maintenanceStage?.name || stage.maintenanceStageName || `Mốc bảo dưỡng ${index + 1}`}
+                            </Text>
+                          </div>
+                          
+                          <Space direction="vertical" size={8} style={{ width: "100%" }}>
+                            {stage.maintenanceStage?.mileage && (
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <Text type="secondary" style={{ fontSize: 13, fontWeight: 600 }}>Số KM</Text>
+                                <Text style={{ fontSize: 13, color: "#262626" }}>
+                                  {Number(stage.maintenanceStage.mileage).toLocaleString("vi-VN")} km
+                                </Text>
+                              </div>
+                            )}
+                            {stage.expectedImplementationDate && (
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <Text type="secondary" style={{ fontSize: 13, fontWeight: 600 }}>Ngày dự kiến</Text>
+                                <Text style={{ fontSize: 13, color: "#262626" }}>
+                                  {dayjs(stage.expectedImplementationDate).format("DD/MM/YYYY")}
+                                </Text>
+                              </div>
+                            )}
+                          </Space>
+                        </div>
+                      </div>
+                    </Col>
+                  );
+                })}
+            </Row>
+          </Card>
         )}
 
         
@@ -1204,41 +1237,42 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
         {isChassisNumberLoaded && (
           <>
         
-        <Card
-          title={
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "10px",
-                  background: "linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 2px 8px rgba(255, 77, 79, 0.3)",
-                }}
-              >
-                <Settings size={18} color="#fff" />
+        {!hideServiceTypeCard && (
+          <Card
+            title={
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: "10px",
+                    background: "linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 2px 8px rgba(255, 77, 79, 0.3)",
+                  }}
+                >
+                  <Settings size={18} color="#fff" />
+                </div>
+                <span style={{ fontSize: 16, fontWeight: 600, color: "#262626" }}>
+                  Loại dịch vụ và thông tin bổ sung
+                </span>
               </div>
-              <span style={{ fontSize: 16, fontWeight: 600, color: "#262626" }}>
-                Loại dịch vụ và thông tin bổ sung
-              </span>
-            </div>
-          }
-          style={{ 
-            marginBottom: 24, 
-            borderRadius: 12,
-            border: "1px solid #e8e8e8",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-          }}
-          headStyle={{ 
-            borderBottom: "1px solid #f0f0f0", 
-            padding: "20px 24px",
-            background: "#fafafa",
-            borderRadius: "12px 12px 0 0",
-          }}
-          bodyStyle={{ padding: "24px" }}>
+            }
+            style={{ 
+              marginBottom: 24, 
+              borderRadius: 12,
+              border: "1px solid #e8e8e8",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+            }}
+            headStyle={{ 
+              borderBottom: "1px solid #f0f0f0", 
+              padding: "20px 24px",
+              background: "#fafafa",
+              borderRadius: "12px 12px 0 0",
+            }}
+            bodyStyle={{ padding: "24px" }}>
           <Row gutter={[16, 0]}>
             <Col xs={24} md={12}>
               <Form.Item
@@ -1249,7 +1283,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                   </div>
                 }
                 name='type'
-                rules={[{ required: true, message: "Vui lòng chọn loại dịch vụ!" }]}>
+                rules={[{ required: !hideServiceTypeCard, message: "Vui lòng chọn loại dịch vụ!" }]}>
                 <Select
                   allowClear
                   placeholder='Chọn loại dịch vụ'
@@ -1466,7 +1500,8 @@ Nội dung sửa chữa                    </span>
           </Form.Item>
             </>
           )}
-        </Card>
+          </Card>
+        )}
 
         
         <Card

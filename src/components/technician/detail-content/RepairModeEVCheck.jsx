@@ -17,6 +17,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import RMAConfirmationModal from "../../../components/service-staff/RMAConfirmationModal";
 import useEVCheckHub from "../../../hooks/useEVCheckHub.jsx";
 import useRMAHub from "../../../hooks/useRMAHub.jsx";
+import useExportNoteHub from "../../../hooks/useExportNoteHub.jsx";
 import BatteryDataDisplay from "../BatteryDataDisplay";
 import Loading from "../../Loading";
 
@@ -484,7 +485,6 @@ export default function RepairModeEVCheck({
       let rawDetails = [];
       let statusValue = null;
 
-
       if (Array.isArray(res?.evCheckDetails)) {
         rawDetails = res.evCheckDetails;
         statusValue = res.status || null;
@@ -503,6 +503,36 @@ export default function RepairModeEVCheck({
       } else if (Array.isArray(res)) {
         rawDetails = res;
       }
+
+      // Deduplicate phantom/duplicate rows (thường gặp khi remedies = NONE, totalAmount = 0)
+      const dedupedDetails = [];
+      const seenKeys = new Set();
+      const shouldDedup = (item) => {
+        const remediesUpper = String(item?.remedies || "").toUpperCase();
+        const total = Number(item?.totalAmount || 0);
+        const pricePart = Number(item?.pricePart || 0);
+        const priceService = Number(item?.priceService || 0);
+        return remediesUpper === "NONE" && total === 0 && pricePart === 0 && priceService === 0;
+      };
+
+      rawDetails.forEach((item) => {
+        if (shouldDedup(item)) {
+          const key =
+            (item?.partItem?.id ||
+              item?.partItemId ||
+              item?.replacePart?.id ||
+              item?.replacePartId ||
+              item?.id ||
+              "unknown") +
+            "-" +
+            (item?.remedies || "NONE");
+          if (seenKeys.has(key)) return;
+          seenKeys.add(key);
+        }
+        dedupedDetails.push(item);
+      });
+
+      rawDetails = dedupedDetails;
 
 
       rawDetails = rawDetails.filter((item) => item != null);
@@ -756,6 +786,16 @@ export default function RepairModeEVCheck({
 
   useRMAHub(handleRMAUpdate);
 
+  // Handler để refresh trạng thái phụ tùng khi có update từ export note
+  const handleExportNoteUpdate = useCallback(() => {
+    if (evCheckId && !forceEmpty && !vehiclePartLoading && !replacePartLoading) {
+      // Reload lại details để cập nhật trạng thái phụ tùng
+      loadRepairDetails();
+    }
+  }, [evCheckId, forceEmpty, vehiclePartLoading, replacePartLoading, loadRepairDetails]);
+
+  useExportNoteHub(handleExportNoteUpdate);
+
 
 
 
@@ -852,6 +892,11 @@ export default function RepairModeEVCheck({
         return;
       }
       
+      // ✅ Kiểm tra pin bảo hành đã completed: không cho phép cập nhật trạng thái
+      if (isBatteryWarrantyCompleted(currentRow)) {
+        toast.error("Pin bảo hành đã hoàn thành, không thể cập nhật trạng thái.");
+        return;
+      }
 
       if (hasStockIssue(currentRow) && value === "COMPLETED") {
         toast.error("Không thể đánh dấu hoàn thành khi phụ tùng hết hàng hoặc đang chờ xuất kho.");
@@ -1006,6 +1051,40 @@ export default function RepairModeEVCheck({
 
     if (itemsToSave.length === 0) {
       return toast.warning("Vui lòng chọn Bộ phận.");
+    }
+
+    // ✅ Kiểm tra pin chưa import dữ liệu
+    for (const item of itemsToSave) {
+      if (isBatteryItem(item)) {
+        // Chỉ kiểm tra nếu item đã có id (đã được lưu vào database)
+        if (item.id && !item.id.startsWith("temp_")) {
+          const storageKey = `battery_data_${item.id}`;
+          const savedData = localStorage.getItem(storageKey);
+          
+          if (!savedData) {
+            const partName = item.partItem?.part?.name || item.displayName || "Pin";
+            return toast.error(
+              `Vui lòng nhập dữ liệu cho ${partName} trước khi gửi báo giá!`
+            );
+          }
+          
+          // Kiểm tra xem dữ liệu có hợp lệ không
+          try {
+            const parsedData = JSON.parse(savedData);
+            if (!parsedData || (!parsedData.id && parsedData.sampleCount === undefined)) {
+              const partName = item.partItem?.part?.name || item.displayName || "Pin";
+              return toast.error(
+                `Dữ liệu pin của ${partName} không hợp lệ. Vui lòng nhập lại!`
+              );
+            }
+          } catch (error) {
+            const partName = item.partItem?.part?.name || item.displayName || "Pin";
+            return toast.error(
+              `Dữ liệu pin của ${partName} không hợp lệ. Vui lòng nhập lại!`
+            );
+          }
+        }
+      }
     }
 
     for (const item of itemsToSave) {
@@ -1223,6 +1302,12 @@ export default function RepairModeEVCheck({
         if (isWarrantyItemSent(detailToCheck)) {
           return false;
         }
+        
+        // ✅ Loại trừ pin bảo hành đã completed
+        if (isBatteryWarrantyCompleted(detailToCheck)) {
+          return false;
+        }
+        
         return true;
       });
 
@@ -1351,6 +1436,16 @@ export default function RepairModeEVCheck({
             });
           }
         }
+
+        // ✅ Lọc bỏ các bộ phận đã được chọn ở các hàng khác (trừ hàng hiện tại)
+        const availableOptions = allOptions.filter((opt) => {
+          const optPartItemId = String(opt.partItemId || "");
+          return !details.some((row, idx) => {
+            if (idx === i) return false; // Bỏ qua hàng hiện tại
+            const rowPartItemId = String(row.partItemId || "");
+            return rowPartItemId && rowPartItemId === optPartItemId;
+          });
+        });
         
         return (
           <Tooltip title={partName || displayName || partItemId} placement="topLeft">
@@ -1360,6 +1455,19 @@ export default function RepairModeEVCheck({
           value={r.partItemId || undefined}
           style={{ width: "100%", minWidth: "160px" }}
           onChange={(v) => {
+            // ✅ Kiểm tra xem bộ phận này đã được chọn ở hàng khác chưa
+            const selectedPartItemId = String(v || "");
+            const isAlreadySelected = details.some((row, idx) => {
+              if (idx === i) return false;
+              const rowPartItemId = String(row.partItemId || "");
+              return rowPartItemId && rowPartItemId === selectedPartItemId;
+            });
+
+            if (isAlreadySelected) {
+              toast.error("Bộ phận này đã được chọn ở một hạng mục khác. Vui lòng chọn bộ phận khác.");
+              return;
+            }
+
             const sel = allOptions.find((p) => p.partItemId === v);
             const partItem = sel?.partItem;
             const part = partItem?.part || {};
@@ -1422,7 +1530,7 @@ export default function RepairModeEVCheck({
               updatePriceService(i, currentRemedies, rowDataWithNewPartItem);
             }
           }}
-          options={allOptions}
+          options={availableOptions}
           loading={vehiclePartLoading}
           disabled={readOnly || !canEditFields}
           filterOption={(input, opt) =>
@@ -1517,18 +1625,26 @@ export default function RepairModeEVCheck({
                   onViewDetail={onViewBatteryDetail}
                 />
               ) : (
-                <span className="text-gray-400">—</span>
+                <span className="text-gray-400"></span>
               )}
             </div>
           );
         }
         
 
+        // Khi đã hoàn thành sửa chữa, chỉ hiển thị text
+        if (!canEditFields || readOnly) {
+          return (
+            <span style={{ fontSize: 14, whiteSpace: "pre-wrap" }}>
+              {r.result || ""}
+            </span>
+          );
+        }
+        
         return (
           <Input.TextArea
             value={r.result ?? ""}
             onChange={(e) => handleChange(i, "result", e.target.value)}
-            disabled={readOnly || !canEditFields}
             autoSize={{ minRows: 2, maxRows: 8 }}
             style={{ resize: "none", fontSize: 14, width: "100%" }}
           />
@@ -1567,14 +1683,18 @@ export default function RepairModeEVCheck({
         const remediesValue = r.remedies || "NONE";
         const remediesLabel = getRemediesLabel(remediesValue);
 
+        // Khi đã hoàn thành sửa chữa, chỉ hiển thị text
+        if (!canEditFields || readOnly) {
+          return <span style={{ fontSize: 14 }}>{remediesLabel}</span>;
+        }
+
         return (
           <Select
             placeholder='Biện pháp'
             value={remediesValue ? { value: remediesValue, label: remediesLabel } : undefined}
             labelInValue={true}
             style={{ width: 100 }}
-            onChange={(v) => handleChange(i, "remedies", v.value || v)}
-            disabled={readOnly || !canEditFields}>
+            onChange={(v) => handleChange(i, "remedies", v.value || v)}>
             <Option value='NONE'>Không</Option>
             <Option value='TUNE'>Điều chỉnh</Option>
             {!isAfterQuote && <Option value='CLEAN'>Vệ sinh</Option>}
@@ -1607,7 +1727,12 @@ export default function RepairModeEVCheck({
       render: (_, r, i) => {
         const isWarranty = checkWarrantyStatus(r.partItem);
         const replacePartName = r.replacePartName || "";
-
+        const remedies = (r.remedies || "").toString().toUpperCase().trim();
+        
+        // Chỉ hiển thị Select khi biện pháp là "REPLACE"
+        if (remedies !== "REPLACE") {
+          return <span style={{ color: "#999" }}></span>;
+        }
 
         if (isWarranty) {
         return (
@@ -1639,6 +1764,15 @@ export default function RepairModeEVCheck({
         const cacheKey = modelId && partTypeId ? `${modelId}_${partTypeId}` : null;
         const allSuggestedParts = cacheKey ? (partOptionsMap[cacheKey] || []) : [];
 
+        // Khi đã hoàn thành sửa chữa, chỉ hiển thị text
+        if (!canEditFields || readOnly) {
+          return (
+            <span style={{ fontSize: 14 }}>
+              {replacePartName || ""}
+            </span>
+          );
+        }
+
         return (
           <Tooltip title={replacePartName || "Chọn phụ tùng"} placement="topLeft">
           <Select
@@ -1650,12 +1784,7 @@ export default function RepairModeEVCheck({
                 : undefined
             }
             labelInValue
-            disabled={
-              readOnly ||
-              !canEditFields ||
-              r.remedies !== "REPLACE" ||
-              isWarranty
-            }
+            disabled={isWarranty}
               loading={partLoading}
               style={{ width: "100%", minWidth: "180px" }}
               onDropdownVisibleChange={async (open) => {
@@ -1779,8 +1908,11 @@ export default function RepairModeEVCheck({
         const isReplace = (r.remedies || "").toUpperCase() === "REPLACE";
         
 
-        if (!isReplace) {
-          return "0";
+        const quantity = Number(r.quantity || 0);
+        
+        // ✅ Chỉ hiển thị số lượng khi là REPLACE và quantity > 0
+        if (!isReplace || quantity === 0) {
+          return "";
         }
         
 
@@ -1798,7 +1930,7 @@ export default function RepairModeEVCheck({
         }
         
 
-        return <span style={{ fontSize: "14px" }}>{r.quantity || 0}</span>;
+        return <span style={{ fontSize: "14px" }}>{quantity}</span>;
       },
     },
     {
@@ -1828,7 +1960,7 @@ export default function RepairModeEVCheck({
       render: (_, r) => {
 
         const status = r.exportNoteStatus || exportNoteStatusMap[r.id];
-        if (!status) return <span style={{ color: "#999" }}>—</span>;
+        if (!status) return <span style={{ color: "#999" }}></span>;
         
 
         const getStatusColor = (s) => {
@@ -1871,21 +2003,55 @@ export default function RepairModeEVCheck({
   ];
 
 
+  // ✅ Kiểm tra pin bảo hành đã completed (không cho phép cập nhật trạng thái)
+  // Phải khai báo trước statusColumn vì được sử dụng trong đó
+  const isBatteryWarrantyCompleted = (row) => {
+    if (!row) return false;
+    
+    // Kiểm tra xem có phải pin không
+    const partName = row.partItem?.part?.name || row.displayName || "";
+    const partCode = row.partItem?.part?.code || "";
+    const partNameLower = partName.toLowerCase();
+    const partCodeLower = partCode.toLowerCase();
+    const isBattery = 
+      partNameLower.includes("pin") || 
+      partNameLower.includes("lfp") ||
+      partNameLower.includes("lithium") ||
+      partNameLower.includes("battery") ||
+      partNameLower.includes("ắc quy") ||
+      partCodeLower.includes("pin") ||
+      partCodeLower.includes("lfp");
+    
+    if (!isBattery) return false;
+    
+    // Kiểm tra remedies = WARRANTY
+    const remedies = (row.remedies || "").toUpperCase().trim();
+    if (remedies !== "WARRANTY") return false;
+    
+    // Kiểm tra status = COMPLETED (normalize status)
+    const currentStatus = row.status || "";
+    const normalizedStatus = currentStatus === "INPROGRESS" ? "IN_PROGRESS" : currentStatus;
+    const statusUpper = normalizedStatus.toUpperCase().trim();
+    
+    return statusUpper === "COMPLETED";
+  };
+
+
   const statusColumn = {
     title: (
       <div className='flex items-center gap-2'>
-        {details.filter((d) => d.id && !isWarrantyItemSent(d) && !hasStockIssue(d)).length > 0 && (
+        {details.filter((d) => d.id && !isWarrantyItemSent(d) && !hasStockIssue(d) && !isBatteryWarrantyCompleted(d)).length > 0 && (
           <Checkbox
-            checked={details.filter(d => !isWarrantyItemSent(d) && !hasStockIssue(d)).every((d) => d.status === "COMPLETED")}
+            checked={details.filter(d => !isWarrantyItemSent(d) && !hasStockIssue(d) && !isBatteryWarrantyCompleted(d)).every((d) => d.status === "COMPLETED")}
             indeterminate={
-              details.filter(d => !isWarrantyItemSent(d) && !hasStockIssue(d)).some((d) => d.status === "COMPLETED") &&
-              details.filter(d => !isWarrantyItemSent(d) && !hasStockIssue(d)).some((d) => d.status !== "COMPLETED")
+              details.filter(d => !isWarrantyItemSent(d) && !hasStockIssue(d) && !isBatteryWarrantyCompleted(d)).some((d) => d.status === "COMPLETED") &&
+              details.filter(d => !isWarrantyItemSent(d) && !hasStockIssue(d) && !isBatteryWarrantyCompleted(d)).some((d) => d.status !== "COMPLETED")
             }
             onChange={(e) => {
               const checked = e.target.checked;
               const updated = details.map((item) => {
 
-                if (isWarrantyItemSent(item) || hasStockIssue(item)) {
+                if (isWarrantyItemSent(item) || hasStockIssue(item) || isBatteryWarrantyCompleted(item)) {
                   return item;
                 }
                 return {
@@ -1898,7 +2064,7 @@ export default function RepairModeEVCheck({
               const changes = {};
               updated.forEach((item) => {
 
-                if (item.id && checked && !isWarrantyItemSent(item) && !hasStockIssue(item)) {
+                if (item.id && checked && !isWarrantyItemSent(item) && !hasStockIssue(item) && !isBatteryWarrantyCompleted(item)) {
                   changes[item.id] = "COMPLETED";
                 }
               });
@@ -1918,13 +2084,26 @@ export default function RepairModeEVCheck({
       
 
       const isStockIssue = hasStockIssue(r);
-      const isDisabled = readOnly || !canEditStatus || isWarrantySent || isStockIssue;
+      
+      // ✅ Kiểm tra pin bảo hành đã completed: nếu pin có remedies = WARRANTY và status = COMPLETED thì disable
+      const batteryWarrantyCompleted = isBatteryWarrantyCompleted(r);
+      
+      const isDisabled = readOnly || !canEditStatus || isWarrantySent || isStockIssue || batteryWarrantyCompleted;
 
+      // Normalize status để so sánh đúng
+      const normalizedRowStatus = r.status === "INPROGRESS" ? "IN_PROGRESS" : r.status;
+      const isCompleted = normalizedRowStatus === "COMPLETED";
+      
       return (
         <div className='flex items-center gap-2'>
           <Checkbox
-            checked={r.status === "COMPLETED"}
+            checked={isCompleted}
             onChange={(e) => {
+              // Kiểm tra lại trước khi cho phép thay đổi
+              if (isBatteryWarrantyCompleted(r)) {
+                toast.error("Pin bảo hành đã hoàn thành, không thể cập nhật trạng thái.");
+                return;
+              }
               handleChange(
                 i,
                 "status",
@@ -1936,14 +2115,18 @@ export default function RepairModeEVCheck({
           <Tag
             color={stat.color}
               style={{
-              cursor: !isDisabled && r.status !== "COMPLETED" ? "pointer" : "default",
+              cursor: !isDisabled && !isCompleted ? "pointer" : "default",
                 fontWeight: 500,
                 borderRadius: 8,
                 padding: "2px 8px",
                 opacity: isDisabled ? 0.6 : 1,
             }}
             onClick={() => {
-              if (r.status !== "COMPLETED" && !isDisabled) {
+              if (isBatteryWarrantyCompleted(r)) {
+                toast.error("Pin bảo hành đã hoàn thành, không thể cập nhật trạng thái.");
+                return;
+              }
+              if (!isCompleted && !isDisabled) {
                 handleChange(i, "status", "COMPLETED");
               }
               }}>

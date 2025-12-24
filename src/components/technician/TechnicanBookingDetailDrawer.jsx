@@ -278,7 +278,13 @@ export default function TechnicianBookingDetailDrawer({
         <div className='flex justify-center p-10'>
           <Loading />
         </div>
-      ) : isRepair && chassisConfirmed ? (
+      ) : isRepair && chassisConfirmed && evCheckStatus && (
+        evCheckStatus === "INSPECTION_COMPLETED" ||
+        evCheckStatus === "QUOTE_APPROVED" ||
+        evCheckStatus === "REPAIR_IN_PROGRESS" ||
+        evCheckStatus === "REPAIR_COMPLETED" ||
+        evCheckStatus === "COMPLETED"
+      ) ? (
         <section className='bg-white rounded-xl shadow p-5 border border-orange-200 max-h-96 overflow-auto'>
           <h3 className='font-semibold text-base mb-3 border-b pb-2 text-orange-600'>
             Phiếu sửa chữa

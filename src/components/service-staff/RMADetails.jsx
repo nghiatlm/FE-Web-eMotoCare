@@ -245,17 +245,51 @@ function RMADetails({ rma, details = [], loading }) {
   if (!rma) return <p>Không tìm thấy thông tin RMA.</p>;
 
   const initialBookingValues = useMemo(
-    () => ({
-      customerId: rma?.customer?.id,
-      vehicleId: rma?.vehicle?.id,
-      chassisNumber: rma?.vehicle?.chassisNumber,
-      serviceCenterId: rma?.staff?.serviceCenterId,
-      estimatedCost: 0,
-      type: "REPAIR_TYPE",
-      customer: rma?.customer,
-      vehicle: rma?.vehicle,
-    }),
-    [rma]
+    () => {
+      // Lấy serviceCenterId từ appointment gốc của RMA hoặc từ tất cả evCheckDetails
+      let appointmentServiceCenterId = null;
+      
+      // Ưu tiên 1: Từ appointment gốc của RMA
+      if (rma?.appointment?.serviceCenterId) {
+        appointmentServiceCenterId = rma.appointment.serviceCenterId;
+      } else if (rma?.appointment?.serviceCenter?.id) {
+        appointmentServiceCenterId = rma.appointment.serviceCenter.id;
+      }
+      // Ưu tiên 2: Tìm trong tất cả evCheckDetails để lấy appointment gốc
+      else if (details && details.length > 0) {
+        for (const detail of details) {
+          const evCheckDetail = detail.evCheckDetail;
+          const appointment = evCheckDetail?.evCheck?.appointment;
+          if (appointment?.serviceCenterId) {
+            appointmentServiceCenterId = appointment.serviceCenterId;
+            break;
+          } else if (appointment?.serviceCenter?.id) {
+            appointmentServiceCenterId = appointment.serviceCenter.id;
+            break;
+          }
+        }
+      }
+      // Ưu tiên 3: Từ RMA trực tiếp
+      if (!appointmentServiceCenterId) {
+        appointmentServiceCenterId = rma?.serviceCenterId || rma?.serviceCenter?.id;
+      }
+      // Fallback: Từ staff (không nên dùng nhưng để đảm bảo có giá trị)
+      if (!appointmentServiceCenterId) {
+        appointmentServiceCenterId = rma?.staff?.serviceCenterId;
+      }
+      
+      return {
+        customerId: rma?.customer?.id,
+        vehicleId: rma?.vehicle?.id,
+        chassisNumber: rma?.vehicle?.chassisNumber,
+        serviceCenterId: appointmentServiceCenterId,
+        estimatedCost: 0,
+        type: "REPAIR_TYPE",
+        customer: rma?.customer,
+        vehicle: rma?.vehicle,
+      };
+    },
+    [rma, details]
   );
 
   const handleOpenBooking = () => {
@@ -266,10 +300,42 @@ function RMADetails({ rma, details = [], loading }) {
     try {
       setBookingLoading(true);
 
+      // Lấy serviceCenterId từ appointment gốc của RMA hoặc từ tất cả evCheckDetails
+      let appointmentServiceCenterId = null;
+      
+      // Ưu tiên 1: Từ appointment gốc của RMA
+      if (rma?.appointment?.serviceCenterId) {
+        appointmentServiceCenterId = rma.appointment.serviceCenterId;
+      } else if (rma?.appointment?.serviceCenter?.id) {
+        appointmentServiceCenterId = rma.appointment.serviceCenter.id;
+      }
+      // Ưu tiên 2: Tìm trong tất cả evCheckDetails để lấy appointment gốc
+      else if (details && details.length > 0) {
+        for (const detail of details) {
+          const evCheckDetail = detail.evCheckDetail;
+          const appointment = evCheckDetail?.evCheck?.appointment;
+          if (appointment?.serviceCenterId) {
+            appointmentServiceCenterId = appointment.serviceCenterId;
+            break;
+          } else if (appointment?.serviceCenter?.id) {
+            appointmentServiceCenterId = appointment.serviceCenter.id;
+            break;
+          }
+        }
+      }
+      // Ưu tiên 3: Từ RMA trực tiếp
+      if (!appointmentServiceCenterId) {
+        appointmentServiceCenterId = rma?.serviceCenterId || rma?.serviceCenter?.id;
+      }
+      // Fallback: Từ staff (không nên dùng nhưng để đảm bảo có giá trị)
+      if (!appointmentServiceCenterId) {
+        appointmentServiceCenterId = rma?.staff?.serviceCenterId;
+      }
+
       const payload = {
         ...values,
         customerId: values.customerId || rma?.customer?.id,
-        serviceCenterId: values.serviceCenterId || rma?.staff?.serviceCenterId,
+        serviceCenterId: values.serviceCenterId || appointmentServiceCenterId,
         type: "REPAIR_TYPE",
         status: "PENDING",
         note: `Lịch thay thế phụ tùng từ RMA ${rma.code}`,
@@ -557,23 +623,23 @@ function RMADetails({ rma, details = [], loading }) {
 
                           <div style={{ 
                             padding: "14px 16px",
-                            backgroundColor: "#fffbf0",
+                            backgroundColor: "#fff1f0",
                             borderRadius: 6,
-                            borderLeft: "4px solid #faad14"
+                            borderLeft: "4px solid #ff4d4f"
                           }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                               <div style={{ 
                                 width: 6, 
                                 height: 6, 
                                 borderRadius: "50%", 
-                                backgroundColor: "#faad14" 
+                                backgroundColor: "#ff4d4f" 
                               }} />
-                              <Text strong style={{ fontSize: 13, color: "#ad6800" }}>
-                                Lý do
+                              <Text strong style={{ fontSize: 13, color: "#cf1322" }}>
+                                Kết quả
                               </Text>
                             </div>
-                            <Text style={{ fontSize: 14, color: "#ad6800", lineHeight: 1.6, marginLeft: 14 }}>
-                              {record.reason || "Chưa có thông tin"}
+                            <Text style={{ fontSize: 14, color: "#cf1322", lineHeight: 1.6, marginLeft: 14 }}>
+                              {record.result || "Chưa có thông tin"}
                             </Text>
                           </div>
 
@@ -640,7 +706,7 @@ function RMADetails({ rma, details = [], loading }) {
                                 backgroundColor: "#52c41a" 
                               }} />
                               <Text strong style={{ fontSize: 13, color: "#389e0d" }}>
-                                Phụ tùng thay thế từ hãng
+                                Phụ tùng
                               </Text>
                             </div>
                             <div style={{ marginLeft: 14 }}>
@@ -688,22 +754,30 @@ function RMADetails({ rma, details = [], loading }) {
                                         </Text>
                                       </div>
                                     )}
-                                    {replacePart?.warantyStartDate && replacePart?.warantyEndDate && (
+                                    {replacePart?.quantity !== undefined && replacePart?.quantity !== null && (
+                                      <div style={{ display: "flex", gap: 8 }}>
+                                        <Text type="secondary" style={{ fontSize: 12, minWidth: 80 }}>Số lượng:</Text>
+                                        <Text style={{ fontSize: 13, color: "#262626" }}>
+                                          {replacePart.quantity}
+                                        </Text>
+                                      </div>
+                                    )}
+                                    {/* {replacePart?.warantyStartDate && replacePart?.warantyEndDate && (
                                       <div style={{ display: "flex", gap: 8 }}>
                                         <Text type="secondary" style={{ fontSize: 12, minWidth: 80 }}>Thời gian BH:</Text>
                                         <Text style={{ fontSize: 13, color: "#262626" }}>
                                           {dayjs(replacePart.warantyStartDate).format("DD/MM/YYYY")} - {dayjs(replacePart.warantyEndDate).format("DD/MM/YYYY")}
                                         </Text>
                                       </div>
-                                    )}
-                                    {replacePart?.warrantyPeriod && (
+                                    )} */}
+                                    {/* {replacePart?.warrantyPeriod && (
                                       <div style={{ display: "flex", gap: 8 }}>
                                         <Text type="secondary" style={{ fontSize: 12, minWidth: 80 }}>Chính sách BH:</Text>
                                         <Text style={{ fontSize: 13, color: "#262626" }}>
                                           {replacePart.warrantyPeriod} tháng
                                         </Text>
                                       </div>
-                                    )}
+                                    )} */}
                                     {replacePart?.isManufacturerWarranty && (
                                       <div style={{ display: "flex", gap: 8 }}>
                                         <Text type="secondary" style={{ fontSize: 12, minWidth: 80 }}>Loại BH:</Text>
@@ -772,17 +846,17 @@ function RMADetails({ rma, details = [], loading }) {
                 render: (qty) => qty || 1,
               },
               {
-                title: "Kết quả",
-                dataIndex: "result",
+                title: "Kết quả kiểm tra",
+                dataIndex: "reason",
                 width: 140,
                 ellipsis: {
                   showTitle: true,
                 },
-                render: (result) => (
-                  result ? (
-                    <Tooltip title={result} placement="topLeft">
-                      <span title={result} style={{ color: "#ff4d4f", fontWeight: 500, fontSize: 12 }}>
-                        {result}
+                render: (reason) => (
+                  reason ? (
+                    <Tooltip title={reason} placement="topLeft">
+                      <span title={reason} style={{ color: "#ff4d4f", fontWeight: 500, fontSize: 12 }}>
+                        {reason}
                       </span>
                     </Tooltip>
                   ) : (
@@ -875,6 +949,7 @@ function RMADetails({ rma, details = [], loading }) {
           loading={bookingLoading}
           initialValues={initialBookingValues}
           skipChassisNumber={true}
+          hideServiceTypeCard={true}
         />
       </Modal>
     </div>

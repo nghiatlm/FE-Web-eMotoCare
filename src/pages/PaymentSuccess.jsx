@@ -15,6 +15,11 @@ export default function PaymentSuccess() {
 
   useEffect(() => {
     setMounted(true);
+    
+    // Notify parent window if this page is loaded in an iframe
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'PAYMENT_SUCCESS' }, '*');
+    }
   }, []);
 
   return (
@@ -46,7 +51,7 @@ export default function PaymentSuccess() {
 
         <div className="space-y-4">
           <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-emerald-600 via-green-600 to-blue-600 dark:from-emerald-400 dark:via-green-400 dark:to-blue-400 bg-clip-text text-transparent leading-tight pb-2">
-            Thanh toán thành công!
+           Tạo thanh toán thành công!
           </h1>
           <p className="text-lg sm:text-xl text-gray-700 dark:text-gray-300 font-medium">
             Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi

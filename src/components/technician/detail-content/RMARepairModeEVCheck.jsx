@@ -12,6 +12,7 @@ import { getPartItemByIdService } from "../../../services/partitemsService.js";
 import { getExportStatusByAppointmentCodeAndPartId } from "../../../services/exportNotesService.js";
 import useEVCheckHub from "../../../hooks/useEVCheckHub.jsx";
 import useRMAHub from "../../../hooks/useRMAHub.jsx";
+import useExportNoteHub from "../../../hooks/useExportNoteHub.jsx";
 import Loading from "../../Loading";
 
 const { Option } = Select;
@@ -318,6 +319,16 @@ export default function RMARepairModeEVCheck({
 
   useRMAHub(handleRMAUpdate);
 
+  // Handler để refresh trạng thái phụ tùng khi có update từ export note
+  const handleExportNoteUpdate = useCallback(() => {
+    if (evCheckId && !forceEmpty && !vehiclePartLoading) {
+      // Reload lại details để cập nhật trạng thái phụ tùng
+      loadRepairDetails();
+    }
+  }, [evCheckId, forceEmpty, vehiclePartLoading, loadRepairDetails]);
+
+  useExportNoteHub(handleExportNoteUpdate);
+
   useEffect(() => {
     const autoUpdateStatus = async () => {
       if (
@@ -470,6 +481,15 @@ export default function RMARepairModeEVCheck({
           }
         }
         
+        // Khi đã hoàn thành sửa chữa, chỉ hiển thị text
+        if (!canEditFields || readOnly) {
+          return (
+            <span style={{ fontSize: 14 }}>
+              {displayName || ""}
+            </span>
+          );
+        }
+        
         return (
           <Tooltip title={displayName || partItemId} placement="topLeft">
             <Select
@@ -491,7 +511,6 @@ export default function RMARepairModeEVCheck({
               }}
               options={allOptions}
               loading={vehiclePartLoading}
-              disabled={readOnly || !canEditFields}
               filterOption={(input, opt) =>
                 opt.label.toLowerCase().includes(input.toLowerCase())
               }
@@ -544,15 +563,25 @@ export default function RMARepairModeEVCheck({
     {
       title: "Kết quả",
       width: 120,
-      render: (_, r, i) => (
-        <Input.TextArea
-          value={r.result ?? ""}
-          onChange={(e) => handleChange(i, "result", e.target.value)}
-          disabled={readOnly || !canEditFields}
-          autoSize={{ minRows: 2, maxRows: 8 }}
-          style={{ resize: "none", fontSize: 14, maxWidth: "100%" }}
-        />
-      ),
+      render: (_, r, i) => {
+        // Khi đã hoàn thành sửa chữa, chỉ hiển thị text
+        if (!canEditFields || readOnly) {
+          return (
+            <span style={{ fontSize: 14, whiteSpace: "pre-wrap" }}>
+              {r.result || ""}
+            </span>
+          );
+        }
+        
+        return (
+          <Input.TextArea
+            value={r.result ?? ""}
+            onChange={(e) => handleChange(i, "result", e.target.value)}
+            autoSize={{ minRows: 2, maxRows: 8 }}
+            style={{ resize: "none", fontSize: 14, maxWidth: "100%" }}
+          />
+        );
+      },
     },
     {
       title: "Biện pháp",
@@ -574,6 +603,11 @@ export default function RMARepairModeEVCheck({
         const remediesValue = r.remedies || "REPLACE";
         const remediesLabel = getRemediesLabel(remediesValue);
 
+        // Khi đã hoàn thành sửa chữa, chỉ hiển thị text
+        if (!canEditFields || readOnly) {
+          return <span style={{ fontSize: 14 }}>{remediesLabel}</span>;
+        }
+
         return (
           <Tooltip title={remediesLabel} placement="topLeft">
             <Select
@@ -581,8 +615,7 @@ export default function RMARepairModeEVCheck({
               value={{ value: remediesValue, label: remediesLabel }}
               labelInValue
               style={{ width: 100 }}
-              onChange={(v) => handleChange(i, "remedies", v.value || v)}
-              disabled={readOnly || !canEditFields || true}>
+              onChange={(v) => handleChange(i, "remedies", v.value || v)}>
               <Option value='REPLACE'>Thay thế</Option>
             </Select>
           </Tooltip>
@@ -649,12 +682,14 @@ export default function RMARepairModeEVCheck({
       align: "center",
       render: (_, r, i) => {
         const isReplace = (r.remedies || "").toUpperCase() === "REPLACE";
+        const quantity = Number(r.quantity || 0);
         
-        if (!isReplace) {
-          return "0";
+        // ✅ Chỉ hiển thị số lượng khi là REPLACE và quantity > 0
+        if (!isReplace || quantity === 0) {
+          return "";
         }
         
-        return <span style={{ fontSize: "14px" }}>{r.quantity || 0}</span>;
+        return <span style={{ fontSize: "14px" }}>{quantity}</span>;
       },
     },
     {
