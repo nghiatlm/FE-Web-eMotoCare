@@ -257,10 +257,10 @@ export default function Campaigns() {
       <div className="px-4 md:px-6 lg:px-8 py-6 max-w-[1400px] w-full mx-auto space-y-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Megaphone className="h-7 w-7 text-red-600" />
-            <h1 className="text-3xl md:text-4xl font-bold text-slate-900">Danh sách chiến dịch</h1>
+            <Megaphone className="h-6 w-6 sm:h-7 sm:w-7 text-red-600" />
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900">Danh sách chiến dịch</h1>
           </div>
-          <p className="text-base md:text-lg font-medium text-slate-700">Quản lý các chiến dịch khuyến mãi và ưu đãi</p>
+          <p className="text-sm sm:text-base md:text-lg font-medium text-slate-700">Quản lý các chiến dịch khuyến mãi và ưu đãi</p>
           <div className="mt-3 h-1.5 w-28 rounded-full bg-red-500 shadow-[0_4px_16px_-6px_rgba(239,68,68,0.65)]" />
         </div>
 
@@ -327,19 +327,19 @@ export default function Campaigns() {
         </Card>
 
         <Card className="rounded-xl border border-slate-200/80 bg-white shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="relative flex-1 min-w-[240px] md:min-w-[320px] md:max-w-[420px]">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+              <div className="relative flex-1 w-full sm:min-w-[200px] sm:max-w-[320px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Tìm kiếm theo mã, tên hoặc mô tả"
-                  className="pl-9 bg-slate-50 border-slate-200 focus-visible:ring-red-500/70"
+                  className="pl-9 bg-slate-50 border-slate-200 focus-visible:ring-red-500/70 text-sm sm:text-base"
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[150px] md:w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
+                <SelectTrigger className="w-full sm:w-[140px] md:w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
                   <SelectValue placeholder="Trạng thái" />
                 </SelectTrigger>
                 <SelectContent>
@@ -361,17 +361,18 @@ export default function Campaigns() {
                   setModelId("");
                   fetchCampaigns(1, pagination.pageSize);
                 }}
-                className="border-transparent text-slate-600 hover:text-red-600 hover:bg-red-50"
+                className="border-transparent text-slate-600 hover:text-red-600 hover:bg-red-50 w-full sm:w-auto"
               >
                 Xóa lọc
               </Button>
               <Button
-                className="gap-2 ml-auto bg-red-600 hover:bg-red-700 shadow-sm"
+                className="gap-2 bg-red-600 hover:bg-red-700 shadow-sm w-full sm:w-auto"
                 size="sm"
                 onClick={() => navigate("/admin/campaigns/new")}
               >
                 <Plus className="h-4 w-4" />
-                Tạo chiến dịch mới
+                <span className="hidden sm:inline">Tạo chiến dịch mới</span>
+                <span className="sm:hidden">Tạo mới</span>
               </Button>
             </div>
           </CardContent>

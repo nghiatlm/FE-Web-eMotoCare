@@ -840,46 +840,77 @@ export default function WarrantyDetail() {
       ? formData.solution 
       : detail?.solution || "";
     
-    if (shouldValidateAll || touched.inspector) {
+    // Inspector và result luôn bắt buộc khi save
+    if (shouldValidateAll) {
       if (!inspector.trim()) {
         errors.inspector = "Vui lòng nhập người kiểm tra";
       }
-    }
-    if (shouldValidateAll || touched.result) {
       if (!result.trim()) {
         errors.result = "Vui lòng nhập kết quả kiểm tra";
       }
-    }
-    if (shouldValidateAll || touched.solution) {
       if (!currentSolution) {
+        errors.solution = "Vui lòng chọn giải pháp";
+      }
+    } else {
+      // Khi không phải shouldValidateAll, chỉ validate khi touched
+      if (touched.inspector && !inspector.trim()) {
+        errors.inspector = "Vui lòng nhập người kiểm tra";
+      }
+      if (touched.result && !result.trim()) {
+        errors.result = "Vui lòng nhập kết quả kiểm tra";
+      }
+      if (touched.solution && !currentSolution) {
         errors.solution = "Vui lòng chọn giải pháp";
       }
     }
     
     const solutionValue = currentSolution === "WARRANTY" || currentSolution === "REPLACE" ? "REPLACE" : currentSolution;
     
-    if (solutionValue === "REPLACE" && (shouldValidateAll || touched.solution || touched.replacePartSerial || touched.replacePartWarrantyPeriod || touched.replacePartWarrantyStart)) {
-      const hasReplacePart = formData.replacePartId || detail?.replacePart?.partId;
-      const replacePartSerial = formData.replacePartSerial || detail?.replacePart?.serialNumber || "";
-      const warrantyPeriod = formData.replacePartWarrantyPeriod || detail?.replacePart?.warrantyPeriod || 0;
-      const warrantyStartDate = formData.replacePartWarrantyStart || detail?.replacePart?.warantyStartDate || formData.releaseDateRMA || detail?.releaseDateRMA || null;
-      
-      if (!hasReplacePart) {
-        errors.replacePart = "Giải pháp 'Thay thế' yêu cầu phải có bộ phận thay thế";
-      } else {
-        if (shouldValidateAll || touched.replacePartSerial) {
-          if (!replacePartSerial.trim()) {
-            errors.replacePartSerial = "Vui lòng nhập số Serial";
+    // Khi solution là REPLACE, luôn validate replacePart khi save (shouldValidateAll)
+    // Hoặc validate khi user đã touch các field liên quan
+    if (solutionValue === "REPLACE") {
+      if (shouldValidateAll || touched.solution || touched.replacePartSerial || touched.replacePartWarrantyPeriod || touched.replacePartWarrantyStart || touched.replacePartId) {
+        const hasReplacePart = formData.replacePartId || detail?.replacePart?.partId;
+        const replacePartSerial = formData.replacePartSerial || detail?.replacePart?.serialNumber || "";
+        const warrantyPeriod = formData.replacePartWarrantyPeriod || detail?.replacePart?.warrantyPeriod || 0;
+        const warrantyStartDate = formData.replacePartWarrantyStart || detail?.replacePart?.warantyStartDate || formData.releaseDateRMA || detail?.releaseDateRMA || null;
+        
+        // Khi save (shouldValidateAll), luôn validate replacePart nếu solution = REPLACE
+        if (shouldValidateAll) {
+          if (!hasReplacePart) {
+            errors.replacePart = "Giải pháp 'Thay thế' yêu cầu phải có bộ phận thay thế";
+          } else {
+            if (!replacePartSerial.trim()) {
+              errors.replacePartSerial = "Vui lòng nhập số Serial";
+            }
+            if (!warrantyPeriod || warrantyPeriod === 0) {
+              errors.replacePartWarrantyPeriod = "Vui lòng nhập thời hạn bảo hành";
+            }
+            if (!warrantyStartDate) {
+              errors.replacePartWarrantyStart = "Vui lòng chọn ngày bắt đầu bảo hành";
+            }
           }
-        }
-        if (shouldValidateAll || touched.replacePartWarrantyPeriod) {
-          if (!warrantyPeriod || warrantyPeriod === 0) {
-            errors.replacePartWarrantyPeriod = "Vui lòng nhập thời hạn bảo hành";
+        } else {
+          // Khi không phải shouldValidateAll, chỉ validate khi touched
+          if (touched.solution || touched.replacePartId) {
+            if (!hasReplacePart) {
+              errors.replacePart = "Giải pháp 'Thay thế' yêu cầu phải có bộ phận thay thế";
+            }
           }
-        }
-        if (shouldValidateAll || touched.replacePartWarrantyStart) {
-          if (!warrantyStartDate) {
-            errors.replacePartWarrantyStart = "Vui lòng chọn ngày bắt đầu bảo hành";
+          if (touched.replacePartSerial && hasReplacePart) {
+            if (!replacePartSerial.trim()) {
+              errors.replacePartSerial = "Vui lòng nhập số Serial";
+            }
+          }
+          if (touched.replacePartWarrantyPeriod && hasReplacePart) {
+            if (!warrantyPeriod || warrantyPeriod === 0) {
+              errors.replacePartWarrantyPeriod = "Vui lòng nhập thời hạn bảo hành";
+            }
+          }
+          if (touched.replacePartWarrantyStart && hasReplacePart) {
+            if (!warrantyStartDate) {
+              errors.replacePartWarrantyStart = "Vui lòng chọn ngày bắt đầu bảo hành";
+            }
           }
         }
       }
