@@ -104,8 +104,8 @@ export function ModelsTable({ search = "", status = "" }) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+      <div className="min-w-[1200px]">
         <table className="w-full">
           <thead>
             <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
@@ -149,53 +149,44 @@ export function ModelsTable({ search = "", status = "" }) {
                     i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'
                   }`}
                 >
-                  <td className="py-4 px-4 text-center text-sm font-medium text-slate-600">
+                  <td className="py-4 px-4 text-center text-sm font-medium text-slate-600 whitespace-nowrap">
                     {(page - 1) * pageSize + i + 1}
                   </td>
-                  <td className="py-4 px-6">
+                  <td className="py-4 px-6 whitespace-nowrap">
                     <span className="font-semibold text-slate-900 text-sm">{m.code || "—"}</span>
                   </td>
-                  <td className="py-4 px-6">
+                  <td className="py-4 px-6 whitespace-nowrap">
                     <span className="font-semibold text-slate-900 text-sm">{m.name || "—"}</span>
                   </td>
-                  <td className="py-4 px-6">
+                  <td className="py-4 px-6 whitespace-nowrap">
                     <span className="text-sm text-slate-700">{m.manufacturer || "—"}</span>
                   </td>
-                  <td className="py-4 px-6">
+                  <td className="py-4 px-6 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       {m.maintenancePlan ? (
-                        <>
-                          <div>
-                            <div className="text-sm font-medium text-slate-900">
-                              {m.maintenancePlan.name || m.maintenancePlan.code || "—"}
-                            </div>
-                            {m.maintenancePlan.totalStages && (
-                              <div className="text-xs text-slate-500">
-                                {m.maintenancePlan.totalStages} giai đoạn
-                              </div>
-                            )}
-                          </div>
-                        </>
+                        <span className="text-sm font-medium text-slate-900">
+                          {m.maintenancePlan.name || m.maintenancePlan.code || "—"}
+                        </span>
                       ) : (
                         <span className="text-sm text-slate-400">—</span>
                       )}
                     </div>
                   </td>
-                  <td className="py-4 px-6">
+                  <td className="py-4 px-6 text-center whitespace-nowrap">
                     <div className="flex items-center justify-center gap-1">
                       <span className="text-sm font-medium text-slate-700">
                         {m.vehicles?.length || 0}
                       </span>
                     </div>
                   </td>
-                  <td className="py-4 px-6">
+                  <td className="py-4 px-6 text-center whitespace-nowrap">
                     <div className="flex items-center justify-center">
-                      <span className={statusBadge(m.status)}>
+                      <span className={`${statusBadge(m.status)} whitespace-nowrap`}>
                         {getStatusLabel(m.status)}
                       </span>
                     </div>
                   </td>
-                  <td className="py-4 px-6">
+                  <td className="py-4 px-6 text-center whitespace-nowrap">
                     <div className="flex items-center justify-center gap-2">
                       <Button
                         variant="ghost"

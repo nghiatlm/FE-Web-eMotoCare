@@ -127,11 +127,11 @@ const App = () => (
             element={
             <ProtectedRoute allowedRoles={["ROLE_ADMIN"]}>
               <SidebarProvider>
-                <div className="flex min-h-screen w-full">
+                <div className="flex min-h-screen w-full overflow-hidden">
                   <AdminSidebar />
-                  <div className="flex-1 flex flex-col">
+                  <div className="flex-1 flex flex-col overflow-hidden">
                   <AdminTopHeader />
-                    <main className="flex-1">
+                    <main className="flex-1 overflow-y-auto overflow-x-hidden">
                       <Routes>
                         <Route path="" element={<Index />} />
                         <Route path="users" element={<UserManagement />} />
