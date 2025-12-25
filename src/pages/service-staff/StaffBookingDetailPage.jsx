@@ -151,6 +151,7 @@ export default function StaffBookingDetailPage() {
   const [selectedSlotForCheckIn, setSelectedSlotForCheckIn] = useState(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [loadingCheckIn, setLoadingCheckIn] = useState(false);
+  const [loadingApprove, setLoadingApprove] = useState(false);
 
   const loadBookingDetailRef = useRef(null);
 
@@ -518,16 +519,25 @@ export default function StaffBookingDetailPage() {
       }
     } else if (status === "CANCELED") {
       toast.success("Đã thanh toán phí hủy thành công!");
+      // ✅ Reload lại booking để cập nhật trạng thái và disable nút thanh toán
       await loadBookingDetail();
+      if (fetchBookings) {
+        await fetchBookings();
+      }
     } else {
       toast.success("Tạo thanh toán thành công!");
+      // ✅ Reload lại booking để cập nhật trạng thái và disable nút thanh toán
       await loadBookingDetail();
+      if (fetchBookings) {
+        await fetchBookings();
+      }
     }
   };
 
   const handleChangeStatus = async (newStatus) => {
     try {
       if (newStatus === "APPROVED") {
+        setLoadingApprove(true);
         await approveAppointmentService(booking.id);
       } else {
         await changeAppointmentStatusService(booking.id, newStatus);
@@ -543,6 +553,10 @@ export default function StaffBookingDetailPage() {
           e?.message ||
           "Không thể cập nhật trạng thái!"
       );
+    } finally {
+      if (newStatus === "APPROVED") {
+        setLoadingApprove(false);
+      }
     }
   };
 
@@ -1422,7 +1436,7 @@ export default function StaffBookingDetailPage() {
                               fontWeight: 600,
                               minWidth: "120px",
                             }}>
-                            Số khung (VIN):
+                            Số khung:
                           </Text>
                         </Space>
                         <Tag
@@ -1889,7 +1903,13 @@ export default function StaffBookingDetailPage() {
             </Card>
           )}
 
-          {currentTechnician && currentEVCheckId && (
+          {currentTechnician && currentEVCheckId && evCheckStatus && (
+            evCheckStatus === "INSPECTION_COMPLETED" ||
+            evCheckStatus === "QUOTE_APPROVED" ||
+            evCheckStatus === "REPAIR_IN_PROGRESS" ||
+            evCheckStatus === "REPAIR_COMPLETED" ||
+            evCheckStatus === "COMPLETED"
+          ) && (
             <Card
               style={{
                 marginBottom: 24,
@@ -1940,7 +1960,13 @@ export default function StaffBookingDetailPage() {
                 const isRMABooking =
                   note.includes("lịch thay") && note.includes("rma");
 
-                if (isRepair && chassisConfirmed) {
+                if (isRepair && chassisConfirmed && evCheckStatus && (
+                  evCheckStatus === "INSPECTION_COMPLETED" ||
+                  evCheckStatus === "QUOTE_APPROVED" ||
+                  evCheckStatus === "REPAIR_IN_PROGRESS" ||
+                  evCheckStatus === "REPAIR_COMPLETED" ||
+                  evCheckStatus === "COMPLETED"
+                )) {
                   return isRMABooking ? (
                     <RMARepairModeEVCheck
                       key={`rma-repair-${currentEVCheckId}-${refreshKey}`}
@@ -2087,6 +2113,7 @@ export default function StaffBookingDetailPage() {
                 <Button
                   type='primary'
                   onClick={() => handleChangeStatus("APPROVED")}
+                  loading={loadingApprove}
                   style={{
                     backgroundColor: "#ff4d4f",
                     borderColor: "#ff4d4f",
@@ -2115,6 +2142,7 @@ export default function StaffBookingDetailPage() {
               <Button
                 type='primary'
                 onClick={() => setIsPaymentModalOpen(true)}
+                disabled={status === "WAITING_FOR_PAYMENT" || status === "COMPLETED"}
                 style={{ backgroundColor: "#ff4d4f", borderColor: "#ff4d4f" }}>
                 Hoàn tất / Thanh toán
               </Button>

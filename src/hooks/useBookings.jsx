@@ -90,7 +90,7 @@ export const useBookings = () => {
         const serviceCenterId = await getServiceCenterId();
         const res = await fetchAppointments({ 
           page: 1, 
-          pageSize: 20,
+          pageSize: 1000,
           serviceCenterId 
         });
         list = res?.data?.rowDatas || [];

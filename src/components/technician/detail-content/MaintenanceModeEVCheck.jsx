@@ -29,6 +29,7 @@ import { changeAppointmentStatusService } from "../../../services/appointmentSer
 import RMAConfirmationModal from "../../../components/service-staff/RMAConfirmationModal";
 import useEVCheckHub from "../../../hooks/useEVCheckHub.jsx";
 import useRMAHub from "../../../hooks/useRMAHub.jsx";
+import useExportNoteHub from "../../../hooks/useExportNoteHub.jsx";
 import BatteryDataDisplay from "../BatteryDataDisplay";
 import Loading from "../../Loading";
 
@@ -587,6 +588,15 @@ export default function MaintenanceModeEVCheck({
 
   useRMAHub(handleRMAUpdate);
 
+  
+  const handleExportNoteUpdate = useCallback(() => {
+    if (evCheckId && booking?.code) {
+     
+      loadEVCheckDetails();
+    }
+  }, [evCheckId, booking?.code, loadEVCheckDetails]);
+
+  useExportNoteHub(handleExportNoteUpdate);
 
   useEffect(() => {
     const centerId = 
@@ -952,12 +962,30 @@ export default function MaintenanceModeEVCheck({
                      partName.toLowerCase().includes("PIN") ||
                      partName.toLowerCase().includes("horn");
         
+        // Khi đã hoàn thành sửa chữa, chỉ hiển thị text
+        if (!canEditFields) {
+          return (
+            <div className="space-y-2">
+              <span style={{ fontSize: 14, whiteSpace: "pre-wrap" }}>
+                {r.result || ""}
+              </span>
+              {isCoi && r.id && !r.id.startsWith("temp_") && (
+                <div className="mt-2 p-2 border rounded bg-gray-50">
+                  <BatteryDataDisplay 
+                    evCheckDetailId={r.id} 
+                    canImport={false}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        }
+        
         return (
           <div className="space-y-2">
         <Input.TextArea
               value={r.result ?? ""}
               onChange={(e) => handleChange(r.id, "result", e.target.value)}
-          disabled={!canEditFields}
           autoSize={{ minRows: 2, maxRows: 8 }}
               style={{ resize: "none", fontSize: 14, lineHeight: 1.5, maxWidth: "100%" }}
             />
@@ -1008,6 +1036,11 @@ export default function MaintenanceModeEVCheck({
         ];
         const isAfterQuote = afterQuoteStatuses.includes(evCheckStatus);
 
+        // Khi đã hoàn thành sửa chữa, chỉ hiển thị text
+        if (!canEditFields) {
+          return <span style={{ fontSize: 14 }}>{remediesLabel}</span>;
+        }
+
         return (
           <Tooltip title={remediesLabel || "Biện pháp"} placement="topLeft">
             <Select
@@ -1015,8 +1048,7 @@ export default function MaintenanceModeEVCheck({
               value={remediesValue ? { value: remediesValue, label: remediesLabel } : undefined}
               labelInValue={true}
               style={{ width: 100 }}
-              onChange={(v) => handleChange(r.id, "remedies", v.value || v)}
-              disabled={!canEditFields}>
+              onChange={(v) => handleChange(r.id, "remedies", v.value || v)}>
               <Option value="NONE">Không</Option>
               <Option value="TUNE">Điều chỉnh</Option>
               {!isAfterQuote && <Option value="CLEAN">Vệ sinh</Option>}
@@ -1049,7 +1081,12 @@ export default function MaintenanceModeEVCheck({
       render: (_, r, i) => {
         const isWarranty = checkWarrantyStatus(r.partItem);
         const replacePartName = r.replacePartName || "";
+        const remedies = (r.remedies || "").toString().toUpperCase().trim();
         
+        // Chỉ hiển thị Select khi biện pháp là "REPLACE"
+        if (remedies !== "REPLACE") {
+          return <span style={{ color: "#999" }}></span>;
+        }
 
         if (isWarranty) {
           return (
@@ -1089,6 +1126,15 @@ export default function MaintenanceModeEVCheck({
         const cacheKey = modelId && partTypeId ? `${modelId}_${partTypeId}` : null;
         const allSuggestedParts = cacheKey ? (partOptionsMap[cacheKey] || []) : [];
         
+        // Khi đã hoàn thành sửa chữa, chỉ hiển thị text
+        if (!canEditFields || readOnly) {
+          return (
+            <span style={{ fontSize: 14 }}>
+              {replacePartName || ""}
+            </span>
+          );
+        }
+        
         return (
           <Tooltip title={replacePartName || "Chọn phụ tùng"} placement="topLeft">
         <Select
@@ -1100,12 +1146,7 @@ export default function MaintenanceModeEVCheck({
                   : undefined
               }
               labelInValue
-          disabled={
-                readOnly ||
-            !canEditFields ||
-            r.remedies !== "REPLACE" ||
-                isWarranty
-          }
+          disabled={isWarranty}
           loading={partLoading}
               style={{ width: "100%", minWidth: "180px" }}
               onDropdownVisibleChange={async (open) => {
@@ -1246,8 +1287,11 @@ export default function MaintenanceModeEVCheck({
         const isReplace = (r.remedies || "").toUpperCase() === "REPLACE";
         
 
-        if (!isReplace) {
-          return "0";
+        const quantity = Number(r.quantity || 0);
+        
+        // ✅ Chỉ hiển thị số lượng khi là REPLACE và quantity > 0
+        if (!isReplace || quantity === 0) {
+          return "";
         }
         
 
@@ -1265,7 +1309,7 @@ export default function MaintenanceModeEVCheck({
         }
         
 
-        return <span style={{ fontSize: "14px" }}>{r.quantity || 0}</span>;
+        return <span style={{ fontSize: "14px" }}>{quantity}</span>;
       },
     },
     {

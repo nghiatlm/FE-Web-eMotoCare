@@ -190,8 +190,28 @@ const PaymentInfo = ({ booking, onOpenPayment }) => {
           </span>
           {onOpenPayment && (
             <a
-              onClick={onOpenPayment}
-              style={{ color: "#ff4d4f", cursor: "pointer", fontWeight: 500 }}>
+              onClick={() => {
+                // ✅ Kiểm tra trạng thái booking trước khi mở modal thanh toán
+                const bookingStatus = booking?.status?.toUpperCase();
+                if (bookingStatus === "WAITING_FOR_PAYMENT") {
+                  toast.warning("Đã có thanh toán đang chờ xử lý. Vui lòng đợi thanh toán hoàn tất.");
+                  return;
+                }
+                if (bookingStatus === "COMPLETED") {
+                  toast.info("Lịch hẹn đã hoàn thành thanh toán.");
+                  return;
+                }
+                onOpenPayment();
+              }}
+              style={{ 
+                color: (booking?.status?.toUpperCase() === "WAITING_FOR_PAYMENT" || booking?.status?.toUpperCase() === "COMPLETED") 
+                  ? "#999" 
+                  : "#ff4d4f", 
+                cursor: (booking?.status?.toUpperCase() === "WAITING_FOR_PAYMENT" || booking?.status?.toUpperCase() === "COMPLETED") 
+                  ? "not-allowed" 
+                  : "pointer", 
+                fontWeight: 500 
+              }}>
               Xử lý thanh toán
             </a>
           )}
