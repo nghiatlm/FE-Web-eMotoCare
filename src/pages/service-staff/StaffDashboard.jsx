@@ -91,6 +91,7 @@ const StaffDashboard = () => {
       CHECKED_IN: "cyan",
       QUOTE_APPROVED: "purple",
       REPAIR_COMPLETED: "green",
+      WAITING_FOR_PAYMENT: "yellow",
       COMPLETED: "success",
       CANCELED: "error",
     };
@@ -104,6 +105,7 @@ const StaffDashboard = () => {
       CHECKED_IN: "Đã check-in",
       QUOTE_APPROVED: "Đã duyệt báo giá",
       REPAIR_COMPLETED: "Hoàn thành sửa chữa",
+      WAITING_FOR_PAYMENT: "Chờ thanh toán",
       COMPLETED: "Hoàn thành",
       CANCELED: "Đã hủy",
     };

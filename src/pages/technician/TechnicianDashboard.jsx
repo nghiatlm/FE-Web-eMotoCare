@@ -83,6 +83,7 @@ const TechnicianDashboard = () => {
       QUOTE_APPROVED: "purple",
       REPAIR_IN_PROGRESS: "processing",
       REPAIR_COMPLETED: "green",
+      WAITING_FOR_PAYMENT: "yellow",
       COMPLETED: "success",
       CANCELED: "error",
     };
@@ -98,6 +99,7 @@ const TechnicianDashboard = () => {
       QUOTE_APPROVED: "Đã duyệt báo giá",
       REPAIR_IN_PROGRESS: "Đang sửa chữa",
       REPAIR_COMPLETED: "Hoàn thành sửa chữa",
+      WAITING_FOR_PAYMENT: "Chờ thanh toán",
       COMPLETED: "Hoàn thành",
       CANCELED: "Đã hủy",
     };

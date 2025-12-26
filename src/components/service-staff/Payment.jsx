@@ -28,6 +28,8 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
       // Verify origin if needed
       if (event.data && event.data.type === 'PAYMENT_SUCCESS') {
         setPaymentSuccess(true);
+        // ✅ Chỉ hiển thị "Thanh toán thành công!" khi quét mã thành công (PAY_OS_CENTER)
+        toast.success("Thanh toán thành công!");
         setTimeout(() => {
           onPaymentSuccess?.({ method: "PAY_OS_CENTER", amount: totalAmount });
           onClose();
@@ -293,6 +295,8 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
             checkinQRCode: currentAppointment?.checkinQRCode || booking?.checkinQRCode || "",
           });
           
+          // ✅ Chỉ hiển thị "Tạo thanh toán thành công!" cho APP
+          toast.success("Tạo thanh toán thành công!");
           onPaymentSuccess?.({ method: "APP", amount: totalAmount });
           onClose();
           return;

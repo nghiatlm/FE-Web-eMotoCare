@@ -549,7 +549,7 @@ export default function StaffBookingDetailPage() {
         await fetchBookings();
       }
     } else {
-      toast.success("Tạo thanh toán thành công!");
+      // ✅ Toast đã được hiển thị trong Payment.jsx, không cần hiển thị lại ở đây
       // ✅ Reload lại booking để cập nhật trạng thái và disable nút thanh toán
       await loadBookingDetail();
       if (fetchBookings) {
