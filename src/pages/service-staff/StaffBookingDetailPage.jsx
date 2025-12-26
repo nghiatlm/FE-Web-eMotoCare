@@ -92,7 +92,7 @@ const getColorHex = (color) => {
   return colorHexMap[colorUpper] || color; // Nếu không tìm thấy, trả về giá trị gốc (có thể đã là hex)
 };
 
-import { fetchTechnicians } from "../../services/staffsService";
+import { fetchTechnicians, fetchAvailableTechnicians } from "../../services/staffsService";
 import {
   changeAppointmentStatusService,
   approveAppointmentService,
@@ -214,6 +214,8 @@ export default function StaffBookingDetailPage() {
 
       try {
         setLoadingTechs(true);
+        
+        // ✅ Lấy serviceCenterId từ booking
         const serviceCenterId =
           booking?.serviceCenterId || booking?.serviceCenter?.id || null;
 
@@ -228,8 +230,15 @@ export default function StaffBookingDetailPage() {
             null;
         }
 
-        const list = await fetchTechnicians(finalServiceCenterId);
-        setTechnicians(list);
+        // ✅ Gọi API mới với serviceCenterId
+        if (finalServiceCenterId) {
+          const list = await fetchAvailableTechnicians(finalServiceCenterId);
+          setTechnicians(list);
+        } else {
+          // ✅ Fallback về API cũ nếu không có serviceCenterId
+          const list = await fetchTechnicians(null);
+          setTechnicians(list);
+        }
       } catch (err) {
         toast.error(
           err?.response?.data?.message ||
@@ -1526,6 +1535,40 @@ export default function StaffBookingDetailPage() {
                           </Text>
                         </div>
                       )}
+
+                    {booking.vehicle.warrantyExpiry && (
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "flex-start",
+                          alignItems: "center",
+                          gap: "12px",
+                        }}>
+                        <Space size={8}>
+                          <Calendar
+                            size={16}
+                            style={{ color: UI_COLORS.PRIMARY_RED }}
+                          />
+                          <Text
+                            type='secondary'
+                            style={{
+                              fontSize: 14,
+                              fontWeight: 600,
+                              minWidth: "120px",
+                            }}>
+                            Hạn bảo hành:
+                          </Text>
+                        </Space>
+                        <Text
+                          strong
+                          style={{
+                            fontSize: 14,
+                            color: UI_COLORS.TEXT_PRIMARY,
+                          }}>
+                          {new Date(booking.vehicle.warrantyExpiry).toLocaleDateString("vi-VN")}
+                        </Text>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

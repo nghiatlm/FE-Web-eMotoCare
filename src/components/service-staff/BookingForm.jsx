@@ -190,18 +190,47 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
       let customer, vehicle, vehicleStages;
       
       if (response && response.success && response.data) {
-
-        ({ customer, vehicle, vehicleStages } = response.data);
-
-        if (!vehicleStages && response.data.vehicleStage) {
+        // ✅ Lấy customer và vehicle từ response.data
+        customer = response.data.customer;
+        vehicle = response.data.vehicle;
+        
+        // ✅ Lấy vehicleStages từ rowDatas (cấu trúc mới)
+        if (response.data.rowDatas && Array.isArray(response.data.rowDatas)) {
+          vehicleStages = response.data.rowDatas;
+          // ✅ Nếu chưa có customer/vehicle, thử lấy từ item đầu tiên của rowDatas
+          if (!customer && vehicleStages.length > 0 && vehicleStages[0].customer) {
+            customer = vehicleStages[0].customer;
+          }
+          if (!vehicle && vehicleStages.length > 0 && vehicleStages[0].vehicle) {
+            vehicle = vehicleStages[0].vehicle;
+          }
+        } else if (response.data.vehicleStages && Array.isArray(response.data.vehicleStages)) {
+          vehicleStages = response.data.vehicleStages;
+        } else if (response.data.vehicleStage) {
           vehicleStages = [response.data.vehicleStage];
+        } else {
+          vehicleStages = [];
         }
-      } else if (response && (response.customer || response.vehicle || response.vehicleStages || response.vehicleStage)) {
-
-        ({ customer, vehicle, vehicleStages } = response);
-
-        if (!vehicleStages && response.vehicleStage) {
+      } else if (response && (response.customer || response.vehicle || response.vehicleStages || response.vehicleStage || response.rowDatas)) {
+        customer = response.customer;
+        vehicle = response.vehicle;
+        
+        // ✅ Lấy vehicleStages từ rowDatas nếu có
+        if (response.rowDatas && Array.isArray(response.rowDatas)) {
+          vehicleStages = response.rowDatas;
+          // ✅ Nếu chưa có customer/vehicle, thử lấy từ item đầu tiên của rowDatas
+          if (!customer && vehicleStages.length > 0 && vehicleStages[0].customer) {
+            customer = vehicleStages[0].customer;
+          }
+          if (!vehicle && vehicleStages.length > 0 && vehicleStages[0].vehicle) {
+            vehicle = vehicleStages[0].vehicle;
+          }
+        } else if (response.vehicleStages && Array.isArray(response.vehicleStages)) {
+          vehicleStages = response.vehicleStages;
+        } else if (response.vehicleStage) {
           vehicleStages = [response.vehicleStage];
+        } else {
+          vehicleStages = [];
         }
       } else {
         throw new Error("Không tìm thấy thông tin từ số khung. Response structure không đúng.");
@@ -212,7 +241,12 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
         vehicleStages = vehicleStages ? [vehicleStages] : [];
       }
       
-      
+      // ✅ Sort theo ngày dự kiến (expectedImplementationDate) - từ cũ đến mới
+      vehicleStages = vehicleStages.sort((a, b) => {
+        const dateA = a.expectedImplementationDate ? new Date(a.expectedImplementationDate) : new Date(0);
+        const dateB = b.expectedImplementationDate ? new Date(b.expectedImplementationDate) : new Date(0);
+        return dateA - dateB; // Sort tăng dần (cũ đến mới)
+      });
 
       const vehicleStage = vehicleStages.find(s => s.status === "UPCOMING") || vehicleStages[0] || null;
       
@@ -566,17 +600,24 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
         pageSize: 100,
       });
 
-      
+      // ✅ Lấy tất cả stages (không filter)
+      const allStages = Array.isArray(stages) ? stages : [];
 
+      // ✅ Sort theo ngày dự kiến (expectedImplementationDate) - từ cũ đến mới
+      const sortedStages = allStages.sort((a, b) => {
+        const dateA = a.expectedImplementationDate ? new Date(a.expectedImplementationDate) : new Date(0);
+        const dateB = b.expectedImplementationDate ? new Date(b.expectedImplementationDate) : new Date(0);
+        return dateA - dateB; // Sort tăng dần (cũ đến mới)
+      });
 
-      const availableStages = (stages || []).filter(
+      // ✅ Filter chỉ các stage có status UPCOMING hoặc NO_START cho dropdown
+      const availableStages = sortedStages.filter(
         (stage) => {
           const status = stage.status?.toUpperCase();
           const isAvailable = status === "UPCOMING" || status === "NO_START";
           return isAvailable;
         }
       );
-
 
       setVehicleStages(availableStages);
       
@@ -1146,14 +1187,6 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
             <Row gutter={[16, 16]}>
               {/* Hiển thị TẤT CẢ các mốc bảo dưỡng */}
               {vehicleInfo.vehicleStages
-                .sort((a, b) => {
-                  // Sắp xếp: UPCOMING trước, sau đó các mốc khác
-                  const statusA = (a.status || "").toUpperCase();
-                  const statusB = (b.status || "").toUpperCase();
-                  if (statusA === "UPCOMING" && statusB !== "UPCOMING") return -1;
-                  if (statusA !== "UPCOMING" && statusB === "UPCOMING") return 1;
-                  return 0;
-                })
                 .map((stage, index) => {
                   const status = (stage.status || "").toUpperCase();
                   // Map tất cả các trạng thái
@@ -1433,14 +1466,6 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
                       return selectedStage ? selectedId : undefined;
                     })()}>
                     {vehicleStages
-                      .sort((a, b) => {
-
-                        const statusA = (a.status || "").toUpperCase();
-                        const statusB = (b.status || "").toUpperCase();
-                        if (statusA === "UPCOMING" && statusB !== "UPCOMING") return -1;
-                        if (statusA !== "UPCOMING" && statusB === "UPCOMING") return 1;
-                        return 0;
-                      })
                       .map((stage) => {
                         const status = (stage.status || "").toUpperCase();
                         const statusLabel = status === "UPCOMING" ? "Sắp tới" : status === "NO_START" ? "Chưa bắt đầu" : "";

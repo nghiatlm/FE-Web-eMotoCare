@@ -1,6 +1,23 @@
-import { getStaffByPosition } from "../api/staffsApi";
+import { getStaffByPosition, getAvailableTechnician } from "../api/staffsApi";
 
-// 🟢 Lấy danh sách kỹ thuật viên
+// 🟢 Lấy danh sách kỹ thuật viên có sẵn theo serviceCenterId
+export const fetchAvailableTechnicians = async (serviceCenterId) => {
+  try {
+    const params = {};
+    if (serviceCenterId) {
+      params.serviceCenterId = serviceCenterId;
+    }
+    
+    const res = await getAvailableTechnician(params);
+    console.log("Available Technicians API response:", res.data);
+    return res?.data?.rowDatas || res?.data || []; // trả về mảng kỹ thuật viên có sẵn
+  } catch (error) {
+    console.error("Lỗi lấy danh sách kỹ thuật viên có sẵn:", error);
+    throw error;
+  }
+};
+
+// 🟢 Lấy danh sách kỹ thuật viên (API cũ - giữ lại để tương thích)
 export const fetchTechnicians = async (serviceCenterId = null) => {
   try {
     const res = await getStaffByPosition("TECHNICIAN_STAFF", serviceCenterId); // truyền position và serviceCenterId

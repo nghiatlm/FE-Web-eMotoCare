@@ -649,9 +649,10 @@ export default function TechnicianBookingDetailPage({
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(2, 1fr)",
+              gridTemplateColumns: "repeat(3, 1fr)",
               gap: "24px 32px",
             }}>
+            {/* Cột 1: Mẫu xe, Màu sắc */}
             <div
               style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {(booking.vehicle.modelName || booking.vehicle.model?.name) && (
@@ -721,6 +722,7 @@ export default function TechnicianBookingDetailPage({
               )}
             </div>
 
+            {/* Cột 2: Số khung, Số máy */}
             <div
               style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {chassisNumber && (
@@ -787,7 +789,11 @@ export default function TechnicianBookingDetailPage({
                   </Text>
                 </div>
               )}
+            </div>
 
+            {/* Cột 3: Số KM đã đi, Hạn bảo hành */}
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {isMaintenance && hasOdometer && km && (
                 <div
                   style={{
@@ -812,6 +818,34 @@ export default function TechnicianBookingDetailPage({
                     strong
                     style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
                     {Number(km).toLocaleString("vi-VN")} km
+                  </Text>
+                </div>
+              )}
+
+              {booking.vehicle.warrantyExpiry && (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-start",
+                    alignItems: "center",
+                    gap: "12px",
+                  }}>
+                  <Space size={8}>
+                    <Calendar size={16} style={{ color: UI_COLORS.PRIMARY_RED }} />
+                    <Text
+                      type='secondary'
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 600,
+                        minWidth: "100px",
+                      }}>
+                      Hạn bảo hành:
+                    </Text>
+                  </Space>
+                  <Text
+                    strong
+                    style={{ fontSize: 14, color: UI_COLORS.TEXT_PRIMARY }}>
+                    {new Date(booking.vehicle.warrantyExpiry).toLocaleDateString("vi-VN")}
                   </Text>
                 </div>
               )}
