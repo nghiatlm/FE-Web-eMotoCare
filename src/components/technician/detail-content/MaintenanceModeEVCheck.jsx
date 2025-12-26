@@ -1523,18 +1523,6 @@ export default function MaintenanceModeEVCheck({
 
 
   const filteredDetails = useMemo(() => {
-    // ✅ Luôn filter ra những items có remedies là "NONE" hoặc rỗng
-    const filtered = evCheckDetails.filter((detail) => {
-      const remedies = (detail.remedies || "").toUpperCase().trim();
-      
-      // ✅ Loại bỏ những items không có biện pháp (NONE hoặc rỗng)
-      if (!remedies || remedies === "NONE" || remedies === "") {
-        return false;
-      }
-      
-      return true;
-    });
-
     const afterQuoteStatuses = [
       "INSPECTION_COMPLETED",
       "QUOTE_APPROVED", 
@@ -1547,8 +1535,14 @@ export default function MaintenanceModeEVCheck({
     const shouldFilter = readOnly || afterQuoteStatuses.includes(evCheckStatus);
     
     if (shouldFilter) {
-      return filtered.filter((detail) => {
-        const remedies = (detail.remedies || "").toUpperCase();
+      // ✅ Khi ở trạng thái readOnly hoặc sau quote, chỉ hiển thị items có biện pháp (không phải NONE)
+      return evCheckDetails.filter((detail) => {
+        const remedies = (detail.remedies || "").toUpperCase().trim();
+        
+        // ✅ Loại bỏ những items không có biện pháp (NONE hoặc rỗng)
+        if (!remedies || remedies === "NONE" || remedies === "") {
+          return false;
+        }
         
 
         if (readOnly && isRMAEligible(detail)) {
@@ -1582,7 +1576,9 @@ export default function MaintenanceModeEVCheck({
         return false;
       });
     }
-    return filtered;
+    
+    // ✅ Khi đang chỉnh sửa (chưa ở trạng thái readOnly hoặc sau quote), hiển thị tất cả items (bao gồm cả NONE) để người dùng có thể chọn biện pháp
+    return evCheckDetails;
   }, [evCheckDetails, evCheckStatus, readOnly]);
 
   return (
