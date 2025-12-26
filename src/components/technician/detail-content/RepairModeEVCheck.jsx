@@ -1119,7 +1119,6 @@ export default function RepairModeEVCheck({
 
     try {
       setLoading(true);
-      const loadingToast = toast.loading("Đang lưu hạng mục sửa chữa...");
 
       for (const item of itemsToSave) {
         const payload = {
@@ -1159,7 +1158,6 @@ export default function RepairModeEVCheck({
 
       setEvCheckStatus("INSPECTION_COMPLETED");
       
-      toast.dismiss(loadingToast);
       toast.success("Gửi báo giá thành công!");
 
 
@@ -1168,7 +1166,6 @@ export default function RepairModeEVCheck({
 
       setEvCheckStatus("INSPECTION_COMPLETED");
     } catch (err) {
-      toast.dismiss(loadingToast);
       toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể lưu hạng mục sửa chữa!"));
     } finally {
       setLoading(false);
@@ -1186,8 +1183,6 @@ export default function RepairModeEVCheck({
 
     try {
       setLoading(true);
-      const loadingToast = toast.loading("Đang cập nhật trạng thái hạng mục...");
-
 
       const filteredStatusChanges = {};
       for (const [detailId, newStatus] of Object.entries(statusChanges)) {
@@ -1201,7 +1196,6 @@ export default function RepairModeEVCheck({
 
 
       if (!Object.keys(filteredStatusChanges).length) {
-        toast.dismiss(loadingToast);
         toast.warning("Không có item nào được cập nhật. Các item đã gửi đi bảo hành không thể cập nhật trạng thái.");
         return;
       }
@@ -1241,9 +1235,6 @@ export default function RepairModeEVCheck({
       for (const [detailId, newStatus] of Object.entries(filteredStatusChanges)) {
         await updateEVCheckDetailService(detailId, { status: newStatus });
       }
-
-      toast.dismiss(loadingToast);
-      
 
       setStatusChanges({});
 
@@ -1375,7 +1366,6 @@ export default function RepairModeEVCheck({
 
       onRefresh?.();
     } catch (err) {
-      toast.dismiss(loadingToast);
       toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể cập nhật trạng thái hạng mục!"));
     } finally {
       setLoading(false);

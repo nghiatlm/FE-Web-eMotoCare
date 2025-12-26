@@ -729,12 +729,9 @@ export default function MaintenanceModeEVCheck({
   const handleConfirmQuote = async () => {
     try {
       setLoading(true);
-      const loadingToast = toast.loading("Đang gửi dữ liệu kiểm tra...");
-
 
       for (const item of evCheckDetails) {
         if ((item.remedies === "REPLACE" || item.remedies === "REPAIR") && checkWarrantyStatus(item.partItem)) {
-          toast.dismiss(loadingToast);
           return toast.error(
             "Bộ phận đang trong thời gian bảo hành. Chỉ cho phép 'Kiểm tra' hoặc 'Bôi trơn'."
           );
@@ -747,13 +744,11 @@ export default function MaintenanceModeEVCheck({
             item.proposedReplacePart?.id ||
             null;
           if (!proposedReplacePartIdValue?.trim()) {
-            toast.dismiss(loadingToast);
             return toast.error("Vui lòng chọn Phụ tùng thay thế!");
           }
         }
 
         if (item.remedies === "WARRANTY" && !checkWarrantyStatus(item.partItem)) {
-          toast.dismiss(loadingToast);
           return toast.error(
             "Bộ phận không còn trong thời gian bảo hành. Không thể chọn biện pháp 'Bảo hành'."
           );
@@ -796,10 +791,8 @@ export default function MaintenanceModeEVCheck({
       await loadEVCheckDetails();
       setLocalEvCheckStatus("INSPECTION_COMPLETED");
       setParentEvCheckStatus("INSPECTION_COMPLETED");
-      toast.dismiss(loadingToast);
       toast.success("Xác nhận báo giá thành công!");
     } catch (err) {
-      toast.dismiss(loadingToast);
       toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Lỗi khi gửi dữ liệu!"));
     } finally {
       setLoading(false);
@@ -809,7 +802,6 @@ export default function MaintenanceModeEVCheck({
   const handleConfirmRepair = async () => {
     try {
       setLoading(true);
-      const loadingToast = toast.loading("Đang cập nhật trạng thái hạng mục...");
 
 
 
@@ -842,7 +834,6 @@ export default function MaintenanceModeEVCheck({
         await updateEVCheckDetailService(detailId, { status: newStatus });
       }
 
-      toast.dismiss(loadingToast);
       toast.success("Cập nhật trạng thái thành công!");
       setStatusChanges({});
       
@@ -874,7 +865,6 @@ export default function MaintenanceModeEVCheck({
       
       onRefresh?.();
     } catch (err) {
-      toast.dismiss(loadingToast);
       toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể cập nhật trạng thái hạng mục!"));
     } finally {
       setLoading(false);

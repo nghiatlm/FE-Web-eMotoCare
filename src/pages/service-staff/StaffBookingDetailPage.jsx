@@ -383,7 +383,7 @@ export default function StaffBookingDetailPage() {
         updateStatus(booking.id, booking.status, selectedTechnician);
       }
 
-      toast.success("Đã gán kỹ thuật viên và tạo EVCheck!");
+      toast.success("Đã gán kỹ thuật viên thành công!");
     } catch (error) {
       toast.error(
         error?.response?.data?.message ||

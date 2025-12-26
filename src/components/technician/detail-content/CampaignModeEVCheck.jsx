@@ -931,7 +931,6 @@ export default function CampaignModeEVCheck({
 
     try {
       setLoading(true);
-      const loadingToast = toast.loading("Đang lưu hạng mục sửa chữa...");
 
       for (const item of itemsToSave) {
         const payload = {
@@ -972,7 +971,6 @@ export default function CampaignModeEVCheck({
 
       setEvCheckStatus("INSPECTION_COMPLETED");
       
-      toast.dismiss(loadingToast);
       toast.success("Xác nhận báo giá thành công!");
 
 
@@ -981,7 +979,6 @@ export default function CampaignModeEVCheck({
 
       setEvCheckStatus("INSPECTION_COMPLETED");
     } catch (err) {
-      toast.dismiss(loadingToast);
       toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Lỗi khi gửi dữ liệu!"));
     } finally {
       setLoading(false);
@@ -999,15 +996,10 @@ export default function CampaignModeEVCheck({
 
     try {
       setLoading(true);
-      const loadingToast = toast.loading("Đang cập nhật trạng thái hạng mục...");
-
 
       for (const [detailId, newStatus] of Object.entries(statusChanges)) {
         await updateEVCheckDetailService(detailId, { status: newStatus });
       }
-
-      toast.dismiss(loadingToast);
-      
 
       setStatusChanges({});
 
@@ -1070,7 +1062,6 @@ export default function CampaignModeEVCheck({
 
       onRefresh?.();
     } catch (err) {
-      toast.dismiss(loadingToast);
       toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể cập nhật trạng thái hạng mục!"));
     } finally {
       setLoading(false);

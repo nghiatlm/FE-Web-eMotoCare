@@ -427,7 +427,6 @@ export default function RMARepairModeEVCheck({
 
     try {
       setLoading(true);
-      const loadingToast = toast.loading("Đang cập nhật trạng thái hạng mục...");
 
       for (const detail of details) {
         if (detail.id) {
@@ -438,14 +437,12 @@ export default function RMARepairModeEVCheck({
       await updateEVCheckService(evCheckId, { status: "COMPLETED" });
       setEvCheckStatus("COMPLETED");
 
-      toast.dismiss(loadingToast);
       toast.success("Đã hoàn thành tất cả hạng mục sửa chữa!");
       
       setStatusChanges({});
       await loadRepairDetails();
       onRefresh?.();
     } catch (err) {
-      toast.dismiss(loadingToast);
       toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể cập nhật trạng thái hạng mục!"));
     } finally {
       setLoading(false);
