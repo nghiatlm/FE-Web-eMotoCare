@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { UserPlus, UserCheck } from "lucide-react";
 
-import { fetchTechnicians } from "../../services/staffsService";
+import { fetchTechnicians, fetchAvailableTechnicians } from "../../services/staffsService";
 import MaintenanceContent from "./detail-content/MaintenanceContent";
 import RepairContent from "./detail-content/RepairContent";
 import WarrantyContent from "./detail-content/WarrantyContent";
@@ -94,28 +94,33 @@ export default function BookingDetailDrawer({
 
       try {
         setLoadingTechs(true);
+        
+        // ✅ Lấy serviceCenterId từ booking
         const serviceCenterId = 
           booking?.serviceCenterId || 
           booking?.serviceCenter?.id ||
           null;
         
-        if (!serviceCenterId) {
+        let finalServiceCenterId = serviceCenterId;
+        if (!finalServiceCenterId) {
           const user = JSON.parse(localStorage.getItem("user") || "{}");
-          const userServiceCenterId = 
+          finalServiceCenterId = 
             user?.accountResponse?.serviceCenterId || 
             user?.serviceCenterId || 
             user?.staff?.serviceCenterId ||
             user?.accountResponse?.staff?.serviceCenterId ||
             null;
-          if (userServiceCenterId) {
-            const list = await fetchTechnicians(userServiceCenterId);
-            setTechnicians(list);
-            return;
-          }
         }
         
-        const list = await fetchTechnicians(serviceCenterId);
-        setTechnicians(list);
+        // ✅ Gọi API mới với serviceCenterId
+        if (finalServiceCenterId) {
+          const list = await fetchAvailableTechnicians(finalServiceCenterId);
+          setTechnicians(list);
+        } else {
+          // ✅ Fallback về API cũ nếu không có serviceCenterId
+          const list = await fetchTechnicians(null);
+          setTechnicians(list);
+        }
       } catch (err) {
         toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tải danh sách kỹ thuật viên"));
       } finally {

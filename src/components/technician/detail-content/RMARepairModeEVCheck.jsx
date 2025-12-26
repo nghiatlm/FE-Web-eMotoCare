@@ -566,9 +566,10 @@ export default function RMARepairModeEVCheck({
       render: (_, r, i) => {
         // Khi đã hoàn thành sửa chữa, chỉ hiển thị text
         if (!canEditFields || readOnly) {
+          const displayResult = r.result && r.result.trim() ? r.result : "Tốt";
           return (
             <span style={{ fontSize: 14, whiteSpace: "pre-wrap" }}>
-              {r.result || ""}
+              {displayResult}
             </span>
           );
         }
@@ -576,6 +577,7 @@ export default function RMARepairModeEVCheck({
         return (
           <Input.TextArea
             value={r.result ?? ""}
+            placeholder="Tốt"
             onChange={(e) => handleChange(i, "result", e.target.value)}
             autoSize={{ minRows: 2, maxRows: 8 }}
             style={{ resize: "none", fontSize: 14, maxWidth: "100%" }}
@@ -627,8 +629,10 @@ export default function RMARepairModeEVCheck({
       width: 60,
       render: (_, r) => {
         const partItem = r.partItem;
-        if (!partItem) return "Không";
-        return partItem.isManufacturerWarranty === true ? "BHH" : "Không";
+        if (!partItem) return <Tag color="default">Không</Tag>;
+        return partItem.isManufacturerWarranty === true ? (
+          <Tag color="red">Có</Tag>
+        ) : <Tag color="default">Không</Tag>;
       },
     },
 
@@ -677,7 +681,7 @@ export default function RMARepairModeEVCheck({
 
 
     {
-      title: "SL",
+      title: "Số lượng",
       width: 50,
       align: "center",
       render: (_, r, i) => {

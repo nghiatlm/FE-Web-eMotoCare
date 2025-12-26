@@ -28,3 +28,9 @@ export const getStaffById = (id) => {
 export const updateStaff = (staffId, staffData) => {
   return api.put(`${BASE_URL}/${staffId}`, staffData);
 };
+
+// ✅ Lấy danh sách kỹ thuật viên có sẵn theo serviceCenterId
+export const getAvailableTechnician = (params = {}) => {
+  const queryParams = new URLSearchParams(params);
+  return api.get(`${BASE_URL}/get-available-technician?${queryParams.toString()}`);
+};

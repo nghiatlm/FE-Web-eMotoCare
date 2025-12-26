@@ -3,7 +3,7 @@ import Loading from "../Loading";
 import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import { createPaymentLinkService } from "../../services/paymentService";
-import { fetchEVCheckByAppointmentService } from "../../services/evcheckService";
+import { fetchEVCheckByAppointmentService, fetchEVCheckDetailsServiceRe } from "../../services/evcheckService";
 import { changeAppointmentStatusService } from "../../services/appointmentService";
 import { SERVICE_TYPE_MAP } from "../../utils/constants";
 
@@ -83,11 +83,26 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
       setFetchingEVCheck(true);
       try {
         const evCheck = await fetchEVCheckByAppointmentService(appointmentId);
+        const evCheckId = evCheck?.id || evCheck?.data?.id || evCheck?.data?.data?.id;
 
         let details = [];
-        if (evCheck?.evCheckDetails) details = evCheck.evCheckDetails;
-        else if (Array.isArray(evCheck)) details = evCheck;
-        else if (evCheck?.data?.rowDatas) details = evCheck.data.rowDatas;
+        if (evCheck?.evCheckDetails && evCheck.evCheckDetails.length > 0) {
+          details = evCheck.evCheckDetails;
+        } else if (Array.isArray(evCheck)) {
+          details = evCheck;
+        } else if (evCheck?.data?.rowDatas) {
+          details = evCheck.data.rowDatas;
+        }
+        
+        // Nếu không có details hoặc details rỗng, thử load từ fetchEVCheckDetailsServiceRe
+        if ((!details || details.length === 0) && evCheckId) {
+          try {
+            const evCheckDetailsRes = await fetchEVCheckDetailsServiceRe(evCheckId);
+            details = evCheckDetailsRes?.evCheckDetails || [];
+          } catch (error) {
+            console.error("Failed to load EVCheck details:", error);
+          }
+        }
 
         if (details.length > 0) {
           const items = await Promise.all(details.map(async (item, idx) => {
@@ -160,14 +175,38 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
             else if (item.partItem?.part?.image) {
               imageUrl = item.partItem.part.image;
             }
-            else if (item.maintenanceStageDetail?.part?.image) {
-              imageUrl = item.maintenanceStageDetail.part.image;
-            }
             else if (item.partItem?.image) {
               imageUrl = item.partItem.image;
             }
+            else if (item.maintenanceStageDetail?.partItem?.part?.image) {
+              imageUrl = item.maintenanceStageDetail.partItem.part.image;
+            }
+            else if (item.maintenanceStageDetail?.partItem?.image) {
+              imageUrl = item.maintenanceStageDetail.partItem.image;
+            }
+            else if (item.maintenanceStageDetail?.part?.image) {
+              imageUrl = item.maintenanceStageDetail.part.image;
+            }
             else if (item.image) {
               imageUrl = item.image;
+            }
+            
+            // Nếu vẫn chưa có image và có partItemId, thử load từ API
+            if (!imageUrl) {
+              const partItemId = item.partItemId || item.partItem?.id;
+              if (partItemId && (!item.partItem?.part?.image && !item.partItem?.image)) {
+                try {
+                  const { getPartItemByIdService } = await import("../../services/partitemsService");
+                  const partItemDetail = await getPartItemByIdService(partItemId);
+                  if (partItemDetail?.part?.image) {
+                    imageUrl = partItemDetail.part.image;
+                  } else if (partItemDetail?.image) {
+                    imageUrl = partItemDetail.image;
+                  }
+                } catch (error) {
+                  // Silently fail, imageUrl remains empty
+                }
+              }
             }
 
             return {
@@ -276,6 +315,7 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
       const res = await createPaymentLinkService(payload);
       
       if (paymentMethod === "CASH") {
+        toast.success("Thanh toán thành công!");
         onPaymentSuccess?.({ method: "CASH", amount: totalAmount });
         onClose();
       } else {
@@ -386,11 +426,22 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
       },
     },
     {
-      title: "SL",
+      title: "Số lượng",
       dataIndex: "quantity",
       key: "quantity",
       width: 60,
       align: "center",
+      render: (quantity, record) => {
+        const isReplace = (record.remedies || "").toUpperCase() === "REPLACE";
+        const qty = Number(quantity || 0);
+        
+        // Chỉ hiển thị số lượng khi là REPLACE và quantity > 0
+        if (!isReplace || qty === 0) {
+          return "";
+        }
+        
+        return qty;
+      },
     },
     {
       title: "Giá dịch vụ (₫)",

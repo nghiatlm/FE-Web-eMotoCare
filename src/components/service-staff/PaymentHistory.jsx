@@ -98,14 +98,38 @@ const PaymentHistory = ({ booking }) => {
             else if (item.partItem?.part?.image) {
               imageUrl = item.partItem.part.image;
             }
-            else if (item.maintenanceStageDetail?.part?.image) {
-              imageUrl = item.maintenanceStageDetail.part.image;
-            }
             else if (item.partItem?.image) {
               imageUrl = item.partItem.image;
             }
+            else if (item.maintenanceStageDetail?.partItem?.part?.image) {
+              imageUrl = item.maintenanceStageDetail.partItem.part.image;
+            }
+            else if (item.maintenanceStageDetail?.partItem?.image) {
+              imageUrl = item.maintenanceStageDetail.partItem.image;
+            }
+            else if (item.maintenanceStageDetail?.part?.image) {
+              imageUrl = item.maintenanceStageDetail.part.image;
+            }
             else if (item.image) {
               imageUrl = item.image;
+            }
+            
+            // Nếu vẫn chưa có image và có partItemId, thử load từ API
+            if (!imageUrl) {
+              const partItemId = item.partItemId || item.partItem?.id;
+              if (partItemId && (!item.partItem?.part?.image && !item.partItem?.image)) {
+                try {
+                  const { getPartItemByIdService } = await import("../../services/partitemsService");
+                  const partItemDetail = await getPartItemByIdService(partItemId);
+                  if (partItemDetail?.part?.image) {
+                    imageUrl = partItemDetail.part.image;
+                  } else if (partItemDetail?.image) {
+                    imageUrl = partItemDetail.image;
+                  }
+                } catch (error) {
+                  // Silently fail, imageUrl remains empty
+                }
+              }
             }
 
             return {
