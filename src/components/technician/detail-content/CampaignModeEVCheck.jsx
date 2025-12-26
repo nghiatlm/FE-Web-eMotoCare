@@ -1346,14 +1346,47 @@ export default function CampaignModeEVCheck({
 
     {
       title: "Bảo hành",
-      width: 60,
+      width: 70,
       render: (_, r) => {
         const partItem = r.partItem;
-        if (!partItem) return <Tag color="default">Không</Tag>;
+        if (!partItem) {
+          return (
+            <Tag 
+              color="default" 
+              style={{ 
+                fontWeight: 700, 
+                fontSize: 13,
+                color: "#595959",
+                borderColor: "#d9d9d9"
+              }}>
+              Không
+            </Tag>
+          );
+        }
 
         return partItem.isManufacturerWarranty === true ? (
-          <Tag color="red">Có</Tag>
-        ) : <Tag color="default">Không</Tag>;
+          <Tag 
+            color="red" 
+            style={{ 
+              fontWeight: 700, 
+              fontSize: 13,
+              color: "#cf1322",
+              borderColor: "#ff4d4f"
+            }}>
+            Có
+          </Tag>
+        ) : (
+          <Tag 
+            color="default" 
+            style={{ 
+              fontWeight: 700, 
+              fontSize: 13,
+              color: "#595959",
+              borderColor: "#d9d9d9"
+            }}>
+            Không
+          </Tag>
+        );
       },
     },
     {

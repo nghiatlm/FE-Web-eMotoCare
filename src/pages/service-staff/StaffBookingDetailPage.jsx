@@ -116,6 +116,7 @@ import MaintenanceModeEVCheck from "../../components/technician/detail-content/M
 import CampaignModeEVCheck from "../../components/technician/detail-content/CampaignModeEVCheck";
 import { useBookings } from "../../hooks/useBookings";
 import useAppointmentHub from "../../hooks/useAppointmentHub";
+import useEVCheckHub from "../../hooks/useEVCheckHub";
 import { fetchAppointments } from "../../services/appointmentService";
 import { getServiceCenterById } from "../../api/serviceCentersApi";
 import dayjs from "dayjs";
@@ -257,6 +258,8 @@ export default function StaffBookingDetailPage() {
     }
   }, [booking, status]);
 
+  const loadEVRef = useRef(null);
+
   useEffect(() => {
     const loadEV = async () => {
       if (!booking?.id) return;
@@ -309,8 +312,20 @@ export default function StaffBookingDetailPage() {
       } catch {}
     };
 
+    loadEVRef.current = loadEV;
     if (booking) loadEV();
   }, [booking]);
+
+  // ✅ Thêm realtime update cho EVCheck
+  const handleEVCheckUpdate = useCallback(() => {
+    if (loadEVRef.current) {
+      loadEVRef.current();
+    }
+    // ✅ Trigger refresh cho các component EVCheck
+    setRefreshKey((prev) => prev + 1);
+  }, []);
+
+  useEVCheckHub(currentEVCheckId, handleEVCheckUpdate);
 
   if (loading || loadingBooking) {
     return (
