@@ -931,7 +931,6 @@ export default function CampaignModeEVCheck({
 
     try {
       setLoading(true);
-      const loadingToast = toast.loading("Đang lưu hạng mục sửa chữa...");
 
       for (const item of itemsToSave) {
         const payload = {
@@ -972,7 +971,6 @@ export default function CampaignModeEVCheck({
 
       setEvCheckStatus("INSPECTION_COMPLETED");
       
-      toast.dismiss(loadingToast);
       toast.success("Xác nhận báo giá thành công!");
 
 
@@ -981,7 +979,6 @@ export default function CampaignModeEVCheck({
 
       setEvCheckStatus("INSPECTION_COMPLETED");
     } catch (err) {
-      toast.dismiss(loadingToast);
       toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Lỗi khi gửi dữ liệu!"));
     } finally {
       setLoading(false);
@@ -999,15 +996,10 @@ export default function CampaignModeEVCheck({
 
     try {
       setLoading(true);
-      const loadingToast = toast.loading("Đang cập nhật trạng thái hạng mục...");
-
 
       for (const [detailId, newStatus] of Object.entries(statusChanges)) {
         await updateEVCheckDetailService(detailId, { status: newStatus });
       }
-
-      toast.dismiss(loadingToast);
-      
 
       setStatusChanges({});
 
@@ -1070,7 +1062,6 @@ export default function CampaignModeEVCheck({
 
       onRefresh?.();
     } catch (err) {
-      toast.dismiss(loadingToast);
       toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể cập nhật trạng thái hạng mục!"));
     } finally {
       setLoading(false);
@@ -1346,14 +1337,47 @@ export default function CampaignModeEVCheck({
 
     {
       title: "Bảo hành",
-      width: 60,
+      width: 70,
       render: (_, r) => {
         const partItem = r.partItem;
-        if (!partItem) return <Tag color="default">Không</Tag>;
+        if (!partItem) {
+          return (
+            <Tag 
+              color="default" 
+              style={{ 
+                fontWeight: 700, 
+                fontSize: 13,
+                color: "#595959",
+                borderColor: "#d9d9d9"
+              }}>
+              Không
+            </Tag>
+          );
+        }
 
         return partItem.isManufacturerWarranty === true ? (
-          <Tag color="red">Có</Tag>
-        ) : <Tag color="default">Không</Tag>;
+          <Tag 
+            color="red" 
+            style={{ 
+              fontWeight: 700, 
+              fontSize: 13,
+              color: "#cf1322",
+              borderColor: "#ff4d4f"
+            }}>
+            Có
+          </Tag>
+        ) : (
+          <Tag 
+            color="default" 
+            style={{ 
+              fontWeight: 700, 
+              fontSize: 13,
+              color: "#595959",
+              borderColor: "#d9d9d9"
+            }}>
+            Không
+          </Tag>
+        );
       },
     },
     {

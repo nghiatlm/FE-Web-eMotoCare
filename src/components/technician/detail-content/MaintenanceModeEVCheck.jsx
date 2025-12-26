@@ -729,12 +729,9 @@ export default function MaintenanceModeEVCheck({
   const handleConfirmQuote = async () => {
     try {
       setLoading(true);
-      const loadingToast = toast.loading("Đang gửi dữ liệu kiểm tra...");
-
 
       for (const item of evCheckDetails) {
         if ((item.remedies === "REPLACE" || item.remedies === "REPAIR") && checkWarrantyStatus(item.partItem)) {
-          toast.dismiss(loadingToast);
           return toast.error(
             "Bộ phận đang trong thời gian bảo hành. Chỉ cho phép 'Kiểm tra' hoặc 'Bôi trơn'."
           );
@@ -747,13 +744,11 @@ export default function MaintenanceModeEVCheck({
             item.proposedReplacePart?.id ||
             null;
           if (!proposedReplacePartIdValue?.trim()) {
-            toast.dismiss(loadingToast);
             return toast.error("Vui lòng chọn Phụ tùng thay thế!");
           }
         }
 
         if (item.remedies === "WARRANTY" && !checkWarrantyStatus(item.partItem)) {
-          toast.dismiss(loadingToast);
           return toast.error(
             "Bộ phận không còn trong thời gian bảo hành. Không thể chọn biện pháp 'Bảo hành'."
           );
@@ -796,10 +791,8 @@ export default function MaintenanceModeEVCheck({
       await loadEVCheckDetails();
       setLocalEvCheckStatus("INSPECTION_COMPLETED");
       setParentEvCheckStatus("INSPECTION_COMPLETED");
-      toast.dismiss(loadingToast);
       toast.success("Xác nhận báo giá thành công!");
     } catch (err) {
-      toast.dismiss(loadingToast);
       toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Lỗi khi gửi dữ liệu!"));
     } finally {
       setLoading(false);
@@ -809,7 +802,6 @@ export default function MaintenanceModeEVCheck({
   const handleConfirmRepair = async () => {
     try {
       setLoading(true);
-      const loadingToast = toast.loading("Đang cập nhật trạng thái hạng mục...");
 
 
 
@@ -842,7 +834,6 @@ export default function MaintenanceModeEVCheck({
         await updateEVCheckDetailService(detailId, { status: newStatus });
       }
 
-      toast.dismiss(loadingToast);
       toast.success("Cập nhật trạng thái thành công!");
       setStatusChanges({});
       
@@ -874,7 +865,6 @@ export default function MaintenanceModeEVCheck({
       
       onRefresh?.();
     } catch (err) {
-      toast.dismiss(loadingToast);
       toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể cập nhật trạng thái hạng mục!"));
     } finally {
       setLoading(false);
@@ -1004,7 +994,10 @@ export default function MaintenanceModeEVCheck({
     },
     {
       title: "Biện pháp",
-      width: 90,
+      width: 130,
+      ellipsis: {
+        showTitle: true,
+      },
       render: (_, r, i) => {
         const isWarranty = checkWarrantyStatus(r.partItem);
         
@@ -1035,6 +1028,7 @@ export default function MaintenanceModeEVCheck({
           "COMPLETED"
         ];
         const isAfterQuote = afterQuoteStatuses.includes(evCheckStatus);
+        const canEditFields = !readOnly && !isAfterQuote;
 
         // Khi đã hoàn thành sửa chữa, chỉ hiển thị text
         if (!canEditFields) {
@@ -1047,7 +1041,7 @@ export default function MaintenanceModeEVCheck({
               placeholder="Biện pháp"
               value={remediesValue ? { value: remediesValue, label: remediesLabel } : undefined}
               labelInValue={true}
-              style={{ width: 100 }}
+              style={{ width: "100%", minWidth: 120 }}
               onChange={(v) => handleChange(r.id, "remedies", v.value || v)}>
               <Option value="NONE">Không</Option>
               <Option value="TUNE">Điều chỉnh</Option>
@@ -1064,12 +1058,47 @@ export default function MaintenanceModeEVCheck({
     },
     {
       title: "Bảo hành",
-      width: 60,
+      width: 70,
       render: (_, r) => {
         const partItem = r.partItem;
-        if (!partItem) return "Không";
+        if (!partItem) {
+          return (
+            <Tag 
+              color="default" 
+              style={{ 
+                fontWeight: 700, 
+                fontSize: 13,
+                color: "#595959",
+                borderColor: "#d9d9d9"
+              }}>
+              Không
+            </Tag>
+          );
+        }
 
-        return partItem.isManufacturerWarranty === true ? "BHH" : "Không";
+        return partItem.isManufacturerWarranty === true ? (
+          <Tag 
+            color="red" 
+            style={{ 
+              fontWeight: 700, 
+              fontSize: 13,
+              color: "#cf1322",
+              borderColor: "#ff4d4f"
+            }}>
+            Có
+          </Tag>
+        ) : (
+          <Tag 
+            color="default" 
+            style={{ 
+              fontWeight: 700, 
+              fontSize: 13,
+              color: "#595959",
+              borderColor: "#d9d9d9"
+            }}>
+            Không
+          </Tag>
+        );
       },
     },
     {

@@ -427,7 +427,6 @@ export default function RMARepairModeEVCheck({
 
     try {
       setLoading(true);
-      const loadingToast = toast.loading("Đang cập nhật trạng thái hạng mục...");
 
       for (const detail of details) {
         if (detail.id) {
@@ -438,14 +437,12 @@ export default function RMARepairModeEVCheck({
       await updateEVCheckService(evCheckId, { status: "COMPLETED" });
       setEvCheckStatus("COMPLETED");
 
-      toast.dismiss(loadingToast);
       toast.success("Đã hoàn thành tất cả hạng mục sửa chữa!");
       
       setStatusChanges({});
       await loadRepairDetails();
       onRefresh?.();
     } catch (err) {
-      toast.dismiss(loadingToast);
       toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể cập nhật trạng thái hạng mục!"));
     } finally {
       setLoading(false);
@@ -626,13 +623,46 @@ export default function RMARepairModeEVCheck({
     },
     {
       title: "Bảo hành",
-      width: 60,
+      width: 70,
       render: (_, r) => {
         const partItem = r.partItem;
-        if (!partItem) return <Tag color="default">Không</Tag>;
+        if (!partItem) {
+          return (
+            <Tag 
+              color="default" 
+              style={{ 
+                fontWeight: 700, 
+                fontSize: 13,
+                color: "#595959",
+                borderColor: "#d9d9d9"
+              }}>
+              Không
+            </Tag>
+          );
+        }
         return partItem.isManufacturerWarranty === true ? (
-          <Tag color="red">Có</Tag>
-        ) : <Tag color="default">Không</Tag>;
+          <Tag 
+            color="red" 
+            style={{ 
+              fontWeight: 700, 
+              fontSize: 13,
+              color: "#cf1322",
+              borderColor: "#ff4d4f"
+            }}>
+            Có
+          </Tag>
+        ) : (
+          <Tag 
+            color="default" 
+            style={{ 
+              fontWeight: 700, 
+              fontSize: 13,
+              color: "#595959",
+              borderColor: "#d9d9d9"
+            }}>
+            Không
+          </Tag>
+        );
       },
     },
 

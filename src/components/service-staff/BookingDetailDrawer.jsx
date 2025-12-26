@@ -174,7 +174,7 @@ export default function BookingDetailDrawer({
         onUpdateStatus?.(booking.id, booking.status, selectedTechnician);
       }
 
-      toast.success("Đã gán kỹ thuật viên và tạo EVCheck!");
+      toast.success("Đã gán kỹ thuật viên thành công!");
     } catch (error) {
       toast.error((error?.response?.data?.message || error?.data?.message || error?.message || "Không thể gán kỹ thuật viên!"));
     }
