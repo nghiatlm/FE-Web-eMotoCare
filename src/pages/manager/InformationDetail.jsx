@@ -173,12 +173,21 @@ export default function InformationDetail() {
   }
 
   const groupedSlots = groupSlotsByDate(serviceCenter.serviceCenterSlots || []);
-  const sortedDates = Object.keys(groupedSlots).sort();
   const weekStart = startOfWeek(weekAnchor, { weekStartsOn: 1 });
   const weekEnd = addDays(weekStart, 6);
-  const sortedDatesInWeek = sortedDates.filter((date) => {
-    const d = new Date(date);
-    return d >= weekStart && d <= weekEnd;
+  
+  // Tạo array chứa đầy đủ 7 ngày trong tuần
+  const allWeekDays = Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(weekStart, i);
+    const dateStr = format(date, "yyyy-MM-dd");
+    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const dayOfWeek = dayNames[date.getDay()];
+    return {
+      date: dateStr,
+      dateObj: date,
+      slots: groupedSlots[dateStr] || [],
+      dayOfWeek: dayOfWeek
+    };
   });
 
   const manager = serviceCenter.staffs?.find(s => s.position === "MANAGER_BRANCH");
@@ -473,34 +482,35 @@ export default function InformationDetail() {
               </div>
             </CardHeader>
             <CardContent>
-              {sortedDatesInWeek.length > 0 ? (
-                <div className="space-y-4">
-                  {sortedDatesInWeek.map((date) => {
-                    const slots = sortSlotsByTime(groupedSlots[date]);
-                    const firstSlot = slots[0];
-                    const vietnameseDay = getVietnameseDay(firstSlot.dayOfWeek);
+              <div className="space-y-4">
+                {allWeekDays.map((dayInfo) => {
+                  const slots = sortSlotsByTime(dayInfo.slots);
+                  const vietnameseDay = getVietnameseDay(dayInfo.dayOfWeek);
 
-                    return (
-                      <div
-                        key={date}
-                        className="rounded-xl border border-slate-200 bg-white shadow-sm p-4 space-y-3"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                              <Calendar className="h-4 w-4" />
-                            </div>
-                            <div>
-                              <h4 className="font-semibold text-foreground">
-                                {vietnameseDay}, {format(new Date(date), "dd/MM/yyyy", { locale: vi })}
-                              </h4>
-                              <p className="text-xs text-muted-foreground">Ngày làm việc</p>
-                            </div>
+                  return (
+                    <div
+                      key={dayInfo.date}
+                      className="rounded-xl border border-slate-200 bg-white shadow-sm p-4 space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                            <Calendar className="h-4 w-4" />
                           </div>
+                          <div>
+                            <h4 className="font-semibold text-foreground">
+                              {vietnameseDay}, {format(dayInfo.dateObj, "dd/MM/yyyy", { locale: vi })}
+                            </h4>
+                            <p className="text-xs text-muted-foreground">Ngày làm việc</p>
+                          </div>
+                        </div>
+                        {slots.length > 0 && (
                           <Badge variant="outline" className="text-xs bg-slate-50 border-slate-200">
                             {slots.length} khung giờ
                           </Badge>
-                        </div>
+                        )}
+                      </div>
+                      {slots.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                           {slots.map((slot) => (
                             <div
@@ -537,16 +547,15 @@ export default function InformationDetail() {
                             </div>
                           ))}
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p className="text-sm">Không có slot trong tuần này</p>
-                </div>
-              )}
+                      ) : (
+                        <div className="text-center py-4 text-sm text-slate-400">
+                          Không có slot nào trong ngày này
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
 

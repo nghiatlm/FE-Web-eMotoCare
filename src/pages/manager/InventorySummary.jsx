@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { getServiceCenterInventories } from "@/api/serviceCenterInventoriesApi";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStaffByAccountId } from "@/api/staffsApi";
+import { getServiceCenterById } from "@/api/serviceCentersApi";
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
@@ -47,10 +48,25 @@ export default function InventorySummary() {
         const staffData = staffResponse?.data?.rowDatas?.[0];
         
         if (staffData?.serviceCenterId) {
+          let latitude = staffData.serviceCenter?.latitude;
+          let longitude = staffData.serviceCenter?.longitude;
+          
+          // Nếu không có lat/long trong staffData.serviceCenter, gọi API để lấy đầy đủ thông tin
+          if ((!latitude || !longitude) && staffData.serviceCenterId) {
+            try {
+              const centerResponse = await getServiceCenterById(staffData.serviceCenterId);
+              const centerData = centerResponse?.data || centerResponse;
+              latitude = centerData?.latitude || latitude;
+              longitude = centerData?.longitude || longitude;
+            } catch (centerError) {
+              console.error("Error fetching service center details:", centerError);
+            }
+          }
+          
           setCurrentWarehouse({
             serviceCenterId: staffData.serviceCenterId,
-            latitude: staffData.serviceCenter?.latitude,
-            longitude: staffData.serviceCenter?.longitude,
+            latitude,
+            longitude,
           });
         }
       } catch (error) {
@@ -520,7 +536,44 @@ export default function InventorySummary() {
                                 <tbody>
                                   {r.branches.flatMap((branch) => {
                                     const [b1, b2, b3] = String(branch.warehouse || "").split("\n");
-                                    return (branch.items || []).map((item, itemIdx) => (
+                                    
+                                    // Nhóm các item có cùng mã phụ tùng và số serial là "-" (hoặc rỗng/null)
+                                    const groupedItems = [];
+                                    const itemMap = new Map();
+                                    
+                                    (branch.items || []).forEach((item) => {
+                                      const serialKey = item.serialNumber || "";
+                                      const hasSerial = serialKey.trim() !== "" && serialKey !== "-";
+                                      
+                                      if (hasSerial) {
+                                        // Nếu có serial, hiển thị riêng
+                                        groupedItems.push({
+                                          ...item,
+                                          isGrouped: false,
+                                        });
+                                      } else {
+                                        // Nếu không có serial, nhóm lại theo mã phụ tùng
+                                        const key = `${branch.inventoryId}-no-serial`;
+                                        if (!itemMap.has(key)) {
+                                          itemMap.set(key, {
+                                            ...item,
+                                            quantity: 0,
+                                            qty: 0,
+                                            isGrouped: true,
+                                          });
+                                        }
+                                        const groupedItem = itemMap.get(key);
+                                        groupedItem.quantity += (item.quantity || item.qty || 1);
+                                        groupedItem.qty += (item.quantity || item.qty || 1);
+                                      }
+                                    });
+                                    
+                                    // Thêm các item đã nhóm vào danh sách
+                                    itemMap.forEach((groupedItem) => {
+                                      groupedItems.push(groupedItem);
+                                    });
+                                    
+                                    return groupedItems.map((item, itemIdx) => (
                                       <tr
                                         key={item.id || `${branch.inventoryId}-${itemIdx}`}
                                         className="bg-card/90 border border-border/40 shadow-sm"
