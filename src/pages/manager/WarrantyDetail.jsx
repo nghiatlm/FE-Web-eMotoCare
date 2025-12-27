@@ -192,15 +192,28 @@ export default function WarrantyDetail() {
       if (data?.rmaDetails) {
         const savedDetailIds = new Set();
         data.rmaDetails.forEach((detail) => {
-          // Kiểm tra xem detail đã có thông tin phản hồi hãng chưa
-          // Có thể có replacePart hoặc đã có inspector/result/solution (khi giải pháp là REPAIR)
-          const hasReplacePart = detail.replacePart && detail.replacePart.id;
-          const hasHangInfo = detail.inspector || detail.result || detail.solution;
           const isApproved = detail.status?.toUpperCase() === "APPROVED";
           
-          // Nếu đã approved và có thông tin phản hồi hãng hoặc có replacePart thì coi như đã lưu
-          if (isApproved && (hasReplacePart || hasHangInfo)) {
-            savedDetailIds.add(detail.id);
+          if (isApproved) {
+            // Kiểm tra xem đã có đầy đủ thông tin phản hồi từ hãng chưa
+            // Phải có: inspector, result, và solution
+            const hasInspector = detail.inspector && detail.inspector.trim() !== "";
+            const hasResult = detail.result && detail.result.trim() !== "";
+            const hasSolution = detail.solution && detail.solution.trim() !== "";
+            
+            // Nếu solution là REPLACE/WARRANTY, phải có replacePart
+            // Nếu solution là REPAIR, không cần replacePart
+            const solutionValue = detail.solution?.toUpperCase();
+            const isReplace = solutionValue === "WARRANTY" || solutionValue === "REPLACE";
+            const hasReplacePart = detail.replacePart && detail.replacePart.id;
+            
+            const hasFullHangInfo = hasInspector && hasResult && hasSolution;
+            const hasValidReplacePart = !isReplace || hasReplacePart;
+            
+            // Chỉ coi như đã lưu khi có đầy đủ thông tin bắt buộc
+            if (hasFullHangInfo && hasValidReplacePart) {
+              savedDetailIds.add(detail.id);
+            }
           }
         });
         setSavedDetails(savedDetailIds);
@@ -310,7 +323,42 @@ export default function WarrantyDetail() {
         const currentReplacePartId = detailForms[detailId]?.replacePartId || detail.replacePart?.partId;
         const isDetailSaved = savedDetails.has(detailId);
         
-        if (partItemPartId && !currentReplacePartId && !isDetailSaved) {
+        // Chỉ auto-fill khi chưa lưu
+        if (!isDetailSaved) {
+          setDetailForms(prev => {
+            const currentForm = prev[detailId] || {};
+            const updates = {};
+            
+            // Auto-fill replacePartId nếu chưa có
+            if (partItemPartId && !currentForm.replacePartId && !currentReplacePartId) {
+              updates.replacePartId = partItemPartId;
+            }
+            
+            // Auto-fill solution từ detail nếu detail có và formData chưa có
+            // Điều này giúp Select hiển thị đúng giá trị và validation không báo lỗi
+            if (!currentForm.solution && detail.solution) {
+              const detailSolution = detail.solution;
+              if (detailSolution === "WARRANTY" || detailSolution === "REPLACE") {
+                updates.solution = "REPLACE";
+              } else if (detailSolution === "REPAIR") {
+                updates.solution = "REPAIR";
+              }
+            }
+            
+            // Không tự động điền inspector, result - người dùng phải nhập
+            
+            if (Object.keys(updates).length === 0) return prev;
+            
+            return {
+              ...prev,
+              [detailId]: {
+                ...currentForm,
+                ...updates
+              }
+            };
+          });
+        } else if (partItemPartId && !currentReplacePartId && !isDetailSaved) {
+          // Chỉ set replacePartId nếu chưa có
           setDetailForms(prev => {
             if (prev[detailId]?.replacePartId) return prev;
             return {
@@ -789,7 +837,13 @@ export default function WarrantyDetail() {
         rmaNumber: rmaNumber.trim(),
       });
 
+      // Giữ lại trạng thái expanded trước khi fetch
+      const wasExpanded = expandedDetails.has(detailId);
       await fetchRmaDetail();
+      // Khôi phục trạng thái expanded sau khi fetch
+      if (wasExpanded) {
+        setExpandedDetails(prev => new Set([...prev, detailId]));
+      }
 
       toastify.success("Đã xác nhận RMA thành công");
     } catch (error) {
@@ -834,11 +888,22 @@ export default function WarrantyDetail() {
         errors.rmaNumber = "Vui lòng nhập số RMA";
       }
     }
-    const inspector = formData.inspector || detail?.inspector || "";
-    const result = formData.result || detail?.result || "";
-    const currentSolution = formData.solution !== undefined 
-      ? formData.solution 
-      : detail?.solution || "";
+    // Đối với form "Phản hồi của hãng", ưu tiên kiểm tra giá trị từ formData
+    // Nếu formData chưa có thì kiểm tra detail (để xem giá trị hiển thị trong Select)
+    const inspector = formData.inspector || "";
+    const result = formData.result || "";
+    // Với solution, nếu formData chưa có, kiểm tra xem Select có đang hiển thị giá trị không
+    let currentSolution = formData.solution;
+    if (!currentSolution && detail?.solution) {
+      // Nếu formData chưa có solution nhưng detail có, kiểm tra giá trị hiển thị
+      const detailSolution = detail.solution;
+      if (detailSolution === "WARRANTY" || detailSolution === "REPLACE") {
+        currentSolution = "REPLACE";
+      } else if (detailSolution === "REPAIR") {
+        currentSolution = "REPAIR";
+      }
+    }
+    currentSolution = currentSolution || "";
     
     // Inspector và result luôn bắt buộc khi save
     if (shouldValidateAll) {
@@ -1059,35 +1124,41 @@ export default function WarrantyDetail() {
         warrantyEndDate = formData.replacePartWarrantyEnd || detail.replacePart?.warantyEndDate || null;
       }
 
-      const currentSolution = formData.solution !== undefined 
-        ? formData.solution 
-        : detail.solution || "";
+      // Chỉ lấy giá trị từ formData cho các trường của form "Phản hồi của hãng"
+      // Không lấy từ detail vì người dùng phải nhập mới
+      const inspector = formData.inspector || "";
+      const result = formData.result || "";
+      const currentSolution = formData.solution || "";
       const solutionValue = currentSolution === "WARRANTY" || currentSolution === "REPLACE" ? "REPLACE" : currentSolution;
 
       const payload = {
         status: "APPROVED", 
         quantity: detail.quantity,
         reason: detail.reason,
-        rmaNumber: formData.rmaNumber || detail.rmaNumber || "",
-        releaseDateRMA: releaseDateRMA,
-        expirationDateRMA: expirationDateRMA,
-        inspector: formData.inspector || detail.inspector || "",
-        result: formData.result || detail.result || "",
-        solution: formData.solution || detail.solution || "",
+        rmaNumber: detail.rmaNumber || "", // Giữ nguyên từ detail (đã nhập ở bước PENDING)
+        releaseDateRMA: detail.releaseDateRMA || null, // Giữ nguyên từ detail (đã nhập ở bước PENDING)
+        expirationDateRMA: detail.expirationDateRMA || null, // Giữ nguyên từ detail (đã nhập ở bước PENDING)
+        inspector: inspector,
+        result: result,
+        solution: currentSolution,
         evCheckDetailId: detail.evCheckDetailId || detail.evCheckDetail?.id,
         rmaId: detail.rmaId || rma?.id,
         isManufacturerWarranty: true,
       };
 
-      // Chỉ thêm replacePart nếu solution không phải là "REPAIR"
-      if (solutionValue !== "REPAIR" && (formData.replacePartId || detail.replacePart?.partId)) {
+      // Chỉ thêm replacePart nếu solution là "REPLACE" và có dữ liệu từ form
+      if (solutionValue === "REPLACE" && formData.replacePartId) {
+        const replacePartId = formData.replacePartId || detail.replacePart?.partId || null;
+        const replacePartSerial = formData.replacePartSerial || "";
+        const replacePartPrice = formData.replacePartPrice ? parseFloat(formData.replacePartPrice) : (detail.replacePart?.price || 0);
+        
         payload.replacePart = {
-          partId: formData.replacePartId || detail.replacePart?.partId || null,
+          partId: replacePartId,
           exportNoteId: null,
           importNoteId: null,
           quantity: 1,
-          serialNumber: formData.replacePartSerial || detail.replacePart?.serialNumber || "",
-          price: formData.replacePartPrice ? parseFloat(formData.replacePartPrice) : (detail.replacePart?.price || 0),
+          serialNumber: replacePartSerial,
+          price: replacePartPrice,
           warrantyPeriod: warrantyPeriod,
           warantyStartDate: warrantyStartDate,
           warantyEndDate: warrantyEndDate,
@@ -1100,7 +1171,13 @@ export default function WarrantyDetail() {
       }
 
       await updateRmaDetail(detailId, payload);
+      // Giữ lại trạng thái expanded trước khi fetch
+      const wasExpanded = expandedDetails.has(detailId);
       await fetchRmaDetail();
+      // Khôi phục trạng thái expanded sau khi fetch
+      if (wasExpanded) {
+        setExpandedDetails(prev => new Set([...prev, detailId]));
+      }
       setSavedDetails(prev => new Set([...prev, detailId]));
 
       toastify.success("Đã cập nhật thông tin hãng thành công");
@@ -1577,6 +1654,10 @@ export default function WarrantyDetail() {
                               }
                               setExpandedDetails(newExpanded);
                             };
+                            
+                            // Chỉ cho phép chỉnh sửa thông tin RMA (RMA số, NPH, NHH) khi status là PENDING
+                            // Khi đã APPROVED, các trường này sẽ readonly, chỉ có thể nhập form "Phản hồi của hãng"
+                            const canEditRMAInfo = detailStatus?.toUpperCase() === "PENDING";
 
                             return (
                               <div key={detailId} className="rounded-2xl border-2 border-border/60 bg-gradient-to-br from-background to-muted/20 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md">
@@ -1736,7 +1817,7 @@ export default function WarrantyDetail() {
                                               Số RMA
                                             </Label>
                                           </div>
-                                          {detailStatus?.toUpperCase() === "PENDING" ? (
+                                          {canEditRMAInfo ? (
                                             <div className="space-y-1">
                                               <Input
                                                 id={`rmaNumber-pending-${detailId}`}
@@ -1780,7 +1861,7 @@ export default function WarrantyDetail() {
                                               Ngày phát hành
                                             </p>
                                           </div>
-                                          {detailStatus?.toUpperCase() === "PENDING" ? (
+                                          {canEditRMAInfo ? (
                                             <div className="space-y-1">
                                               <Popover>
                                                 <PopoverTrigger asChild>
@@ -1870,7 +1951,7 @@ export default function WarrantyDetail() {
                                               Ngày hết hạn
                                             </p>
                                           </div>
-                                          {detailStatus?.toUpperCase() === "PENDING" ? (
+                                          {canEditRMAInfo ? (
                                             <div className="space-y-1">
                                               <Popover>
                                                 <PopoverTrigger asChild>
@@ -2090,7 +2171,7 @@ export default function WarrantyDetail() {
                                               value={
                                                 (() => {
                                                   const formValue = detailForms[detailId]?.solution;
-                                                  if (formValue !== undefined) return formValue;
+                                                  if (formValue !== undefined && formValue !== null && formValue !== "") return formValue;
                                                   
                                                   const detailSolution = detail.solution || "";
                                                   if (detailSolution === "WARRANTY" || detailSolution === "REPLACE") return "REPLACE";
@@ -2098,7 +2179,26 @@ export default function WarrantyDetail() {
                                                   return "";
                                                 })()
                                               }
-                                              onValueChange={(value) => handleFormChange(detailId, "solution", value)}
+                                              onValueChange={(value) => {
+                                                handleFormChange(detailId, "solution", value);
+                                                // Đánh dấu field đã được touch
+                                                setTouchedFields(prev => ({
+                                                  ...prev,
+                                                  [detailId]: {
+                                                    ...prev[detailId],
+                                                    solution: true
+                                                  }
+                                                }));
+                                                // Clear validation error khi đã chọn
+                                                setValidationErrors(prev => {
+                                                  const newErrors = { ...prev };
+                                                  if (newErrors[detailId]) {
+                                                    const { solution, ...rest } = newErrors[detailId];
+                                                    newErrors[detailId] = rest;
+                                                  }
+                                                  return newErrors;
+                                                });
+                                              }}
                                               disabled={isSaved}
                                             >
                                               <SelectTrigger 
@@ -2375,54 +2475,6 @@ export default function WarrantyDetail() {
                                               )}
                                             </Button>
                                           </div>
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {evCheckDetail && (
-                                      <div className="rounded-lg border border-border/60 bg-card shadow-sm overflow-hidden">
-                                        <div className="bg-muted/30 border-b border-border/60 px-5 py-3">
-                                          <div className="flex items-center gap-2">
-                                            <h3 className="text-base font-semibold text-foreground">Chi tiết kiểm tra sơ bộ</h3>
-                                          </div>
-                                        </div>
-                                        <div className="grid gap-4 px-5 py-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
-                                          {(remedies && remedies !== "—") && (
-                                            <div className="space-y-2">
-                                              <div className="flex items-center gap-2">
-                                                <Package className="h-4 w-4 text-muted-foreground" />
-                                                <p className="text-sm text-muted-foreground">Biện pháp khắc phục</p>
-                                              </div>
-                                              <p className="text-base font-semibold text-foreground">{translateRemedies(remedies)}</p>
-                                            </div>
-                                          )}
-                                          {evQuantity > 0 && (
-                                            <div className="space-y-2">
-                                              <div className="flex items-center gap-2">
-                                                <Package className="h-4 w-4 text-muted-foreground" />
-                                                <p className="text-sm text-muted-foreground">Số lượng</p>
-                                              </div>
-                                              <p className="text-base font-semibold text-foreground">{evQuantity}</p>
-                                            </div>
-                                          )}
-                                          {(evStatus && evStatus !== "—") && (
-                                            <div className="space-y-2">
-                                              <div className="flex items-center gap-2">
-                                                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                                                <p className="text-sm text-muted-foreground">Trạng thái</p>
-                                              </div>
-                                              <p className="text-base font-semibold text-foreground">{translateStatus(evStatus)}</p>
-                                            </div>
-                                          )}
-                                          {priceService > 0 && (
-                                            <div className="space-y-2">
-                                              <div className="flex items-center gap-2">
-                                                <Hash className="h-4 w-4 text-muted-foreground" />
-                                                <p className="text-sm text-muted-foreground">Giá dịch vụ</p>
-                                              </div>
-                                              <p className="text-base font-semibold text-foreground">{formatCurrency(priceService)}</p>
-                                            </div>
-                                          )}
                                         </div>
                                       </div>
                                     )}
