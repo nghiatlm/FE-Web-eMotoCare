@@ -148,7 +148,7 @@ export default function TechnicianBookingDetailDrawer({
       };
 
       await updateEVCheckService(evCheckId, payload);
-      toast.dismiss(loadingToast);
+      // toast.dismiss(loadingToast);
       toast.success("Cập nhật số KM thành công!");
 
       setHasOdometer(true);

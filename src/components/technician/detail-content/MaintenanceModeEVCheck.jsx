@@ -1355,7 +1355,10 @@ export default function MaintenanceModeEVCheck({
       title: "Giá DV",
       width: 70,
       align: "right",
-      render: (_, r, i) => Number(r.priceService || 0).toLocaleString(),
+      render: (_, r, i) => {
+        const priceService = Number(r.priceService || 0);
+        return priceService === 0 ? "Miễn phí" : priceService.toLocaleString();
+      },
     },
     {
       title: "Tổng",

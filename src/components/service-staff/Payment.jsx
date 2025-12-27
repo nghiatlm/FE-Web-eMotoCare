@@ -453,7 +453,10 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
       key: "priceService",
       align: "right",
       width: 140,
-      render: (v) => <span>{Number(v).toLocaleString("vi-VN")}</span>,
+      render: (v) => {
+        const priceService = Number(v || 0);
+        return <span>{priceService === 0 ? "Miễn phí" : priceService.toLocaleString("vi-VN")}</span>;
+      },
     },
     {
       title: "Giá phụ tùng (₫)",
@@ -499,7 +502,7 @@ const Payment = ({ open, onClose, booking, onPaymentSuccess, cancellationFee = 0
         onClose();
       }}
       footer={null}
-      width={showQRCode ? 1400 : 980}
+      width={showQRCode ? 1200 : 980}
       style={{ top: 10 }}
       bodyStyle={showQRCode ? { 
         padding: '20px', 

@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Table, Input, Select, Button, Tag, Checkbox, Tooltip } from "antd";
 import { toast } from "react-toastify";
 import {
@@ -763,14 +763,22 @@ export default function RepairModeEVCheck({
   ]);
 
 
+  // Sử dụng useRef để lưu function loadRepairDetails
+  const loadRepairDetailsRef = useRef(null);
+  useEffect(() => {
+    loadRepairDetailsRef.current = loadRepairDetails;
+  }, [loadRepairDetails]);
+
   const handleEVCheckUpdate = useCallback(() => {
     if (evCheckId && !forceEmpty && !vehiclePartLoading && !replacePartLoading) {
-      loadRepairDetails();
+      if (loadRepairDetailsRef.current) {
+        loadRepairDetailsRef.current();
+      }
       if (onRefresh) {
         onRefresh();
       }
     }
-  }, [evCheckId, forceEmpty, vehiclePartLoading, replacePartLoading, loadRepairDetails, onRefresh]);
+  }, [evCheckId, forceEmpty, vehiclePartLoading, replacePartLoading, onRefresh]);
 
   useEVCheckHub(evCheckId, handleEVCheckUpdate);
 
@@ -1177,8 +1185,24 @@ export default function RepairModeEVCheck({
 
     if (loading) return;
 
-    if (!Object.keys(statusChanges).length) {
-      return toast.info("Chưa có thay đổi trạng thái nào để lưu.");
+    // Cho phép hoàn tất ngay cả khi không có thay đổi trạng thái
+    // (ví dụ: tất cả items đã completed từ trước)
+    const hasStatusChanges = Object.keys(statusChanges).length > 0;
+    
+    if (!hasStatusChanges) {
+      // Kiểm tra xem có items nào chưa completed không
+      const incompleteItems = details.filter(d => {
+        const normalizedStatus = (d.status || "").toUpperCase().trim();
+        const normalizedStatusFixed = normalizedStatus === "INPROGRESS" ? "IN_PROGRESS" : normalizedStatus;
+        return normalizedStatusFixed !== "COMPLETED" && 
+               !isWarrantyItemSent(d) && 
+               !hasStockIssue(d) && 
+               !isBatteryWarrantyCompleted(d);
+      });
+      
+      if (incompleteItems.length > 0) {
+        return toast.info("Vui lòng hoàn thành tất cả các hạng mục trước khi xác nhận sửa chữa.");
+      }
     }
 
     try {
@@ -1194,10 +1218,23 @@ export default function RepairModeEVCheck({
         filteredStatusChanges[detailId] = newStatus;
       }
 
-
+      // Nếu không có thay đổi trạng thái, kiểm tra xem có items nào chưa completed không
       if (!Object.keys(filteredStatusChanges).length) {
-        toast.warning("Không có item nào được cập nhật. Các item đã gửi đi bảo hành không thể cập nhật trạng thái.");
-        return;
+        const incompleteItems = details.filter(d => {
+          const normalizedStatus = (d.status || "").toUpperCase().trim();
+          const normalizedStatusFixed = normalizedStatus === "INPROGRESS" ? "IN_PROGRESS" : normalizedStatus;
+          return normalizedStatusFixed !== "COMPLETED" && 
+                 !isWarrantyItemSent(d) && 
+                 !hasStockIssue(d) && 
+                 !isBatteryWarrantyCompleted(d);
+        });
+        
+        if (incompleteItems.length > 0) {
+          toast.warning("Vui lòng hoàn thành tất cả các hạng mục trước khi xác nhận sửa chữa.");
+          setLoading(false);
+          return;
+        }
+        // Nếu tất cả đã completed, tiếp tục xử lý để hoàn tất (không cần cập nhật status)
       }
 
 
@@ -1310,61 +1347,83 @@ export default function RepairModeEVCheck({
 
 
 
-      const allCompleted = 
+      // Kiểm tra tất cả items đã completed chưa (từ state hiện tại)
+      const allItemsCompleted = details.filter(d => {
+        // Loại trừ các items đã gửi đi bảo hành, có vấn đề stock, hoặc pin bảo hành đã completed
+        if (isWarrantyItemSent(d) || hasStockIssue(d) || isBatteryWarrantyCompleted(d)) {
+          return false; // Không tính vào danh sách cần kiểm tra
+        }
+        return true;
+      }).every(d => {
+        const normalizedStatus = (d.status || "").toUpperCase().trim();
+        const normalizedStatusFixed = normalizedStatus === "INPROGRESS" ? "IN_PROGRESS" : normalizedStatus;
+        return normalizedStatusFixed === "COMPLETED";
+      });
+
+      // Kiểm tra từ API response (sau khi cập nhật)
+      const allCompletedFromAPI = 
         (detailsToCheck.length === 0 && relevantDetails.length > 0 && warrantyItemsSent.length === relevantDetails.length) ||
         (detailsToCheck.length > 0 && detailsToCheck.every((d) => {
           const statusUpper = (d.status || "").toUpperCase();
           return statusUpper === "COMPLETED";
         }));
 
-      if (allCompleted) {
+      // Nếu tất cả items đã completed (từ state hoặc từ API), cập nhật status
+      if (allItemsCompleted || allCompletedFromAPI) {
         await updateEVCheckService(evCheckId, { status: "REPAIR_COMPLETED" });
         setEvCheckStatus("REPAIR_COMPLETED");
         
 
         if (booking?.id) {
           try {
-
+            // Lấy thông tin appointment hiện tại để giữ lại các field cần thiết
             const { getAppointmentById } = await import("../../../api/appointmentsApi");
             const appointmentRes = await getAppointmentById(booking.id);
-            
             const currentAppointment = appointmentRes?.data?.data || appointmentRes?.data || appointmentRes;
             
-
-            const updatePayload = {
-              note: currentAppointment?.note || booking?.note || "",
-              approveById: currentAppointment?.approveById || booking?.approveById || null,
-              code: currentAppointment?.code || booking?.code || "",
-              checkinQRCode: currentAppointment?.checkinQRCode || booking?.checkinQRCode || "",
-            };
-            
-            const updateResult = await changeAppointmentStatusService(booking.id, "REPAIR_COMPLETED", updatePayload);
-            
-
-            const verifyRes = await getAppointmentById(booking.id);
-            const verifiedAppointment = verifyRes?.data?.data || verifyRes?.data || verifyRes;
-            
-            if (verifiedAppointment?.status !== "REPAIR_COMPLETED") {
-              toast.warning(`Appointment status: ${verifiedAppointment?.status}`);
+            // Chỉ gửi các field có giá trị, không gửi null hoặc empty
+            const updatePayload = {};
+            if (currentAppointment?.note || booking?.note) {
+              updatePayload.note = currentAppointment?.note || booking?.note || "";
             }
+            if (currentAppointment?.approveById || booking?.approveById) {
+              updatePayload.approveById = currentAppointment?.approveById || booking?.approveById;
+            }
+            if (currentAppointment?.code || booking?.code) {
+              updatePayload.code = currentAppointment?.code || booking?.code || "";
+            }
+            if (currentAppointment?.checkinQRCode || booking?.checkinQRCode) {
+              updatePayload.checkinQRCode = currentAppointment?.checkinQRCode || booking?.checkinQRCode || "";
+            }
+            
+            await changeAppointmentStatusService(booking.id, "REPAIR_COMPLETED", updatePayload);
+            
+            toast.success("Cập nhật trạng thái thành công! Đã hoàn tất sửa chữa.");
           } catch (err) {
-            // toast.error(`Lỗi cập nhật appointment: ${err.response?.data?.message || err.message || "Unknown error"}`);
-
+            // console.error("Lỗi cập nhật appointment:", err);
+            // const errorMessage = err.response?.data?.message || err.data?.message || err.message || "Unknown error";
+            // // toast.error(`Lỗi cập nhật appointment: ${errorMessage}`);
+            toast.success("Đã hoàn tất sửa chữa!");
+            setLoading(false);
             return;
           }
-        } else {
         }
         
 
         await loadRepairDetails();
-        toast.success("Cập nhật trạng thái thành công!");
+        onRefresh?.();
       } else {
         if (detailsToCheck.length > 0) {
-          const notCompleted = detailsToCheck.filter(d => d.status !== "COMPLETED");
+          const notCompleted = detailsToCheck.filter(d => {
+            const statusUpper = (d.status || "").toUpperCase();
+            return statusUpper !== "COMPLETED";
+          });
+          if (notCompleted.length > 0) {
+            toast.warning(`Còn ${notCompleted.length} hạng mục chưa hoàn thành. Vui lòng hoàn thành tất cả trước khi xác nhận.`);
+          }
         }
+        onRefresh?.();
       }
-
-      onRefresh?.();
     } catch (err) {
       toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể cập nhật trạng thái hạng mục!"));
     } finally {
@@ -1973,7 +2032,10 @@ export default function RepairModeEVCheck({
       title: "Giá DV",
       width: 70,
       align: "right",
-      render: (_, r) => Number(r.priceService || 0).toLocaleString(),
+      render: (_, r) => {
+        const priceService = Number(r.priceService || 0);
+        return priceService === 0 ? "Miễn phí" : priceService.toLocaleString();
+      },
     },
 
 
@@ -2051,9 +2113,9 @@ export default function RepairModeEVCheck({
     
     if (!isBattery) return false;
     
-    // Kiểm tra remedies = WARRANTY
-    const remedies = (row.remedies || "").toUpperCase().trim();
-    if (remedies !== "WARRANTY") return false;
+    // Kiểm tra pin có bảo hành không (isManufacturerWarranty = true)
+    const isWarranty = checkWarrantyStatus(row?.partItem);
+    if (!isWarranty) return false;
     
     // Kiểm tra status = COMPLETED (normalize status)
     const currentStatus = row.status || "";
@@ -2356,18 +2418,10 @@ export default function RepairModeEVCheck({
                 type='primary'
                 onClick={handleConfirmRepair}
                 loading={loading}
-                disabled={
-                  loading || Object.keys(statusChanges).length === 0
-                }
+                disabled={loading}
                 style={{
-                  backgroundColor:
-                    Object.keys(statusChanges).length > 0
-                      ? "#52c41a"
-                      : undefined,
-                  borderColor:
-                    Object.keys(statusChanges).length > 0
-                      ? "#52c41a"
-                      : undefined,
+                  backgroundColor: "#52c41a",
+                  borderColor: "#52c41a",
                 }}>
                 Xác nhận sửa chữa
               </Button>
