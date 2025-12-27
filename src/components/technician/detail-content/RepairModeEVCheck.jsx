@@ -2427,17 +2427,17 @@ export default function RepairModeEVCheck({
               </Button>
             </div>
           )}
-
-          
-          {(evCheckStatus === "REPAIR_COMPLETED" ||
-            evCheckStatus === "COMPLETED") && (
-            <div className='mt-4 p-4 bg-green-50 border border-green-300 rounded text-center'>
-              <p className='text-green-700 font-medium'>
-                Đã hoàn thành sửa chữa
-              </p>
-            </div>
-          )}
         </>
+      )}
+
+      
+      {(evCheckStatus === "REPAIR_COMPLETED" ||
+        evCheckStatus === "COMPLETED") && (
+        <div className='mt-4 p-4 bg-green-50 border border-green-300 rounded text-center'>
+          <p className='text-green-700 font-medium'>
+            Đã hoàn thành sửa chữa
+          </p>
+        </div>
       )}
 
 
@@ -2456,7 +2456,7 @@ export default function RepairModeEVCheck({
           setSelectedRMAItems(new Set());
           setIsRMAConfirmationOpen(false);
           await loadRepairDetails();
-          toast.success("Tạo RMA thành công!");
+          toast.success("Tạo yêu cầu bảo hành thành công!");
           onRefresh?.();
           setIsRMASubmitting(false);
         }}

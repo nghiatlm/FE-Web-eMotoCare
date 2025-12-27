@@ -1720,6 +1720,15 @@ export default function MaintenanceModeEVCheck({
         </>
       )}
 
+      
+      {(evCheckStatus === "REPAIR_COMPLETED" ||
+        evCheckStatus === "COMPLETED") && (
+        <div className='mt-4 p-4 bg-green-50 border border-green-300 rounded text-center'>
+          <p className='text-green-700 font-medium'>
+            Đã hoàn thành sửa chữa
+          </p>
+        </div>
+      )}
 
       
       <RMAConfirmationModal

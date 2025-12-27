@@ -133,7 +133,7 @@ const TechnicianPage = () => {
               <Option value='REPAIR_TYPE'>Sửa chữa</Option>
               <Option value='WARRANTY_TYPE'>Bảo hành</Option>
               <Option value='CAMPAIGN_TYPE'>Chiến dịch</Option>
-              <Option value='RECALL_TYPE'>Recall</Option>
+              <Option value='RECALL_TYPE'>Triệu hồi</Option>
             </Select>
           </div>
 
@@ -221,7 +221,7 @@ const TechnicianPage = () => {
             { key: "REPAIR_TYPE", label: "Sửa chữa" },
             { key: "WARRANTY_TYPE", label: "Bảo hành" },
             { key: "CAMPAIGN_TYPE", label: "Chiến dịch" },
-            { key: "RECALL_TYPE", label: "Recall" },
+            { key: "RECALL_TYPE", label: "Triệu hồi" },
           ]}
           size="large"
         />
