@@ -190,135 +190,118 @@ export default function ExportSlipsTable({ search = "", status = "", woCode = ""
   }
 
   return (
-    <div className="bg-white/95 backdrop-blur rounded-xl border border-rose-200/60 overflow-hidden shadow-md">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full table-fixed">
-          <colgroup>
-            <col style={{ width: '5%', minWidth: '40px' }} />
-            <col style={{ width: '16%', minWidth: '140px' }} />
-            <col style={{ width: '20%', minWidth: '160px' }} />
-            <col style={{ width: '14%', minWidth: '100px' }} />
-            <col style={{ width: '14%', minWidth: '110px' }} />
-            <col style={{ width: '14%', minWidth: '120px' }} />
-            <col style={{ width: '17%', minWidth: '120px' }} />
-          </colgroup>
-          <thead>
-            <tr className="bg-gradient-to-r from-rose-100 via-rose-50/80 to-pink-50 border-b border-rose-200">
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">
-                STT
-              </th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">
-                Mã phiếu
-              </th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">
-                Người nhận
-              </th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">
-                Tổng SL
-              </th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">
-                Ngày xuất
-              </th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">
-                Trạng thái
-              </th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">
-                Thao tác
-              </th>
-            </tr>
-          </thead>
-        </table>
-      </div>
-      <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
-        <table className="w-full table-fixed">
-          <colgroup>
-            <col style={{ width: '5%', minWidth: '40px' }} />
-            <col style={{ width: '16%', minWidth: '140px' }} />
-            <col style={{ width: '20%', minWidth: '160px' }} />
-            <col style={{ width: '14%', minWidth: '100px' }} />
-            <col style={{ width: '14%', minWidth: '110px' }} />
-            <col style={{ width: '14%', minWidth: '120px' }} />
-            <col style={{ width: '17%', minWidth: '120px' }} />
-          </colgroup>
-          <tbody>
-            {filtered.length === 0 && !loading ? (
-              <tr>
-                <td colSpan="7" className="py-12 px-6 text-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <FileUp className="h-12 w-12 text-muted-foreground/40 mb-2" />
-                    <p className="text-muted-foreground text-sm font-medium">Không tìm thấy phiếu xuất phù hợp</p>
-                    <p className="text-xs text-muted-foreground">{search || status ? "Hãy thay đổi từ khóa hoặc bộ lọc" : "Chưa có phiếu xuất nào"}</p>
-                  </div>
-                </td>
+        <div className="min-w-[1100px]">
+          <table className="w-full table-fixed text-sm">
+            <colgroup>
+              <col style={{ width: '60px' }} />
+              <col style={{ width: '180px' }} />
+              <col style={{ width: '220px' }} />
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '130px' }} />
+              <col style={{ width: '140px' }} />
+              <col style={{ width: '140px' }} />
+            </colgroup>
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
+                <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                  STT
+                </th>
+                <th className="text-left py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                  Mã phiếu
+                </th>
+                <th className="text-left py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                  Người nhận
+                </th>
+                <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                  Tổng SL
+                </th>
+                <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                  Ngày xuất
+                </th>
+                <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                  Trạng thái
+                </th>
+                <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap sticky right-0 bg-red-50 z-20 border-l border-red-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">
+                  Thao tác
+                </th>
               </tr>
-            ) : (
-              filtered.map((slip, i) => {
-                const stt = (page - 1) * pageSize + i + 1;
-                return (
-                <tr
-                  key={`${slip.id}-${i}`}
-                  className={`border-b border-rose-100/50 hover:bg-rose-50/50 transition-colors ${
-                    i % 2 === 0 ? "bg-white" : "bg-rose-50/20"
-                  }`}
-                >
-                  <td className="py-4 px-6 text-center whitespace-nowrap">
-                    <span className="text-sm text-foreground font-medium">
-                      {stt}
-                    </span>
-                  </td>
-                  <td className="py-4 px-6 text-center whitespace-nowrap">
-                    <span className="text-sm text-foreground font-medium">
-                      {slip.id}
-                    </span>
-                  </td>
-                  <td className="py-4 px-6 text-center whitespace-nowrap">
-                    <span className="text-sm text-foreground">{getServiceCenterName(slip.exportTo)}</span>
-                  </td>
-                  <td className="py-4 px-6 text-center whitespace-nowrap">
-                    <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-semibold bg-rose-100 text-rose-800 border border-rose-200 shadow-sm">
-                      {slip.totalQuantity}
-                    </span>
-                  </td>
-                  <td className="py-4 px-6 text-center whitespace-nowrap">
-                    <span className="text-sm text-foreground">
-                      {slip.date ? new Date(slip.date).toLocaleDateString('vi-VN', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric'
-                      }) : 'N/A'}
-                    </span>
-                  </td>
-                  <td className="py-4 px-6 text-center whitespace-nowrap">
-                    <Badge
-                      variant="secondary"
-                      className={`border ${getStatusBadgeClass(slip.status)}`}
-                    >
-                      {getStatusLabel(slip.status)}
-                    </Badge>
-                  </td>
-                  <td className="py-4 px-6 text-center whitespace-nowrap">
-                    <div className="flex items-center justify-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="gap-1.5 h-8 px-3 text-xs font-medium hover:bg-primary/10 hover:text-primary transition-colors"
-                        onClick={() => window?.openViewExportSlip?.(slip)}
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        Chi tiết
-                      </Button>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && !loading ? (
+                <tr>
+                  <td colSpan={7} className="py-12 px-6 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <FileUp className="h-12 w-12 text-muted-foreground/40 mb-2" />
+                      <p className="text-muted-foreground text-sm font-medium">Không tìm thấy phiếu xuất phù hợp</p>
+                      <p className="text-xs text-muted-foreground">{search || status ? "Hãy thay đổi từ khóa hoặc bộ lọc" : "Chưa có phiếu xuất nào"}</p>
                     </div>
                   </td>
                 </tr>
-              );
-              })
-            )}
-          </tbody>
-        </table>
+              ) : (
+                filtered.map((slip, i) => {
+                  const stt = (page - 1) * pageSize + i + 1;
+                  return (
+                    <tr
+                      key={`${slip.id}-${i}`}
+                      className={`group border-b border-slate-200 transition-colors ${
+                        i % 2 === 0 ? "bg-white hover:bg-slate-50" : "bg-slate-50/40 hover:bg-slate-100/60"
+                      }`}
+                    >
+                      <td className="py-4 px-4 text-center text-sm text-slate-600 whitespace-nowrap align-middle">
+                        {stt}
+                      </td>
+                      <td className="py-4 px-5 text-sm font-semibold text-primary whitespace-nowrap align-middle">
+                        {slip.id}
+                      </td>
+                      <td className="py-4 px-5 text-sm text-slate-900 whitespace-nowrap truncate align-middle">
+                        {getServiceCenterName(slip.exportTo)}
+                      </td>
+                      <td className="py-4 px-4 text-center align-middle whitespace-nowrap">
+                        <Badge variant="secondary" className="bg-red-100 text-red-800 border border-red-300 whitespace-nowrap">
+                          {slip.totalQuantity}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-4 text-center text-sm text-slate-900 whitespace-nowrap align-middle">
+                        {slip.date ? new Date(slip.date).toLocaleDateString('vi-VN', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        }) : 'N/A'}
+                      </td>
+                      <td className="py-4 px-4 text-center align-middle whitespace-nowrap">
+                        <Badge
+                          variant="secondary"
+                          className={`border ${getStatusBadgeClass(slip.status)} whitespace-nowrap`}
+                        >
+                          {getStatusLabel(slip.status)}
+                        </Badge>
+                      </td>
+                      <td className={`py-4 px-4 text-center align-middle sticky right-0 z-10 border-l border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] group-hover:bg-slate-50 ${i % 2 === 0 ? "bg-white" : "bg-slate-50"}`}>
+                        <div className="flex items-center justify-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1.5 h-8 px-3 text-xs font-medium hover:bg-primary/10 hover:text-primary transition-colors whitespace-nowrap"
+                            onClick={() => window?.openViewExportSlip?.(slip)}
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            Chi tiết
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {total > 0 && (
-      <div className="flex items-center justify-between p-5 bg-gradient-to-r from-rose-50/50 via-pink-50/30 to-rose-50/50 border-t border-rose-200/50">
+      <div className="flex items-center justify-between p-5 bg-slate-50 border-t border-slate-200">
           <Pagination>
             <PaginationContent className="gap-1">
               <PaginationItem>

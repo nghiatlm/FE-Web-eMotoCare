@@ -377,112 +377,96 @@ export default function Campaigns() {
         <Card className="rounded-2xl border border-slate-200/80 bg-white shadow-lg overflow-hidden">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full table-fixed">
-                <colgroup>
-                  <col style={{ width: '70px' }} />
-                  <col style={{ width: '260px' }} />
-                  <col style={{ width: '260px' }} />
-                  <col style={{ width: '160px' }} />
-                  <col style={{ width: '160px' }} />
-                  <col style={{ width: '140px' }} />
-                  <col style={{ width: '140px' }} />
-                </colgroup>
-                <thead>
-                  <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
-                    <th className="text-center py-4 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">STT</th>
-                    <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Tên chiến dịch</th>
-                    <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Mô tả</th>
-                    <th className="text-center py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Thời gian bắt đầu</th>
-                    <th className="text-center py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Thời gian kết thúc</th>
-                    <th className="text-center py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Trạng thái</th>
-                    <th className="text-center py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Thao tác</th>
-                  </tr>
-                </thead>
-              </table>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full table-fixed">
-                <colgroup>
-                  <col style={{ width: '70px' }} />
-                  <col style={{ width: '260px' }} />
-                  <col style={{ width: '260px' }} />
-                  <col style={{ width: '160px' }} />
-                  <col style={{ width: '160px' }} />
-                  <col style={{ width: '140px' }} />
-                  <col style={{ width: '140px' }} />
-                </colgroup>
-                <tbody className="divide-y divide-slate-100">
-                  {loading ? (
-                    <tr>
-                      <td colSpan="7" className="py-16 px-6 text-center">
-                        <Spin />
-                      </td>
+              <div className="min-w-[1200px]">
+                <table className="w-full table-fixed text-sm">
+                  <colgroup>
+                    <col style={{ width: '70px' }} />
+                    <col style={{ width: '260px' }} />
+                    <col style={{ width: '260px' }} />
+                    <col style={{ width: '160px' }} />
+                    <col style={{ width: '160px' }} />
+                    <col style={{ width: '140px' }} />
+                    <col style={{ width: '140px' }} />
+                  </colgroup>
+                  <thead className="sticky top-0 z-10">
+                    <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
+                      <th className="text-center py-4 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">STT</th>
+                      <th className="text-left py-4 px-5 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Tên chiến dịch</th>
+                      <th className="text-left py-4 px-5 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Mô tả</th>
+                      <th className="text-center py-4 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Thời gian bắt đầu</th>
+                      <th className="text-center py-4 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Thời gian kết thúc</th>
+                      <th className="text-center py-4 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Trạng thái</th>
+                      <th className="text-center py-4 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap sticky right-0 bg-red-50 z-20 border-l border-red-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">
+                        Thao tác
+                      </th>
                     </tr>
-                  ) : filteredCampaigns.length === 0 ? (
-                    <tr>
-                      <td colSpan="7" className="py-12 px-6 text-center text-slate-500 text-sm">
-                        {error ? `Lỗi: ${error}` : "Không tìm thấy chiến dịch"}
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredCampaigns.map((record, idx) => (
-                      <tr
-                        key={record.id || record.code || idx}
-                        className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
-                          idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"
-                        }`}
-                      >
-                        <td className="py-4 px-4 text-center text-sm font-medium text-slate-600 align-top whitespace-nowrap">
-                          {(pagination.current - 1) * pagination.pageSize + idx + 1}
-                        </td>
-                        <td className="py-4 px-6 align-top">
-                          <div className="font-semibold text-slate-900 text-sm leading-tight line-clamp-1 max-w-[240px]">
-                            {record.name || record.title || "—"}
-                          </div>
-                        </td>
-                        <td className="py-4 px-6 align-top">
-                          <div className="text-sm text-slate-700 line-clamp-1 max-w-[240px]">
-                            {record.description || record.note || "—"}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 text-center text-sm text-slate-700 whitespace-nowrap align-top">
-                          {formatDate(record.startDate)}
-                        </td>
-                        <td className="py-4 px-4 text-center text-sm text-slate-700 whitespace-nowrap align-top">
-                          {formatDate(record.endDate)}
-                        </td>
-                        <td className="py-4 px-4 text-center align-top whitespace-nowrap">
-                          <div className="flex items-center justify-center">
-                            <span className={`px-3 py-1.5 rounded-md font-semibold text-xs border shadow-sm ${getStatusBadgeClass(record.status)}`}>
-                              {getStatusLabel(record.status)}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 text-center align-top whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-primary hover:bg-primary/10"
-                              title="Xem chi tiết"
-                              onClick={() => navigate(`/admin/campaigns/${record.id}`)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-600 hover:bg-slate-100" title="Chỉnh sửa">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-600 hover:bg-rose-50" title="Xóa">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {loading ? (
+                      <tr>
+                        <td colSpan={7} className="py-16 px-6 text-center">
+                          <Spin />
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : filteredCampaigns.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 px-6 text-center text-slate-500 text-sm">
+                          {error ? `Lỗi: ${error}` : "Không tìm thấy chiến dịch"}
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredCampaigns.map((record, idx) => (
+                        <tr
+                          key={record.id || record.code || idx}
+                          className={`group border-b border-slate-200 transition-colors ${
+                            idx % 2 === 0 ? "bg-white hover:bg-slate-50" : "bg-slate-50/40 hover:bg-slate-100/60"
+                          }`}
+                        >
+                          <td className="py-4 px-4 text-center text-sm text-slate-600 whitespace-nowrap align-middle">
+                            {(pagination.current - 1) * pagination.pageSize + idx + 1}
+                          </td>
+                          <td className="py-4 px-5 text-sm font-semibold text-slate-900 whitespace-nowrap truncate align-middle">
+                            {record.name || record.title || "—"}
+                          </td>
+                          <td className="py-4 px-5 text-sm text-slate-700 whitespace-nowrap truncate align-middle">
+                            {record.description || record.note || "—"}
+                          </td>
+                          <td className="py-4 px-4 text-center text-sm text-slate-700 whitespace-nowrap align-middle">
+                            {formatDate(record.startDate)}
+                          </td>
+                          <td className="py-4 px-4 text-center text-sm text-slate-700 whitespace-nowrap align-middle">
+                            {formatDate(record.endDate)}
+                          </td>
+                          <td className="py-4 px-4 text-center align-middle whitespace-nowrap">
+                            <span className={`px-3 py-1.5 rounded-md font-semibold text-xs border shadow-sm whitespace-nowrap ${getStatusBadgeClass(record.status)}`}>
+                              {getStatusLabel(record.status)}
+                            </span>
+                          </td>
+                          <td className={`py-4 px-4 text-center align-middle sticky right-0 z-10 border-l border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] group-hover:bg-slate-50 ${idx % 2 === 0 ? "bg-white" : "bg-slate-50"}`}>
+                            <div className="flex items-center justify-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-primary hover:bg-primary/10"
+                                title="Xem chi tiết"
+                                onClick={() => navigate(`/admin/campaigns/${record.id}`)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-600 hover:bg-slate-100" title="Chỉnh sửa">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-600 hover:bg-rose-50" title="Xóa">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <div className="p-4 flex justify-center">
