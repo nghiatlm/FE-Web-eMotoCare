@@ -36,11 +36,44 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
         }
     };
 
-    const fetchUsers = async () => {
+
+    const mapRoleToApiFormat = (roleFilter) => {
+        if (!roleFilter || roleFilter === "all" || roleFilter === "") return undefined;
+        
+        const roleMap = {
+            "admin": "ROLE_ADMIN",
+            "manager": "ROLE_MANAGER",
+            "staff": "ROLE_STAFF",
+            "technician": "ROLE_TECHNICIAN",
+            "customer": "ROLE_CUSTOMER",
+            "storekeeper": "ROLE_STOREKEEPER"
+        };
+        
+        return roleMap[roleFilter.toLowerCase()];
+    };
+
+
+    const fetchUsers = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
-      const response = await getUsers(page, pageSize);
+            
+            const extraParams = {};
+            
+            if (searchQuery && searchQuery.trim()) {
+                extraParams.search = searchQuery.trim();
+            }
+            
+            const apiRole = mapRoleToApiFormat(roleFilter);
+            if (apiRole) {
+                extraParams.role = apiRole;
+            }
+            
+            if (statusFilter && statusFilter !== "all") {
+                extraParams.status = statusFilter;
+            }
+            
+            const response = await getUsers(page, pageSize, extraParams);
             
             if (response.success && response.data) {
                 const transformedUsers = response.data.rowDatas.map(user => ({
@@ -48,9 +81,9 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
                     phoneNumber: user.phone || "N/A",
                     email: user.email || "N/A",
                     fullName: user.customer 
-                        ? `${user.customer.firstName} ${user.customer.lastName}`
+                        ? `${user.customer.lastName} ${user.customer.firstName}`
                         : user.staff
-                        ? `${user.staff.firstName} ${user.staff.lastName}`
+                        ? `${user.staff.lastName} ${user.staff.firstName}`
                         : "N/A",
                     role: transformRoleName(user.roleName),
                     status: user.status === "ACTIVE" ? "active" : "blocked",
@@ -70,6 +103,23 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
         }
     };
 
+
+    useEffect(() => {
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+        }
+        
+        debounceTimerRef.current = setTimeout(() => {
+            setPage(1);
+        }, 500); 
+        
+        return () => {
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
+            }
+        };
+    }, [searchQuery, roleFilter, statusFilter]);
+    
     useEffect(() => {
         fetchUsers();
     }, [page, pageSize]);
