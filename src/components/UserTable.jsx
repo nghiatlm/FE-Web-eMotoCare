@@ -101,7 +101,7 @@ export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }
         } finally {
             setLoading(false);
         }
-    };
+    },[page, pageSize, searchQuery, roleFilter, statusFilter]);
 
 
     useEffect(() => {
