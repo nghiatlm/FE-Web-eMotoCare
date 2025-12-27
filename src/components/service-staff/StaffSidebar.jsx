@@ -227,7 +227,7 @@ export function StaffSidebar() {
 export function StaffTopHeader() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [displayName, setDisplayName] = useState("STAFF Service");
+  const [displayName, setDisplayName] = useState("Nhân viên dịch vụ");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [initials, setInitials] = useState("ST");
 
@@ -242,9 +242,9 @@ export function StaffTopHeader() {
           const staff = res?.data?.rowDatas?.[0];
           if (staff) {
             const name =
-              `${staff.firstName || ""} ${staff.lastName || ""}`.trim() ||
+              `${staff.lastName || ""} ${staff.firstName || ""}`.trim() ||
               staff.account?.phone ||
-              "STAFF Service";
+              "Nhân viên dịch vụ";
             const avatar = staff.avatarUrl || staff.account?.avatarUrl || "";
             const init =
               name
@@ -261,10 +261,10 @@ export function StaffTopHeader() {
           }
         }
         const fallbackName =
-          `${account.firstName || ""} ${account.lastName || ""}`.trim() ||
+          `${account.lastName || ""} ${account.firstName || ""}`.trim() ||
           account.phone ||
           account.email ||
-          "STAFF Service";
+          "Nhân viên dịch vụ";
         const fallbackInit =
           fallbackName
             .split(" ")
@@ -279,10 +279,10 @@ export function StaffTopHeader() {
       } catch (error) {
         const account = user?.accountResponse || user || storedUser || {};
         const fallbackName =
-          `${account.firstName || ""} ${account.lastName || ""}`.trim() ||
+          `${account.lastName || ""} ${account.firstName || ""}`.trim() ||
           account.phone ||
           account.email ||
-          "STAFF Service";
+          "Nhân viên dịch vụ";
         const fallbackInit =
           fallbackName
             .split(" ")
@@ -310,7 +310,7 @@ export function StaffTopHeader() {
       >
         <div className="flex flex-col items-end leading-tight">
           <span className="text-sm font-semibold text-red-700">{displayName}</span>
-          <span className="text-[11px] text-red-400">STAFF Service</span>
+          <span className="text-[11px] text-red-400">Nhân viên dịch vụ</span>
         </div>
         {avatarUrl ? (
           <img

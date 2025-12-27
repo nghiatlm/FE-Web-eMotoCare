@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Calendar,
   Users,
@@ -21,7 +20,6 @@ import { getStaffByAccountId } from "@/api/staffsApi";
 import { getDashboardOverview, getDashboardOverviewData } from "@/api/dashboardApi";
 
 export default function Dashboard() {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const [stats, setStats] = useState({
     totalAppointments: 0,
@@ -463,117 +461,96 @@ export default function Dashboard() {
           <CardTitle>Lịch hẹn gần đây</CardTitle>
           <CardDescription>Danh sách lịch hẹn mới nhất</CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent>
           <div className="overflow-x-auto">
-            <div className="min-w-[1000px]">
-              {recentLoading ? (
-                <div className="py-12 text-center text-sm text-slate-500">
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
-                    <span>Đang tải lịch hẹn gần đây...</span>
-                  </div>
-                </div>
-              ) : recentError ? (
-                <div className="py-12 text-center text-sm text-red-500">{recentError}</div>
-              ) : recentAppointments.length === 0 ? (
-                <div className="py-12 text-center text-sm text-slate-500">
-                  Chưa có lịch hẹn nào gần đây.
-                </div>
-              ) : (
-                <table className="w-full table-fixed text-sm">
-                  <colgroup>
-                    <col style={{ width: '70px' }} />
-                    <col style={{ width: '180px' }} />
-                    <col style={{ width: '200px' }} />
-                    <col style={{ width: '140px' }} />
-                    <col style={{ width: '150px' }} />
-                    <col style={{ width: '200px' }} />
-                    <col style={{ width: '140px' }} />
-                  </colgroup>
-                  <thead className="sticky top-0 z-10">
-                    <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
-                      <th className="text-center py-4 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">
-                        STT
-                      </th>
-                      <th className="text-left py-4 px-5 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">
-                        Mã lịch hẹn
-                      </th>
-                      <th className="text-left py-4 px-5 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">
-                        Khách hàng
-                      </th>
-                      <th className="text-left py-4 px-5 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">
-                        Loại dịch vụ
-                      </th>
-                      <th className="text-left py-4 px-5 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">
-                        Ngày/giờ
-                      </th>
-                      <th className="text-left py-4 px-5 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">
-                        Trung tâm
-                      </th>
-                      <th className="text-center py-4 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">
-                        Trạng thái
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {recentAppointments.map((appointment, index) => {
-                      const customerName =
-                        `${appointment.customer?.firstName || ""} ${
-                          appointment.customer?.lastName || ""
-                        }`.trim() || "—";
-                      const phone = appointment.phone || appointment.customer?.phone || "—";
-                      const service = formatAppointmentType(appointment.type);
-                      const appointmentDate = appointment.appointmentDate
-                        ? format(new Date(appointment.appointmentDate), "dd/MM/yyyy")
-                        : "—";
-                      const timeRange = formatSlotTime(appointment.slotTime);
-                      const centerName =
-                        appointment.serviceCenter?.name ||
-                        appointment.serviceCenter?.code ||
-                        "—";
+            {recentLoading ? (
+              <div className="py-8 text-center text-sm text-slate-500">
+                Đang tải lịch hẹn gần đây...
+              </div>
+            ) : recentError ? (
+              <div className="py-8 text-center text-sm text-red-500">{recentError}</div>
+            ) : recentAppointments.length === 0 ? (
+              <div className="py-8 text-center text-sm text-slate-500">
+                Chưa có lịch hẹn nào gần đây.
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase w-12">
+                      STT
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">
+                      Mã lịch hẹn
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">
+                      Khách hàng
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">
+                      Loại dịch vụ
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">
+                      Ngày/giờ
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">
+                      Trung tâm
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">
+                      Trạng thái
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentAppointments.map((appointment, index) => {
+                    const customerName =
+                      `${appointment.customer?.firstName || ""} ${
+                        appointment.customer?.lastName || ""
+                      }`.trim() || "—";
+                    const phone = appointment.phone || "—";
+                    const service = formatAppointmentType(appointment.type);
+                    const appointmentDate = appointment.appointmentDate
+                      ? format(new Date(appointment.appointmentDate), "dd/MM/yyyy")
+                      : "—";
+                    const timeRange = formatSlotTime(appointment.slotTime);
+                    const centerName =
+                      appointment.serviceCenter?.name ||
+                      appointment.serviceCenter?.code ||
+                      "—";
 
-                      return (
-                        <tr
-                          key={appointment.id}
-                          onClick={() => navigate(`/manager/appointments/${appointment.id}`)}
-                          className={`group border-b border-slate-200 transition-colors cursor-pointer ${
-                            index % 2 === 0 ? "bg-white hover:bg-slate-50" : "bg-slate-50/40 hover:bg-slate-100/60"
-                          }`}
-                        >
-                          <td className="py-4 px-4 text-sm text-slate-600 text-center whitespace-nowrap align-middle">
-                            {index + 1}
-                          </td>
-                          <td className="py-4 px-5 text-sm font-semibold text-slate-900 whitespace-nowrap truncate align-middle">
-                            {appointment.code || "—"}
-                          </td>
-                          <td className="py-4 px-5 align-middle">
-                            <div>
-                              <div className="font-semibold text-slate-900 text-sm whitespace-nowrap truncate">{customerName}</div>
-                              <div className="text-xs text-slate-500 whitespace-nowrap truncate">{phone}</div>
+                    return (
+                      <tr
+                        key={appointment.id}
+                        className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
+                      >
+                        <td className="py-3 px-4 text-center text-sm text-slate-600">
+                          {index + 1}
+                        </td>
+                        <td className="py-3 px-4 text-sm font-medium text-slate-900">
+                          {appointment.code || "—"}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div>
+                            <div className="font-medium text-slate-900">{customerName}</div>
+                            <div className="text-xs text-slate-500">{phone}</div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-sm text-slate-900">{service}</td>
+                        <td className="py-3 px-4 text-sm text-slate-900">
+                          <div className="whitespace-nowrap">
+                            <div className="text-foreground">{appointmentDate}</div>
+                            <div className="text-xs text-slate-500">
+                              {timeRange}
                             </div>
-                          </td>
-                          <td className="py-4 px-5 text-sm text-slate-700 whitespace-nowrap truncate align-middle">
-                            {service}
-                          </td>
-                          <td className="py-4 px-5 align-middle">
-                            <div className="whitespace-nowrap">
-                              <div className="text-sm text-slate-900">{appointmentDate}</div>
-                              <div className="text-xs text-slate-500">{timeRange}</div>
-                            </div>
-                          </td>
-                          <td className="py-4 px-5 text-sm text-slate-700 whitespace-nowrap truncate align-middle">
-                            {centerName}
-                          </td>
-                          <td className="py-4 px-4 text-center align-middle whitespace-nowrap">
-                            {getStatusBadge(appointment.status)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-sm text-slate-900">{centerName}</td>
+                        <td className="py-3 px-4">{getStatusBadge(appointment.status)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </CardContent>
       </Card>

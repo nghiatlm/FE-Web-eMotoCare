@@ -218,20 +218,20 @@ export default function MaintenancePlans() {
           </CardContent>
         </Card>
 
-        <div className="mb-6 p-3 sm:p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
-          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-            <div className="relative flex-1 w-full sm:min-w-[200px] sm:max-w-[320px]">
+        <div className="mb-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="relative flex-1 min-w-[240px] md:min-w-[320px] md:max-w-[420px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Tìm kiếm lịch bảo dưỡng"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 bg-slate-50 border-slate-200 focus-visible:ring-red-500/70 text-sm sm:text-base"
+                className="pl-9 bg-slate-50 border-slate-200 focus-visible:ring-red-500/70"
               />
             </div>
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[140px] md:w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
+              <SelectTrigger className="w-[150px] md:w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
@@ -250,7 +250,7 @@ export default function MaintenancePlans() {
                   setStatusFilter("all");
                   setSearch("");
                 }}
-                className="border-transparent text-slate-600 hover:text-red-600 hover:bg-red-50 w-full sm:w-auto"
+                className="border-transparent text-slate-600 hover:text-red-600 hover:bg-red-50"
               >
                 Xóa lọc
               </Button>
@@ -258,21 +258,49 @@ export default function MaintenancePlans() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
-          <div className="min-w-[1200px]">
-            <table className="w-full">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed">
+              <colgroup>
+                <col style={{ width: '60px' }} />
+                <col style={{ width: '180px' }} />
+                <col style={{ width: '200px' }} />
+                <col style={{ width: 'auto' }} />
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '100px' }} />
+                <col style={{ width: '130px' }} />
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '120px' }} />
+              </colgroup>
               <thead>
                 <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
-                  <th className="text-center py-3 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap w-16">STT</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Mã lịch</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Tên lịch bảo dưỡng</th>
-                  <th className="text-left py-3 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Mô tả</th>
-                  <th className="text-center py-3 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Số giai đoạn</th>
-                  <th className="text-center py-3 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Ngày hiệu lực</th>
-                  <th className="text-center py-3 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Trạng thái</th>
-                  <th className="text-center py-3 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap w-32">Thao tác</th>
+                  <th className="text-center py-4 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">STT</th>
+                  <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Mã lịch</th>
+                  <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Tên lịch bảo dưỡng</th>
+                  <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Mô tả</th>
+                  <th className="text-center py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Đơn vị</th>
+                  <th className="text-center py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Số giai đoạn</th>
+                  <th className="text-center py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Ngày hiệu lực</th>
+                  <th className="text-center py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Trạng thái</th>
+                  <th className="text-center py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Thao tác</th>
                 </tr>
               </thead>
+            </table>
+          </div>
+
+          <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+            <table className="w-full table-fixed">
+              <colgroup>
+                <col style={{ width: '60px' }} />
+                <col style={{ width: '180px' }} />
+                <col style={{ width: '200px' }} />
+                <col style={{ width: 'auto' }} />
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '100px' }} />
+                <col style={{ width: '130px' }} />
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '120px' }} />
+              </colgroup>
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
                   <tr>
@@ -288,7 +316,7 @@ export default function MaintenancePlans() {
                   </tr>
                 ) : filteredPlans.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="py-16 px-6 text-center">
+                    <td colSpan="9" className="py-16 px-6 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Wrench className="h-12 w-12 text-slate-300" />
                         <p className="text-base font-medium text-muted-foreground">Không tìm thấy lịch bảo dưỡng</p>
@@ -313,8 +341,19 @@ export default function MaintenancePlans() {
                         <span className="font-semibold text-slate-900 text-sm whitespace-nowrap overflow-hidden text-ellipsis block">{plan.name}</span>
                       </td>
                       <td className="py-4 px-6 align-top">
-                        <div className="text-sm text-slate-700 leading-relaxed max-w-[500px]">
-                          <p className="line-clamp-2 break-words">{plan.description || "—"}</p>
+                        <span className="text-sm text-slate-700 line-clamp-2 max-w-[320px] block">{plan.description || "—"}</span>
+                      </td>
+                      <td className="py-4 px-6 text-center align-top">
+                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                          {plan.unit && plan.unit.length > 0 ? (
+                            plan.unit.map((u, idx) => (
+                              <Badge key={idx} variant="outline" className="text-xs whitespace-nowrap">
+                                {u === "KILOMETER" ? "KM" : u === "MONTH" ? "Tháng" : u}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-sm text-slate-500">—</span>
+                          )}
                         </div>
                       </td>
                       <td className="py-4 px-6 text-center align-top">

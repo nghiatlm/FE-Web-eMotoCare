@@ -111,7 +111,7 @@ const TechnicianDashboard = () => {
       MAINTENANCE_TYPE: "Bảo dưỡng",
       REPAIR_TYPE: "Sửa chữa",
       WARRANTY_TYPE: "Bảo hành",
-      RECALL_TYPE: "Recall",
+      RECALL_TYPE: "Triệu hồi",
       CAMPAIGN_TYPE: "Chiến dịch",
     };
     return typeMap[type] || type;
@@ -277,7 +277,7 @@ const TechnicianDashboard = () => {
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold" style={{ color: "#722ed1" }}>{serviceTypeStats.recall}</div>
-            <div className="text-sm text-gray-600">Recall</div>
+            <div className="text-sm text-gray-600">Triệu hồi</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold" style={{ color: "#eb2f96" }}>{serviceTypeStats.campaign}</div>

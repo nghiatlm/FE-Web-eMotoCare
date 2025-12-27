@@ -197,7 +197,6 @@ export default function TechnicianBookingDetailPage({
     const odometerNumber = Number(km);
     try {
       setLoading(true);
-      const loadingToast = toast.loading("Đang cập nhật số KM...");
 
       if (!evCheckId)
         throw new Error(
@@ -211,13 +210,11 @@ export default function TechnicianBookingDetailPage({
       };
 
       await updateEVCheckService(evCheckId, payload);
-      toast.dismiss(loadingToast);
       toast.success("Cập nhật số KM thành công!");
 
       setHasOdometer(true);
       setRefreshKey((prev) => prev + 1);
     } catch (err) {
-      toast.dismiss(loadingToast);
       toast.error(
         err?.response?.data?.message ||
           err?.data?.message ||

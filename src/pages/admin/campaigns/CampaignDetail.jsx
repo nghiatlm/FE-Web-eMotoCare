@@ -335,6 +335,55 @@ export default function CampaignDetail() {
           </CardContent>
         </Card>
 
+        {campaign.type !== "RECALL" && (
+          <Card className="rounded-xl border border-rose-100 bg-white/95 shadow-lg">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-100 rounded-full">
+                  Chi tiết chương trình
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {campaign.programDetails && campaign.programDetails.length > 0 ? (
+                campaign.programDetails.map((pd) => (
+                  <div key={pd.id} className="rounded-lg border border-rose-100 bg-rose-50/60 p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {pd.serviceType && (
+                      <div>
+                        <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Loại dịch vụ</p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {pd.serviceType === "CAMPAIGN_TYPE" ? "Chiến dịch" : pd.serviceType}
+                        </p>
+                      </div>
+                    )}
+                    {typeof pd.discountPercent !== "undefined" && (
+                      <div>
+                        <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Giảm giá</p>
+                        <p className="text-sm font-semibold text-slate-900">{pd.discountPercent}%</p>
+                      </div>
+                    )}
+                    {typeof pd.bonusAmount !== "undefined" && (
+                      <div>
+                        <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Thưởng</p>
+                        <p className="text-sm font-semibold text-slate-900">{pd.bonusAmount}</p>
+                      </div>
+                    )}
+                    {pd.recallAction && (
+                      <div>
+                        <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">Hành động</p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {pd.recallAction === "Triệu hồi" ? "Thu hồi" : pd.recallAction}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-600">Không có chi tiết chương trình.</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Program Details Section */}
         <Card className="border border-slate-200 bg-white rounded-2xl overflow-hidden">

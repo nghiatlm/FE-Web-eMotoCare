@@ -59,12 +59,12 @@ export default function Models() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-slate-50">
       <div className="px-4 md:px-6 lg:px-8 py-6 max-w-[1400px] w-full mx-auto">
-        <div className="mb-6 sm:mb-8">
+        <div className="mb-8">
           <div className="flex items-center gap-2 mb-2">
-            <Car className="h-6 w-6 sm:h-7 sm:w-7 text-red-600" />
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900">Quản lý model xe</h1>
+            <Car className="h-7 w-7 text-red-600" />
+            <h1 className="text-3xl md:text-4xl font-bold text-slate-900">Quản lý model xe</h1>
           </div>
-          <p className="mt-2 text-sm sm:text-base md:text-lg font-medium text-slate-700">Theo dõi và quản lý các model xe trong hệ thống</p>
+          <p className="mt-2 text-base md:text-lg font-medium text-slate-700">Theo dõi và quản lý các model xe trong hệ thống</p>
           <div className="mt-3 h-1.5 w-28 rounded-full bg-red-500 shadow-[0_4px_16px_-6px_rgba(239,68,68,0.65)]"/>
         </div>
 
@@ -122,20 +122,20 @@ export default function Models() {
           </div>
         </div>
 
-        <div className="mb-6 p-3 sm:p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
-          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-            <div className="relative flex-1 w-full sm:min-w-[200px] sm:max-w-[320px]">
+        <div className="mb-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="relative flex-1 min-w-[240px] md:min-w-[320px] md:max-w-[420px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Tìm kiếm model"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 bg-slate-50 border-slate-200 focus-visible:ring-red-500/70 text-sm sm:text-base"
+                className="pl-9 bg-slate-50 border-slate-200 focus-visible:ring-red-500/70"
               />
             </div>
 
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="w-full sm:w-[140px] md:w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
+              <SelectTrigger className="w-[150px] md:w-[180px] bg-slate-50 border-slate-200 focus-visible:ring-red-500/70">
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
@@ -153,7 +153,7 @@ export default function Models() {
                   setStatus("");
                   setSearch("");
                 }}
-                className="border-transparent text-slate-600 hover:text-red-600 hover:bg-red-50 w-full sm:w-auto"
+                className="border-transparent text-slate-600 hover:text-red-600 hover:bg-red-50"
               >
                 Xóa lọc
               </Button>

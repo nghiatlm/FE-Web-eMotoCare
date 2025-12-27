@@ -766,7 +766,7 @@ export default function MaintenanceModeEVCheck({
           null;
 
         const payload = {
-          result: (item.result || "").trim(),
+          result: (item.result || "").trim() || "Tốt",
           remedies: item.remedies || "NONE",
           warranty: item.warranty,
           unit: item.unit,
@@ -954,10 +954,11 @@ export default function MaintenanceModeEVCheck({
         
         // Khi đã hoàn thành sửa chữa, chỉ hiển thị text
         if (!canEditFields) {
+          const displayResult = r.result && r.result.trim() ? r.result : "Tốt";
           return (
             <div className="space-y-2">
               <span style={{ fontSize: 14, whiteSpace: "pre-wrap" }}>
-                {r.result || ""}
+                {displayResult}
               </span>
               {isCoi && r.id && !r.id.startsWith("temp_") && (
                 <div className="mt-2 p-2 border rounded bg-gray-50">
@@ -975,6 +976,7 @@ export default function MaintenanceModeEVCheck({
           <div className="space-y-2">
         <Input.TextArea
               value={r.result ?? ""}
+              placeholder="Tốt"
               onChange={(e) => handleChange(r.id, "result", e.target.value)}
           autoSize={{ minRows: 2, maxRows: 8 }}
               style={{ resize: "none", fontSize: 14, lineHeight: 1.5, maxWidth: "100%" }}
@@ -1718,6 +1720,15 @@ export default function MaintenanceModeEVCheck({
         </>
       )}
 
+      
+      {(evCheckStatus === "REPAIR_COMPLETED" ||
+        evCheckStatus === "COMPLETED") && (
+        <div className='mt-4 p-4 bg-green-50 border border-green-300 rounded text-center'>
+          <p className='text-green-700 font-medium'>
+            Đã hoàn thành sửa chữa
+          </p>
+        </div>
+      )}
 
       
       <RMAConfirmationModal

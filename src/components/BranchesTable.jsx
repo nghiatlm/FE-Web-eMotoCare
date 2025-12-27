@@ -180,130 +180,142 @@ export function BranchesTable({ search = "", status = "" }) {
   return (
   <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
-        <div className="min-w-[1100px]">
-          <table className="w-full table-fixed text-sm">
-            <colgroup>
-              <col style={{ width: '70px' }} />
-              <col style={{ width: '150px' }} />
-              <col style={{ width: '200px' }} />
-              <col style={{ width: '250px' }} />
-              <col style={{ width: '150px' }} />
-              <col style={{ width: '140px' }} />
-              <col style={{ width: '150px' }} />
-            </colgroup>
-            <thead className="sticky top-0 z-10">
-              <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
-                <th className="text-center py-4 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">STT</th>
-                <th className="text-left py-4 px-5 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Mã chi nhánh</th>
-                <th className="text-left py-4 px-5 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Tên chi nhánh</th>
-                <th className="text-left py-4 px-5 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Địa chỉ</th>
-                <th className="text-left py-4 px-5 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Số điện thoại</th>
-                <th className="text-center py-4 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Trạng thái</th>
-                <th className="text-center py-4 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap sticky right-0 bg-red-50 z-20 border-l border-red-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">
-                  Thao tác
-                </th>
+        <table className="w-full table-fixed">
+          <colgroup>
+            <col style={{ width: '70px' }} />
+            <col style={{ width: '150px' }} />
+            <col style={{ width: '200px' }} />
+            <col style={{ width: '250px' }} />
+            <col style={{ width: '150px' }} />
+            <col style={{ width: '140px' }} />
+            <col style={{ width: '150px' }} />
+          </colgroup>
+          <thead>
+            <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
+              <th className="text-center py-4 px-4 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">STT</th>
+              <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Mã chi nhánh</th>
+              <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Tên chi nhánh</th>
+              <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Địa chỉ</th>
+              <th className="text-left py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Số điện thoại</th>
+              <th className="text-center py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Trạng thái</th>
+              <th className="text-center py-4 px-6 text-xs font-semibold text-red-700 uppercase tracking-wide whitespace-nowrap">Thao tác</th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+
+      <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+        <table className="w-full table-fixed">
+          <colgroup>
+            <col style={{ width: '70px' }} />
+            <col style={{ width: '150px' }} />
+            <col style={{ width: '200px' }} />
+            <col style={{ width: '250px' }} />
+            <col style={{ width: '150px' }} />
+            <col style={{ width: '140px' }} />
+            <col style={{ width: '150px' }} />
+          </colgroup>
+          <tbody className="divide-y divide-slate-100">
+            {loading ? (
+              <tr>
+                <td colSpan="7" className="py-16 px-6 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="relative">
+                      <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-primary"></div>
+                      <div className="absolute inset-0 inline-block animate-spin rounded-full h-12 w-12 border-4 border-transparent border-r-primary/30" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+                    </div>
+                    <p className="text-base font-semibold text-slate-600 animate-pulse">Đang tải dữ liệu...</p>
+                  </div>
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                <tr>
-                  <td colSpan={7} className="py-16 px-6 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="relative">
-                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-primary"></div>
-                        <div className="absolute inset-0 inline-block animate-spin rounded-full h-12 w-12 border-4 border-transparent border-r-primary/30" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
-                      </div>
-                      <p className="text-base font-semibold text-slate-600 animate-pulse">Đang tải dữ liệu...</p>
-                    </div>
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan="7" className="py-16 px-6 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <Building2 className="h-12 w-12 text-slate-300" />
+                    <p className="text-base font-medium text-muted-foreground">Không tìm thấy chi nhánh</p>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              filtered.map((b, i) => (
+                <tr 
+                  key={b.id} 
+                  className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+                    i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'
+                  }`}
+                >
+                  <td className="py-4 px-4 text-center text-sm font-medium text-slate-600 align-top whitespace-nowrap">
+                    {(page - 1) * pageSize + i + 1}
                   </td>
-                </tr>
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-16 px-6 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <Building2 className="h-12 w-12 text-slate-300" />
-                      <p className="text-base font-medium text-muted-foreground">Không tìm thấy chi nhánh</p>
-                    </div>
+                  <td className="py-4 px-6 align-top">
+                    <span className="font-semibold text-slate-900 text-sm whitespace-nowrap overflow-hidden text-ellipsis block">{b.code || "—"}</span>
                   </td>
-                </tr>
-              ) : (
-                filtered.map((b, i) => (
-                  <tr 
-                    key={b.id}
-                    className={`group border-b border-slate-200 transition-colors ${
-                      i % 2 === 0 ? 'bg-white hover:bg-slate-50' : 'bg-slate-50/40 hover:bg-slate-100/60'
-                    }`}
-                  >
-                    <td className="py-4 px-4 text-center text-sm text-slate-600 whitespace-nowrap align-middle">
-                      {(page - 1) * pageSize + i + 1}
-                    </td>
-                    <td className="py-4 px-5 text-sm font-semibold text-slate-900 whitespace-nowrap truncate align-middle">
-                      {b.code || "—"}
-                    </td>
-                    <td className="py-4 px-5 text-sm font-semibold text-slate-900 whitespace-nowrap truncate align-middle">
-                      {b.name}
-                    </td>
-                    <td className="py-4 px-5 text-sm text-slate-700 whitespace-nowrap truncate align-middle">
-                      {b.location || "—"}
-                    </td>
-                    <td className="py-4 px-5 text-sm text-slate-700 whitespace-nowrap truncate align-middle">
-                      {formatPhoneNumber(b.phone) || "—"}
-                    </td>
-                    <td className="py-4 px-4 text-center align-middle whitespace-nowrap">
+                  <td className="py-4 px-6 align-top">
+                    <span className="font-semibold text-slate-900 text-sm whitespace-nowrap overflow-hidden text-ellipsis block">{b.name}</span>
+                  </td>
+                  <td className="py-4 px-6 align-top">
+                    <span className="text-sm text-slate-700 whitespace-nowrap overflow-hidden text-ellipsis block">{b.location || "—"}</span>
+                  </td>
+                  <td className="py-4 px-6 align-top">
+                    <span className="text-sm text-slate-700 whitespace-nowrap overflow-hidden text-ellipsis block">{formatPhoneNumber(b.phone) || "—"}</span>
+                  </td>
+                  <td className="py-4 px-6 text-center align-top whitespace-nowrap">
+                    <div className="flex items-center justify-center">
                       <span className={`${statusBadge(b.status)} whitespace-nowrap`}>
                         {b.status === "active" ? "Hoạt động" : b.status === "in_active" ? "Ngưng hoạt động" : b.status}
                       </span>
-                    </td>
-                    <td className={`py-4 px-4 text-center align-middle sticky right-0 z-10 border-l border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] group-hover:bg-slate-50 ${i % 2 === 0 ? "bg-white" : "bg-slate-50"}`}>
-                      <div className="flex items-center justify-center gap-2">
+                    </div>
+                  </td>
+                  <td className="py-4 px-6 text-center align-top whitespace-nowrap">
+                    <div className="flex items-center justify-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-primary hover:bg-primary/10 hover:text-primary transition-colors"
+                        onClick={() => window?.openEditBranch?.(b)}
+                        title="Sửa"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                        onClick={() => {
+                          if (!b.id) {
+                            console.error("BranchesTable: Cannot navigate - branch id is missing", b);
+                            return;
+                          }
+                          console.log("BranchesTable: Navigating to branch detail:", b.id);
+                          navigate(`/admin/branches/${b.id}`);
+                        }}
+                        title="Xem chi tiết"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {b.status === "active" && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-primary hover:bg-primary/10 hover:text-primary transition-colors"
-                          onClick={() => window?.openEditBranch?.(b)}
-                          title="Sửa"
+                          className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50 transition-colors"
+                          onClick={() => handleDeleteClick(b)}
+                          title="Ngừng hoạt động"
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pause className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                          onClick={() => {
-                            if (!b.id) {
-                              console.error("BranchesTable: Cannot navigate - branch id is missing", b);
-                              return;
-                            }
-                            console.log("BranchesTable: Navigating to branch detail:", b.id);
-                            navigate(`/admin/branches/${b.id}`);
-                          }}
-                          title="Xem chi tiết"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {b.status === "active" && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50 transition-colors"
-                            onClick={() => handleDeleteClick(b)}
-                            title="Ngừng hoạt động"
-                          >
-                            <Pause className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
 
       {total > 0 && (
-        <div className="flex justify-center px-4 py-3 border-t border-slate-200 bg-slate-50">
+        <div className="flex justify-center px-4 py-3 border-t border-slate-200/80 bg-slate-50/60">
           <Pagination>
             <PaginationContent className="gap-1">
               <PaginationItem>

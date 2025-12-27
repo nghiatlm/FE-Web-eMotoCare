@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Building2, MapPin, Phone, Mail, Clock, Users, Hash, Info, Calendar, FileText, Edit, DollarSign, TrendingUp, TrendingDown, Plus, Wrench } from "lucide-react";
+import { ArrowLeft, Building2, MapPin, Phone, Mail, Clock, Users, Hash, Info, Calendar, FileText, Edit, DollarSign, TrendingUp, Plus } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,8 +30,6 @@ export default function BranchDetail() {
   const [isCreatingSlot, setIsCreatingSlot] = useState(false);
   const [dashboardData, setDashboardData] = useState(null);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
-  const [monthlyData, setMonthlyData] = useState(null);
-  const [monthlyDataArray, setMonthlyDataArray] = useState([]);
   const [selectedWeekStart, setSelectedWeekStart] = useState(() => {
     const today = new Date();
     const day = today.getDay();
@@ -90,23 +88,12 @@ export default function BranchDetail() {
       if (!id) return;
       try {
         setLoadingDashboard(true);
-        // Gọi API để lấy dữ liệu theo tháng
         const res = await getDashboardOverview(id);
-        // Response có cấu trúc: { data: { year: 2025, data: [{ month, ... }] } }
-        const responseData = res?.data || res;
-        const dataArray = responseData?.data || [];
-        
-        // Lấy dữ liệu tháng hiện tại từ array data
-        const currentMonth = new Date().getMonth() + 1; // Tháng từ 1-12
-        const currentMonthData = dataArray.find((item) => Number(item.month) === currentMonth);
-        
-        setMonthlyData(currentMonthData || null);
-        setMonthlyDataArray(dataArray);
-        setDashboardData(responseData || null);
+        const data = res?.data?.data || res?.data || res;
+        setDashboardData(data || null);
       } catch (error) {
         console.error("Error fetching dashboard overview:", error);
         setDashboardData(null);
-        setMonthlyData(null);
       } finally {
         setLoadingDashboard(false);
       }
@@ -246,52 +233,14 @@ export default function BranchDetail() {
     (staff) => staff.position === "MANAGER_BRANCH"
   );
 
-  // Tính phần trăm thay đổi so với tháng trước
-  const calculatePercentageChange = (currentValue, previousValue) => {
-    if (!previousValue || previousValue === 0) {
-      if (currentValue > 0) return 100;
-      return 0;
-    }
-    return ((currentValue - previousValue) / previousValue) * 100;
-  };
-
-  const currentMonth = new Date().getMonth() + 1;
-  const previousMonth = currentMonth === 1 ? 12 : currentMonth - 1;
-  const previousMonthData = monthlyDataArray.find((item) => Number(item.month) === previousMonth);
-
-  const revenueChange = calculatePercentageChange(
-    monthlyData?.revenue ?? 0,
-    previousMonthData?.revenue ?? 0
-  );
-  const repairChange = calculatePercentageChange(
-    monthlyData?.repair ?? 0,
-    previousMonthData?.repair ?? 0
-  );
-  const warrantyChange = calculatePercentageChange(
-    monthlyData?.warranty ?? 0,
-    previousMonthData?.warranty ?? 0
-  );
-
-  const formatPercent = (value) => {
-    const num = Number(value);
-    if (!Number.isFinite(num)) return '0';
-    if (num % 1 === 0) {
-      return num.toString();
-    }
-    return num.toFixed(1);
-  };
-
   const summaryStats = {
-    totalRevenue: monthlyData?.revenue ?? 0,
-    totalAppointments: monthlyData?.total ?? 0,
-    completedAppointments: monthlyData?.completed ?? 0,
-    repairAppointments: monthlyData?.repair ?? 0,
-    totalWarrantyClaims: monthlyData?.warranty ?? 0,
+    totalRevenue: dashboardData?.totalRevenue ?? 0,
+    totalAppointments: dashboardData?.totalAppointment ?? 0,
+    completedAppointments: dashboardData?.totalAppointment ?? 0,
     totalStaff: branchDetail?.staffs?.filter((s) => s.position !== "MANAGER_BRANCH").length ?? 0,
     activeStaff: branchDetail?.staffs?.filter((s) => s.status === "ACTIVE" && s.position !== "MANAGER_BRANCH").length ?? 0,
-    revenueChange,
-    repairChange,
-    warrantyChange,
+    totalWarrantyClaims: dashboardData?.totalRMA ?? 0,
+    confirmedWarranty: dashboardData?.totalRMA ?? 0,
   };
 
   return (
@@ -333,18 +282,9 @@ export default function BranchDetail() {
               <div className="text-2xl font-semibold text-slate-900">
                 {formatCurrency(summaryStats.totalRevenue)}
               </div>
-              <p className={`text-xs mt-1 flex items-center gap-1 ${
-                summaryStats.revenueChange >= 0 ? 'text-emerald-600' : 'text-red-600'
-              }`}>
-                {summaryStats.revenueChange >= 0 ? (
-                  <TrendingUp className="h-3 w-3" />
-                ) : (
-                  <TrendingDown className="h-3 w-3" />
-                )}
-                <span>
-                  {summaryStats.revenueChange >= 0 ? '+' : ''}
-                  {formatPercent(summaryStats.revenueChange)}% so với tháng trước
-                </span>
+              <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                <TrendingUp className="h-3 w-3" />
+                <span>+12.5% so với kỳ trước</span>
               </p>
             </CardContent>
           </Card>
@@ -377,30 +317,17 @@ export default function BranchDetail() {
             <div className="h-1 w-full bg-emerald-500/80" />
             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-3">
               <div>
-                <CardTitle className="text-sm font-medium text-slate-600">Tổng lịch hẹn sửa chữa</CardTitle>
-                <p className="mt-1 text-xs text-slate-400">Lịch hẹn sửa chữa trong tháng</p>
+                <CardTitle className="text-sm font-medium text-slate-600">Nhân viên</CardTitle>
+                <p className="mt-1 text-xs text-slate-400">Đang làm việc / Tổng số</p>
               </div>
               <div className="p-2 rounded-full bg-emerald-50 text-emerald-600">
-                <Wrench className="h-4 w-4" />
+                <Users className="h-4 w-4" />
               </div>
             </CardHeader>
             <CardContent className="pt-1">
               <div className="text-2xl font-semibold text-slate-900">
-                {summaryStats.repairAppointments}
+                {summaryStats.activeStaff}/{summaryStats.totalStaff}
               </div>
-              <p className={`text-xs mt-1 flex items-center gap-1 ${
-                summaryStats.repairChange >= 0 ? 'text-emerald-600' : 'text-red-600'
-              }`}>
-                {summaryStats.repairChange >= 0 ? (
-                  <TrendingUp className="h-3 w-3" />
-                ) : (
-                  <TrendingDown className="h-3 w-3" />
-                )}
-                <span>
-                  {summaryStats.repairChange >= 0 ? '+' : ''}
-                  {formatPercent(summaryStats.repairChange)}% so với tháng trước
-                </span>
-              </p>
             </CardContent>
           </Card>
 
@@ -417,19 +344,12 @@ export default function BranchDetail() {
             </CardHeader>
             <CardContent className="pt-1">
               <div className="text-2xl font-semibold text-slate-900">
-                {summaryStats.totalWarrantyClaims}
+                {summaryStats.confirmedWarranty}
               </div>
-              <p className={`text-xs mt-1 flex items-center gap-1 ${
-                summaryStats.warrantyChange >= 0 ? 'text-emerald-600' : 'text-red-600'
-              }`}>
-                {summaryStats.warrantyChange >= 0 ? (
-                  <TrendingUp className="h-3 w-3" />
-                ) : (
-                  <TrendingDown className="h-3 w-3" />
-                )}
-                <span>
-                  {summaryStats.warrantyChange >= 0 ? '+' : ''}
-                  {formatPercent(summaryStats.warrantyChange)}% so với tháng trước
+              <p className="text-xs text-slate-500 mt-1">
+                Tổng yêu cầu:{" "}
+                <span className="font-medium text-slate-700">
+                  {summaryStats.totalWarrantyClaims}
                 </span>
               </p>
             </CardContent>
@@ -548,56 +468,6 @@ export default function BranchDetail() {
             </CardContent>
           </Card>
 
-          {branchDetail.serviceCenterInventory && (
-            <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
-              <CardHeader className="border-b border-slate-100 pb-3 bg-red-50/40">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-full bg-red-500/10 flex items-center justify-center">
-                    <Building2 className="h-5 w-5 text-red-600" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base font-semibold text-slate-900">
-                      Kho chi nhánh
-                    </CardTitle>
-                    <p className="text-xs text-slate-500">
-                      Thông tin kho phụ tùng của chi nhánh
-                    </p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Tên kho
-                    </label>
-                    <p className="mt-1 text-sm font-medium text-slate-900">
-                      {branchDetail.serviceCenterInventory.serviceCenterInventoryName || "Kho chi nhánh"}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-start sm:items-end gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Trạng thái
-                    </label>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "px-2 py-1 text-xs rounded-full border",
-                        branchDetail.serviceCenterInventory.status === "ACTIVE"
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          : "bg-slate-50 text-slate-600 border-slate-200"
-                      )}
-                    >
-                      {branchDetail.serviceCenterInventory.status === "ACTIVE"
-                        ? "Đang hoạt động"
-                        : "Ngưng hoạt động"}
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {(branchDetail.latitude || branchDetail.longitude || branchDetail.address) && (
             <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
               <CardHeader className="border-b border-slate-100 pb-3 bg-red-50/40">
@@ -648,8 +518,23 @@ export default function BranchDetail() {
                     <Calendar className="h-5 w-5 text-red-600" />
                   </div>
                   <div className="flex-1">
-                    <CardTitle className="text-base font-semibold text-slate-900">
+                    <CardTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
                       Lịch làm việc
+                      {branchDetail.serviceCenterSlots && branchDetail.serviceCenterSlots.length > 0 && (
+                        <Badge variant="secondary" className="ml-1 rounded-full px-2 py-0.5 text-[11px] bg-slate-100 text-slate-700">
+                          {(() => {
+                            const weekDays = Array.from({ length: 7 }, (_, i) => {
+                              const date = new Date(selectedWeekStart);
+                              date.setDate(date.getDate() + i);
+                              return format(date, "yyyy-MM-dd");
+                            });
+                            const slotsInWeek = branchDetail.serviceCenterSlots.filter(slot => 
+                              weekDays.includes(slot.date)
+                            );
+                            return slotsInWeek.length;
+                          })()} slot
+                        </Badge>
+                      )}
                     </CardTitle>
                     <p className="text-xs text-slate-500">
                       Quản lý các khung giờ làm việc của chi nhánh

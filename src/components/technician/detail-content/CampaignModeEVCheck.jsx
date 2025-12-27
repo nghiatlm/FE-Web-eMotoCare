@@ -859,7 +859,7 @@ export default function CampaignModeEVCheck({
     try {
       const payload = {
         partItemId: item.partItemId,
-        result: (item.result || "").trim(),
+        result: (item.result || "").trim() || "Tốt",
         remedies: item.remedies ?? "REPLACE",
         unit: item.unit || "cái",
         priceService: Number(item.priceService || 0),
@@ -935,7 +935,7 @@ export default function CampaignModeEVCheck({
       for (const item of itemsToSave) {
         const payload = {
           partItemId: item.partItemId,
-          result: (item.result || "").trim(),
+          result: (item.result || "").trim() || "Tốt",
           remedies: item.remedies ?? "REPLACE",
           unit: item.unit || "cái",
           priceService: Number(item.priceService || 0),

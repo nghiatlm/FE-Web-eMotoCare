@@ -172,26 +172,26 @@ export function AdminTopHeader() {
   const [avatarUrl] = useState("");
 
   return (
-    <header className="h-14 bg-white border-b border-red-100 flex items-center justify-between px-4 sticky top-0 z-10 text-red-600 shrink-0">
-      <SidebarTrigger className="text-red-600 shrink-0" />
+    <header className="h-14 bg-white border-b border-red-100 flex items-center justify-between px-4 sticky top-0 z-10 text-red-600">
+      <SidebarTrigger className="text-red-600" />
       <button
         type="button"
         onClick={() => navigate("/admin/profile")}
-        className="flex items-center gap-3 cursor-pointer hover:bg-red-50/60 rounded-full px-2 py-1 transition-colors shrink-0 ml-auto"
+        className="flex items-center gap-3 cursor-pointer hover:bg-red-50/60 rounded-full px-2 py-1 transition-colors"
         aria-label="Mở hồ sơ"
       >
         {avatarUrl ? (
           <img
             src={avatarUrl}
             alt={displayName}
-            className="h-9 w-9 rounded-full object-cover border border-red-100 shrink-0"
+            className="h-9 w-9 rounded-full object-cover border border-red-100"
           />
         ) : (
-          <div className="h-9 w-9 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold uppercase shrink-0">
+          <div className="h-9 w-9 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold uppercase">
             {initials}
           </div>
         )}
-        <span className="text-sm font-semibold text-red-700 max-w-[200px] truncate leading-tight hidden sm:inline">
+        <span className="text-sm font-semibold text-red-700 max-w-[200px] truncate leading-tight">
           {displayName}
         </span>
       </button>

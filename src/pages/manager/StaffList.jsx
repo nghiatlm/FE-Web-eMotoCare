@@ -232,136 +232,127 @@ export default function StaffList() {
             : `Hiển thị ${staffs.length} / ${total} nhân viên`}
         </p>
 
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <div className="min-w-[1100px]">
-              <table className="w-full table-fixed text-sm">
-                <colgroup>
-                  <col style={{ width: '70px' }} />
-                  <col style={{ width: '140px' }} />
-                  <col style={{ width: '100px' }} />
-                  <col style={{ width: '180px' }} />
-                  <col style={{ width: '140px' }} />
-                  <col style={{ width: '200px' }} />
-                  <col style={{ width: '150px' }} />
-                  <col style={{ width: '140px' }} />
-                  <col style={{ width: '150px' }} />
-                </colgroup>
-                <thead className="sticky top-0 z-10">
-                  <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
-                    <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
-                      STT
-                    </th>
-                    <th className="text-left py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
-                      Mã nhân viên
-                    </th>
-                    <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
-                      Ảnh đại diện
-                    </th>
-                    <th className="text-left py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
-                      Họ tên
-                    </th>
-                    <th className="text-left py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
-                      Số điện thoại
-                    </th>
-                    <th className="text-left py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
-                      Email
-                    </th>
-                    <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
-                      Vai trò
-                    </th>
-                    <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
-                      Trạng thái
-                    </th>
-                    <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap sticky right-0 bg-red-50 z-20 border-l border-red-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">
-                      Thao tác
-                    </th>
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm overflow-x-auto">
+          <div className="min-w-[1100px]">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-16">
+                    STT
+                  </th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    Mã nhân viên
+                  </th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    Ảnh đại diện
+                  </th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    Họ tên
+                  </th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    Số điện thoại
+                  </th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    Email
+                  </th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    Vai trò
+                  </th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                    Trạng thái
+                  </th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-32">
+                    Thao tác
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="py-10 text-center text-muted-foreground text-sm">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
+                        <span>Đang tải dữ liệu...</span>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={9} className="py-10 text-center text-muted-foreground text-sm">
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
-                          <span>Đang tải dữ liệu...</span>
-                        </div>
+                ) : filteredStaff.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-10 text-center text-muted-foreground text-sm">
+                      Không tìm thấy nhân viên nào
+                    </td>
+                  </tr>
+                ) : (
+                  filteredStaff.map((staff, index) => (
+                    <tr
+                      key={staff.id}
+                      className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+                        index % 2 === 0 ? "bg-white" : "bg-slate-50/40"
+                      }`}
+                    >
+                      <td className="py-3 px-4 text-sm text-slate-600 text-center">
+                        {(page - 1) * pageSize + index + 1}
                       </td>
-                    </tr>
-                  ) : filteredStaff.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="py-10 text-center text-muted-foreground text-sm">
-                        Không tìm thấy nhân viên nào
+                      <td className="py-3 px-4 text-sm text-slate-900 text-center">
+                        {staff.staffCode}
                       </td>
-                    </tr>
-                  ) : (
-                    filteredStaff.map((staff, index) => (
-                      <tr
-                        key={staff.id}
-                        className={`group border-b border-slate-200 transition-colors ${
-                          index % 2 === 0 ? "bg-white hover:bg-slate-50" : "bg-slate-50/40 hover:bg-slate-100/60"
-                        }`}
-                      >
-                        <td className="py-4 px-4 text-sm text-slate-600 text-center whitespace-nowrap align-middle">
-                          {(page - 1) * pageSize + index + 1}
-                        </td>
-                        <td className="py-4 px-5 text-sm font-semibold text-slate-900 whitespace-nowrap truncate align-middle">
-                          {staff.staffCode}
-                        </td>
-                        <td className="py-4 px-4 text-sm text-slate-900 text-center align-middle">
+                      <td className="py-3 px-4 text-sm text-slate-900 text-center">
+                        <div className="flex items-center justify-center">
                           {staff.avatarUrl ? (
                             <img
                               src={staff.avatarUrl}
                               alt="Ảnh đại diện"
-                              className="h-8 w-8 rounded-full object-cover mx-auto"
+                              className="h-8 w-8 rounded-full object-cover"
                             />
                           ) : (
                             <span>—</span>
                           )}
-                        </td>
-                        <td className="py-4 px-5 text-sm font-semibold text-slate-900 whitespace-nowrap truncate align-middle">
-                          {staff.name}
-                        </td>
-                        <td className="py-4 px-5 text-sm text-slate-700 whitespace-nowrap truncate align-middle">
-                          {staff.phone || "—"}
-                        </td>
-                        <td className="py-4 px-5 text-sm text-slate-700 whitespace-nowrap truncate align-middle">
-                          {staff.email || "—"}
-                        </td>
-                        <td className="py-4 px-4 text-center align-middle whitespace-nowrap">
-                          {getRoleBadge(staff.role)}
-                        </td>
-                        <td className="py-4 px-4 text-center align-middle whitespace-nowrap">
-                          {getStatusBadge(staff.status)}
-                        </td>
-                        <td className={`py-4 px-4 text-center align-middle sticky right-0 z-10 border-l border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] group-hover:bg-slate-50 ${index % 2 === 0 ? "bg-white" : "bg-slate-50"}`}>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-900 text-center">
+                        {staff.name}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-800 text-center">
+                        {staff.phone || "—"}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-800 text-center">
+                        {staff.email || "—"}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-800 text-center">
+                        {getRoleBadge(staff.role)}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-center">
+                        {getStatusBadge(staff.status)}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-center">
+                        <div className="flex justify-center gap-2">
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            className="text-primary hover:text-primary/80"
                             onClick={() => navigate(`/manager/staff/${staff.id}`)}
                           >
                             <Eye className="h-4 w-4 mr-1" />
                             Chi tiết
                           </Button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
         {total > 0 && (
-          <div className="mt-4 flex items-center justify-center px-4 py-3 border-t border-slate-200 bg-slate-50">
+          <div className="mt-4 pb-4 flex items-center justify-center text-sm text-slate-500">
             <Pagination>
-              <PaginationContent className="gap-1">
+              <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious
                     onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                    className={`h-8 px-2.5 text-xs cursor-pointer rounded-full ${
+                    className={`cursor-pointer rounded-full px-3 ${
                       page === 1 ? "pointer-events-none opacity-40" : "hover:bg-slate-100"
                     }`}
                   />
@@ -372,9 +363,9 @@ export default function StaffList() {
                     <PaginationLink
                       onClick={() => setPage(pageNum)}
                       isActive={page === pageNum}
-                      className={`h-8 min-w-[32px] cursor-pointer rounded-full px-2.5 text-xs ${
+                      className={`cursor-pointer rounded-full px-3 py-1 text-sm ${
                         page === pageNum
-                          ? "bg-red-100 text-red-700 font-semibold border border-red-200"
+                          ? "bg-red-100 text-red-700 font-medium"
                           : "hover:bg-slate-100"
                       }`}
                     >
@@ -386,7 +377,7 @@ export default function StaffList() {
                 <PaginationItem>
                   <PaginationNext
                     onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                    className={`h-8 px-2.5 text-xs cursor-pointer rounded-full ${
+                    className={`cursor-pointer rounded-full px-3 ${
                       page >= totalPages ? "pointer-events-none opacity-40" : "hover:bg-slate-100"
                     }`}
                   />

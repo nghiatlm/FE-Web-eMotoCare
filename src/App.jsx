@@ -127,11 +127,11 @@ const App = () => (
             element={
             <ProtectedRoute allowedRoles={["ROLE_ADMIN"]}>
               <SidebarProvider>
-                <div className="flex min-h-screen w-full overflow-hidden">
+                <div className="flex min-h-screen w-full">
                   <AdminSidebar />
-                  <div className="flex-1 flex flex-col overflow-hidden">
+                  <div className="flex-1 flex flex-col">
                   <AdminTopHeader />
-                    <main className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <main className="flex-1">
                       <Routes>
                         <Route path="" element={<Index />} />
                         <Route path="users" element={<UserManagement />} />
@@ -293,9 +293,9 @@ const App = () => (
               <SidebarProvider>
                 <div className="flex min-h-screen w-full">
                   <StoreKeeperSidebar />
-                  <div className="flex-1 flex flex-col overflow-hidden">
+                  <div className="flex-1 flex flex-col">
                     <StoreKeeperTopHeader />
-                    <main className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <main className="flex-1">
                       <Routes>
                         <Route path="" element={<StorekeeperInventory />} />
                         <Route
@@ -344,9 +344,9 @@ const App = () => (
               <SidebarProvider>
                 <div className="flex min-h-screen w-full">
                   <ManagerSidebar />
-                  <div className="flex-1 flex flex-col overflow-hidden">
+                  <div className="flex-1 flex flex-col">
                     <ManagerTopHeader />
-                    <main className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <main className="flex-1">
                       <Routes>
                         <Route path="" element={<Dashboard />} />
                         <Route

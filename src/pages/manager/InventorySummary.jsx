@@ -9,7 +9,6 @@ import { useNavigate } from "react-router-dom";
 import { getServiceCenterInventories } from "@/api/serviceCenterInventoriesApi";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStaffByAccountId } from "@/api/staffsApi";
-import { getServiceCenterById } from "@/api/serviceCentersApi";
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
@@ -48,25 +47,10 @@ export default function InventorySummary() {
         const staffData = staffResponse?.data?.rowDatas?.[0];
         
         if (staffData?.serviceCenterId) {
-          let latitude = staffData.serviceCenter?.latitude;
-          let longitude = staffData.serviceCenter?.longitude;
-          
-          // Nếu không có lat/long trong staffData.serviceCenter, gọi API để lấy đầy đủ thông tin
-          if ((!latitude || !longitude) && staffData.serviceCenterId) {
-            try {
-              const centerResponse = await getServiceCenterById(staffData.serviceCenterId);
-              const centerData = centerResponse?.data || centerResponse;
-              latitude = centerData?.latitude || latitude;
-              longitude = centerData?.longitude || longitude;
-            } catch (centerError) {
-              console.error("Error fetching service center details:", centerError);
-            }
-          }
-          
           setCurrentWarehouse({
             serviceCenterId: staffData.serviceCenterId,
-            latitude,
-            longitude,
+            latitude: staffData.serviceCenter?.latitude,
+            longitude: staffData.serviceCenter?.longitude,
           });
         }
       } catch (error) {
@@ -362,24 +346,12 @@ export default function InventorySummary() {
             <thead className="sticky top-0 z-10">
               <tr className="bg-gradient-to-r from-red-60 via-red-10/80 to-red-100/60 border-b border-red-100">
                 <th className="px-5 py-3 w-12"></th>
-                <th className="text-center px-5 py-3 w-16 text-xs font-semibold tracking-wide text-red-700 uppercase">
-                  STT
-                </th>
-                <th className="text-center px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase">
-                  Hình ảnh
-                </th>
-                <th className="text-left px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase">
-                  Mã phụ tùng
-                </th>
-                <th className="text-left px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase">
-                  Tên phụ tùng
-                </th>
-                <th className="text-center px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase">
-                  Số lượng tồn kho
-                </th>
-                <th className="text-left px-5 py-3 min-w-[260px] text-xs font-semibold tracking-wide text-red-700 uppercase">
-                  Kho
-                </th>
+                <th className="text-center px-5 py-3 w-16 text-xs font-semibold tracking-wide text-red-700 uppercase">STT</th>
+                <th className="text-center px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase">Mã phụ tùng</th>
+                <th className="text-center px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase">Tên phụ tùng</th>
+                <th className="text-center px-5 py-3 text-xs font-semibold tracking-wide text-red-700 uppercase">Số lượng tồn kho</th>
+                <th className="text-center px-5 py-3 min-w-[260px] text-xs font-semibold tracking-wide text-red-700 uppercase">Kho</th>
+                <th className="text-center px-5 py-3 max-w-[200px] text-xs font-semibold tracking-wide text-red-700 uppercase">Mô tả</th>
               </tr>
             </thead>
             <tbody>
@@ -428,31 +400,32 @@ export default function InventorySummary() {
                       <td className="px-5 py-4 text-center text-sm font-medium text-muted-foreground">
                         {rowIndex + 1}
                       </td>
-                      {/* Hình ảnh */}
                       <td className="px-5 py-4 text-center">
-                        {r.partImage ? (
-                          <img
-                            src={r.partImage}
-                            alt={r.partName}
-                            className="h-12 w-12 rounded-lg object-cover border border-border/60 shadow-sm mx-auto"
-                          />
-                        ) : (
-                          <div className="h-12 w-12 rounded-lg border border-dashed border-border/60 flex items-center justify-center text-xs text-muted-foreground mx-auto">
-                            N/A
-                          </div>
-                        )}
-                      </td>
-                      {/* Mã phụ tùng */}
-                      <td className="px-5 py-4 text-left">
                         <span className="text-primary font-semibold tracking-wide">
                           {r.partCode}
                         </span>
                       </td>
-                      {/* Tên phụ tùng */}
-                      <td className="px-5 py-4 text-left">
-                        <p className="font-medium text-foreground line-clamp-2">{r.partName}</p>
+                      <td className="px-5 py-4 text-center">
+                        <div className="flex items-center justify-center gap-3">
+                          {r.partImage ? (
+                            <img
+                              src={r.partImage}
+                              alt={r.partName}
+                              className="h-12 w-12 rounded-lg object-cover border border-border/60 shadow-sm"
+                            />
+                          ) : (
+                            <div className="h-12 w-12 rounded-lg border border-dashed border-border/60 flex items-center justify-center text-xs text-muted-foreground">
+                              N/A
+                            </div>
+                          )}
+                          <div className="space-y-1 text-left">
+                            <p className="font-medium text-foreground line-clamp-2">{r.partName}</p>
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground/80">
+                              Mã chuẩn: {r.partCode}
+                            </p>
+                          </div>
+                        </div>
                       </td>
-                      {/* Số lượng + trạng thái */}
                       <td className="px-5 py-4 text-center">
                         <div className="flex flex-col items-center gap-2">
                           <Badge variant="secondary" className="text-sm px-3 py-1 w-fit">
@@ -463,10 +436,9 @@ export default function InventorySummary() {
                           </div>
                         </div>
                       </td>
-                      {/* Kho gần nhất */}
-                      <td className="px-5 py-4 text-left">
+                      <td className="px-5 py-4 text-center">
                         {r.nearestWarehouse ? (
-                          <div className="flex flex-col items-start space-y-1.5 text-sm text-muted-foreground">
+                          <div className="flex flex-col items-center space-y-1.5 text-sm text-muted-foreground">
                             {r.nearestWarehouse.split("\n").map((line, idx) => {
                               if (!line) return null;
                               if (idx === 0) {
@@ -490,6 +462,11 @@ export default function InventorySummary() {
                         ) : (
                           <p className="text-sm text-muted-foreground">—</p>
                         )}
+                      </td>
+                      <td className="px-5 py-4 text-center max-w-[200px]">
+                        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 truncate">
+                          {r.branches && r.branches.length > 0 ? r.branches[0].description : "—"}
+                        </p>
                       </td>
                     </tr>
                     {isExpanded && hasBranches ? (
@@ -536,44 +513,7 @@ export default function InventorySummary() {
                                 <tbody>
                                   {r.branches.flatMap((branch) => {
                                     const [b1, b2, b3] = String(branch.warehouse || "").split("\n");
-                                    
-                                    // Nhóm các item có cùng mã phụ tùng và số serial là "-" (hoặc rỗng/null)
-                                    const groupedItems = [];
-                                    const itemMap = new Map();
-                                    
-                                    (branch.items || []).forEach((item) => {
-                                      const serialKey = item.serialNumber || "";
-                                      const hasSerial = serialKey.trim() !== "" && serialKey !== "-";
-                                      
-                                      if (hasSerial) {
-                                        // Nếu có serial, hiển thị riêng
-                                        groupedItems.push({
-                                          ...item,
-                                          isGrouped: false,
-                                        });
-                                      } else {
-                                        // Nếu không có serial, nhóm lại theo mã phụ tùng
-                                        const key = `${branch.inventoryId}-no-serial`;
-                                        if (!itemMap.has(key)) {
-                                          itemMap.set(key, {
-                                            ...item,
-                                            quantity: 0,
-                                            qty: 0,
-                                            isGrouped: true,
-                                          });
-                                        }
-                                        const groupedItem = itemMap.get(key);
-                                        groupedItem.quantity += (item.quantity || item.qty || 1);
-                                        groupedItem.qty += (item.quantity || item.qty || 1);
-                                      }
-                                    });
-                                    
-                                    // Thêm các item đã nhóm vào danh sách
-                                    itemMap.forEach((groupedItem) => {
-                                      groupedItems.push(groupedItem);
-                                    });
-                                    
-                                    return groupedItems.map((item, itemIdx) => (
+                                    return (branch.items || []).map((item, itemIdx) => (
                                       <tr
                                         key={item.id || `${branch.inventoryId}-${itemIdx}`}
                                         className="bg-card/90 border border-border/40 shadow-sm"
@@ -583,7 +523,7 @@ export default function InventorySummary() {
                                         </td>
                                         <td className="px-6 py-3 text-center">{r.partName}</td>
                                         <td className="px-6 py-3 text-center text-primary/90 font-medium">
-                                          {item.serialNumber || "—"}
+                                          {item.serialNumber || item.id}
                                         </td>
                                         <td className="px-6 py-3 text-center">
                                           <div className="flex items-center justify-center">

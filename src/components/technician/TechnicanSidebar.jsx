@@ -157,7 +157,7 @@ export function TechnicianTopHeader() {
           const staff = res?.data?.rowDatas?.[0];
           if (staff) {
             const name =
-              `${staff.firstName || ""} ${staff.lastName || ""}`.trim() ||
+              `${staff.lastName || ""} ${staff.firstName || ""}`.trim() ||
               staff.account?.phone ||
               "Kỹ thuật viên";
             const avatar = staff.avatarUrl || staff.account?.avatarUrl || "";
@@ -176,7 +176,7 @@ export function TechnicianTopHeader() {
           }
         }
         const fallbackName =
-          `${account.firstName || ""} ${account.lastName || ""}`.trim() ||
+          `${account.lastName || ""} ${account.firstName || ""}`.trim() ||
           account.phone ||
           account.email ||
           "Kỹ thuật viên";
@@ -194,7 +194,7 @@ export function TechnicianTopHeader() {
       } catch (error) {
         const account = user?.accountResponse || user?.user || user || {};
         const fallbackName =
-          `${account.firstName || ""} ${account.lastName || ""}`.trim() ||
+          `${account.lastName || ""} ${account.firstName || ""}`.trim() ||
           account.phone ||
           account.email ||
           "Kỹ thuật viên";

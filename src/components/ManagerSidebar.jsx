@@ -246,7 +246,7 @@ export function ManagerTopHeader() {
   }, []);
 
   return (
-    <header className="h-14 bg-white border-b border-red-100 flex items-center justify-between px-4 pr-6 text-red-600">
+    <header className="h-14 bg-white border-b border-red-100 flex items-center justify-between px-4 pr-6 sticky top-0 z-10 text-red-600">
       <SidebarTrigger className="text-red-600" />
       <button
         type="button"

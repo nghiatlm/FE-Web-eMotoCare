@@ -80,48 +80,48 @@ export default function WarrantyList() {
     switch (status?.toUpperCase()) {
       case "PENDING":
         return (
-          <Badge className="inline-flex px-3 py-1 rounded-full text-xs font-medium justify-center bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border border-yellow-200 flex items-center gap-1">
+          <Badge className="inline-flex px-3 py-1 rounded-full text-xs font-medium justify-center bg-yellow-100 text-yellow-800 hover:bg-yellow-100 flex items-center gap-1">
             Chờ xác nhận
           </Badge>
         );
       case "PROCESSING":
         return (
-          <Badge className="inline-flex px-3 py-1 rounded-full text-xs font-medium justify-center bg-blue-100 text-blue-800 hover:bg-blue-100 border border-blue-200 flex items-center gap-1">
+          <Badge className="inline-flex px-3 py-1 rounded-full text-xs font-medium justify-center bg-blue-100 text-blue-800 hover:bg-blue-100 flex items-center gap-1">
             Đang xử lý
           </Badge>
         );
       case "APPROVED":
         return (
-          <Badge className="inline-flex px-3 py-1 rounded-full text-xs font-medium justify-center bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 flex items-center gap-1">
+          <Badge className="bg-green-100 text-green-800 hover:bg-green-100 flex items-center gap-1">
             Đã duyệt
           </Badge>
         );
       case "REJECTED":
         return (
-          <Badge className="inline-flex px-3 py-1 rounded-full text-xs font-medium justify-center bg-red-100 text-red-800 hover:bg-red-100 border border-red-200 flex items-center gap-1">
+          <Badge className="bg-red-100 text-red-800 hover:bg-red-100 flex items-center gap-1">
             Đã từ chối
           </Badge>
         );
       case "CANCELED":
         return (
-          <Badge className="inline-flex px-3 py-1 rounded-full text-xs font-medium justify-center bg-slate-100 text-slate-800 hover:bg-slate-100 border border-slate-200 flex items-center gap-1">
+          <Badge className="bg-slate-100 text-slate-800 hover:bg-slate-100 flex items-center gap-1">
             Đã hủy
           </Badge>
         );
       case "COMPLETED":
         return (
-          <Badge className="inline-flex px-3 py-1 rounded-full text-xs font-medium justify-center bg-green-100 text-green-800 hover:bg-green-100 border border-green-200 flex items-center gap-1">
+          <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 flex items-center gap-1">
             Hoàn thành
           </Badge>
         );
       case "APPOINTMENT_BOOKED":
         return (
-          <Badge className="inline-flex px-3 py-1 rounded-full text-xs font-medium justify-center bg-purple-100 text-purple-800 hover:bg-purple-100 border border-purple-200 flex items-center gap-1">
+          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 flex items-center gap-1">
             Đã đặt lịch
           </Badge>
         );
       default:
-        return <Badge variant="secondary" className="border">{status}</Badge>;
+        return <Badge variant="secondary">{status}</Badge>;
     }
   };
 

@@ -29,7 +29,6 @@ export default function RMAConfirmationModal({
 
     try {
       setIsSubmitting(true);
-      const loadingToast = toast.loading("Đang tạo yêu cầu RMA...");
 
       const staffInfo = await fetchServiceStaff();
       const staffData = staffInfo?.data?.data || staffInfo?.data || staffInfo;
@@ -66,11 +65,9 @@ export default function RMAConfirmationModal({
         const detailRes = await createRMADetailService(detailPayload);
       }
 
-      toast.dismiss(loadingToast);
       onRMASuccess?.();
       onClose();
     } catch (err) {
-      toast.dismiss(loadingToast);
       toast.error((err?.response?.data?.message || err?.data?.message || err?.message || "Không thể tạo RMA."));
     } finally {
       setIsSubmitting(false);
@@ -82,7 +79,7 @@ export default function RMAConfirmationModal({
       title={
         <Space>
           <AlertTriangle size={20} style={{ color: "#ff4d4f" }} />
-          <span style={{ fontSize: 18, fontWeight: 600 }}>Xác nhận Tạo Yêu cầu RMA</span>
+          <span style={{ fontSize: 18, fontWeight: 600 }}>Xác nhận tạo yêu cầu bảo hành</span>
         </Space>
       }
       open={open}
@@ -110,7 +107,7 @@ export default function RMAConfirmationModal({
             fontSize: "15px",
             fontWeight: 600,
           }}>
-          Xác nhận &amp; Tạo RMA
+          Xác nhận &amp; Tạo bảo hành
         </Button>,
       ]}>
       <div style={{ padding: "8px 0" }}>

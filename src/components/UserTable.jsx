@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Pencil, Ban, Unlock, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { getUsers, updateUserStatus, deleteUser, updateUser as updateUserApi } from "@/api/usersApi";
 import { toast } from "react-toastify";
 
-export function UserTable({ searchQuery = "", roleFilter = "all", statusFilter = "all" }) {
+export function UserTable({ searchQuery = "", nameFilter = "", roleFilter = "" }) {
     const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -16,7 +16,6 @@ export function UserTable({ searchQuery = "", roleFilter = "all", statusFilter =
     const [pageSize] = useState(10);
     const [total, setTotal] = useState(0);
     const [error, setError] = useState(null);
-    const debounceTimerRef = useRef(null);
 
     const transformRoleName = (roleName) => {
         switch (roleName) {
@@ -36,6 +35,7 @@ export function UserTable({ searchQuery = "", roleFilter = "all", statusFilter =
                 return roleName;
         }
     };
+
 
     const mapRoleToApiFormat = (roleFilter) => {
         if (!roleFilter || roleFilter === "all" || roleFilter === "") return undefined;
@@ -101,7 +101,8 @@ export function UserTable({ searchQuery = "", roleFilter = "all", statusFilter =
         } finally {
             setLoading(false);
         }
-    }, [page, pageSize, searchQuery, roleFilter, statusFilter]);
+    },[page, pageSize, searchQuery, roleFilter, statusFilter]);
+
 
     useEffect(() => {
         if (debounceTimerRef.current) {
@@ -121,7 +122,7 @@ export function UserTable({ searchQuery = "", roleFilter = "all", statusFilter =
     
     useEffect(() => {
         fetchUsers();
-    }, [fetchUsers]);
+    }, [page, pageSize]);
     
     const addUser = (newUser) => {
         setUsers(prevUsers => [newUser, ...prevUsers]);
@@ -141,7 +142,31 @@ export function UserTable({ searchQuery = "", roleFilter = "all", statusFilter =
         window.refreshUserList = fetchUsers;
     }, [fetchUsers]);
     
-    const hasActiveFilters = searchQuery || roleFilter !== "all" || statusFilter !== "all";
+    const filteredUsers = useMemo(() => {
+        return users.filter(user => {
+            const matchesSearch = !searchQuery || 
+                user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                user.phoneNumber.includes(searchQuery) ||
+                user.id.includes(searchQuery);
+            
+            const matchesNameFilter = !nameFilter || nameFilter === "all" ||
+                (nameFilter === "a-m" && user.fullName.charAt(0).toLowerCase() >= 'a' && user.fullName.charAt(0).toLowerCase() <= 'm') ||
+                (nameFilter === "n-z" && user.fullName.charAt(0).toLowerCase() >= 'n' && user.fullName.charAt(0).toLowerCase() <= 'z');
+            
+            const matchesRoleFilter = !roleFilter || roleFilter === "all" ||
+                (roleFilter === "admin" && user.role.toLowerCase() === "admin") ||
+                (roleFilter === "manager" && user.role.toLowerCase() === "manager") ||
+                (roleFilter === "staff" && user.role.toLowerCase() === "staff") ||
+                (roleFilter === "technician" && user.role.toLowerCase() === "technician") ||
+                (roleFilter === "customer" && user.role.toLowerCase() === "customer") ||
+                (roleFilter === "storekeeper" && user.role.toLowerCase() === "storekeeper");  
+            
+            return matchesSearch && matchesNameFilter && matchesRoleFilter;
+        });
+    }, [users, searchQuery, nameFilter, roleFilter]);
+    
+    const hasActiveFilters = searchQuery || (nameFilter && nameFilter !== "all") || (roleFilter && roleFilter !== "all");
     const getInitials = (name) => {
         return name
             .split(" ")
@@ -247,44 +272,53 @@ export function UserTable({ searchQuery = "", roleFilter = "all", statusFilter =
     return (<div>
       <p className="text-sm text-slate-500 mb-4">
         {hasActiveFilters 
-          ? `Hiển thị ${users.length} người dùng (đã lọc từ ${total} người dùng)`
+          ? `Hiển thị ${filteredUsers.length} người dùng (đã lọc từ ${total} người dùng)`
           : `Hiển thị ${users.length} / ${total} người dùng`
         }
       </p>
       
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm overflow-x-auto">
-        <div className="min-w-[1100px]">
-          <table className="w-full">
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '60px' }} />
+              <col style={{ width: '80px' }} />
+              <col style={{ width: '150px' }} />
+              <col style={{ width: '200px' }} />
+              <col style={{ width: '180px' }} />
+              <col style={{ width: '150px' }} />
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '120px' }} />
+            </colgroup>
             <thead>
               <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
-                <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-16 whitespace-nowrap">
-                  STT
-                </th>
-                <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
-                  Ảnh đại diện
-                </th>
-                <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
-                  Số điện thoại
-                </th>
-                <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
-                  Email
-                </th>
-                <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
-                  Họ tên
-                </th>
-                <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
-                  Vai trò
-                </th>
-                <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
-                  Trạng thái
-                </th>
-                <th className="text-center py-3 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-32 whitespace-nowrap">
-                  Thao tác
-                </th>
+                <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">STT</th>
+                <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Ảnh đại diện</th>
+                <th className="text-left py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Số điện thoại</th>
+                <th className="text-left py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Email</th>
+                <th className="text-left py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Họ tên</th>
+                <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Vai trò</th>
+                <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Trạng thái</th>
+                <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Thao tác</th>
               </tr>
             </thead>
+          </table>
+        </div>
+
+        <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '60px' }} />
+              <col style={{ width: '80px' }} />
+              <col style={{ width: '150px' }} />
+              <col style={{ width: '200px' }} />
+              <col style={{ width: '180px' }} />
+              <col style={{ width: '150px' }} />
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '120px' }} />
+            </colgroup>
             <tbody>
-            {users.length === 0 ? (
+            {filteredUsers.length === 0 ? (
               <tr>
                 <td colSpan="8" className="py-12 px-6 text-center">
                   <div className="flex flex-col items-center gap-2">
@@ -294,7 +328,7 @@ export function UserTable({ searchQuery = "", roleFilter = "all", statusFilter =
                 </td>
               </tr>
             ) : (
-              users.map((user, index) => (<tr key={user.id} className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-slate-50/40"}`}>
+              filteredUsers.map((user, index) => (<tr key={user.id} className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-slate-50/40"}`}>
                 <td className="py-4 px-4 text-sm text-slate-600 text-center whitespace-nowrap">{(page - 1) * pageSize + index + 1}</td>
                 <td className="py-4 px-4 whitespace-nowrap">
                   <div className="flex items-center justify-center">
@@ -431,9 +465,9 @@ export function UserTable({ searchQuery = "", roleFilter = "all", statusFilter =
                 </td>
               </tr>))
             )}
-            </tbody>
-          </table>
-        </div>
+          </tbody>
+        </table>
+      </div>
       </div>
 
       {/* Pagination */}
