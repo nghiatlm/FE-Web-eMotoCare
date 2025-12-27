@@ -1,22 +1,36 @@
 import { getCampaigns } from "../api/campaignsApi";
 
-// Lấy danh sách campaigns
 export const getCampaignsService = async (params = {}) => {
   try {
     const res = await getCampaigns(params);
-    const data = res?.data?.data || res?.data || res;
     
-    // Trả về danh sách campaigns từ response
-    // API response có thể có structure: { data: { rowDatas: [...] } } hoặc { rowDatas: [...] }
-    const campaigns = data?.rowDatas || data?.data?.rowDatas || data || [];
+    let campaigns = [];
     
-    // ✅ Đảm bảo mỗi campaign có id (dùng id từ API, nếu không có thì dùng code)
+    if (res?.data?.data?.rowDatas && Array.isArray(res.data.data.rowDatas)) {
+      campaigns = res.data.data.rowDatas;
+    }
+    else if (res?.data?.rowDatas && Array.isArray(res.data.rowDatas)) {
+      campaigns = res.data.rowDatas;
+    }
+    else if (res?.data?.data && Array.isArray(res.data.data)) {
+      campaigns = res.data.data;
+    }
+    else if (res?.data && Array.isArray(res.data)) {
+      campaigns = res.data;
+    }
+    else if (Array.isArray(res)) {
+      campaigns = res;
+    }
+    else if (res?.data && typeof res.data === 'object' && !Array.isArray(res.data) && res.data.id) {
+      campaigns = [res.data];
+    }
+    
     return campaigns.map((campaign) => ({
       ...campaign,
-      id: campaign.id || campaign.code, // Ưu tiên id, nếu không có thì dùng code
+      id: campaign.id || campaign.code,
+      type: campaign.type || campaign.programType,
     }));
   } catch (error) {
-    console.error("Lỗi lấy danh sách campaigns:", error);
     throw error;
   }
 };

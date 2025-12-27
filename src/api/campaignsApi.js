@@ -22,11 +22,11 @@ export const getCampaigns = (params = {}) => {
     ...(params.search && { search: params.search }),
     ...(params.status && { status: params.status }),
     ...(params.type && { type: params.type }),
+    ...(params.modelId && { modelId: params.modelId }),
     ...(params.fromDate && { fromDate: params.fromDate }),
     ...(params.toDate && { toDate: params.toDate }),
   };
 
-  // Token đã được gắn sẵn qua axios interceptor trong api.js
   return api.get(BASE_URL, { params: queryParams });
 };
 
