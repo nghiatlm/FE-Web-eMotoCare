@@ -37,7 +37,6 @@ export function UserTable({ searchQuery = "", roleFilter = "all", statusFilter =
         }
     };
 
-    // Map role filter từ UI format sang API format
     const mapRoleToApiFormat = (roleFilter) => {
         if (!roleFilter || roleFilter === "all" || roleFilter === "") return undefined;
         
@@ -59,21 +58,17 @@ export function UserTable({ searchQuery = "", roleFilter = "all", statusFilter =
             setLoading(true);
             setError(null);
             
-            // Chuẩn bị params để truyền lên API
             const extraParams = {};
             
-            // Thêm search param nếu có
             if (searchQuery && searchQuery.trim()) {
                 extraParams.search = searchQuery.trim();
             }
             
-            // Thêm role param nếu có
             const apiRole = mapRoleToApiFormat(roleFilter);
             if (apiRole) {
                 extraParams.role = apiRole;
             }
             
-            // Thêm status param nếu có
             if (statusFilter && statusFilter !== "all") {
                 extraParams.status = statusFilter;
             }
@@ -86,9 +81,9 @@ export function UserTable({ searchQuery = "", roleFilter = "all", statusFilter =
                     phoneNumber: user.phone || "N/A",
                     email: user.email || "N/A",
                     fullName: user.customer 
-                        ? `${user.customer.firstName} ${user.customer.lastName}`
+                        ? `${user.customer.lastName} ${user.customer.firstName}`
                         : user.staff
-                        ? `${user.staff.firstName} ${user.staff.lastName}`
+                        ? `${user.staff.lastName} ${user.staff.firstName}`
                         : "N/A",
                     role: transformRoleName(user.roleName),
                     status: user.status === "ACTIVE" ? "active" : "blocked",
@@ -108,20 +103,15 @@ export function UserTable({ searchQuery = "", roleFilter = "all", statusFilter =
         }
     }, [page, pageSize, searchQuery, roleFilter, statusFilter]);
 
-    // Debounce cho search query và fetch users khi search/filter thay đổi
     useEffect(() => {
-        // Clear timer trước đó nếu có
         if (debounceTimerRef.current) {
             clearTimeout(debounceTimerRef.current);
         }
         
-        // Set timer mới
         debounceTimerRef.current = setTimeout(() => {
-            // Reset về trang 1 khi search/filter thay đổi
             setPage(1);
-        }, 500); // Debounce 500ms
+        }, 500); 
         
-        // Cleanup
         return () => {
             if (debounceTimerRef.current) {
                 clearTimeout(debounceTimerRef.current);
@@ -129,9 +119,6 @@ export function UserTable({ searchQuery = "", roleFilter = "all", statusFilter =
         };
     }, [searchQuery, roleFilter, statusFilter]);
     
-    // Khi nameFilter thay đổi, không cần fetch lại API, chỉ cần filter lại data hiện tại
-    
-    // Fetch users khi page hoặc search/filter thay đổi
     useEffect(() => {
         fetchUsers();
     }, [fetchUsers]);

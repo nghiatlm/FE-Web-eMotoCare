@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Upload, Image as ImageIcon, ChevronDown } from "lucide-react";
+import { X, Upload, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,47 +31,28 @@ export default function CreateCampaign() {
   
   const [models, setModels] = useState([]);
   const [parts, setParts] = useState([]);
+  const [modelParts, setModelParts] = useState([]);
+  const [loadingModelParts, setLoadingModelParts] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
   const [attachmentName, setAttachmentName] = useState("");
-  const [programItems, setProgramItems] = useState([
-    { modelId: "", partIds: [], parts: [], partDetails: {}, loading: false, error: "", partPopoverOpen: false, partSearch: "", detailsCollapsed: false },
-  ]);
-
-  const partTriggerRefs = useRef([]);
-  const partPopoverRefs = useRef([]);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      setProgramItems((prev) =>
-        prev.map((p, idx) => {
-          const triggerEl = partTriggerRefs.current[idx];
-          const popoverEl = partPopoverRefs.current[idx];
-          if (!p.partPopoverOpen) return p;
-          const target = event.target;
-          const insideTrigger = triggerEl && triggerEl.contains(target);
-          const insidePopover = popoverEl && popoverEl.contains(target);
-          if (insideTrigger || insidePopover) return p;
-          return { ...p, partPopoverOpen: false };
-        })
-      );
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [partTriggerRefs, partPopoverRefs]);
 
   const [form, setForm] = useState({
-    type: "RECALL",
-    title: "",
+    programType: "RECALL",
+    name: "",
     description: "",
     startDate: null,
     endDate: null,
+    severityLevel: "LOW",
     attachmentUrl: "",
-    discountPercent: 0,
-    bonusAmount: 0,
-    recallAction: "",
+  });
+
+  const [programDetail, setProgramDetail] = useState({
+    modelId: "",
+    partId: "",
+    actionType: "INSPECTION",
+    description: "",
+    manufactureYear: new Date().getFullYear(),
   });
 
   useEffect(() => {
@@ -180,10 +161,10 @@ export default function CreateCampaign() {
   const validateForm = () => {
     const newErrors = {};
     
-    if (!form.title || form.title.trim() === "") {
-      newErrors.title = "Vui lòng nhập tiêu đề campaign";
-    } else if (form.title.trim().length < 3) {
-      newErrors.title = "Tiêu đề phải có ít nhất 3 ký tự";
+    if (!form.name || form.name.trim() === "") {
+      newErrors.name = "Vui lòng nhập tên program";
+    } else if (form.name.trim().length < 3) {
+      newErrors.name = "Tên program phải có ít nhất 3 ký tự";
     }
     
     if (!form.startDate) {
@@ -202,17 +183,18 @@ export default function CreateCampaign() {
       newErrors.endDate = "Vui lòng chọn ngày kết thúc";
     } else if (form.startDate) {
       const diff = compareDatesOnly(form.endDate, form.startDate);
-      if (diff < 0) {
-      newErrors.endDate = "Ngày kết thúc phải sau ngày bắt đầu";
+      if (diff <= 0) {
+        newErrors.endDate = "Ngày kết thúc phải sau ngày bắt đầu (ít nhất là ngày hôm sau)";
       }
     }
 
-    programItems.forEach((item, idx) => {
-      if (!item.modelId) newErrors[`program_model_${idx}`] = "Vui lòng chọn model";
-      if (form.type === "RECALL" && (!item.partIds || item.partIds.length === 0)) {
-        newErrors[`program_part_${idx}`] = "Vui lòng chọn ít nhất 1 phụ tùng cho model này";
-      }
-    });
+    if (!programDetail.modelId) {
+      newErrors.modelId = "Vui lòng chọn model";
+    }
+    
+    if (!programDetail.partId) {
+      newErrors.partId = "Vui lòng chọn phụ tùng";
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -269,45 +251,28 @@ export default function CreateCampaign() {
       const formatDateToISO = (date) => {
         if (!date) return null;
         const dateObj = date instanceof Date ? date : new Date(date);
-        const year = dateObj.getFullYear();
-        const month = dateObj.getMonth();
-        const day = dateObj.getDate();
-        return new Date(Date.UTC(year, month, day, 12, 0, 0, 0)).toISOString();
+        return dateObj.toISOString();
       };
       
       const startDateISO = formatDateToISO(form.startDate);
       const endDateISO = formatDateToISO(form.endDate);
 
-      const getServiceTypeFromProgramType = (programType) => {
-        if (programType === "RECALL") return "RECALL_TYPE";
-        return "CAMPAIGN_TYPE";
-      };
-
       const payload = {
-        type: form.type,
-        title: form.title.trim(),
-        description: form.description.trim(),
+        name: form.name.trim(),
+        description: form.description.trim() || "",
         startDate: startDateISO,
         endDate: endDateISO,
-        attachmentUrl: attachmentUrl || undefined,
+        programType: form.programType,
+        severityLevel: form.severityLevel,
         createdBy: userId,
         updatedBy: userId,
-        vehicleModels: Array.from(
-          new Set(programItems.map((item) => item.modelId).filter(Boolean))
-        ).map((id) => ({ vehicleModelId: id })),
-        programDetails: programItems.reduce((arr, item) => {
-          (item.partIds || []).forEach((pid) => {
-            const detail = item.partDetails?.[pid] || {};
-            arr.push({
-              recallPartId: pid,
-              serviceType: getServiceTypeFromProgramType(form.type),
-              discountPercent: Number(detail.discountPercent) || 0,
-              bonusAmount: 0,
-              recallAction: detail.recallAction || form.recallAction || (form.type === "RECALL" ? "Thu hồi" : ""),
-            });
-          });
-          return arr;
-        }, []),
+        programDetailRequest: {
+          partId: programDetail.partId,
+          actionType: programDetail.actionType,
+          description: programDetail.description.trim() || "",
+          manufactureYear: Number(programDetail.manufactureYear) || new Date().getFullYear(),
+          modelId: programDetail.modelId,
+        },
       };
       
       const response = await createCampaign(payload);
@@ -369,44 +334,66 @@ export default function CreateCampaign() {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-5 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="type" className="flex items-center gap-1.5 text-sm font-medium">
-                  Loại chiến dịch <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={form.type}
-                  onValueChange={(value) => handleChange("type", value)}
-                >
-                  <SelectTrigger className="h-10 text-sm border-slate-200 dark:border-slate-700 hover:border-primary/40 focus:border-primary focus:ring-primary/20 transition-all">
-                    <SelectValue placeholder="Chọn loại chiến dịch" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="RECALL">Thu hồi</SelectItem>
-                    <SelectItem value="CAMPAIGN">Chiến dịch</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="programType" className="flex items-center gap-1.5 text-sm font-medium">
+                    Loại program <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={form.programType}
+                    onValueChange={(value) => handleChange("programType", value)}
+                  >
+                    <SelectTrigger className="h-10 text-sm border-slate-200 dark:border-slate-700 hover:border-primary/40 focus:border-primary focus:ring-primary/20 transition-all">
+                      <SelectValue placeholder="Chọn loại program" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="RECALL">Thu hồi</SelectItem>
+                      <SelectItem value="CAMPAIGN">Chiến dịch</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="severityLevel" className="flex items-center gap-1.5 text-sm font-medium">
+                    Mức độ nghiêm trọng <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={form.severityLevel}
+                    onValueChange={(value) => handleChange("severityLevel", value)}
+                  >
+                    <SelectTrigger className="h-10 text-sm border-slate-200 dark:border-slate-700 hover:border-primary/40 focus:border-primary focus:ring-primary/20 transition-all">
+                      <SelectValue placeholder="Chọn mức độ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="LOW">Thấp</SelectItem>
+                      <SelectItem value="MEDIUM">Trung bình</SelectItem>
+                      <SelectItem value="HIGH">Cao</SelectItem>
+                      <SelectItem value="CRITICAL">Rất cao</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="title" className="flex items-center gap-1.5 text-sm font-medium">
-                  Tiêu đề chiến dịch <span className="text-red-500">*</span>
+                <Label htmlFor="name" className="flex items-center gap-1.5 text-sm font-medium">
+                  Tên program <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  id="title"
-                  value={form.title}
-                  onChange={(e) => handleChange("title", e.target.value)}
-                  placeholder="Nhập tiêu đề chiến dịch"
+                  id="name"
+                  value={form.name}
+                  onChange={(e) => handleChange("name", e.target.value)}
+                  placeholder="Nhập tên program"
                   className={cn(
                     "h-10 text-sm transition-all",
-                    errors.title 
+                    errors.name 
                       ? "border-red-300 focus:border-red-500 focus:ring-red-500/20" 
                       : "border-slate-200 dark:border-slate-700 hover:border-primary/40 focus:border-primary focus:ring-primary/20"
                   )}
                 />
-                {errors.title && (
+                {errors.name && (
                   <p className="text-xs text-red-500 flex items-center gap-1">
                     <span>•</span>
-                    {errors.title}
+                    {errors.name}
                   </p>
                 )}
               </div>
@@ -463,7 +450,7 @@ export default function CreateCampaign() {
                         )}
                       >
                         {form.startDate ? (
-                          format(form.startDate, "PPP", { locale: vi })
+                          format(form.startDate, "dd/MM/yyyy")
                         ) : (
                           <span>Chọn ngày bắt đầu</span>
                         )}
@@ -509,7 +496,7 @@ export default function CreateCampaign() {
                         )}
                       >
                         {form.endDate ? (
-                          format(form.endDate, "PPP", { locale: vi })
+                          format(form.endDate, "dd/MM/yyyy")
                         ) : (
                           <span>Chọn ngày kết thúc</span>
                         )}
@@ -529,7 +516,8 @@ export default function CreateCampaign() {
                           if (form.startDate) {
                             const startDateOnly = new Date(form.startDate);
                             startDateOnly.setHours(0, 0, 0, 0);
-                            return dateOnly < startDateOnly;
+                            // Ngày kết thúc phải sau ngày bắt đầu (ít nhất là ngày hôm sau)
+                            return dateOnly <= startDateOnly;
                           }
                           return false;
                         }}
@@ -547,370 +535,153 @@ export default function CreateCampaign() {
                 <div className="hidden md:block" />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                <div className="space-y-2 md:col-span-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-slate-800">Model & phụ tùng</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between mb-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setProgramItems((prev) => [
-                          ...prev,
-                          { modelId: "", partIds: [], parts: [], partDetails: {}, loading: false, error: "", partPopoverOpen: false, partSearch: "", detailsCollapsed: false },
-                        ])
-                      }
-                      className="border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300"
+              <div className="pt-2 border-t border-dashed border-rose-100 mt-4" />
+              <div className="space-y-4 mt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-sm font-semibold text-slate-800">Chi tiết program</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      Model <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={programDetail.modelId}
+                      onValueChange={async (value) => {
+                        setProgramDetail(prev => ({ ...prev, modelId: value, partId: "" }));
+                        // Load parts theo modelId
+                        if (value) {
+                          try {
+                            setLoadingModelParts(true);
+                            const response = await getModelParts({ modelId: value, page: 1, pageSize: 100 });
+                            const partsData = response?.data?.rowDatas || response?.data || [];
+                            setModelParts(partsData);
+                          } catch (error) {
+                            console.error("Error fetching model parts:", error);
+                            toast.error("Lỗi: Không thể tải danh sách phụ tùng theo model", {
+                              position: "top-right",
+                              autoClose: 4000,
+                            });
+                            setModelParts([]);
+                          } finally {
+                            setLoadingModelParts(false);
+                          }
+                        } else {
+                          setModelParts([]);
+                        }
+                      }}
+                      disabled={loadingModels}
                     >
-                      Thêm model/phụ tùng
-                    </Button>
+                      <SelectTrigger className="h-10 text-sm">
+                        <SelectValue placeholder={loadingModels ? "Đang tải..." : "Chọn model"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(models || []).map((model) => (
+                          <SelectItem key={model.id} value={model.id}>
+                            {model.name || model.code || model.id}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.modelId && (
+                      <p className="text-xs text-red-500 flex items-center gap-1">
+                        <span>•</span>
+                        {errors.modelId}
+                      </p>
+                    )}
                   </div>
 
-                  <div className="space-y-3">
-                    {programItems.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/50 p-3 space-y-3"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="text-xs text-slate-500">Cặp #{idx + 1}</div>
-                          {programItems.length > 1 && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() =>
-                                setProgramItems((prev) => prev.filter((_, i) => i !== idx))
-                              }
-                              className="text-red-500 hover:text-red-600"
-                            >
-                              Xóa
-                            </Button>
-                          )}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              setProgramItems((prev) =>
-                                prev.map((p, i) =>
-                                  i === idx ? { ...p, detailsCollapsed: !p.detailsCollapsed } : p
-                                )
-                              )
-                            }
-                            className="text-primary hover:text-primary"
-                          >
-                            {item.detailsCollapsed ? "Mở chi tiết" : "Thu gọn"}
-                          </Button>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium">Model</Label>
-                            <Select
-                              value={item.modelId}
-                              onValueChange={async (val) => {
-                                setProgramItems((prev) =>
-                                  prev.map((p, i) =>
-                                    i === idx ? { ...p, modelId: val, partIds: [], parts: [], partDetails: {}, loading: true, partPopoverOpen: false, partSearch: "" } : p
-                                  )
-                                );
-                                try {
-                                  const res = await getModelParts({ modelId: val, page: 1, pageSize: 100 });
-                                  const list = res?.data?.rowDatas || res?.data || [];
-                                  setProgramItems((prev) =>
-                                    prev.map((p, i) =>
-                                      i === idx ? { ...p, parts: list, loading: false } : p
-                                    )
-                                  );
-                                } catch (err) {
-                                  setProgramItems((prev) =>
-                                    prev.map((p, i) =>
-                                      i === idx ? { ...p, loading: false, error: "Không tải được phụ tùng" } : p
-                                    )
-                                  );
-                                  toast.error("Lỗi: Không tải được phụ tùng theo model");
-                                }
-                              }}
-                              disabled={loadingModels}
-                            >
-                              <SelectTrigger className="h-10 text-sm">
-                                <SelectValue placeholder={loadingModels ? "Đang tải..." : "Chọn model"} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {(models || [])
-                                  .filter((model) => {
-                                    const selected = programItems
-                                      .map((p, i) => (i === idx ? null : p.modelId))
-                                      .filter(Boolean);
-                                    return model.id === item.modelId || !selected.includes(model.id);
-                                  })
-                                  .map((model) => (
-                                    <SelectItem key={model.id} value={model.id}>
-                                      {model.name || model.code || model.id}
-                                    </SelectItem>
-                                  ))}
-                              </SelectContent>
-                            </Select>
-                            {errors[`program_model_${idx}`] && (
-                              <p className="text-xs text-red-500 flex items-center gap-1">
-                                <span>•</span>
-                                {errors[`program_model_${idx}`]}
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium">Phụ tùng (nhiều)</Label>
-                            <div className="relative">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                className="w-full h-10 justify-between text-sm border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 hover:border-primary/40 focus:border-primary focus:ring-primary/20 rounded-md px-3"
-                                onClick={() =>
-                                  setProgramItems((prev) =>
-                                    prev.map((p, i) =>
-                                      i === idx ? { ...p, partPopoverOpen: !p.partPopoverOpen } : p
-                                    )
-                                  )
-                                }
-                                disabled={item.loading}
-                                ref={(el) => {
-                                  partTriggerRefs.current[idx] = el;
-                                }}
-                              >
-                                <span className="truncate text-left">
-                                  {item.partIds?.length
-                                    ? `${item.partIds.length} phụ tùng đã chọn`
-                                    : item.loading
-                                    ? "Đang tải..."
-                                    : "Chọn phụ tùng"}
-                                </span>
-                                <ChevronDown className="h-4 w-4 text-muted-foreground ml-2" />
-                              </Button>
-                              {item.partPopoverOpen && (
-                                <div
-                                  className="absolute z-20 mt-2 w-full max-h-80 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg"
-                                  ref={(el) => {
-                                    partPopoverRefs.current[idx] = el;
-                                  }}
-                                >
-                                  <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/70">
-                                    <Input
-                                      autoFocus
-                                      value={item.partSearch || ""}
-                                      onChange={(e) =>
-                                        setProgramItems((prev) =>
-                                          prev.map((p, i) =>
-                                            i === idx ? { ...p, partSearch: e.target.value } : p
-                                          )
-                                        )
-                                      }
-                                      placeholder="Tìm phụ tùng..."
-                                      className="h-9 text-sm bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus-visible:ring-0 focus-visible:border-primary/40 focus:border-primary/40"
-                                    />
-                                  </div>
-                                  <div className="max-h-64 overflow-auto p-2 space-y-1">
-                                    {item.loading ? (
-                                      <p className="text-xs text-muted-foreground px-2 py-1">Đang tải...</p>
-                                    ) : (item.parts || []).length === 0 ? (
-                                      <p className="text-xs text-muted-foreground px-2 py-1">Chưa có phụ tùng</p>
-                                    ) : (
-                                      ((item.parts || []).filter((part) => {
-                                        const pid = part.partId || part.id;
-                                        const label = (part.partName || part.name || pid || "").toLowerCase();
-                                        const keyword = (item.partSearch || "").toLowerCase().trim();
-                                        return !keyword || label.includes(keyword);
-                                      }) || []).map((part) => {
-                                        const pid = part.partId || part.id;
-                                        const isSelected = item.partIds?.includes(pid);
-                                        return (
-                                          <button
-                                            type="button"
-                                            key={pid}
-                                            className={cn(
-                                              "w-full flex items-center gap-2 text-sm rounded-md px-2 py-2 text-left transition-colors",
-                                              isSelected
-                                                ? "bg-primary/5 text-primary font-semibold"
-                                                : "hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
-                                            )}
-                                            onClick={() =>
-                                              setProgramItems((prev) =>
-                                                prev.map((p, i) =>
-                                                  i === idx
-                                                    ? {
-                                                        ...p,
-                                                        partIds: isSelected
-                                                          ? p.partIds.filter((x) => x !== pid)
-                                                          : [...(p.partIds || []), pid],
-                                                        partDetails: (() => {
-                                                          const details = { ...(p.partDetails || {}) };
-                                                          if (isSelected) {
-                                                            delete details[pid];
-                                                          } else {
-                                                            details[pid] = {
-                                                              discountPercent: 0,
-                                                              recallAction: "",
-                                                            };
-                                                          }
-                                                          return details;
-                                                        })(),
-                                                      }
-                                                    : p
-                                                )
-                                              )
-                                            }
-                                          >
-                                            <span
-                                              className={cn(
-                                                "inline-flex h-4 w-4 items-center justify-center rounded border text-[10px]",
-                                                isSelected
-                                                  ? "border-primary bg-primary text-white"
-                                                  : "border-slate-300 bg-white text-transparent"
-                                              )}
-                                            >
-                                              ✓
-                                            </span>
-                                            <span className="truncate">{part.partName || part.name || pid}</span>
-                                          </button>
-                                        );
-                                      })
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                            {errors[`program_part_${idx}`] && (
-                              <p className="text-xs text-red-500 flex items-center gap-1">
-                                <span>•</span>
-                                {errors[`program_part_${idx}`]}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        {item.partIds && item.partIds.length > 0 && !item.detailsCollapsed && (
-                          <div className="space-y-2">
-                            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Thông tin phụ tùng đã chọn</p>
-                            <div className="space-y-2">
-                              {item.partIds.map((pid) => {
-                                const partObj = item.parts?.find((p) => (p.partId || p.id) === pid);
-                                const partLabel = partObj?.partName || partObj?.name || pid;
-                                const partThumb =
-                                  partObj?.imageUrl ||
-                                  partObj?.image ||
-                                  partObj?.thumbnail ||
-                                  partObj?.photoUrl ||
-                                  partObj?.imagePath ||
-                                  "";
-                                const detail = item.partDetails?.[pid] || {};
-                                return (
-                                  <div
-                                    key={pid}
-                                    className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 px-3 py-3 space-y-2"
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-3 min-w-0">
-                                        <div className="h-10 w-10 rounded border border-slate-200 bg-slate-50 overflow-hidden flex-shrink-0">
-                                          {partThumb ? (
-                                            <img src={partThumb} alt={partLabel} className="h-full w-full object-cover" />
-                                          ) : (
-                                            <div className="h-full w-full flex items-center justify-center text-xs text-slate-500 bg-slate-100">
-                                              PT
-                                            </div>
-                                          )}
-                                        </div>
-                                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-                                          {partLabel}
-                                        </span>
-                                      </div>
-                                      <span
-                                        className={cn(
-                                          "px-2 py-0.5 rounded-full text-[11px] font-semibold border",
-                                          form.type === "RECALL"
-                                            ? "bg-rose-50 border-rose-200 text-rose-700"
-                                            : "bg-blue-50 border-blue-200 text-blue-700"
-                                        )}
-                                      >
-                                        {form.type === "RECALL" ? "Thu hồi" : "Chiến dịch"}
-                                      </span>
-                                    </div>
-                                    {form.type === "CAMPAIGN" && (
-                                      <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-slate-600">Giảm giá (%)</Label>
-                                        <Input
-                                          type="number"
-                                          min="0"
-                                          max="100"
-                                          value={detail.discountPercent ?? 0}
-                                          onChange={(e) =>
-                                            setProgramItems((prev) =>
-                                              prev.map((p, i) =>
-                                                i === idx
-                                                  ? {
-                                                      ...p,
-                                                      partDetails: {
-                                                        ...(p.partDetails || {}),
-                                                        [pid]: {
-                                                          ...(p.partDetails?.[pid] || {}),
-                                                          discountPercent: Number(e.target.value) || 0,
-                                                        },
-                                                      },
-                                                    }
-                                                  : p
-                                              )
-                                            )
-                                          }
-                                          placeholder="0"
-                                          className="h-9 text-sm"
-                                        />
-                                      </div>
-                                    )}
-                                    {form.type === "RECALL" && (
-                                      <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-slate-600">Hành động thu hồi</Label>
-                                        <Input
-                                          value={detail.recallAction || ""}
-                                          onChange={(e) =>
-                                            setProgramItems((prev) =>
-                                              prev.map((p, i) =>
-                                                i === idx
-                                                  ? {
-                                                      ...p,
-                                                      partDetails: {
-                                                        ...(p.partDetails || {}),
-                                                        [pid]: {
-                                                          ...(p.partDetails?.[pid] || {}),
-                                                          recallAction: e.target.value,
-                                                        },
-                                                      },
-                                                    }
-                                                  : p
-                                              )
-                                            )
-                                          }
-                                          placeholder="Nhập hành động cho phụ tùng này"
-                                          className="h-9 text-sm"
-                                        />
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      Phụ tùng <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={programDetail.partId}
+                      onValueChange={(value) => setProgramDetail(prev => ({ ...prev, partId: value }))}
+                      disabled={loadingParts || loadingModelParts || !programDetail.modelId}
+                    >
+                      <SelectTrigger className="h-10 text-sm">
+                        <SelectValue placeholder={
+                          !programDetail.modelId 
+                            ? "Vui lòng chọn model trước" 
+                            : loadingModelParts 
+                            ? "Đang tải..." 
+                            : "Chọn phụ tùng"
+                        } />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(modelParts.length > 0 ? modelParts : parts || []).map((part) => {
+                          const partId = part.partId || part.id;
+                          const partName = part.partName || part.name || part.code || partId;
+                          return (
+                            <SelectItem key={partId} value={partId}>
+                              {partName}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    {errors.partId && (
+                      <p className="text-xs text-red-500 flex items-center gap-1">
+                        <span>•</span>
+                        {errors.partId}
+                      </p>
+                    )}
                   </div>
                 </div>
-              
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      Loại hành động <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={programDetail.actionType}
+                      onValueChange={(value) => setProgramDetail(prev => ({ ...prev, actionType: value }))}
+                    >
+                      <SelectTrigger className="h-10 text-sm">
+                        <SelectValue placeholder="Chọn loại hành động" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="INSPECTION">Kiểm tra</SelectItem>
+                        <SelectItem value="LUBRICATION">Bôi trơn</SelectItem>
+                        <SelectItem value="NONE">Không có</SelectItem>
+                        <SelectItem value="CHECK">Kiểm định</SelectItem>
+                        <SelectItem value="REPAIR">Sửa chữa</SelectItem>
+                        <SelectItem value="REPLACE">Thay thế</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      Năm sản xuất
+                    </Label>
+                    <Input
+                      type="number"
+                      min="1900"
+                      max={new Date().getFullYear() + 1}
+                      value={programDetail.manufactureYear}
+                      onChange={(e) => setProgramDetail(prev => ({ ...prev, manufactureYear: Number(e.target.value) || new Date().getFullYear() }))}
+                      placeholder="Nhập năm sản xuất"
+                      className="h-10 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Mô tả chi tiết</Label>
+                  <Textarea
+                    value={programDetail.description}
+                    onChange={(e) => setProgramDetail(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Nhập mô tả chi tiết cho program"
+                    rows={3}
+                    className="text-sm resize-none"
+                  />
+                </div>
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="attachment" className="flex items-center gap-1.5 text-sm font-medium">
                   <ImageIcon className="h-3.5 w-3.5 text-primary/70" />

@@ -1451,10 +1451,7 @@ export default function CampaignModeEVCheck({
       title: "Giá DV",
       width: 70,
       align: "right",
-      render: (_, r) => {
-        const priceService = Number(r.priceService || 0);
-        return priceService === 0 ? "Miễn phí" : priceService.toLocaleString();
-      },
+      render: (_, r) => Number(r.priceService || 0).toLocaleString(),
     },
     {
       title: "Tổng",
