@@ -1015,7 +1015,7 @@ export default function RepairModeEVCheck({
     try {
       const payload = {
         partItemId: item.partItemId,
-        result: (item.result || "").trim(),
+        result: (item.result || "").trim() || "Tốt",
         remedies: item.remedies ?? "NONE",
         unit: item.unit || "cái",
         priceService: Number(item.priceService || 0),
@@ -1131,7 +1131,7 @@ export default function RepairModeEVCheck({
       for (const item of itemsToSave) {
         const payload = {
           partItemId: item.partItemId,
-          result: (item.result || "").trim(),
+          result: (item.result || "").trim() || "Tốt",
           remedies: item.remedies ?? "NONE",
           unit: item.unit || "cái",
           priceService: Number(item.priceService || 0),
