@@ -57,7 +57,7 @@ export default function ManagerProfile() {
   }, [account?.id, account?.accountId]);
 
   const displayName = useMemo(() => {
-    const name = `${staff?.firstName || ""} ${staff?.lastName || ""}`.trim();
+    const name = `${staff?.lastName || ""} ${staff?.firstName || ""}`.trim();
     if (name) return name;
     return "Quản lý";
   }, [staff]);
