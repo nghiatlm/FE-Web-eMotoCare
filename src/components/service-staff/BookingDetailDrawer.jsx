@@ -77,6 +77,7 @@ export default function BookingDetailDrawer({
   const [technicians, setTechnicians] = useState([]);
   const [selectedTechnician, setSelectedTechnician] = useState(null);
   const [loadingTechs, setLoadingTechs] = useState(false);
+  const [assigningTechnician, setAssigningTechnician] = useState(false);
   const [currentEVCheckId, setCurrentEVCheckId] = useState(null);
   const [showTechnicianDrawer, setShowTechnicianDrawer] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -85,6 +86,7 @@ export default function BookingDetailDrawer({
   const [availableSlots, setAvailableSlots] = useState([]);
   const [selectedSlotForCheckIn, setSelectedSlotForCheckIn] = useState(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [checkingIn, setCheckingIn] = useState(false);
 
   const status = booking?.status?.toUpperCase();
 
@@ -95,7 +97,6 @@ export default function BookingDetailDrawer({
       try {
         setLoadingTechs(true);
         
-        // ✅ Lấy serviceCenterId từ booking
         const serviceCenterId = 
           booking?.serviceCenterId || 
           booking?.serviceCenter?.id ||
@@ -112,12 +113,10 @@ export default function BookingDetailDrawer({
             null;
         }
         
-        // ✅ Gọi API mới với serviceCenterId
         if (finalServiceCenterId) {
           const list = await fetchAvailableTechnicians(finalServiceCenterId);
           setTechnicians(list);
         } else {
-          // ✅ Fallback về API cũ nếu không có serviceCenterId
           const list = await fetchTechnicians(null);
           setTechnicians(list);
         }
@@ -158,6 +157,7 @@ export default function BookingDetailDrawer({
       return toast.warning("Vui lòng chọn kỹ thuật viên");
 
     try {
+      setAssigningTechnician(true);
       const payload = {
         appointmentId: booking.id,
         taskExecutorId: selectedTechnician.id,
@@ -177,6 +177,8 @@ export default function BookingDetailDrawer({
       toast.success("Đã gán kỹ thuật viên thành công!");
     } catch (error) {
       toast.error((error?.response?.data?.message || error?.data?.message || error?.message || "Không thể gán kỹ thuật viên!"));
+    } finally {
+      setAssigningTechnician(false);
     }
   };
 
@@ -224,12 +226,10 @@ export default function BookingDetailDrawer({
       const capacity = slot?.capacity || 1;
       return bookedCount < capacity;
     } catch (error) {
-      console.error("Error checking slot availability:", error);
       return true;
     }
   };
 
-  // ✅ Kiểm tra xem có slot sớm hơn slot hiện tại còn trống không
   const checkForEarlierAvailableSlots = async (serviceCenterId, appointmentDate, currentSlotTime) => {
     try {
       const centerRes = await getServiceCenterById(serviceCenterId);
@@ -267,7 +267,6 @@ export default function BookingDetailDrawer({
 
       return false;
     } catch (error) {
-      console.error("Error checking for earlier available slots:", error);
       return false;
     }
   };
@@ -320,7 +319,6 @@ export default function BookingDetailDrawer({
         }]);
       }
     } catch (error) {
-      console.error("Error loading available slots:", error);
       setAvailableSlots([]);
     } finally {
       setLoadingSlots(false);
@@ -329,6 +327,7 @@ export default function BookingDetailDrawer({
 
   const performCheckIn = async (slotTime) => {
     try {
+      setCheckingIn(true);
       await changeAppointmentStatusService(booking.id, "CHECKED_IN", {
         code: booking.code,
         checkinQRCode: booking.checkinQRCode,
@@ -344,6 +343,8 @@ export default function BookingDetailDrawer({
       onClose();
     } catch (error) {
       toast.error((error?.response?.data?.message || error?.data?.message || error?.message || "Check-in thất bại!"));
+    } finally {
+      setCheckingIn(false);
     }
   };
 
@@ -545,8 +546,8 @@ export default function BookingDetailDrawer({
               <Button
                 type='primary'
                 block
-                disabled={!selectedTechnician || loadingTechs}
-                loading={loadingTechs}
+                disabled={!selectedTechnician || loadingTechs || assigningTechnician}
+                loading={assigningTechnician}
                 onClick={handleAssignTechnician}>
                 Xác nhận kỹ thuật viên
               </Button>
@@ -662,7 +663,6 @@ export default function BookingDetailDrawer({
 
       />
 
-      {/* ✅ Modal chọn slot khi check-in */}
       <Modal
         title='Chọn khung giờ'
         open={isSlotSelectionModalOpen}
@@ -681,7 +681,8 @@ export default function BookingDetailDrawer({
         okText='Xác nhận check-in'
         cancelText='Hủy'
         okButtonProps={{ 
-          disabled: !selectedSlotForCheckIn || loadingSlots,
+          disabled: !selectedSlotForCheckIn || loadingSlots || checkingIn,
+          loading: checkingIn,
           style: { backgroundColor: "#ff4d4f", borderColor: "#ff4d4f" }
         }}>
         <div style={{ padding: "16px 0" }}>
