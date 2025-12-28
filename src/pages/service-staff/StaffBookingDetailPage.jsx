@@ -1137,6 +1137,78 @@ export default function StaffBookingDetailPage() {
                     </Text>
                   </div>
 
+                  {booking?.type && (
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "flex-start",
+                        alignItems: "center",
+                        gap: "12px",
+                      }}>
+                      <Space size={8}>
+                        <Wrench
+                          size={16}
+                          style={{ color: UI_COLORS.PRIMARY_RED }}
+                        />
+                        <Text
+                          type='secondary'
+                          style={{
+                            fontSize: 14,
+                            fontWeight: 600,
+                            minWidth: "120px",
+                          }}>
+                          Loại dịch vụ:
+                        </Text>
+                      </Space>
+                      <Tag
+                        style={{
+                          padding: "4px 12px",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          borderRadius: 12,
+                          ...((booking?.type || "").toUpperCase() === "MAINTENANCE_TYPE"
+                            ? {
+                                backgroundColor: "#e6f7ff",
+                                color: "#0050b3",
+                                border: "1px solid #91d5ff",
+                              }
+                            : (booking?.type || "").toUpperCase() === "REPAIR_TYPE"
+                            ? {
+                                backgroundColor: "#f9f0ff",
+                                color: "#531dab",
+                                border: "1px solid #d3adf7",
+                              }
+                            : (booking?.type || "").toUpperCase() === "WARRANTY_TYPE"
+                            ? {
+                                backgroundColor: "#f6ffed",
+                                color: "#389e0d",
+                                border: "1px solid #b7eb8f",
+                              }
+                            : (booking?.type || "").toUpperCase() === "CAMPAIGN_TYPE"
+                            ? {
+                                backgroundColor: "#fff7e6",
+                                color: "#d46b08",
+                                border: "1px solid #ffd591",
+                              }
+                            : {
+                                backgroundColor: "#fafafa",
+                                color: "#595959",
+                                border: "1px solid #d9d9d9",
+                              }),
+                        }}>
+                        {(() => {
+                          const type = (booking.type || "").toUpperCase();
+                          if (type === "MAINTENANCE_TYPE") return "Bảo dưỡng";
+                          if (type === "REPAIR_TYPE") return "Sửa chữa";
+                          if (type === "WARRANTY_TYPE") return "Bảo hành";
+                          if (type === "CAMPAIGN_TYPE") return "Chiến dịch";
+                          if (type === "RECALL_TYPE") return "Triệu hồi";
+                          return booking.type;
+                        })()}
+                      </Tag>
+                    </div>
+                  )}
+
                   {(booking?.type || "").toUpperCase() === "MAINTENANCE_TYPE" &&
                     booking.maintenanceStage?.name && (
                       <div

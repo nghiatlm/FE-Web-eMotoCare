@@ -283,6 +283,10 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
 
         }
         
+        const modelId = vehicle?.modelId;
+        if (modelId) {
+          loadCampaigns(modelId);
+        }
 
         setIsChassisNumberLoaded(true);
         
@@ -651,22 +655,50 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
   };
 
 
-  const loadCampaigns = async () => {
+  const loadCampaigns = async (modelId = null) => {
     try {
       setLoadingCampaigns(true);
-      const programsList = await getCampaignsService({
+      
+      const campaignsParams = {
         page: 1,
         pageSize: 100,
         status: "ACTIVE",
+        type: "CAMPAIGN",
+      };
+      
+      if (modelId) {
+        campaignsParams.modelId = modelId;
+      }
+      
+      const campaignsList = await getCampaignsService(campaignsParams);
+      
+      const recallsParams = {
+        page: 1,
+        pageSize: 100,
+        status: "ACTIVE",
+        type: "RECALL",
+      };
+      
+      if (modelId) {
+        recallsParams.modelId = modelId;
+      }
+      
+      const recallsList = await getCampaignsService(recallsParams);
+      
+      const campaigns = Array.isArray(campaignsList) ? campaignsList : [];
+      const recalls = Array.isArray(recallsList) ? recallsList : [];
+      
+      const filteredCampaigns = campaigns.filter(p => {
+        const type = p.type || p.programType;
+        return type === "CAMPAIGN";
+      });
+      const filteredRecalls = recalls.filter(p => {
+        const type = p.type || p.programType;
+        return type === "RECALL";
       });
       
-
-      const allPrograms = Array.isArray(programsList) ? programsList : [];
-      const campaignsList = allPrograms.filter(p => p.type === "CAMPAIGN" || !p.type);
-      const recallsList = allPrograms.filter(p => p.type === "RECALL");
-      
-      setCampaigns(campaignsList);
-      setRecalls(recallsList);
+      setCampaigns(filteredCampaigns);
+      setRecalls(filteredRecalls);
     } catch (err) {
       setCampaigns([]);
       setRecalls([]);
