@@ -131,22 +131,60 @@ export default function StorekeeperAccessoryDetail() {
         const firstPartItem = partItemsList[0];
         const part = firstPartItem?.part || {};
 
+        // Nhóm các item có cùng mã phụ tùng và số serial là "-" (hoặc rỗng/null)
+        const groupedItems = [];
+        const itemMap = new Map();
+        
+        partItemsList.forEach((item) => {
+          const serialKey = item.serialNumber || "";
+          const hasSerial = serialKey.trim() !== "" && serialKey !== "-";
+          
+          if (hasSerial) {
+            // Nếu có serial, hiển thị riêng
+            groupedItems.push({
+              id: item.id,
+              serialNumber: item.serialNumber,
+              quantity: item.quantity || 1,
+              status: item.status || "ACTIVE",
+              price: item.price,
+              warrantyPeriod: item.warrantyPeriod,
+              warrantyStart: item.warantyStartDate,
+              warrantyEnd: item.warantyEndDate,
+              isGrouped: false,
+            });
+          } else {
+            // Nếu không có serial, cộng dồn lại
+            const key = "no-serial";
+            if (!itemMap.has(key)) {
+              itemMap.set(key, {
+                id: `grouped-${key}`,
+                serialNumber: "—",
+                quantity: 0,
+                status: item.status || "ACTIVE",
+                price: item.price,
+                warrantyPeriod: item.warrantyPeriod,
+                warrantyStart: item.warantyStartDate,
+                warrantyEnd: item.warantyEndDate,
+                isGrouped: true,
+              });
+            }
+            const groupedItem = itemMap.get(key);
+            groupedItem.quantity += (item.quantity || 1);
+          }
+        });
+        
+        // Thêm các item đã nhóm vào danh sách
+        itemMap.forEach((groupedItem) => {
+          groupedItems.push(groupedItem);
+        });
+
         const detail = {
           partCode: part.code || resolvedPartId,
           partName: part.name || "Phụ tùng",
           partImage: part.image,
           partType: part.partType?.name || "—",
           totalQty: partItemsList.reduce((sum, item) => sum + (item.quantity || 0), 0),
-          serials: partItemsList.map((item) => ({
-            id: item.id,
-            serialNumber: item.serialNumber || item.id,
-            quantity: item.quantity || 1,
-            status: item.status || "ACTIVE",
-            price: item.price,
-            warrantyPeriod: item.warrantyPeriod,
-            warrantyStart: item.warantyStartDate,
-            warrantyEnd: item.warantyEndDate,
-          })),
+          serials: groupedItems,
         };
         setPartDetail(detail);
       } catch (err) {
@@ -260,7 +298,7 @@ export default function StorekeeperAccessoryDetail() {
         <Card className="rounded-2xl border border-slate-200/80 bg-white shadow-lg overflow-hidden">
           <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-b border-slate-200/80 pb-4">
             <CardTitle className="text-lg font-bold text-slate-800">
-              Danh sách partItem ({partDetail.serials.length})
+              Danh sách phụ tùng trong kho
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">

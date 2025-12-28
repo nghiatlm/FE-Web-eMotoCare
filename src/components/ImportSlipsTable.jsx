@@ -151,133 +151,122 @@ export default function ImportSlipsTable({ search = "", typeFilter = "" }) {
   }
 
   return (
-    <div className="bg-white/95 backdrop-blur rounded-xl border border-rose-200/60 overflow-hidden shadow-md">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full table-fixed">
-          <colgroup>
-            <col style={{ width: '5%' }} />
-            <col style={{ width: '16%' }} />
-            <col style={{ width: '16%' }} />
-            <col style={{ width: '15%' }} />
-            <col style={{ width: '16%' }} />
-            <col style={{ width: '16%' }} />
-            <col className="w-32" />
-          </colgroup>
-          <thead>
-            <tr className="bg-gradient-to-r from-rose-100 via-rose-50/80 to-pink-50 border-b border-rose-200">
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">STT</th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">Mã phiếu</th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">Ngày nhập</th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">Loại phiếu</th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">Tổng giá trị</th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">Người nhập</th>
-              <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-rose-800 uppercase whitespace-nowrap">Thao tác</th>
-            </tr>
-          </thead>
-        </table>
-      </div>
-      <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
-        <table className="w-full table-fixed">
-          <colgroup>
-            <col style={{ width: '5%' }} />
-            <col style={{ width: '16%' }} />
-            <col style={{ width: '16%' }} />
-            <col style={{ width: '15%' }} />
-            <col style={{ width: '16%' }} />
-            <col style={{ width: '16%' }} />
-            <col className="w-32" />
-          </colgroup>
-          <tbody>
-            {filtered.length === 0 && !loading ? (
-              <tr>
-                <td colSpan="7" className="py-12 px-6 text-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <FileDown className="h-12 w-12 text-muted-foreground/40 mb-2" />
-                    <p className="text-muted-foreground text-sm font-medium">Không tìm thấy phiếu nhập phù hợp</p>
-                    <p className="text-xs text-muted-foreground">{search || typeFilter ? "Hãy thay đổi từ khóa hoặc bộ lọc" : "Chưa có phiếu nhập nào"}</p>
-                  </div>
-                </td>
+        <div className="min-w-[1100px]">
+          <table className="w-full table-fixed text-sm">
+            <colgroup>
+              <col style={{ width: '60px' }} />
+              <col style={{ width: '180px' }} />
+              <col style={{ width: '180px' }} />
+              <col style={{ width: '160px' }} />
+              <col style={{ width: '160px' }} />
+              <col style={{ width: '180px' }} />
+              <col style={{ width: '140px' }} />
+            </colgroup>
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
+                <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">STT</th>
+                <th className="text-left py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Mã phiếu</th>
+                <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Ngày nhập</th>
+                <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Loại phiếu</th>
+                <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Tổng giá trị</th>
+                <th className="text-left py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Người nhập</th>
+                <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap sticky right-0 bg-red-50 z-20 border-l border-red-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">
+                  Thao tác
+                </th>
               </tr>
-            ) : (
-              filtered.map((slip, i) => {
-                const stt = (page - 1) * pageSize + i + 1;
-                return (
-                <tr
-                  key={slip.code || slip.rawData?.id || i}
-                  className={`border-b border-rose-100/50 hover:bg-rose-50/50 transition-colors ${
-                    i % 2 === 0 ? "bg-white" : "bg-rose-50/20"
-                  }`}
-                >
-                  <td className="py-4 px-6 text-center whitespace-nowrap">
-                    <span className="text-sm text-foreground font-medium">{stt}</span>
-                  </td>
-                  <td className="py-4 px-6 text-center whitespace-nowrap">
-                    <span className="text-sm text-foreground font-medium">{slip.code || "—"}</span>
-                  </td>
-                  <td className="py-4 px-6 text-center whitespace-nowrap">
-                    <span className="text-sm text-foreground">{slip.importDate}</span>
-                  </td>
-                  <td className="py-4 px-6 text-center whitespace-nowrap">
-                    {(() => {
-                      const typeRaw = slip.typeRaw || slip.rawData?.type || "";
-                      let badgeClass = "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium shadow-sm";
-                      
-                      if (typeRaw === "SUPPLIER") {
-                        badgeClass += " bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100";
-                      } else if (typeRaw === "TRANSFER_IN") {
-                        badgeClass += " bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100";
-                      } else {
-                        badgeClass += " bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100";
-                      }
-                      
-                      return (
-                        <Badge className={badgeClass}>
-                          {slip.type}
-                        </Badge>
-                      );
-                    })()}
-                  </td>
-                  <td className="py-4 px-6 text-center whitespace-nowrap">
-                    <span className="text-sm font-semibold text-emerald-700">
-                      {new Intl.NumberFormat("vi-VN", {
-                        style: "currency",
-                        currency: "VND",
-                        maximumFractionDigits: 0,
-                      }).format(slip.totalValue)}
-                    </span>
-                  </td>
-                  <td className="py-4 px-6 text-center whitespace-nowrap">
-                    <span className="text-sm text-foreground">{slip.importByName}</span>
-                  </td>
-                  <td className="py-4 px-6 text-center whitespace-nowrap">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="gap-1.5 h-8 px-3 text-xs font-medium hover:bg-primary/10 hover:text-primary transition-colors"
-                        onClick={() => {
-                          if (slip.rawData?.id) {
-                            navigate(`/storekeeper/import-slips/${slip.rawData.id}`);
-                          }
-                        }}
-                        title="Xem chi tiết"
-                        disabled={!slip.rawData?.id}
-                      >
-                        <Eye className="h-4 w-4" /> 
-                        Chi tiết
-                      </Button>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && !loading ? (
+                <tr>
+                  <td colSpan={7} className="py-12 px-6 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <FileDown className="h-12 w-12 text-muted-foreground/40 mb-2" />
+                      <p className="text-muted-foreground text-sm font-medium">Không tìm thấy phiếu nhập phù hợp</p>
+                      <p className="text-xs text-muted-foreground">{search || typeFilter ? "Hãy thay đổi từ khóa hoặc bộ lọc" : "Chưa có phiếu nhập nào"}</p>
                     </div>
                   </td>
                 </tr>
-              );
-              })
-            )}
-          </tbody>
-        </table>
+              ) : (
+                filtered.map((slip, i) => {
+                  const stt = (page - 1) * pageSize + i + 1;
+                  return (
+                    <tr
+                      key={slip.code || slip.rawData?.id || i}
+                      className={`group border-b border-slate-200 transition-colors ${
+                        i % 2 === 0 ? "bg-white hover:bg-slate-50" : "bg-slate-50/40 hover:bg-slate-100/60"
+                      }`}
+                    >
+                      <td className="py-4 px-4 text-center text-sm text-slate-600 whitespace-nowrap align-middle">
+                        {stt}
+                      </td>
+                      <td className="py-4 px-5 text-sm font-semibold text-primary whitespace-nowrap align-middle">
+                        {slip.code || "—"}
+                      </td>
+                      <td className="py-4 px-4 text-center text-sm text-slate-900 whitespace-nowrap align-middle">
+                        {slip.importDate}
+                      </td>
+                      <td className="py-4 px-4 text-center align-middle whitespace-nowrap">
+                        {(() => {
+                          const typeRaw = slip.typeRaw || slip.rawData?.type || "";
+                          let badgeClass = "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium shadow-sm whitespace-nowrap";
+                          
+                          if (typeRaw === "SUPPLIER") {
+                            badgeClass += " bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100";
+                          } else if (typeRaw === "TRANSFER_IN") {
+                            badgeClass += " bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100";
+                          } else {
+                            badgeClass += " bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100";
+                          }
+                          
+                          return (
+                            <Badge className={badgeClass}>
+                              {slip.type}
+                            </Badge>
+                          );
+                        })()}
+                      </td>
+                      <td className="py-4 px-4 text-center text-sm font-semibold text-emerald-700 whitespace-nowrap align-middle">
+                        {new Intl.NumberFormat("vi-VN", {
+                          style: "currency",
+                          currency: "VND",
+                          maximumFractionDigits: 0,
+                        }).format(slip.totalValue)}
+                      </td>
+                      <td className="py-4 px-5 text-sm text-slate-900 whitespace-nowrap truncate align-middle">
+                        {slip.importByName}
+                      </td>
+                      <td className={`py-4 px-4 text-center align-middle sticky right-0 z-10 border-l border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] group-hover:bg-slate-50 ${i % 2 === 0 ? "bg-white" : "bg-slate-50"}`}>
+                        <div className="flex items-center justify-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1.5 h-8 px-3 text-xs font-medium hover:bg-primary/10 hover:text-primary transition-colors whitespace-nowrap"
+                            onClick={() => {
+                              if (slip.rawData?.id) {
+                                navigate(`/storekeeper/import-slips/${slip.rawData.id}`);
+                              }
+                            }}
+                            title="Xem chi tiết"
+                            disabled={!slip.rawData?.id}
+                          >
+                            <Eye className="h-4 w-4" /> 
+                            Chi tiết
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {total > 0 && (
-        <div className="flex items-center justify-between p-5 bg-gradient-to-r from-rose-50/50 via-pink-50/30 to-rose-50/50 border-t border-rose-200/50">
+        <div className="flex items-center justify-between p-5 bg-slate-50 border-t border-slate-200">
           <Pagination>
             <PaginationContent className="gap-1">
               <PaginationItem>

@@ -197,8 +197,8 @@ export default function ExportNoteDetail() {
 
   const getDetailStatusLabel = (status) => {
     const statusMap = {
-      "STOCK_NOT_FOUND": "Chưa tìm thấy trong kho",
-      "STOCK_FOUND": "Đã tìm thấy trong kho",
+      "STOCK_NOT_FOUND": "Hết hàng",
+      "STOCK_FOUND": "Còn hàng",
       "NOT_FOUND": "Không tìm thấy hàng",
       "COMPLETED": "Hoàn thành"
     };
@@ -613,36 +613,48 @@ export default function ExportNoteDetail() {
           <TabsContent value="parts" className="mt-4">
             <div className="bg-card rounded-xl border border-border shadow-md overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full table-fixed">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-b-2 border-red-200/50 dark:border-red-800/30">
-                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider w-12"></th>
-                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider whitespace-nowrap">
-                        Mã
-                      </th>
-                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider">
-                        Tên phụ tùng
-                      </th>
-                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider whitespace-nowrap">
-                        Loại phụ tùng
-                      </th>
-                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider whitespace-nowrap">
-                        Trạng thái
-                      </th>
-                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider whitespace-nowrap">
-                        Trạng thái kho
-                      </th>
-                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider whitespace-nowrap">
-                        SL tồn kho
-                      </th>
-                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider whitespace-nowrap">
-                        SL xuất
-                      </th>
-                      <th className="text-left py-4 px-6 text-xs font-bold text-foreground uppercase tracking-wider whitespace-nowrap w-20">
-                        Chọn
-                      </th>
-                    </tr>
-                  </thead>
+                <div className="min-w-[1200px]">
+                  <table className="w-full table-fixed text-sm">
+                    <colgroup>
+                      <col style={{ width: '60px' }} />
+                      <col style={{ width: '180px' }} />
+                      <col style={{ width: '200px' }} />
+                      <col style={{ width: '150px' }} />
+                      <col style={{ width: '140px' }} />
+                      <col style={{ width: '160px' }} />
+                      <col style={{ width: '120px' }} />
+                      <col style={{ width: '100px' }} />
+                      <col style={{ width: '100px' }} />
+                    </colgroup>
+                    <thead className="sticky top-0 z-10">
+                      <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
+                        <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap"></th>
+                        <th className="text-left py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                          Mã
+                        </th>
+                        <th className="text-left py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                          Tên phụ tùng
+                        </th>
+                        <th className="text-left py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                          Loại phụ tùng
+                        </th>
+                        <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                          Trạng thái
+                        </th>
+                        <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                          Trạng thái xuất
+                        </th>
+                        <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                          SL tồn kho
+                        </th>
+                        <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
+                          SL xuất
+                        </th>
+                        <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap sticky right-0 bg-red-50 z-20 border-l border-red-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">
+                          Chọn
+                        </th>
+                      </tr>
+                    </thead>
                   <tbody>
                     {displayItems.length === 0 ? (
                       <tr>
@@ -654,171 +666,242 @@ export default function ExportNoteDetail() {
                       displayItems.map((item, idx) => {
                         const isExpanded = expandedPartIds.has(item.partId);
                         const partItems = item.partItems || [];
+                        const canExpand = item.detailStatus !== "COMPLETED";
                         
                         return (
                           <>
                         <tr
                           key={item.id}
-                              className={`border-b border-border transition-all duration-200 cursor-pointer ${
-                            idx % 2 === 0
-                              ? "bg-gradient-to-r from-white to-rose-50/60 dark:from-card dark:to-red-950/10"
-                              : "bg-white dark:bg-card"
-                          } hover:bg-rose-50/80`}
-                              onClick={() => toggleExpandPart(item.partId)}
+                          className={`group border-b border-slate-200 transition-colors ${canExpand ? "cursor-pointer" : ""} ${
+                            idx % 2 === 0 ? "bg-white hover:bg-slate-50" : "bg-slate-50/40 hover:bg-slate-100/60"
+                          }`}
+                          onClick={() => canExpand && toggleExpandPart(item.partId)}
                         >
-                          <td className="py-4 px-6">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleExpandPart(item.partId);
-                                  }}
-                                >
-                                  {isExpanded ? (
-                                    <ChevronDown className="h-4 w-4" />
-                                  ) : (
-                                    <ChevronRight className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </td>
-                              <td className="py-4 px-6">
-                                <div className="flex items-center gap-3">
-                                  {item.image && (
-                                    <img
-                                      src={item.image}
-                                      alt={item.name}
-                                      className="h-12 w-12 rounded-lg object-cover border border-border/60"
-                                    />
-                                  )}
-                                  <span className="text-sm font-bold text-primary whitespace-nowrap">
-                                    {item.code}
-                                  </span>
-                                </div>
+                          <td className="py-4 px-4 text-center align-middle">
+                            {canExpand ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleExpandPart(item.partId);
+                                }}
+                              >
+                                {isExpanded ? (
+                                  <ChevronDown className="h-4 w-4" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4" />
+                                )}
+                              </Button>
+                            ) : null}
                           </td>
-                              <td className="py-4 px-6 text-sm font-medium text-foreground whitespace-nowrap max-w-xs overflow-hidden text-ellipsis">
-                                {item.name}
-                              </td>
-                              <td className="py-4 px-6 text-sm text-muted-foreground whitespace-nowrap">
-                                {item.partType}
-                              </td>
-                          <td className="py-4 px-6 whitespace-nowrap">
+                          <td className="py-4 px-5 align-middle">
+                            <div className="flex items-center gap-3">
+                              {item.image && (
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  className="h-12 w-12 rounded-lg object-cover border border-slate-200 flex-shrink-0"
+                                />
+                              )}
+                              <span className="text-sm font-semibold text-primary whitespace-nowrap">
+                                {item.code}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-4 px-5 text-sm font-medium text-slate-900 whitespace-nowrap truncate align-middle">
+                            {item.name}
+                          </td>
+                          <td className="py-4 px-5 text-sm text-slate-600 whitespace-nowrap truncate align-middle">
+                            {item.partType}
+                          </td>
+                          <td className="py-4 px-4 text-center align-middle whitespace-nowrap">
                             <Badge
                               variant="secondary"
                               className={
-                                    item.status === "ACTIVE"
-                                  ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 border border-green-300 dark:border-green-700"
-                                      : "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400 border border-gray-300 dark:border-gray-700"
+                                item.status === "ACTIVE"
+                                  ? "bg-green-100 text-green-800 border border-green-300"
+                                  : "bg-gray-100 text-gray-800 border border-gray-300"
                               }
                             >
-                                  {getPartStatusLabel(item.status)}
+                              {getPartStatusLabel(item.status)}
                             </Badge>
                           </td>
-                          <td className="py-4 px-6 whitespace-nowrap">
-                                <Badge
-                                  variant="secondary"
-                                  className={
-                                    item.detailStatus === "STOCK_FOUND" || item.detailStatus === "COMPLETED"
-                                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-300 dark:border-blue-700"
-                                      : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400 border border-red-300 dark:border-red-700"
-                                  }
-                                >
-                                  {getDetailStatusLabel(item.detailStatus)}
+                          <td className="py-4 px-4 text-center align-middle whitespace-nowrap">
+                            <Badge
+                              variant="secondary"
+                              className={
+                                item.detailStatus === "STOCK_FOUND" || item.detailStatus === "COMPLETED"
+                                  ? "bg-blue-100 text-blue-800 border border-blue-300"
+                                  : "bg-red-100 text-red-800 border border-red-300"
+                              }
+                            >
+                              {getDetailStatusLabel(item.detailStatus)}
+                            </Badge>
+                          </td>
+                          <td className="py-4 px-4 text-center text-sm font-semibold text-slate-900 whitespace-nowrap align-middle">
+                            {loadingPartItems[item.partId] ? (
+                              <span className="text-xs text-slate-500">Đang tải...</span>
+                            ) : (
+                              <Badge variant="secondary" className="whitespace-nowrap">
+                                {partItems.reduce((sum, pi) => sum + (pi.quantity || 0), 0)}
                               </Badge>
-                              </td>
-                              <td className="py-4 px-6 text-sm font-bold text-foreground whitespace-nowrap">
-                                {loadingPartItems[item.partId] ? (
-                                  <span className="text-xs text-muted-foreground">Đang tải...</span>
-                                ) : (
-                                  <Badge variant="secondary" className="whitespace-nowrap">
-                                    {partItems.reduce((sum, pi) => sum + (pi.quantity || 0), 0)} bộ
-                                  </Badge>
-                                )}
-                              </td>
-                              <td className="py-4 px-6 text-sm font-bold text-foreground whitespace-nowrap">
-                                {item.totalQuantity}
-                              </td>
-                              <td className="py-4 px-6 whitespace-nowrap w-20"></td>
-                            </tr>
-                            {isExpanded && partItems.map((partItem, pIdx) => (
-                              <tr
-                                key={`${item.partId}-${partItem.id || pIdx}`}
-                                className="bg-muted/30 border-b border-border/50"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <td className="py-3 px-6"></td>
-                                <td className="py-3 px-6 pl-12">
-                                  <div className="flex flex-col gap-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs text-muted-foreground">└─</span>
-                                      <span className="text-xs text-muted-foreground">Số serial:</span>
-                                    </div>
-                                    <div className="pl-6">
-                                      <span className="text-xs font-bold text-primary">{partItem.serialNumber || partItem.id || "N/A"}</span>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="py-3 px-6 text-xs">
-                                  <div className="flex flex-col gap-1">
-                                    <span className="text-muted-foreground">{partItem.part?.name || item.name}</span>
-                                    {partItem.serialNumber && (
-                                      <span className="text-xs text-primary font-medium">Serial: {partItem.serialNumber}</span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="py-3 px-6 text-xs text-muted-foreground w-20">
-                                  {partItem.part?.partType?.name || partItem.part?.partType || item.partType || "N/A"}
-                                </td>
-                                <td className="py-3 px-6">
-                                  <Badge
-                                    variant="outline"
-                                    className={`text-xs ${
-                                      partItem.part?.status === "ACTIVE"
-                                        ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 border-green-300 dark:border-green-700"
-                                        : "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400 border-gray-300 dark:border-gray-700"
-                                    }`}
-                                  >
-                                    {getPartStatusLabel(partItem.part?.status)}
-                                  </Badge>
-                                </td>
-                                <td className="py-3 px-6">
-                                </td>
-                                <td className="py-3 px-6 text-xs font-medium whitespace-nowrap">
-                                  <Badge variant="secondary" className="text-xs whitespace-nowrap">
-                                    {partItem.quantity || 0} bộ
-                                  </Badge>
-                                </td>
-                                <td className="py-3 px-6 text-xs text-muted-foreground">
-                                </td>
-                                <td className="py-3 px-6">
-                                  <Checkbox
-                                    checked={selectedParts.has(partItem.id)}
-                                    onCheckedChange={(checked) => {
-                                      if (checked) {
-                                        setSelectedParts(prev => new Set([...prev, partItem.id]));
-                                      } else {
-                                        setSelectedParts(prev => {
-                                          const next = new Set(prev);
-                                          next.delete(partItem.id);
-                                          return next;
-                                        });
-                                      }
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
+                            )}
+                          </td>
+                          <td className="py-4 px-4 text-center text-sm font-semibold text-slate-900 whitespace-nowrap align-middle">
+                            {item.totalQuantity}
+                          </td>
+                          <td className={`py-4 px-4 text-center align-middle sticky right-0 z-10 border-l border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] group-hover:bg-slate-50 ${idx % 2 === 0 ? "bg-white" : "bg-slate-50"}`}>
                           </td>
                         </tr>
-                            ))}
+                            {canExpand && isExpanded && (() => {
+                              // Nhóm các partItem không có serial
+                              const groupedPartItems = [];
+                              const itemMap = new Map();
+                              
+                              partItems.forEach((partItem) => {
+                                const serialKey = partItem.serialNumber || "";
+                                const hasSerial = serialKey.trim() !== "" && serialKey !== "-";
+                                
+                                if (hasSerial) {
+                                  // Nếu có serial, hiển thị riêng
+                                  groupedPartItems.push({
+                                    ...partItem,
+                                    isGrouped: false,
+                                  });
+                                } else {
+                                  // Nếu không có serial, cộng dồn lại
+                                  const key = `${item.partId}-no-serial`;
+                                  if (!itemMap.has(key)) {
+                                    itemMap.set(key, {
+                                      id: `grouped-${key}`,
+                                      serialNumber: "—",
+                                      quantity: 0,
+                                      part: partItem.part || item.part,
+                                      isGrouped: true,
+                                      originalItems: [],
+                                    });
+                                  }
+                                  const groupedItem = itemMap.get(key);
+                                  groupedItem.quantity += (partItem.quantity || 1);
+                                  groupedItem.originalItems.push(partItem);
+                                }
+                              });
+                              
+                              // Thêm các item đã nhóm vào danh sách
+                              itemMap.forEach((groupedItem) => {
+                                groupedPartItems.push(groupedItem);
+                              });
+                              
+                              return groupedPartItems.map((partItem, pIdx) => (
+                                <tr
+                                  key={`${item.partId}-${partItem.id || pIdx}`}
+                                  className={`group border-b border-slate-200 ${idx % 2 === 0 ? "bg-slate-50/50 hover:bg-slate-100/70" : "bg-slate-100/30 hover:bg-slate-150/50"}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <td className="py-3 px-4"></td>
+                                  <td className="py-3 px-5 pl-12 align-middle">
+                                    <div className="flex flex-col gap-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs text-slate-500">└─</span>
+                                        <span className="text-xs text-slate-500">Số serial:</span>
+                                      </div>
+                                      <div className="pl-6">
+                                        <span className="text-xs font-semibold text-primary whitespace-nowrap">{partItem.serialNumber || "—"}</span>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-5 text-xs align-middle">
+                                    <div className="flex flex-col gap-1">
+                                      <span className="text-slate-600 whitespace-nowrap truncate">{partItem.part?.name || item.name}</span>
+                                      {partItem.serialNumber && partItem.serialNumber !== "—" && (
+                                        <span className="text-xs text-primary font-medium whitespace-nowrap">Serial: {partItem.serialNumber}</span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-5 text-xs text-slate-600 whitespace-nowrap truncate align-middle">
+                                    {partItem.part?.partType?.name || partItem.part?.partType || item.partType || "N/A"}
+                                  </td>
+                                  <td className="py-3 px-4 text-center align-middle whitespace-nowrap">
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-xs ${
+                                        partItem.part?.status === "ACTIVE"
+                                          ? "bg-green-100 text-green-800 border-green-300"
+                                          : "bg-gray-100 text-gray-800 border-gray-300"
+                                      }`}
+                                    >
+                                      {getPartStatusLabel(partItem.part?.status)}
+                                    </Badge>
+                                  </td>
+                                  <td className="py-3 px-4 text-center align-middle whitespace-nowrap">
+                                  </td>
+                                  <td className="py-3 px-4 text-center text-xs font-medium whitespace-nowrap align-middle">
+                                    <Badge variant="secondary" className="text-xs whitespace-nowrap">
+                                      {partItem.quantity || 0}
+                                    </Badge>
+                                  </td>
+                                  <td className="py-3 px-4 text-center text-xs text-slate-500 whitespace-nowrap align-middle">
+                                  </td>
+                                  <td className={`py-3 px-4 text-center align-middle sticky right-0 z-10 border-l border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] group-hover:bg-slate-50 ${idx % 2 === 0 ? "bg-slate-50/50" : "bg-slate-100/30"}`}>
+                                    {partItem.isGrouped ? (
+                                      // Nếu là item đã nhóm, check nếu tất cả các item gốc đã được chọn
+                                      <Checkbox
+                                        checked={partItem.originalItems?.every(origItem => selectedParts.has(origItem.id)) || false}
+                                        onCheckedChange={(checked) => {
+                                          if (checked) {
+                                            // Chọn tất cả các item gốc trong nhóm
+                                            setSelectedParts(prev => {
+                                              const next = new Set(prev);
+                                              partItem.originalItems?.forEach(origItem => {
+                                                next.add(origItem.id);
+                                              });
+                                              return next;
+                                            });
+                                          } else {
+                                            // Bỏ chọn tất cả các item gốc trong nhóm
+                                            setSelectedParts(prev => {
+                                              const next = new Set(prev);
+                                              partItem.originalItems?.forEach(origItem => {
+                                                next.delete(origItem.id);
+                                              });
+                                              return next;
+                                            });
+                                          }
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                    ) : (
+                                      <Checkbox
+                                        checked={selectedParts.has(partItem.id)}
+                                        onCheckedChange={(checked) => {
+                                          if (checked) {
+                                            setSelectedParts(prev => new Set([...prev, partItem.id]));
+                                          } else {
+                                            setSelectedParts(prev => {
+                                              const next = new Set(prev);
+                                              next.delete(partItem.id);
+                                              return next;
+                                            });
+                                          }
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                    )}
+                                  </td>
+                                </tr>
+                              ));
+                            })()}
                           </>
                         );
                       })
                     )}
                   </tbody>
-                  <tfoot className="bg-muted/50 border-t-2 border-border">
+                  <tfoot className="bg-slate-50 border-t-2 border-slate-200">
                     <tr>
-                      <td colSpan={9} className="py-4 px-6 text-sm font-bold text-foreground">
-                        Tổng số phụ tùng: <span className="text-foreground">{totals.totalRows}</span>
+                      <td colSpan={9} className="py-4 px-6 text-sm font-semibold text-slate-900">
+                        Tổng số phụ tùng: <span className="text-slate-900">{totals.totalRows}</span>
                         {selectedParts.size > 0 && (
                           <span className="ml-4 text-primary">• Đã chọn: {selectedParts.size} phụ tùng</span>
                         )}
@@ -826,6 +909,7 @@ export default function ExportNoteDetail() {
                     </tr>
                   </tfoot>
                 </table>
+                </div>
               </div>
             </div>
           </TabsContent>
@@ -833,27 +917,37 @@ export default function ExportNoteDetail() {
           <TabsContent value="log" className="mt-4">
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
               <div className="p-6">
-                
                 <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
-                        <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase w-12">STT</th>
-                        <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">Mã phụ tùng</th>
-                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Tên phụ tùng</th>
-                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Serial</th>
-                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Số lượng</th>
-                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Đơn giá</th>
-                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Thành tiền</th>
-                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Trạng thái</th>
-                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Ngày tạo</th>
-                        <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">Ngày cập nhật</th>
-                      </tr>
-                    </thead>
+                  <div className="min-w-[1200px]">
+                    <table className="w-full table-fixed text-sm">
+                      <colgroup>
+                        <col style={{ width: '60px' }} />
+                        <col style={{ width: '140px' }} />
+                        <col style={{ width: '200px' }} />
+                        <col style={{ width: '150px' }} />
+                        <col style={{ width: '100px' }} />
+                        <col style={{ width: '140px' }} />
+                        <col style={{ width: '140px' }} />
+                        <col style={{ width: '140px' }} />
+                        <col style={{ width: '180px' }} />
+                      </colgroup>
+                      <thead className="sticky top-0 z-10">
+                        <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
+                          <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">STT</th>
+                          <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Mã phụ tùng</th>
+                          <th className="text-center py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Tên phụ tùng</th>
+                          <th className="text-center py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Serial</th>
+                          <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Số lượng</th>
+                          <th className="text-center py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Đơn giá</th>
+                          <th className="text-center py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Thành tiền</th>
+                          <th className="text-center py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Trạng thái</th>
+                          <th className="text-center py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">Thời gian xuất</th>
+                        </tr>
+                      </thead>
                     <tbody>
                       {exportDetails.length === 0 ? (
                         <tr>
-                          <td colSpan={10} className="py-12 px-6 text-center">
+                          <td colSpan={9} className="py-12 px-6 text-center">
                             <div className="flex flex-col items-center gap-2">
                               <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
                                 <FileText className="h-8 w-8 text-muted-foreground/50" />
@@ -866,17 +960,8 @@ export default function ExportNoteDetail() {
                         exportDetails.map((detail, idx) => {
                           const partItem = detail.partItem;
                           const part = detail.proposedReplacePart;
-                          const exportDate = detail.createdAt
-                            ? new Date(detail.createdAt).toLocaleString('vi-VN', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })
-                            : "N/A";
-                          const updateDate = detail.updatedAt && detail.updatedAt !== detail.createdAt
-                            ? new Date(detail.updatedAt).toLocaleString('vi-VN', {
+                          const exportTime = exportNote.exportDate
+                            ? new Date(exportNote.exportDate).toLocaleString('vi-VN', {
                                 day: '2-digit',
                                 month: '2-digit',
                                 year: 'numeric',
@@ -888,50 +973,47 @@ export default function ExportNoteDetail() {
                           return (
                             <tr
                               key={detail.id || idx}
-                              className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
-                                idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"
+                              className={`border-b border-slate-200 transition-colors ${
+                                idx % 2 === 0 ? "bg-white hover:bg-slate-50" : "bg-slate-50/40 hover:bg-slate-100/60"
                               }`}
                             >
-                              <td className="py-4 px-4 text-center">
-                                <span className="text-sm text-slate-600">{idx + 1}</span>
+                              <td className="py-4 px-4 text-center text-sm text-slate-600 whitespace-nowrap align-middle">
+                                {idx + 1}
                               </td>
-                              <td className="py-4 px-4 text-center">
-                                <span className="text-sm font-medium text-foreground">{part?.code || "N/A"}</span>
+                              <td className="py-4 px-4 text-center text-sm font-semibold text-slate-900 whitespace-nowrap align-middle">
+                                {part?.code || "N/A"}
                               </td>
-                              <td className="py-4 px-6 text-center">
-                                <span className="text-sm text-foreground">{part?.name || "N/A"}</span>
+                              <td className="py-4 px-5 text-center text-sm text-slate-900 whitespace-nowrap truncate align-middle">
+                                {part?.name || "N/A"}
                               </td>
-                              <td className="py-4 px-6 text-center">
-                                <span className="text-sm font-medium text-primary">{partItem?.serialNumber || "—"}</span>
+                              <td className="py-4 px-5 text-center text-sm font-semibold text-primary whitespace-nowrap align-middle">
+                                {partItem?.serialNumber || "—"}
                               </td>
-                              <td className="py-4 px-6 text-center">
-                                <span className="text-sm text-foreground">{detail.quantity || 0}</span>
+                              <td className="py-4 px-4 text-center text-sm text-slate-900 whitespace-nowrap align-middle">
+                                {detail.quantity || 0}
                               </td>
-                              <td className="py-4 px-6 text-center">
-                                <span className="text-sm text-foreground">{detail.unitPrice ? formatCurrency(detail.unitPrice) : "—"}</span>
+                              <td className="py-4 px-5 text-center text-sm text-slate-900 whitespace-nowrap align-middle">
+                                {detail.unitPrice ? formatCurrency(detail.unitPrice) : "—"}
                               </td>
-                              <td className="py-4 px-6 text-center">
-                                <span className="text-sm font-medium text-foreground">{detail.totalPrice ? formatCurrency(detail.totalPrice) : "—"}</span>
+                              <td className="py-4 px-5 text-center text-sm font-semibold text-slate-900 whitespace-nowrap align-middle">
+                                {detail.totalPrice ? formatCurrency(detail.totalPrice) : "—"}
                               </td>
-                              <td className="py-4 px-6 text-center">
+                              <td className="py-4 px-5 text-center align-middle whitespace-nowrap">
                                 <Badge
                                   variant="secondary"
                                   className={`border ${
                                     detail.status === "COMPLETED"
-                                      ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 border-green-300 dark:border-green-700"
+                                      ? "bg-green-100 text-green-800 border-green-300"
                                       : detail.status === "STOCK_FOUND"
-                                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 border-blue-300 dark:border-blue-700"
-                                      : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400 border-yellow-300 dark:border-yellow-700"
+                                      ? "bg-blue-100 text-blue-800 border-blue-300"
+                                      : "bg-yellow-100 text-yellow-800 border-yellow-300"
                                   }`}
                                 >
                                   {getDetailStatusLabel(detail.status)}
                                 </Badge>
                               </td>
-                              <td className="py-4 px-6 text-center">
-                                <span className="text-sm text-foreground">{exportDate}</span>
-                              </td>
-                              <td className="py-4 px-6 text-center">
-                                <span className="text-sm text-foreground">{updateDate}</span>
+                              <td className="py-4 px-5 text-center text-sm text-slate-900 whitespace-nowrap align-middle">
+                                {exportTime}
                               </td>
                             </tr>
                           );
@@ -939,6 +1021,7 @@ export default function ExportNoteDetail() {
                       )}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               </div>
             </div>
