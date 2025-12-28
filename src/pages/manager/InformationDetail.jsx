@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Building2, MapPin, Phone, Mail, Clock, Users, Wrench, Calendar, ChevronRight, Plus, ChevronLeft, ChevronRight as ChevronRightIcon, CalendarRange } from "lucide-react";
+import { Building2, MapPin, Phone, Mail, Clock, Users, Wrench, Calendar, ChevronRight, Plus, ChevronLeft, ChevronRight as ChevronRightIcon, CalendarRange, Warehouse } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -173,12 +173,21 @@ export default function InformationDetail() {
   }
 
   const groupedSlots = groupSlotsByDate(serviceCenter.serviceCenterSlots || []);
-  const sortedDates = Object.keys(groupedSlots).sort();
   const weekStart = startOfWeek(weekAnchor, { weekStartsOn: 1 });
   const weekEnd = addDays(weekStart, 6);
-  const sortedDatesInWeek = sortedDates.filter((date) => {
-    const d = new Date(date);
-    return d >= weekStart && d <= weekEnd;
+  
+  // Tạo array chứa đầy đủ 7 ngày trong tuần
+  const allWeekDays = Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(weekStart, i);
+    const dateStr = format(date, "yyyy-MM-dd");
+    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const dayOfWeek = dayNames[date.getDay()];
+    return {
+      date: dateStr,
+      dateObj: date,
+      slots: groupedSlots[dateStr] || [],
+      dayOfWeek: dayOfWeek
+    };
   });
 
   const manager = serviceCenter.staffs?.find(s => s.position === "MANAGER_BRANCH");
@@ -341,6 +350,48 @@ export default function InformationDetail() {
             </CardContent>
           </Card>
 
+          {serviceCenter.serviceCenterInventory && (
+            <Card className="border border-rose-100 shadow-md bg-white/95">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2">
+                  <Warehouse className="h-5 w-5 text-primary" />
+                  Thông tin kho
+                </CardTitle>
+                <CardDescription>Thông tin kho của trung tâm dịch vụ</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <InfoItem 
+                    icon={Warehouse} 
+                    label="Tên kho" 
+                    value={serviceCenter.serviceCenterInventory?.serviceCenterInventoryName || "—"} 
+                  />
+                  <div className="flex gap-3 p-3 rounded-lg border border-rose-50 bg-rose-50/50 hover:border-rose-100 transition-colors">
+                    <div className="h-10 w-10 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center flex-shrink-0">
+                      <Clock className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex items-center">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-slate-500">Trạng thái</p>
+                        <Badge 
+                          className={`mt-1 ${
+                            serviceCenter.serviceCenterInventory?.status === "ACTIVE"
+                              ? "bg-emerald-600 hover:bg-emerald-700"
+                              : "bg-slate-400 hover:bg-slate-500"
+                          }`}
+                        >
+                          {serviceCenter.serviceCenterInventory?.status === "ACTIVE" 
+                            ? "Đang hoạt động" 
+                            : "Ngưng hoạt động"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {(serviceCenter.latitude || serviceCenter.longitude || serviceCenter.address) && (
             <Card>
               <CardHeader>
@@ -383,11 +434,6 @@ export default function InformationDetail() {
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="h-5 w-5 text-primary" />
                   Lịch làm việc
-                  {serviceCenter.serviceCenterSlots && serviceCenter.serviceCenterSlots.length > 0 && (
-                    <Badge variant="secondary" className="ml-2 rounded-full px-2 py-0.5 text-[11px] bg-slate-100 text-slate-700">
-                      {serviceCenter.serviceCenterSlots.length} slot
-                    </Badge>
-                  )}
                 </CardTitle>
                 <CardDescription>Quản lý các khung giờ làm việc tại trung tâm của bạn.</CardDescription>
               </div>
@@ -436,34 +482,35 @@ export default function InformationDetail() {
               </div>
             </CardHeader>
             <CardContent>
-              {sortedDatesInWeek.length > 0 ? (
-                <div className="space-y-4">
-                  {sortedDatesInWeek.map((date) => {
-                    const slots = sortSlotsByTime(groupedSlots[date]);
-                    const firstSlot = slots[0];
-                    const vietnameseDay = getVietnameseDay(firstSlot.dayOfWeek);
+              <div className="space-y-4">
+                {allWeekDays.map((dayInfo) => {
+                  const slots = sortSlotsByTime(dayInfo.slots);
+                  const vietnameseDay = getVietnameseDay(dayInfo.dayOfWeek);
 
-                    return (
-                      <div
-                        key={date}
-                        className="rounded-xl border border-slate-200 bg-white shadow-sm p-4 space-y-3"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                              <Calendar className="h-4 w-4" />
-                            </div>
-                            <div>
-                              <h4 className="font-semibold text-foreground">
-                                {vietnameseDay}, {format(new Date(date), "dd/MM/yyyy", { locale: vi })}
-                              </h4>
-                              <p className="text-xs text-muted-foreground">Ngày làm việc</p>
-                            </div>
+                  return (
+                    <div
+                      key={dayInfo.date}
+                      className="rounded-xl border border-slate-200 bg-white shadow-sm p-4 space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                            <Calendar className="h-4 w-4" />
                           </div>
+                          <div>
+                            <h4 className="font-semibold text-foreground">
+                              {vietnameseDay}, {format(dayInfo.dateObj, "dd/MM/yyyy", { locale: vi })}
+                            </h4>
+                            <p className="text-xs text-muted-foreground">Ngày làm việc</p>
+                          </div>
+                        </div>
+                        {slots.length > 0 && (
                           <Badge variant="outline" className="text-xs bg-slate-50 border-slate-200">
                             {slots.length} khung giờ
                           </Badge>
-                        </div>
+                        )}
+                      </div>
+                      {slots.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                           {slots.map((slot) => (
                             <div
@@ -500,16 +547,15 @@ export default function InformationDetail() {
                             </div>
                           ))}
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p className="text-sm">Không có slot trong tuần này</p>
-                </div>
-              )}
+                      ) : (
+                        <div className="text-center py-4 text-sm text-slate-400">
+                          Không có slot nào trong ngày này
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
 

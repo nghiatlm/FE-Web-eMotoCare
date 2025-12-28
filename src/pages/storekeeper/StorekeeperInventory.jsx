@@ -338,8 +338,8 @@ export default function StorekeeperInventory() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="p-8 space-y-6">
+    <div className="bg-background">
+      <div className="px-4 md:px-6 lg:px-8 py-6 space-y-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <PackagePlus className="h-6 w-6 text-primary" />
@@ -424,66 +424,51 @@ export default function StorekeeperInventory() {
           </Button>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full table-fixed">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto w-full">
+          <div className="min-w-[1200px]">
+            <table className="w-full table-fixed text-sm">
               <colgroup>
-                <col className="w-16" />
-                <col style={{ width: 'auto' }} />
-                <col style={{ width: 'auto' }} />
-                <col style={{ width: 'auto' }} />
-                <col style={{ width: 'auto' }} />
-                <col style={{ width: 'auto' }} />
+                <col style={{ width: '60px' }} />
+                <col style={{ width: '100px' }} />
+                <col style={{ width: '180px' }} />
+                <col style={{ width: '220px' }} />
+                <col style={{ width: '100px' }} />
+                <col style={{ width: '140px' }} />
                 <col style={{ width: '200px' }} />
-                <col style={{ width: 'auto' }} />
-                <col className="w-32" />
+                <col style={{ width: '140px' }} />
+                <col style={{ width: '120px' }} />
               </colgroup>
-              <thead>
+              <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-red-50 via-red-50/80 to-red-100/60 border-b border-red-100">
-                  <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
                     STT
                   </th>
-                  <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
                     Hình ảnh
                   </th>
-                  <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  <th className="text-left py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
                     Mã phụ tùng
                   </th>
-                  <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  <th className="text-left py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
                     Tên phụ tùng
                   </th>
-                  <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
                     ĐVT
                   </th>
-                  <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  <th className="text-center py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
                     Tồn khả dụng
                   </th>
-                  <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  <th className="text-center py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
                     Mức cảnh báo
                   </th>
-                  <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  <th className="text-center py-4 px-5 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap">
                     Trạng thái tồn
                   </th>
-                  <th className="text-center py-4 px-6 text-xs font-semibold tracking-wide text-red-700 uppercase">
+                  <th className="text-center py-4 px-4 text-xs font-semibold tracking-wide text-red-700 uppercase whitespace-nowrap sticky right-0 bg-red-50 z-20 border-l border-red-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">
                     Thao tác
                   </th>
                 </tr>
               </thead>
-            </table>
-          </div>
-          <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
-            <table className="w-full table-fixed">
-              <colgroup>
-                <col className="w-16" />
-                <col style={{ width: 'auto' }} />
-                <col style={{ width: 'auto' }} />
-                <col style={{ width: 'auto' }} />
-                <col style={{ width: 'auto' }} />
-                <col style={{ width: 'auto' }} />
-                <col style={{ width: '200px' }} />
-                <col style={{ width: 'auto' }} />
-                <col className="w-32" />
-              </colgroup>
               <tbody>
                 {loading ? (
                   <tr>
@@ -513,12 +498,12 @@ export default function StorekeeperInventory() {
                     return (
                       <tr
                         key={part.id}
-                        className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-slate-50/40"}`}
+                        className={`group border-b border-slate-100 transition-colors ${index % 2 === 0 ? "bg-white hover:bg-slate-50" : "bg-slate-50/40 hover:bg-slate-100/60"}`}
                       >
-                        <td className="py-4 px-4 text-center">
-                          <span className="text-sm text-slate-600">{stt}</span>
+                        <td className="py-4 px-4 text-center align-middle">
+                          <span className="text-sm font-medium text-slate-600 whitespace-nowrap">{stt}</span>
                         </td>
-                        <td className="py-4 px-4 text-center">
+                        <td className="py-4 px-4 text-center align-middle">
                           <div className="flex items-center justify-center">
                             {part.partImage ? (
                               <div className="relative h-14 w-14 rounded-lg overflow-hidden ring-2 ring-slate-100 shadow-md group-hover:ring-2 group-hover:ring-primary/20 transition-all">
@@ -535,49 +520,47 @@ export default function StorekeeperInventory() {
                             )}
                           </div>
                         </td>
-                        <td className="py-4 px-6 text-center">
-                          <span className="text-sm text-foreground">{part.partCode}</span>
+                        <td className="py-4 px-5 align-middle">
+                          <span className="text-sm font-medium text-slate-900 whitespace-nowrap block truncate">{part.partCode}</span>
                         </td>
-                        <td className="py-4 px-6 text-center">
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium text-foreground leading-tight">{part.partName}</p>
-                          </div>
+                        <td className="py-4 px-5 align-middle">
+                          <span className="text-sm font-medium text-slate-900 whitespace-nowrap block truncate">{part.partName}</span>
                         </td>
-                        <td className="py-4 px-6 text-center">
-                          <span className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium text-slate-700 bg-slate-100">
+                        <td className="py-4 px-4 text-center align-middle">
+                          <span className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium text-slate-700 bg-slate-100 whitespace-nowrap">
                             {part.unit}
                           </span>
                         </td>
-                        <td className="py-4 px-6 text-center">
+                        <td className="py-4 px-5 text-center align-middle">
                           <div className="space-y-1">
-                            <div className={`text-2xl font-bold ${getQuantityColor(part.alert)}`}>
+                            <div className={`text-2xl font-bold ${getQuantityColor(part.alert)} whitespace-nowrap`}>
                               {part.totalQty}
                             </div>
-                            <p className="text-xs text-slate-500 font-medium">Min: {part.minStock}</p>
+                            <p className="text-xs text-slate-500 font-medium whitespace-nowrap">Min: {part.minStock}</p>
                           </div>
                         </td>
-                        <td className="py-4 px-6 text-center">
+                        <td className="py-4 px-5 text-center align-middle">
                           <div className="flex items-center justify-center">
                             <StockBar current={part.totalQty} min={part.minStock} />
                           </div>
                         </td>
-                        <td className="py-4 px-6 text-center">
+                        <td className="py-4 px-5 text-center align-middle">
                           <div className="flex items-center justify-center">
-                            <Badge className={`${badge.className} px-3 py-1.5 rounded-md font-semibold text-xs shadow-sm`}>
+                            <Badge className={`${badge.className} px-3 py-1.5 rounded-md font-semibold text-xs shadow-sm whitespace-nowrap`}>
                               {badge.label}
                             </Badge>
                           </div>
                         </td>
-                        <td className="py-4 px-6 text-center">
+                        <td className={`py-4 px-4 text-center align-middle sticky right-0 z-10 border-l border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] ${index % 2 === 0 ? "bg-white group-hover:bg-slate-50" : "bg-slate-50 group-hover:bg-slate-100"}`}>
                           <div className="flex items-center justify-center">
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="gap-2 text-primary hover:text-primary hover:bg-primary/10 font-medium transition-all"
+                              className="gap-2 text-primary hover:text-primary hover:bg-primary/10 font-medium transition-all whitespace-nowrap"
                               onClick={() => handleNavigateDetail(part)}
                             >
-                              <Eye className="h-4 w-4" />
-                              Chi tiết
+                              <Eye className="h-4 w-4 flex-shrink-0" />
+                              <span className="hidden sm:inline">Chi tiết</span>
                             </Button>
                           </div>
                         </td>

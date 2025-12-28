@@ -632,9 +632,9 @@ const Index = () => {
                         <CardHeader>
                             <CardTitle className="text-lg font-semibold text-slate-900 flex items-center gap-2">
                                 <FileText className="h-5 w-5 text-slate-600" />
-                                Phân bố trạng thái đơn hàng
+                                Phân bố trạng thái lịch hẹn
                             </CardTitle>
-                            <p className="text-sm text-slate-500 mt-1">Tổng quan trạng thái các đơn hàng</p>
+                            <p className="text-sm text-slate-500 mt-1">Tổng quan trạng thái các lịch hẹn</p>
                         </CardHeader>
                         <CardContent>
                             {appointmentStatusData.length > 0 ? (

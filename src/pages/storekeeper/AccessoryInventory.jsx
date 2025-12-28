@@ -434,7 +434,7 @@ export default function AccessoryInventory() {
                             )}
                           </div>
                         </td>
-                        <td className="py-4 px-6 text-sm font-medium text-foreground">{item.code || item.id}</td>
+                        <td className="py-4 px-6 text-sm font-medium text-foreground">{item.code}</td>
                         <td className="py-4 px-6 text-sm text-foreground">{item.name}</td>
                         <td className="py-4 px-6 text-sm text-muted-foreground">{item.partType || "—"}</td>
                       <td className="py-4 px-6 text-sm text-center">{item.quantity}</td>
