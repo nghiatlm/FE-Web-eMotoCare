@@ -370,7 +370,6 @@ export default function CampaignModeEVCheck({
       return;
     }
     
-    // ✅ Lấy partTypeId từ row data
     const currentRow = details[index];
     if (!currentRow) {
       updateRow(index, { priceService: 0 });
@@ -393,7 +392,6 @@ export default function CampaignModeEVCheck({
     }
     
     try {
-      // ✅ Lấy từ "price" thay vì "laborCost" (theo yêu cầu)
       const cost = await getLaborCostByRemediesService(partTypeId, remedies, "price");
       updateRow(index, { priceService: Number(cost || 0) });
     } catch (e) {
@@ -737,10 +735,8 @@ export default function CampaignModeEVCheck({
 
   useRMAHub(handleRMAUpdate);
 
-  // Handler để refresh trạng thái phụ tùng khi có update từ export note
   const handleExportNoteUpdate = useCallback(() => {
     if (evCheckId && !forceEmpty && !vehiclePartLoading && !replacePartLoading) {
-      // Reload lại details để cập nhật trạng thái phụ tùng
       loadRepairDetails();
     }
   }, [evCheckId, forceEmpty, vehiclePartLoading, replacePartLoading, loadRepairDetails]);
@@ -787,33 +783,23 @@ export default function CampaignModeEVCheck({
     updateRow(index, { [field]: value });
 
     if (field === "remedies") {
-
-
       const currentRow = details[index];
       const partId = currentRow?.partItem?.part?.id || 
                      vehiclePartOptions.find(vp => vp.partItemId === currentRow?.partItemId)?.partId || null;
       
-      if (value !== "REPLACE") {
-        updateRow(index, {
-          pricePart: 0,
-        });
-      } else {
-        // ✅ Khi chọn "REPLACE", nếu chưa có proposedReplacePartId thì set pricePart = 0
-        if (!currentRow?.proposedReplacePartId) {
-          updateRow(index, {
-            pricePart: 0,
-          });
-        }
-      }
-      
+      updateRow(index, {
+        proposedReplacePartId: "",
+        replacePartName: "",
+        pricePart: 0,
+      });
 
-      if (partId && recallPartIds.includes(partId)) {
-        const recallPartName = recallPartNameMap[partId] || currentRow?.replacePartName || "";
+      if (value === "REPLACE" && partId && recallPartIds.includes(partId)) {
+        const recallPartName = recallPartNameMap[partId] || "";
         const partItemPrice = Number(currentRow?.partItem?.price || 0);
         updateRow(index, {
           proposedReplacePartId: partId,
           replacePartName: recallPartName,
-          pricePart: partItemPrice, // ✅ Khi có recallPartId, hiển thị giá từ bộ phận
+          pricePart: partItemPrice,
         });
       }
       
@@ -1131,19 +1117,15 @@ export default function CampaignModeEVCheck({
             let finalDisplayName = sel?.label || "";
             const currentRemedies = r.remedies || "NONE";
             
-            // ✅ Nếu có recallPartId và remedies = "REPLACE", lấy giá từ partItem
-            // ✅ Nếu không có recallPartId hoặc remedies khác "REPLACE", set pricePart = 0
             let pricePart = 0;
             if (partId && recallPartIds.includes(partId)) {
               proposedReplacePartId = partId;
               replacePartName = recallPartNameMap[partId] || "";
               finalDisplayName = recallPartNameMap[partId] || sel?.label || "";
-              // ✅ Khi có recallPartId và remedies = "REPLACE", hiển thị giá từ bộ phận
               if (currentRemedies === "REPLACE") {
                 pricePart = Number(sel?.price || partItem?.price || 0);
               }
             } else if (currentRemedies === "REPLACE") {
-              // ✅ Nếu remedies = "REPLACE" nhưng không có recallPartId, set pricePart = 0
               pricePart = 0;
             }
 
@@ -1228,7 +1210,6 @@ export default function CampaignModeEVCheck({
           partCodeLower.includes("pin") ||
           partCodeLower.includes("lfp");
         
-        // Khi đã hoàn thành sửa chữa, chỉ hiển thị text
         if (!canEditFields || readOnly) {
           const displayResult = r.result && r.result.trim() ? r.result : "Tốt";
           return (
@@ -1309,7 +1290,6 @@ export default function CampaignModeEVCheck({
         };
         const remediesLabel = getRemediesLabel(r.remedies);
         
-        // Khi đã hoàn thành sửa chữa, chỉ hiển thị text
         if (!canEditFields || readOnly) {
           return <span style={{ fontSize: 14 }}>{remediesLabel}</span>;
         }
@@ -1322,13 +1302,10 @@ export default function CampaignModeEVCheck({
               style={{ width: "100%", minWidth: 120 }}
               onChange={(v) => handleChange(i, "remedies", v)}>
               <Option value='NONE'>Không</Option>
-              <Option value='TUNE'>Điều chỉnh</Option>
-              <Option value='CLEAN'>Vệ sinh</Option>
-              
+
               {!isWarranty && <Option value='REPLACE'>Thay thế</Option>}
               {!isWarranty && <Option value='REPAIR'>Sửa chữa</Option>}
               
-              {isWarranty && <Option value='WARRANTY'>Bảo hành</Option>}
             </Select>
           </Tooltip>
         );
@@ -1388,20 +1365,136 @@ export default function CampaignModeEVCheck({
       },
       render: (_, r, i) => {
         const replacePartName = r.replacePartName || "";
+        const proposedReplacePartId = r.proposedReplacePartId || "";
+        const isWarranty = checkWarrantyStatus(r.partItem);
+        const isReplace = (r.remedies || "").toUpperCase() === "REPLACE";
         
-
-        if (replacePartName) {
+        if (!isReplace) {
+          return <span style={{ color: "#999" }}>-</span>;
+        }
+        
+        if (!canEditFields || readOnly) {
+          if (replacePartName) {
+            return (
+              <Tooltip title={replacePartName} placement="topLeft">
+                <span style={{ color: "#1890ff", fontWeight: 500, whiteSpace: "nowrap", overflow: "visible" }}>
+                  {replacePartName}
+                </span>
+              </Tooltip>
+            );
+          }
           return (
-            <Tooltip title={replacePartName} placement="topLeft">
-              <span style={{ color: "#1890ff", fontWeight: 500, whiteSpace: "nowrap", overflow: "visible" }}>
-                {replacePartName}
-              </span>
-            </Tooltip>
+            <span style={{ color: "#999" }}>Chưa có phụ tùng thay thế</span>
           );
         }
 
+        const partId = r.partItem?.part?.id || 
+                       vehiclePartOptions.find(vp => vp.partItemId === r.partItemId)?.partId || null;
+        
+        const partTypeId = partId ? partTypeIdCache[partId] : null;
+        const cacheKey = partTypeId && booking?.vehicle?.modelId 
+          ? `${booking.vehicle.modelId}_${partTypeId}` 
+          : null;
+        
+        const allSuggestedParts = cacheKey ? (partOptionsMap[cacheKey] || []) : [];
+
         return (
-          <span style={{ color: "#999" }}>Chưa có phụ tùng thay thế</span>
+          <Tooltip title={replacePartName || "Chọn phụ tùng"} placement="topLeft">
+            <Select
+              showSearch
+              placeholder="Chọn phụ tùng"
+              value={
+                proposedReplacePartId
+                  ? { value: proposedReplacePartId, label: replacePartName || "Đang tải..." }
+                  : undefined
+              }
+              labelInValue
+              disabled={isWarranty || !r.partItemId}
+              loading={partLoading}
+              style={{ width: "100%", minWidth: "180px" }}
+              onDropdownVisibleChange={async (open) => {
+                if (open) {
+                  if (proposedReplacePartId && !replacePartName) {
+                    try {
+                      const { getPartById } = await import("../../../api/partsApi");
+                      const partDetailRes = await getPartById(proposedReplacePartId);
+                      const partDetail = partDetailRes?.data?.data || partDetailRes?.data || partDetailRes;
+                      const partName = partDetail?.name || "";
+                      const code = partDetail?.code || "";
+                      const loadedName = code ? `${partName} (${code})` : (partName || "");
+                      if (loadedName) {
+                        updateRow(i, { replacePartName: loadedName });
+                      }
+                    } catch (err) {
+                    }
+                  }
+                  
+                  if (!partId) return;
+                  
+                  let currentPartTypeId = partTypeId;
+                  
+                  if (!currentPartTypeId) {
+                    try {
+                      const { getPartById } = await import("../../../api/partsApi");
+                      const partDetailRes = await getPartById(partId);
+                      const partDetail = partDetailRes?.data?.data || partDetailRes?.data || partDetailRes;
+                      currentPartTypeId = partDetail?.partType?.id || null;
+                      
+                      if (currentPartTypeId) {
+                        setPartTypeIdCache((prev) => ({
+                          ...prev,
+                          [partId]: currentPartTypeId,
+                        }));
+                      }
+                    } catch (err) {
+                    }
+                  }
+                  
+                  if (currentPartTypeId) {
+                    try {
+                      await loadSuggestedParts(currentPartTypeId);
+                    } catch (err) {
+                      if (err?.response?.status !== 500 && err?.statusCode !== 500) {
+                      }
+                    }
+                  }
+                }
+              }}
+              onChange={(opt) => {
+                if (!opt) {
+                  updateRow(i, {
+                    proposedReplacePartId: "",
+                    replacePartName: "",
+                    pricePart: 0,
+                  });
+                  return;
+                }
+
+                const selected = allSuggestedParts.find((p) => p.id === opt.value);
+                const fullLabel = opt.label || selected?.name || "";
+                const partItemPrice = Number(r?.partItem?.price || 0);
+
+                updateRow(i, {
+                  proposedReplacePartId: opt.value,
+                  replacePartName: fullLabel,
+                  pricePart: partItemPrice,
+                });
+              }}
+              options={allSuggestedParts.map((p) => {
+                const name = p.name || "";
+                const code = p.code || "";
+                const label = code ? `${name} (${code})` : name;
+                return {
+                  value: p.id,
+                  label: label || p.id,
+                };
+              })}
+              filterOption={(input, opt) =>
+                opt.label.toLowerCase().includes(input.toLowerCase())
+              }
+              dropdownStyle={{ maxWidth: "400px" }}
+            />
+          </Tooltip>
         );
       },
     },
@@ -1415,7 +1508,6 @@ export default function CampaignModeEVCheck({
 
         const quantity = Number(r.quantity || 0);
         
-        // ✅ Chỉ hiển thị số lượng khi là REPLACE và quantity > 0
         if (!isReplace || quantity === 0) {
           return "";
         }
