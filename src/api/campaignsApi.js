@@ -11,6 +11,7 @@ const BASE_URL = "/v1/programs";
  * @param {string} params.search - Từ khóa tìm kiếm
  * @param {string} params.status - Trạng thái campaign (ACTIVE, INACTIVE, etc.)
  * @param {string} params.type - Loại campaign
+ * @param {string} params.modelId - ID của vehicle model để lọc campaigns
  * @param {string} params.fromDate - Ngày bắt đầu (format: YYYY-MM-DD)
  * @param {string} params.toDate - Ngày kết thúc (format: YYYY-MM-DD)
  * @returns {Promise} Response từ API

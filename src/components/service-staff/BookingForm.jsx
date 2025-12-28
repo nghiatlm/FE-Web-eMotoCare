@@ -1362,7 +1362,7 @@ const BookingForm = ({ onSubmit, loading = false, initialValues, resetKey, skipC
           <Option value='REPAIR_TYPE'>Sửa chữa</Option>
           <Option value='WARRANTY_TYPE'>Bảo hành</Option>
                   <Option value='CAMPAIGN_TYPE'>Chiến dịch</Option>
-                  <Option value='RECALL_TYPE'>Triệu hồi</Option>
+                  {/* <Option value='RECALL_TYPE'>Triệu hồi</Option> */}
                 </Select>
               </Form.Item>
             </Col>
