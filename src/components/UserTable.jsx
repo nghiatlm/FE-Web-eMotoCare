@@ -78,13 +78,13 @@ export function UserTable({ searchQuery = "", roleFilter = "all", statusFilter =
             if (response.success && response.data) {
                 const transformedUsers = response.data.rowDatas.map(user => ({
                     id: user.id,
-                    phoneNumber: user.phone || "N/A",
-                    email: user.email || "N/A",
+                    phoneNumber: user.phone || "Chưa có số điện thoại",
+                    email: user.email || "Chưa có email",
                     fullName: user.customer 
                         ? `${user.customer.lastName} ${user.customer.firstName}`
                         : user.staff
                         ? `${user.staff.lastName} ${user.staff.firstName}`
-                        : "N/A",
+                        : "Chưa có họ tên",
                     role: transformRoleName(user.roleName),
                     status: user.status === "ACTIVE" ? "active" : "blocked",
                     avatar: user.customer?.avatarUrl || user.staff?.avatarUrl || "",

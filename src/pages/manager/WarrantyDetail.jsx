@@ -180,10 +180,15 @@ export default function WarrantyDetail() {
     return new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())).toISOString();
   }; 
 
-  const fetchRmaDetail = useCallback(async () => {
+  const fetchRmaDetail = useCallback(async (silent = false, preserveState = null) => {
     if (!id) return;
     try {
-      setLoading(true);
+      // Lưu scroll position trước khi fetch (chỉ khi silent mode)
+      const scrollPosition = silent ? (window.scrollY || window.pageYOffset) : 0;
+      
+      if (!silent) {
+        setLoading(true);
+      }
       setError(null);
       const response = await getRmaById(id);
       const data = response?.data || response;
@@ -218,12 +223,24 @@ export default function WarrantyDetail() {
         });
         setSavedDetails(savedDetailIds);
       }
+      
+      // Khôi phục scroll position và expanded state sau khi fetch (chỉ khi silent mode)
+      if (silent && preserveState) {
+        requestAnimationFrame(() => {
+          window.scrollTo(0, scrollPosition);
+          if (preserveState.expandedDetails) {
+            setExpandedDetails(preserveState.expandedDetails);
+          }
+        });
+      }
     } catch (err) {
       console.error("Error fetching RMA detail:", err);
       setError("Không thể tải thông tin RMA. Vui lòng thử lại sau.");
       toastify.error("Không thể tải thông tin RMA");
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [id]);
 
@@ -778,7 +795,11 @@ export default function WarrantyDetail() {
 
       await Promise.all(updatePromises);
 
-      await fetchRmaDetail();
+      // Fetch lại dữ liệu nhưng không reload trang (silent mode)
+      const preserveState = {
+        expandedDetails: new Set(expandedDetails)
+      };
+      await fetchRmaDetail(true, preserveState);
 
       toastify.success(`Đã duyệt ${pendingDetails.length} chi tiết RMA`);
       setIsConfirmDialogOpen(false);
@@ -837,13 +858,11 @@ export default function WarrantyDetail() {
         rmaNumber: rmaNumber.trim(),
       });
 
-      // Giữ lại trạng thái expanded trước khi fetch
-      const wasExpanded = expandedDetails.has(detailId);
-      await fetchRmaDetail();
-      // Khôi phục trạng thái expanded sau khi fetch
-      if (wasExpanded) {
-        setExpandedDetails(prev => new Set([...prev, detailId]));
-      }
+      // Fetch lại dữ liệu nhưng không reload trang (silent mode)
+      const preserveState = {
+        expandedDetails: new Set(expandedDetails)
+      };
+      await fetchRmaDetail(true, preserveState);
 
       toastify.success("Đã xác nhận RMA thành công");
     } catch (error) {
@@ -1171,13 +1190,11 @@ export default function WarrantyDetail() {
       }
 
       await updateRmaDetail(detailId, payload);
-      // Giữ lại trạng thái expanded trước khi fetch
-      const wasExpanded = expandedDetails.has(detailId);
-      await fetchRmaDetail();
-      // Khôi phục trạng thái expanded sau khi fetch
-      if (wasExpanded) {
-        setExpandedDetails(prev => new Set([...prev, detailId]));
-      }
+      // Fetch lại dữ liệu nhưng không reload trang (silent mode)
+      const preserveState = {
+        expandedDetails: new Set(expandedDetails)
+      };
+      await fetchRmaDetail(true, preserveState);
       setSavedDetails(prev => new Set([...prev, detailId]));
 
       toastify.success("Đã cập nhật thông tin hãng thành công");
@@ -1231,7 +1248,11 @@ export default function WarrantyDetail() {
 
       await Promise.all(updatePromises);
 
-      await fetchRmaDetail();
+      // Fetch lại dữ liệu nhưng không reload trang (silent mode)
+      const preserveState = {
+        expandedDetails: new Set(expandedDetails)
+      };
+      await fetchRmaDetail(true, preserveState);
 
       toastify.success(`Đã từ chối ${pendingDetails.length} chi tiết RMA`);
       setIsRejectDialogOpen(false);

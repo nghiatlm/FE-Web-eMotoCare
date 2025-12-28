@@ -617,7 +617,7 @@ export default function ExportNoteDetail() {
                   <table className="w-full table-fixed text-sm">
                     <colgroup>
                       <col style={{ width: '60px' }} />
-                      <col style={{ width: '180px' }} />
+                      <col style={{ width: '240px' }} />
                       <col style={{ width: '200px' }} />
                       <col style={{ width: '150px' }} />
                       <col style={{ width: '140px' }} />
